@@ -1,6 +1,12 @@
 from django.db import connection
-from django.http import HttpRequest, JsonResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.shortcuts import render
 from django.views.decorators.http import require_safe
+
+
+@require_safe
+def home(request: HttpRequest) -> HttpResponse:
+    return render(request, "core/home.html")
 
 
 @require_safe
