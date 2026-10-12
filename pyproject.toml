@@ -46,3 +46,23 @@ ignore = ["S101"]
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["S105", "S106"]
+
+[tool.mypy]
+python_version = "3.13"
+plugins = ["mypy_django_plugin.main"]
+strict = true
+warn_unreachable = true
+exclude = ['^docs/', '^frontend/', '^static/', '^staticfiles/', '^\.venv/']
+
+[[tool.mypy.overrides]]
+module = ["*.tests.*", "tests.*", "conftest"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+
+[[tool.mypy.overrides]]
+module = ["environs.*", "csp.*", "django_vite.*", "whitenoise.*"]
+ignore_missing_imports = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings"
