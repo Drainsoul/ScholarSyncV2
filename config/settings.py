@@ -148,3 +148,23 @@ if _csp_report_only:
     CONTENT_SECURITY_POLICY_REPORT_ONLY = {"DIRECTIVES": _CSP_DIRECTIVES}
 else:
     CONTENT_SECURITY_POLICY = {"DIRECTIVES": _CSP_DIRECTIVES}
+
+# Logging and errors (spec §10) ---------------------------------------------------------------
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"json": {"()": "apps.core.logging.JsonFormatter"}},
+    "handlers": {"stdout": {"class": "logging.StreamHandler", "formatter": "json"}},
+    "root": {"handlers": ["stdout"], "level": env.str("LOG_LEVEL", "INFO")},
+    "loggers": {"django.db.backends": {"level": "WARNING"}},
+}
+
+SENTRY_DSN = env.str("SENTRY_DSN", "")
+if SENTRY_DSN:
+    from apps.core.sentry import init_sentry
+
+    init_sentry(
+        dsn=SENTRY_DSN,
+        environment=env.str("SENTRY_ENVIRONMENT", os.environ.get("VERCEL_ENV", "local")),
+        release=os.environ.get("VERCEL_GIT_COMMIT_SHA") or None,
+    )
