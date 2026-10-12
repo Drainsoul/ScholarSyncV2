@@ -218,3 +218,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local Claude Code files (personal, never committed)
+STATE.md
+CLAUDE.local.md
