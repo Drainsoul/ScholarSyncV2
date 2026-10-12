@@ -1,8 +1,7 @@
 # ScholarSync V2: design spec
 
 - **Revision:** 1 (2026-10-12)
-- **Status:** draft, awaiting Kenneth's approval. No product code is written until this is approved and the M1 plan
-  exists.
+- **Status:** approved by Kenneth on 2026-10-12. M1 plan: `docs/superpowers/plans/2026-10-12-m1-vercel-spike.md`.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
   - Kenneth's decisions of 2026-10-11 (§19);
@@ -621,8 +620,7 @@ starts, and ends with every acceptance item checked.
 | Business rules are still unclear (amounts, LANI tier criteria, at-risk) | Rules are data, editable by heads; open questions tracked in `STATE.md` |
 
 ## 18. Open questions (also tracked in `STATE.md`)
-1. **URGENT (Kenneth):** rotate or revoke the leaked v1 secrets, delete the Aiven database, and make the legacy repo
-   private or purge it (`docs/legacy-audit.md` §8).
+1. ~~Leaked v1 secrets~~ Resolved 2026-10-12: Kenneth confirmed every v1 key had already been rotated.
 2. Confirm the benefit amounts per program and tier.
 3. What qualifies a student for each LANI tier (honors, premier, priority, basic plus, basic, SUC/LCU, review, lead)?
 4. Renewal criteria: is CEAA's "GWA ≥ 80%, ≥ 15 units" right? What scale is LANI's "SWA not lower than 2.5" on?

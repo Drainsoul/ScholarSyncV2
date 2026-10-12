@@ -234,8 +234,8 @@ The sources contradict each other. v2 keeps one source of truth (`BenefitTier` a
 | Gmail SMTP user + app password | `app.py` fallbacks | `4c05f50`, `3dc56e5`, `d29792b`, `447b14c`, `bfe11e6` → `43cdc4e` |
 | Flask `SECRET_KEY` | `app.py` fallbacks | `2d8d6c7`, `1348d97`, `3d838b5`, `b6e9fe6` |
 
-The repo is public. All four must be rotated or revoked, the old database deleted, and the repo made private or its
-history purged. This is Kenneth's action; v2 never touches the legacy repo.
+The repo is public, so the values in its history must be treated as known. **Status (2026-10-12):** Kenneth confirmed
+that every one of these keys had already been rotated. v2 never touches the legacy repo.
 
 ## 9. Dependencies (v1)
 **Outdated or vulnerable:**
