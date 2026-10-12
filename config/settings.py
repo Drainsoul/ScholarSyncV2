@@ -33,6 +33,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "csp.middleware.CSPMiddleware",
+    "apps.core.middleware.PermissionsPolicyMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -105,3 +107,44 @@ DJANGO_VITE = {
         "static_url_prefix": "dist",
     }
 }
+
+# Security (spec §10) -------------------------------------------------------------------------
+from csp.constants import NONE, SELF  # noqa: E402
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = env.bool("DJANGO_SECURE_SSL_REDIRECT", not DEBUG)
+SECURE_HSTS_SECONDS = 0 if DEBUG else 31_536_000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "same-origin"
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
+X_FRAME_OPTIONS = "DENY"
+SESSION_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_AGE = 12 * 60 * 60
+CSRF_COOKIE_SECURE = not DEBUG
+
+PERMISSIONS_POLICY = (
+    "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), "
+    "microphone=(), payment=(), usb=()"
+)
+
+_CSP_DIRECTIVES = {
+    "default-src": [SELF],
+    "script-src": [SELF],
+    "style-src": [SELF],
+    "img-src": [SELF, "data:"],
+    "font-src": [SELF],
+    "connect-src": [SELF],
+    "frame-ancestors": [NONE],
+    "form-action": [SELF],
+    "base-uri": [SELF],
+    "object-src": [NONE],
+}
+# Not a CSP_* setting name: django-csp 4 treats those as legacy config (csp.E001).
+_csp_report_only = env.bool("CSP_REPORT_ONLY", True)
+if _csp_report_only:
+    CONTENT_SECURITY_POLICY_REPORT_ONLY = {"DIRECTIVES": _CSP_DIRECTIVES}
+else:
+    CONTENT_SECURITY_POLICY = {"DIRECTIVES": _CSP_DIRECTIVES}
