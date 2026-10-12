@@ -1,7 +1,6 @@
 """One place that masks personal data in free text: log lines, exceptions, Sentry events."""
 
 import re
-import string
 
 # PostgreSQL error trailers echo row values:
 #   DETAIL:  Key (email)=(x@y.z) already exists.
@@ -10,32 +9,42 @@ import string
 SERVER_TRAILER = re.compile(r"(?:DETAIL|CONTEXT):.*", re.DOTALL)
 MAX_CHARS = 20_000
 
-_LOCAL = frozenset(string.ascii_letters + string.digits + "._%+-")
-_DOMAIN = frozenset(string.ascii_letters + string.digits + ".-")
+_LOCAL_PUNCTUATION = frozenset("._%+-")
+_DOMAIN_PUNCTUATION = frozenset(".-")
+
+
+def _is_local(char: str) -> bool:
+    return char.isalnum() or char in _LOCAL_PUNCTUATION  # isalnum: any script, so "juán" is whole
+
+
+def _is_domain(char: str) -> bool:
+    return char.isalnum() or char in _DOMAIN_PUNCTUATION
 
 
 def _mask_emails(text: str) -> str:
-    """Replace every whole email address with "[email]".
+    """Replace every `something@something` run with "[email]". Fails closed.
 
-    A hand-written scan instead of a regex: each character is visited a bounded number of times
-    (left/right expansion stops at the previous match or the next "@"), so hostile input stays
-    linear, and there is no length cap that could leave part of a long address unmasked.
+    Anything with at least one local character before the "@" and one domain character after it
+    is masked whole, so odd endings ("x@gmail.com2026"), local hosts and non-ASCII names never slip
+    through a stricter validity check. Over-masking a log line is the accepted cost.
+
+    A hand-written scan instead of a regex: left/right expansion stops at the previous match or
+    the next "@", so each character is visited a bounded number of times and hostile input stays
+    linear, with no length cap that could leave part of a long address unmasked.
     """
     pieces: list[str] = []
     last = 0
     at = text.find("@")
     while at != -1:
         start = at
-        while start > last and text[start - 1] in _LOCAL:
+        while start > last and _is_local(text[start - 1]):
             start -= 1
         end = at + 1
-        while end < len(text) and text[end] in _DOMAIN:
+        while end < len(text) and _is_domain(text[end]):
             end += 1
-        domain = text[at + 1 : end].rstrip(".-")
-        end = at + 1 + len(domain)
-        labels = domain.split(".")
-        tld = labels[-1]
-        if start < at and len(labels) >= 2 and all(labels) and tld.isascii() and tld.isalpha():
+        while end > at + 1 and text[end - 1] in _DOMAIN_PUNCTUATION:
+            end -= 1  # sentence punctuation after an address ("… juan@x.com.") stays outside
+        if start < at and end > at + 1:
             pieces.append(text[last:start])
             pieces.append("[email]")
             last = end

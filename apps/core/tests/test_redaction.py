@@ -110,3 +110,14 @@ def test_redact_never_leaks_an_email_split_by_truncation():
 def test_redact_drops_postgres_context_lines():
     message = 'invalid input syntax\nCONTEXT:  COPY scholars, line 3: "Juan Dela Cruz,2001-02-03"'
     assert "Juan" not in redact(message)
+
+
+def test_redact_fails_closed_on_addresses_with_odd_endings():
+    for address in ("juan@gmail.com2026", "juan@example.com-foo", "juan@localhost"):
+        assert redact(f"user {address} x") == "user [email] x", address
+
+
+def test_redact_masks_non_ascii_names_entirely():
+    for address in ("juán.dela.cruz@example.com", "ana@exämple.ph"):
+        result = redact(f"for {address} now")
+        assert result == "for [email] now", address
