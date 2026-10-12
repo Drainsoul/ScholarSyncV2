@@ -26,7 +26,7 @@ Programs (TCU CEAA, LANI, and future ones) are **data**, not code.
 
 ## File structure (apps beyond `core` arrive milestone by milestone)
 ```
-config/            settings.py (environs), urls.py, wsgi.py
+config/            settings.py (environs), test_settings.py (pytest: forces production security), urls.py, wsgi.py
 apps/
   accounts/        custom User, roles, allauth adapters
   programs/        Program, BenefitTier, RequiredDocument, School, AcademicTerm, memberships
