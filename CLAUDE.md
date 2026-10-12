@@ -57,7 +57,9 @@ manage.py  pyproject.toml  uv.lock  compose.yaml  vercel.json  .env.example
 - Checks (= CI): `python -m uv run ruff check .` · `python -m uv run ruff format --check .` · `python -m uv run mypy .` ·
   `python -m uv run python manage.py makemigrations --check --dry-run` · `python -m uv run pytest -n auto` ·
   `npm --prefix frontend run typecheck|check|build|budget`
-- Deploy check: `manage.py check --deploy --fail-level WARNING` with `DJANGO_DEBUG=false` (CI does this)
+- Deploy check (as CI runs it): `manage.py check --deploy --fail-level WARNING` with `DJANGO_DEBUG=false`,
+  `DJANGO_ALLOWED_HOSTS=scholarsync.example` and `DJANGO_ENV_FILE=/nonexistent` so the local `.env` can't mask a
+  missing variable (it did once: CI failed on an empty `ALLOWED_HOSTS` that passed locally)
 
 ## Conventions
 - **Views are thin.** Writes go through `services.py`, reads through `selectors.py`, and every state change writes an
