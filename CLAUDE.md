@@ -24,7 +24,7 @@ Programs (TCU CEAA, LANI, and future ones) are **data**, not code.
   disk or background worker. Files go straight to R2 with presigned URLs; email goes through an outbox, with cron
   retries.
 
-## File structure (planned; created in M2)
+## File structure (apps beyond `core` arrive milestone by milestone)
 ```
 config/            settings.py (environs), urls.py, wsgi.py
 apps/
@@ -49,12 +49,15 @@ docs/              legacy-audit.md, superpowers/specs/, superpowers/plans/
 manage.py  pyproject.toml  uv.lock  compose.yaml  vercel.json  .env.example
 ```
 
-## Commands (available from M2)
-- Setup: `uv sync` · `npm --prefix frontend install` · `docker compose up -d` (Postgres + MinIO) · copy `.env.example`
-  to `.env`
-- Run: `uv run python manage.py runserver` with `npm --prefix frontend run dev` in a second terminal
-- Checks: `uv run ruff check .` · `uv run ruff format --check .` · `uv run mypy .` · `uv run pytest` ·
-  `npm --prefix frontend run typecheck` · `npm --prefix frontend run check`
+## Commands (PowerShell, repo root; `python -m uv` because uv isn't on PATH)
+- Setup: `docker compose up -d --wait` (Postgres 17 on **5433**) · `Copy-Item .env.example .env` · `python -m uv sync` ·
+  first front-end install **inside** `frontend/` (`npm install`; `npm --prefix frontend install` breaks on npm 10)
+- Run: `python -m uv run python manage.py runserver` with `npm --prefix frontend run dev` (`VITE_DEV_MODE=true`), or
+  build once with `npm --prefix frontend run build`
+- Checks (= CI): `python -m uv run ruff check .` · `python -m uv run ruff format --check .` · `python -m uv run mypy .` ·
+  `python -m uv run python manage.py makemigrations --check --dry-run` · `python -m uv run pytest -n auto` ·
+  `npm --prefix frontend run typecheck|check|build|budget`
+- Deploy check: `manage.py check --deploy --fail-level WARNING` with `DJANGO_DEBUG=false` (CI does this)
 
 ## Conventions
 - **Views are thin.** Writes go through `services.py`, reads through `selectors.py`, and every state change writes an
@@ -78,3 +81,5 @@ manage.py  pyproject.toml  uv.lock  compose.yaml  vercel.json  .env.example
 - Windows 11. PowerShell 5.1 is the primary shell (no `&&`); Git Bash is also available.
 - Git has `core.autocrlf=true`, so `.gitattributes` (`eol=lf`) is added at scaffold time.
 - `.env.example` (tracked) documents every setting; `.env` (git-ignored) holds local values.
+- Local Postgres runs on host port 5433; a native PostgreSQL owns 5432 on this machine.
+- Python file edits from scripts must use `encoding="utf-8"` (Windows defaults to cp1252 and mangles `§`).
