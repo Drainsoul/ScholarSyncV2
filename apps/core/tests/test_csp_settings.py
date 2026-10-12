@@ -9,4 +9,4 @@ def test_no_legacy_csp_settings_names():
 
 def test_csp_system_checks_pass():
     errors = [m for m in run_checks(include_deployment_checks=True) if isinstance(m, Error)]
-    assert [e.id for e in errors if e.id.startswith("csp.")] == []
+    assert [e.id for e in errors if e.id and e.id.startswith("csp.")] == []
