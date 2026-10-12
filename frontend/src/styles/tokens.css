@@ -1,0 +1,14 @@
+:root {
+  --brand-600: #d10e0f;
+  --brand-500: #fd1415;
+  --accent: #ebbf56;
+  --info: #27488b;
+  --ink: #111827;
+  --ink-muted: #4b5563;
+  --paper: #ffffff;
+  --surface: #f9fafb;
+  --space-2: 0.5rem;
+  --space-4: 1rem;
+  --space-8: 2rem;
+  --font-body: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
