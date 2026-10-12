@@ -3,9 +3,23 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from django.test import Client
 
 ROOT = Path(__file__).resolve().parent
 MANIFEST = ROOT / "static" / "dist" / ".vite" / "manifest.json"
+
+
+class HttpsClient(Client):
+    """Test client that always uses HTTPS, as every real request does behind Vercel."""
+
+    def generic(self, *args, **kwargs):
+        kwargs["secure"] = True
+        return super().generic(*args, **kwargs)
+
+
+@pytest.fixture
+def client() -> HttpsClient:
+    return HttpsClient()
 
 
 @pytest.fixture(autouse=True)

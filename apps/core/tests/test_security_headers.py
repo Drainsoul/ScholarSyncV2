@@ -38,3 +38,20 @@ def test_csp_enforced_when_report_only_disabled(client, settings):
     settings.CONTENT_SECURITY_POLICY_REPORT_ONLY = None
     response = client.get("/healthz")
     assert "default-src 'self'" in response["Content-Security-Policy"]
+
+
+@pytest.mark.django_db
+def test_tests_run_with_production_security_settings(client, settings):
+    response = client.get("/healthz")
+    assert response["Strict-Transport-Security"] == "max-age=31536000; includeSubDomains"
+    assert settings.SECURE_SSL_REDIRECT is True
+    assert settings.SESSION_COOKIE_SECURE is True
+    assert settings.CSRF_COOKIE_SECURE is True
+
+
+def test_plain_http_redirects_to_https():
+    from django.test import Client
+
+    response = Client().get("/healthz")
+    assert response.status_code == 301
+    assert response["Location"] == "https://testserver/healthz"
