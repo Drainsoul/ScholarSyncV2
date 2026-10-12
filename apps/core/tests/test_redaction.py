@@ -68,3 +68,19 @@ def test_scrub_event_keeps_only_the_path_of_the_referer():
     assert scrub_event(event, {})["request"]["headers"] == {
         "Referer": "https://scholarsync.example/staff/lani/scholars/"
     }
+
+
+def test_redact_is_linear_on_hostile_input():
+    """Exception text can contain user input; the patterns must not backtrack catastrophically."""
+    import time
+
+    hostile = [
+        "a" * 50_000,
+        "a@" + "a." * 25_000,
+        ("x" * 60 + "@") * 1_000,
+        "DETAIL:" + "z" * 50_000,
+    ]
+    for text in hostile:
+        started = time.perf_counter()
+        redact(text)
+        assert time.perf_counter() - started < 0.5, text[:20]
