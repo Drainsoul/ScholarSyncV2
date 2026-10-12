@@ -1,0 +1,8 @@
+# Never upload local secrets, local build output or private notes with a CLI deploy.
+.env
+.env.*
+.venv/
+frontend/node_modules/
+staticfiles/
+static/dist/
+docs/
