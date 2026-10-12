@@ -84,3 +84,29 @@ def test_redact_is_linear_on_hostile_input():
         started = time.perf_counter()
         redact(text)
         assert time.perf_counter() - started < 0.5, text[:20]
+
+
+def test_redact_masks_every_character_of_a_long_local_part():
+    local = "juan.dela.cruz.scholarship.applicant.from.barangay.western.bicutan.2026"
+    assert len(local) > 64
+    text = redact(f"failed for {local}@gmail.com today")
+    assert text == "failed for [email] today"
+
+
+def test_redact_masks_emails_with_many_labels_or_long_tlds():
+    for address in ("a@b.c.d.e.f.g.h.i.j.example.com", "ana@example.internationalconference"):
+        assert redact(f"to {address}.") == "to [email]."
+
+
+def test_redact_never_leaks_an_email_split_by_truncation():
+    from apps.core.redaction import MAX_CHARS
+
+    text = "x" * (MAX_CHARS - 12) + " juan.dela.cruz@example.com tail"
+    result = redact(text)
+    assert "juan.dela" not in result
+    assert "example.com" not in result
+
+
+def test_redact_drops_postgres_context_lines():
+    message = 'invalid input syntax\nCONTEXT:  COPY scholars, line 3: "Juan Dela Cruz,2001-02-03"'
+    assert "Juan" not in redact(message)
