@@ -38,3 +38,15 @@ def test_vercelignore_keeps_local_and_private_files_out_of_deploys():
         "docs/",
     ):
         assert pattern in lines, pattern
+
+
+def test_npm_lockfile_includes_linux_native_binaries():
+    """Vercel and CI build on linux-x64. A lockfile written over an existing Windows
+    node_modules can omit other platforms' optional packages, and then `npm ci` fails there."""
+    lock = json.loads((ROOT / "frontend" / "package-lock.json").read_text())
+    packages = lock["packages"]
+    for name in (
+        "node_modules/@rolldown/binding-linux-x64-gnu",
+        "node_modules/lightningcss-linux-x64-gnu",
+    ):
+        assert name in packages, name
