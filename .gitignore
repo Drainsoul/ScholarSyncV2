@@ -219,3 +219,11 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
+
+# Build output and local tooling
+static/dist/
+staticfiles/
+frontend/node_modules/
+.vercel/
+.env.local
+.env.spike

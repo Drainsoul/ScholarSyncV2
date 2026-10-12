@@ -1,0 +1,48 @@
+[project]
+name = "scholarsync"
+version = "0.1.0"
+description = "ScholarSync V2: City of Taguig scholarship platform"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "django>=5.2.18,<5.3",
+    "environs[django]>=15.2",
+    "psycopg[binary]>=3.3.6",
+    "django-vite>=3.2",
+    "whitenoise>=6.12",
+    "django-csp>=4.0",
+    "sentry-sdk>=2.72",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1",
+    "pytest-django>=4.14",
+    "pytest-xdist>=3.8",
+    "factory-boy>=3.3.3",
+    "ruff>=0.17",
+    "mypy>=2.4",
+    "django-stubs[compatible-mypy]>=6.1.2",
+]
+
+[tool.vercel]
+entrypoint = "config.wsgi:application"
+
+[tool.vercel.scripts]
+build = "python build.py"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["test_*.py"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+extend-exclude = ["docs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "DJ"]
+ignore = ["S101"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S105", "S106"]
