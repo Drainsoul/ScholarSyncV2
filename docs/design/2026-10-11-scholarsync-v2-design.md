@@ -49,7 +49,7 @@ Versions are pinned to the latest stable release when M2 scaffolds the project, 
 | Import/export | stdlib `csv`, **openpyxl** | Row-by-row Django Forms with a preview |
 | Email | **django-anymail** (Resend) + an `EmailOutbox` table | HTTP API, batch sends |
 | Security headers | **django-csp** | Report-only from M2, enforced at launch |
-| Observability | **sentry-sdk** (`send_default_pii=False`), JSON logs to stdout | Hobby keeps runtime logs for 1 hour |
+| Observability | **sentry-sdk** with explicit `data_collection` opt-outs (user info, cookies, bodies, query params, DB data, frame variables off; header allowlist) + `before_send` scrubbing, JSON logs to stdout | Hobby keeps runtime logs for 1 hour |
 | Lint/type | **ruff** (lint + format), **mypy** + **django-stubs** | |
 | Tests | **pytest**, pytest-django, pytest-xdist, factory_boy, Faker (`en_PH`), time-machine, coverage, **pytest-playwright** | Real Postgres in tests |
 | Local services | `compose.yaml`: Postgres 17, MinIO (S3-compatible) | |
