@@ -40,3 +40,16 @@ def test_nav_is_visible_without_javascript_on_a_phone(browser: Browser, live_ser
     expect(page.get_by_role("navigation", name="Main")).to_be_visible()
     expect(page.get_by_role("button", name="Menu")).to_be_hidden()
     context.close()
+
+
+@pytest.mark.parametrize("width", [1024, 1280, 1440])
+def test_student_top_bar_is_one_row_from_64rem(page: Page, live_server, vite_build, width):
+    page.set_viewport_size({"width": width, "height": 800})
+    page.goto(f"{live_server.url}/_kit/mockups/student-dashboard/")
+    page.evaluate("document.fonts.ready")
+    brand = page.locator(".topbar .brand").bounding_box()
+    nav = page.locator(".topnav__list").bounding_box()
+    account = page.locator(".topnav__account").bounding_box()
+    assert brand and nav and account
+    assert nav["y"] == brand["y"] == account["y"]
+    assert account["x"] + account["width"] <= width

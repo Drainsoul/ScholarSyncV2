@@ -75,3 +75,10 @@ def test_sign_out_is_a_post_form_only_when_a_url_is_given(vite_build):
     assert '<form method="post" action="/accounts/logout/">' in html
     assert "csrfmiddlewaretoken" in html
     assert "Sign out" not in render("layouts/office.html")
+
+
+@pytest.mark.parametrize("layout", ["layouts/staff.html", "layouts/office.html"])
+def test_sidebar_is_the_banner_landmark(layout, vite_build):
+    html = render(layout)
+    assert '<header class="sidebar">' in html
+    assert html.count("<header") == 1

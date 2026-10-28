@@ -38,3 +38,15 @@ def test_kit_pages_only_use_icons_in_the_sprite(client, kit_on, vite_build):
     for url in urls:
         used = set(re.findall(r'icons\.svg#([a-z0-9-]+)"', client.get(url).content.decode()))
         assert used <= known, (url, used - known)
+
+
+def test_review_mockup_acts_only_on_waiting_documents(client, kit_on, vite_build):
+    body = client.get("/_kit/mockups/application-review/").content.decode()
+    assert "Application APP-2026-0147 to LANI" in body
+    assert "Not met: holds TCU CEAA" in body
+    hidden = '<span class="visually-hidden"> Certificate of enrollment</span>'
+    assert f"Approve{hidden}" in body
+    assert f"Decline{hidden}" in body
+    assert "Decline</button>" not in body
+    assert body.count('class="btn btn--secondary">Approve') == 1
+    assert body.count('class="btn btn--ghost">Decline') == 1

@@ -280,8 +280,14 @@ def apply() -> dict[str, object]:
 
 
 def application_review() -> dict[str, object]:
+    # A LANI application from a TCU CEAA scholar, so the "no other city scholarship" rule is unmet.
     return {
         **chrome("staff", "Applications"),
+        "program": {"name": "LANI"},
+        "programs": [
+            {"name": "TCU CEAA", "url": "#", "current": False},
+            {"name": "LANI", "url": "#", "current": True},
+        ],
         "crumbs": [{"label": "Applications", "url": "#"}, {"label": "APP-2026-0147", "url": ""}],
         "tabs": [
             {"label": "Overview", "url": "#", "current": True, "count": 0},
