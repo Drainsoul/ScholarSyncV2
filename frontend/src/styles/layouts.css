@@ -257,7 +257,8 @@
   }
 }
 
-.sidebar :focus-visible {
+.sidebar :focus-visible,
+.auth__panel :focus-visible {
   outline-color: var(--nav-marker);
 }
 
@@ -472,10 +473,6 @@
 .auth__panel .brand,
 .auth__panel .brand:hover {
   color: var(--nav-text);
-}
-
-.auth__panel :focus-visible {
-  outline-color: var(--nav-marker);
 }
 
 .auth__tagline {
