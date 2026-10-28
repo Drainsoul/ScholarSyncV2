@@ -1,0 +1,15 @@
+{% extends "kit/base.html" %}{% load ui partials %}
+{% block title %}Release allowances{% endblock %}
+{% block content %}
+<h1>Release allowances</h1>
+{% partialdef confirm inline %}
+<form method="post" action="{% url 'kit:demo-dialog' %}" hx-post="{% url 'kit:demo-dialog' %}" hx-swap="none" hx-disabled-elt="find button[type='submit']">
+  {% csrf_token %}
+  <p>Release <strong class="num">{{ amount|peso }}</strong> to <strong>{{ count }} scholars</strong> for the 1st semester, 2026–2027? Only a program head can revert a release.</p>
+  <div class="btn-row">
+    <button type="submit" class="btn btn--primary">Release allowances</button>
+    <a class="btn btn--ghost" href="{% url 'kit:index' %}#overlays" data-dialog-close>Cancel</a>
+  </div>
+</form>
+{% endpartialdef %}
+{% endblock %}

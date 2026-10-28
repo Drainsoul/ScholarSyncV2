@@ -5,6 +5,7 @@ Development only: every view answers 404 unless settings.KIT_ENABLED, and pages 
 
 import json
 from collections.abc import Callable
+from decimal import Decimal
 from functools import wraps
 from typing import Any, cast
 
@@ -15,9 +16,10 @@ from django.http import Http404, HttpRequest, HttpResponse, QueryDict
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.cache import patch_vary_headers
-from django.views.decorators.http import require_POST, require_safe
+from django.views.decorators.http import require_http_methods, require_POST, require_safe
 
-from apps.core.htmx import HtmxHttpRequest, Tone, toast
+from apps.core.htmx import HtmxHttpRequest, Tone, close_dialog, toast
+from apps.core.templatetags.ui import peso
 from apps.kit import samples
 from apps.kit.forms import KitForm, invalid_kit_form
 
@@ -33,6 +35,7 @@ SECTIONS: list[tuple[str, str]] = [
     ("controls", "Controls"),
     ("data", "Data display"),
     ("feedback", "Feedback"),
+    ("overlays", "Dialogs and bulk actions"),
 ]
 
 SWATCHES = [
@@ -90,6 +93,7 @@ def index_context(request: HttpRequest) -> dict[str, object]:
             for key, title in SECTIONS
         ],
         "swatches": SWATCHES,
+        "bulk_rows": samples.scholars()[:4],
         "icons": icon_names(),
         "empty_form": KitForm(prefix="empty"),
         "invalid_form": invalid_kit_form(),
@@ -139,3 +143,40 @@ def demo_toast(request: HtmxHttpRequest) -> HttpResponse:
         return toast(HttpResponse(status=204), message, cast(Tone, tone))
     messages.add_message(request, TONE_LEVELS[tone], message)
     return redirect(f"{reverse('kit:index')}#feedback")
+
+
+RELEASE_AMOUNT = Decimal("60000.00")
+RELEASE_COUNT = 12
+BULK_VERBS = {"approve": "Approved", "return": "Returned"}
+
+
+@kit_only
+@require_http_methods(["GET", "POST"])
+def demo_dialog(request: HtmxHttpRequest) -> HttpResponse:
+    if request.method == "POST":
+        text = f"Released {peso(RELEASE_AMOUNT)} to {RELEASE_COUNT} scholars"
+        if request.htmx:
+            return close_dialog(toast(HttpResponse(status=204), text))
+        messages.success(request, text)
+        return redirect(f"{reverse('kit:index')}#overlays")
+    template = "kit/demo_dialog_fragment.html" if request.htmx else "kit/demo_dialog.html"
+    response = render(request, template, {"amount": RELEASE_AMOUNT, "count": RELEASE_COUNT})
+    patch_vary_headers(response, ("HX-Request",))
+    return response
+
+
+@kit_only
+@require_POST
+def demo_bulk(request: HtmxHttpRequest) -> HttpResponse:
+    known = {str(row["id"]) for row in samples.scholars()}
+    ids = [value for value in request.POST.getlist("ids") if value in known]
+    verb = BULK_VERBS.get(request.POST.get("action", ""))
+    tone: Tone
+    if not ids or verb is None:
+        text, tone = "Select at least one application first.", "warning"
+    else:
+        text, tone = f"{verb} {len(ids)} application{'s' if len(ids) != 1 else ''}", "success"
+    if request.htmx:
+        return toast(HttpResponse(status=204), text, tone)
+    messages.add_message(request, TONE_LEVELS[tone], text)
+    return redirect(f"{reverse('kit:index')}#overlays")
