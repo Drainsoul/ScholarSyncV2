@@ -214,3 +214,40 @@ def layout_demo(request: HttpRequest, name: str) -> HttpResponse:
 def demo_signout(request: HttpRequest) -> HttpResponse:
     messages.info(request, "Sign-out arrives with accounts in M4.")
     return redirect(f"{reverse('kit:index')}#layouts")
+
+
+MOCKUPS: dict[str, tuple[str, str, Callable[[], dict[str, object]]]] = {
+    "student-dashboard": (
+        "Student dashboard",
+        "kit/mockups/student_dashboard.html",
+        samples.student_dashboard,
+    ),
+    "apply": ("Apply to a program", "kit/mockups/apply.html", samples.apply),
+    "application-review": (
+        "Staff application review",
+        "kit/mockups/application_review.html",
+        samples.application_review,
+    ),
+    "disbursements": ("Disbursements", "kit/mockups/disbursements.html", samples.disbursements),
+    "office-dashboard": (
+        "Office dashboard",
+        "kit/mockups/office_dashboard.html",
+        samples.office_dashboard,
+    ),
+}
+
+
+@kit_only
+@require_safe
+def mockups(request: HttpRequest) -> HttpResponse:
+    items = [{"slug": slug, "title": title} for slug, (title, _, _) in MOCKUPS.items()]
+    return render(request, "kit/mockups/index.html", {"mockups": items})
+
+
+@kit_only
+@require_safe
+def mockup(request: HttpRequest, slug: str) -> HttpResponse:
+    if slug not in MOCKUPS:
+        raise Http404
+    _, template, build = MOCKUPS[slug]
+    return render(request, template, build())

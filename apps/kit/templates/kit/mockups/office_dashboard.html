@@ -1,0 +1,50 @@
+{% extends "layouts/office.html" %}{% load ui %}
+{% block title %}Overview{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Overview</h1><p class="page-header__meta">All programs, school year 2026–2027</p></div>
+  <a class="btn btn--secondary" href="#">{% icon "download" %}Export report</a>
+</div>
+<div class="stats">
+  {% include "components/stat_tile.html" with label="Programs" value="2" icon="school" tone="info" hint="1 accepting applications" %}
+  {% include "components/stat_tile.html" with label="Active scholars" value="1,284" icon="users" tone="brand" hint="38 more than last term" %}
+  {% include "components/stat_tile.html" with label="Applications waiting" value="96" icon="file-text" tone="warning" hint="12 waiting over 7 days" %}
+  {% include "components/stat_tile.html" with label="Released this year" value="₱18,240,000.00" icon="banknote" tone="success" %}
+</div>
+<div class="split">
+  <div class="stack">
+    <section class="card" aria-labelledby="programs-title">
+      <div class="card__header"><h2 class="card__title" id="programs-title">Programs</h2><a href="#">Manage programs</a></div>
+      <div class="table-wrap" role="region" aria-labelledby="programs-title" tabindex="0">
+        <table class="table">
+          <thead><tr><th scope="col">Program</th><th scope="col">Applications window</th><th scope="col" class="num">Applications</th><th scope="col" class="num">Scholars</th><th scope="col">Budget used</th></tr></thead>
+          <tbody>{% for item in programs %}<tr>
+            <th scope="row"><a href="#">{{ item.name }}</a></th><td>{{ item.window }}</td>
+            <td class="num">{{ item.applications }}</td><td class="num">{{ item.scholars }}</td>
+            <td><div class="meter-row"><meter min="0" max="100" low="70" high="90" optimum="0" value="{{ item.used_percent }}" aria-label="{{ item.name }} budget used">{{ item.used_percent }}%</meter><p class="num">{{ item.used_percent }}%</p></div></td>
+          </tr>{% endfor %}</tbody>
+        </table>
+      </div>
+    </section>
+    <section class="card" aria-labelledby="months-title">
+      <h2 class="card__title" id="months-title">Applications by month</h2>
+      <div class="table-wrap" role="region" aria-labelledby="months-title" tabindex="0">
+        <table class="table">
+          <thead><tr><th scope="col">Month</th><th scope="col" class="num">Applications</th><th scope="col"><span class="visually-hidden">Relative volume</span></th></tr></thead>
+          <tbody>{% for month in months %}<tr><th scope="row">{{ month.label }}</th><td class="num">{{ month.count }}</td><td><meter min="0" max="{{ max_month }}" value="{{ month.count }}" aria-label="{{ month.label }}: {{ month.count }} applications">{{ month.count }}</meter></td></tr>{% endfor %}</tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+  <div class="stack">
+    <section class="card" aria-labelledby="attention-title">
+      <h2 class="card__title" id="attention-title">Needs attention</h2>
+      <ul class="checklist">{% for item in attention %}<li class="is-pending">{% icon item.icon %}<div><p><a href="#">{{ item.text }}</a></p></div></li>{% endfor %}</ul>
+    </section>
+    <section class="card" aria-labelledby="activity-title">
+      <h2 class="card__title" id="activity-title">Recent activity</h2>
+      <ol class="timeline">{% for event in activity %}<li><p class="timeline__what">{{ event.what }}</p><p class="timeline__when"><time datetime="{{ event.datetime }}">{{ event.when }}</time></p></li>{% endfor %}</ol>
+    </section>
+  </div>
+</div>
+{% endblock %}

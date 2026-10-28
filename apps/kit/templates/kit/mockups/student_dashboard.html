@@ -1,0 +1,51 @@
+{% extends "layouts/student.html" %}{% load ui %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Hello, {{ viewer.first_name }}</h1><p class="page-header__meta">1st semester, school year 2026–2027</p></div>
+</div>
+<div class="alert alert--warning" role="status">{% icon "triangle-alert" %}<div><p class="alert__title">LANI returned your application</p><p>Your certificate of grades is hard to read. Upload a clearer copy by 7 November 2026.</p><p><a href="#">Fix your application</a></p></div></div>
+<div class="split">
+  <div class="stack">
+    <section class="card" aria-labelledby="award-title">
+      <div class="card__header"><h2 class="card__title" id="award-title">{{ award.program }} scholarship</h2><span class="pill pill--success">{% icon "circle-check" %}Active</span></div>
+      <dl class="details">
+        <dt>Tier</dt><dd>{{ award.tier }}</dd>
+        <dt>Allowance per term</dt><dd class="num">{{ award.amount|peso }}</dd>
+        <dt>Next release</dt><dd><time datetime="2026-11-14">14 November 2026</time></dd>
+        <dt>To renew</dt><dd>Keep a GWA of 80% or better with at least 15 units</dd>
+      </dl>
+    </section>
+    <section class="card" aria-labelledby="apps-title">
+      <div class="card__header"><h2 class="card__title" id="apps-title">Applications</h2><a href="#">Find programs</a></div>
+      <div class="table-wrap" role="region" aria-labelledby="apps-title" tabindex="0">
+        <table class="table">
+          <thead><tr><th scope="col">Program</th><th scope="col">Submitted</th><th scope="col">Status</th></tr></thead>
+          <tbody>{% for item in applications %}<tr><th scope="row"><a href="#">{{ item.program }}</a></th><td>{{ item.submitted }}</td><td><span class="pill pill--{{ item.tone }}">{% icon item.icon %}{{ item.label }}</span></td></tr>{% endfor %}</tbody>
+        </table>
+      </div>
+    </section>
+    <section class="card" aria-labelledby="money-title">
+      <div class="card__header"><h2 class="card__title" id="money-title">Allowances</h2></div>
+      <div class="table-wrap" role="region" aria-labelledby="money-title" tabindex="0">
+        <table class="table">
+          <thead><tr><th scope="col">Term</th><th scope="col" class="num">Amount</th><th scope="col">Status</th></tr></thead>
+          <tbody>{% for item in allowances %}<tr><th scope="row">{{ item.term }}</th><td class="num">{{ item.amount|peso }}</td><td><span class="pill pill--{{ item.tone }}">{% icon item.icon %}{{ item.label }}</span></td></tr>{% endfor %}</tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+  <div class="stack">
+    <section class="card" aria-labelledby="profile-title">
+      <h2 class="card__title" id="profile-title">Your profile</h2>
+      <div class="meter-row"><label for="profile-meter">85% complete</label><meter id="profile-meter" min="0" max="100" value="85">85%</meter></div>
+      <p>Add your family's yearly income so programs can check if you qualify.</p>
+      <a class="btn btn--secondary" href="#">{% icon "pencil" %}Complete your profile</a>
+    </section>
+    <section class="card" aria-labelledby="notices-title">
+      <h2 class="card__title" id="notices-title">Notifications</h2>
+      <ul class="list">{% for item in notices %}<li><p>{{ item.text }}</p><p class="text-sm text-muted">{{ item.when }}</p></li>{% endfor %}</ul>
+    </section>
+  </div>
+</div>
+{% endblock %}

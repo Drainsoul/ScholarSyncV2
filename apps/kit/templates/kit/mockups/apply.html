@@ -1,0 +1,45 @@
+{% extends "layouts/student.html" %}{% load ui %}
+{% block title %}Apply to LANI{% endblock %}
+{% block content %}
+{% include "components/breadcrumbs.html" %}
+<div class="page-header">
+  <div><h1>Apply to LANI</h1><p class="page-header__meta">Applications close on 15 November 2026</p></div>
+</div>
+<ol class="steps" aria-label="Application progress">
+  <li class="steps__item steps__item--done"><span class="steps__marker">{% icon "check" %}</span>Profile<span class="visually-hidden"> (done)</span></li>
+  <li class="steps__item steps__item--current" aria-current="step"><span class="steps__marker">2</span>Documents</li>
+  <li class="steps__item"><span class="steps__marker">3</span>Review</li>
+  <li class="steps__item"><span class="steps__marker">4</span>Submit</li>
+</ol>
+<div class="split">
+  <div class="stack">
+    <section class="card" aria-labelledby="docs-title">
+      <h2 class="card__title" id="docs-title">Required documents</h2>
+      <p class="text-muted">PDF, JPG or PNG, up to 10 MB each. Only staff reviewing your application can open them.</p>
+      {% for doc in documents %}{% include "components/file_input.html" with id=doc.id name=doc.id label=doc.label help=doc.help state=doc.state progress=doc.progress filename=doc.filename error=doc.error %}{% endfor %}
+    </section>
+    <section class="card" aria-labelledby="declare-title">
+      <h2 class="card__title" id="declare-title">Declaration</h2>
+      {% field form.declaration %}
+      <div class="btn-row">
+        <button type="button" class="btn btn--primary">Submit application</button>
+        <button type="button" class="btn btn--secondary">Save draft</button>
+      </div>
+    </section>
+  </div>
+  <div class="stack">
+    <section class="card" aria-labelledby="program-title">
+      <h2 class="card__title" id="program-title">About LANI</h2>
+      <dl class="details">
+        <dt>For</dt><dd>College students from Taguig in any recognized school</dd>
+        <dt>Allowance</dt><dd class="num">₱5,000.00 to ₱10,000.00 a term, by tier</dd>
+        <dt>Closes</dt><dd>15 November 2026</dd>
+      </dl>
+    </section>
+    <section class="card" aria-labelledby="match-title">
+      <h2 class="card__title" id="match-title">Do you qualify?</h2>
+      <ul class="checklist">{% for rule in rules %}<li class="is-{{ rule.state }}">{% icon rule.icon %}<div><p>{{ rule.text }}</p><p class="text-sm text-muted">{{ rule.status }}</p></div></li>{% endfor %}</ul>
+    </section>
+  </div>
+</div>
+{% endblock %}
