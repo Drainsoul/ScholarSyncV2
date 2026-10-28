@@ -1,7 +1,7 @@
 # ScholarSync V2: design spec
 
-- **Revision:** 1 (2026-10-12)
-- **Status:** approved by Kenneth on 2026-10-12. M1 plan: `docs/superpowers/plans/2026-10-12-m1-vercel-spike.md`.
+- **Revision:** 2 (2026-10-28): M3 design-system details (§3, §12, §13, §14, §15, §16), proposed with the M3 plan.
+- **Status:** rev 1 approved by Kenneth on 2026-10-12. M1 plan: `docs/superpowers/plans/2026-10-12-m1-vercel-spike.md`.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
   - Kenneth's decisions of 2026-10-11 (§19);
@@ -77,9 +77,11 @@ apps/
   reports/         Report, ReportFile
   workspace/       Task, Notification, EmailOutbox
   office/          super-admin views (no models of its own)
+  kit/             design kit and key-screen mockups at /_kit/ (no models; off unless DJANGO_KIT)
   core/            AuditEvent, permissions, mixins, layouts, health, cron auth, errors
 templates/         base.html, layouts/{public,auth,student,staff,office}.html, partials/, components/, emails/
-frontend/          src/{main,dialog,toast,upload,charts,bulk}.ts, src/styles/{tokens,base,components,layouts}.css
+frontend/          src/{main,nav,dialog,toast,upload,charts,bulk}.ts, src/styles/{fonts,tokens,base,layouts}.css,
+                   src/styles/components/*.css, src/icons/ (sprite list + own icons), scripts/sprite.mjs
 scripts/           export_legacy_model.py
 tests/             permission matrix, e2e (Playwright)
 ```
@@ -385,7 +387,9 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - `default-src 'self'`; `script-src 'self'`; `style-src 'self'`;
   - `img-src 'self' data: <r2-origin>`; `connect-src 'self' <r2-origin> <sentry-ingest>`;
   - `frame-ancestors 'none'`; `form-action 'self'`;
-  - htmx config: `allowEval: false`, `includeIndicatorStyles: false`; no `hx-on`, no inline scripts or styles.
+  - htmx config (a `<meta name="htmx-config">`): `allowEval: false`, `allowScriptTags: false`,
+    `includeIndicatorStyles: false`, `selfRequestsOnly: true`, and `historyCacheSize: 0` so page snapshots holding
+    personal data never land in `localStorage`; no `hx-on`, no inline scripts or styles.
 - **Errors:** `DEBUG=False` in every deployment; custom 400/403/404/500 pages; nothing internal reaches the client.
 - **Logging:**
   - JSON to stdout, with user IDs but no names, emails or document contents;
@@ -451,8 +455,12 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 - **Tokens** (`frontend/src/styles/tokens.css`):
   - **Brand red:** `--brand-600: #d10e0f` is used for text, buttons and links (5.6:1 on white, AA). `--brand-500:
     #fd1415` is decorative only (4.0:1, fails AA for text). `--brand-400: #ff4546`.
-  - **Gold accent:** `--accent: #ebbf56`, decorative.
-  - **Info:** `--info: #27488b`.
+  - **Gold accent:** `--accent: #ebbf56`, decorative (1.7:1 on white): the active-nav marker and panel rules on navy.
+  - **Info:** `--info: #27488b` (also the focus ring). **Navy:** `--navy-800: #1b3366` for the staff/office sidebar
+    and the auth panel (white text 12:1, gold 7:1).
+  - Danger buttons are outlined, so they never look like the red primary button.
+  - `tests/test_tokens.py` checks every text/background pair the components use (4.5:1) and control borders and focus
+    rings (3:1).
   - **Neutrals:** `#111827` → `#f9fafb`.
   - **Status:** success `#047857`, warning `#b45309`, danger `--brand-600`. Text on tints is always AA.
   - **Type:** Poppins 600/700 for headings, Inter 400/500/600 for body.
@@ -465,7 +473,12 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - overlays and feedback: dialog, toast, empty state;
   - navigation: breadcrumbs, top nav, sidebar with program switcher.
 - **Layouts:** public, auth (split panel, as in v1), student (top nav), staff (sidebar + program switcher), office
-  (sidebar).
+  (sidebar). Navigation collapses behind a toggle (`nav.ts`) below 64rem and is fully visible without JS.
+- **Icons:** `scripts/sprite.mjs` builds `static/dist/icons.svg` from the Lucide names listed in `src/icons/icons.json`
+  plus our own SVGs (the logo); templates use `{% icon "name" %}`. A misspelt name fails the build.
+- **Design kit:** `/_kit/` (every component in every state) and `/_kit/mockups/` (key screens with Faker sample data)
+  live in `apps/kit`. They answer 404 unless `DJANGO_KIT` is on (default: `DJANGO_DEBUG`), settings refuse to load
+  with the kit on when `VERCEL_ENV=production`, and kit responses carry `X-Robots-Tag: noindex`.
 - **HTMX patterns:**
   - filters use `hx-get` + `hx-push-url` and swap a `{% partialdef table %}`;
   - forms use `hx-post`: re-render the form partial on error, `HX-Redirect` or `HX-Trigger` on success;
@@ -497,7 +510,8 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - constraints, e.g. one open application.
 - **View tests:** Django test client for every page and HTMX partial (full vs partial render), the permission matrix
   (§6), and `django_assert_max_num_queries` on every list view.
-- **End to end:** pytest-playwright from M4:
+- **End to end:** pytest-playwright from M3 (design-kit behaviours: toasts, dialogs, bulk bar, nav, no-JS fallbacks, phone
+  width, enforced CSP), run with `config/e2e_settings.py` (HTTP live server, enforced CSP, kit on); user flows from M4:
   - sign up → verify → profile → match → apply;
   - staff review → approve → award;
   - disbursement generate → approve → release;
@@ -511,7 +525,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 - **Files:** `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_ENDPOINT_URL`.
 - **Email:** `RESEND_API_KEY`, `DEFAULT_FROM_EMAIL`.
 - **Google sign-in:** `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
-- **Ops:** `SENTRY_DSN`, `CRON_SECRET`, `CSP_REPORT_ONLY`.
+- **Ops:** `SENTRY_DSN`, `CRON_SECRET`, `CSP_REPORT_ONLY`, `DJANGO_KIT` (design kit; defaults to `DJANGO_DEBUG`).
 - **Set by Vercel:** `VERCEL_ENV`, `VERCEL_URL`, `VERCEL_BRANCH_URL`, `VERCEL_PROJECT_PRODUCTION_URL`.
 - **Rules:**
   - `.env.example` documents every variable, with no values.
@@ -527,7 +541,7 @@ GitHub Actions on push and pull request, with read-only permissions, concurrency
   - `pytest -n auto --cov` on a Postgres 17 service;
   - `pip-audit`.
 - **frontend:** `npm ci`, `tsc --noEmit`, `biome check`, `vite build`, budget.
-- **e2e** (from M4): build, run the server, `pytest --browser chromium tests/e2e`.
+- **e2e** (from M3): build, install Chromium, `pytest -m e2e --ds=config.e2e_settings --browser chromium`.
 - **deploy:** see §11, "Production gating".
 
 ## 16. Milestones
@@ -560,7 +574,8 @@ starts, and ends with every acceptance item checked.
 
 **M3: Design system**
 - [ ] Tokens, fonts, icons, components and layouts (§12); `/_kit` page shows every component in every state
-  (development only).
+  (development only, `DJANGO_KIT`).
+- [ ] htmx wired (config, CSRF header, toasts, dialogs, bulk bar); Playwright e2e harness + CI job.
 - [ ] Key-screen mockups (student dashboard, apply, staff application review, disbursements, office dashboard)
   **approved by Kenneth** (gate).
 
