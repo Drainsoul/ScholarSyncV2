@@ -14,7 +14,7 @@ def kit_on(settings):
     settings.KIT_ENABLED = True
 
 
-def test_kit_answers_404_when_off(client, settings):
+def test_kit_answers_404_when_off(client, settings, vite_build):
     settings.KIT_ENABLED = False
     assert client.get("/_kit/").status_code == 404
 

@@ -1,0 +1,23 @@
+{% extends "base.html" %}{% load ui %}
+{% block body %}
+<div class="shell">
+  <div class="sidebar">
+    <div class="sidebar__top">
+      <a class="brand" href="{{ home_url|default:'/' }}">{% icon "logo" %}<span>ScholarSync</span></a>
+      <button type="button" class="icon-btn nav-toggle" data-nav-toggle aria-controls="app-nav" aria-expanded="false" aria-label="Menu" hidden>{% icon "menu" %}</button>
+    </div>
+    <div id="app-nav" class="sidebar__nav">
+      {% block sidebar_context %}{% endblock %}
+      <nav class="sidenav" aria-label="Main">{% include "components/nav_list.html" with list_class="sidenav__list" %}</nav>
+      <div class="sidebar__footer">
+        {% if viewer %}<p class="sidebar__viewer">{{ viewer.name }}<span>{{ viewer.role }}</span></p>{% endif %}
+        {% if logout_url %}<form method="post" action="{{ logout_url }}">{% csrf_token %}<button type="submit" class="sidebar__signout">{% icon "log-out" %}Sign out</button></form>{% endif %}
+      </div>
+    </div>
+  </div>
+  <main id="main" tabindex="-1" class="shell__main page">
+    {% block breadcrumbs %}{% if crumbs %}{% include "components/breadcrumbs.html" %}{% endif %}{% endblock %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+{% endblock %}

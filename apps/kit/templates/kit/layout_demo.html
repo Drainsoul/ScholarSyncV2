@@ -1,0 +1,6 @@
+{% extends layout %}
+{% block title %}{{ name|capfirst }} layout{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>{{ name|capfirst }} layout</h1><p class="page-header__meta">Sample navigation and content.</p></div></div>
+<div class="card"><p>Page content goes here. Below 64rem wide, the navigation collapses behind the menu button.</p><p><a href="{% url 'kit:index' %}#layouts">Back to the design kit</a></p></div>
+{% endblock %}
