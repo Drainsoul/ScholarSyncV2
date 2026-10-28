@@ -1,18 +1,22 @@
-{% load django_vite %}<!doctype html>
+{% load static django_vite %}<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}ScholarSync{% endblock %} · City of Taguig</title>
+  <link rel="icon" href="{% static 'images/favicon.svg' %}" type="image/svg+xml">
+  <meta name="theme-color" content="#1b3366">
   {% vite_hmr_client %}
   {% vite_asset 'src/main.ts' %}
   {% block head %}{% endblock %}
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
+  {% block body %}
   <main id="main" tabindex="-1">
     {% block content %}{% endblock %}
   </main>
+  {% endblock %}
   {% block scripts %}{% endblock %}
 </body>
 </html>

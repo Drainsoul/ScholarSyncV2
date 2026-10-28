@@ -1,0 +1,6 @@
+/* Self-hosted Latin subsets (spec §12): no runtime CDN. Latin covers Filipino's ñ. */
+@import "@fontsource/inter/latin-400.css";
+@import "@fontsource/inter/latin-500.css";
+@import "@fontsource/inter/latin-600.css";
+@import "@fontsource/poppins/latin-600.css";
+@import "@fontsource/poppins/latin-700.css";
