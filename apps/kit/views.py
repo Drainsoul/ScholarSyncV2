@@ -36,6 +36,7 @@ SECTIONS: list[tuple[str, str]] = [
     ("data", "Data display"),
     ("feedback", "Feedback"),
     ("overlays", "Dialogs and bulk actions"),
+    ("layouts", "Layouts"),
 ]
 
 SWATCHES = [
@@ -93,6 +94,7 @@ def index_context(request: HttpRequest) -> dict[str, object]:
             for key, title in SECTIONS
         ],
         "swatches": SWATCHES,
+        "layout_names": list(LAYOUTS),
         "bulk_rows": samples.scholars()[:4],
         "icons": icon_names(),
         "empty_form": KitForm(prefix="empty"),
@@ -182,3 +184,33 @@ def demo_bulk(request: HtmxHttpRequest) -> HttpResponse:
         return toast(HttpResponse(status=204), text, tone)
     messages.add_message(request, TONE_LEVELS[tone], text)
     return redirect(f"{reverse('kit:index')}#overlays")
+
+
+LAYOUTS = {
+    "public": "layouts/public.html",
+    "auth": "layouts/auth.html",
+    "student": "layouts/student.html",
+    "staff": "layouts/staff.html",
+    "office": "layouts/office.html",
+}
+
+
+@kit_only
+@require_safe
+def layout_demo(request: HttpRequest, name: str) -> HttpResponse:
+    if name not in LAYOUTS:
+        raise Http404
+    context = {"layout": LAYOUTS[name], "name": name, **samples.chrome(name)}
+    if name in {"staff", "office"}:
+        context["crumbs"] = [
+            {"label": "Design kit", "url": reverse("kit:index")},
+            {"label": "Layouts", "url": ""},
+        ]
+    return render(request, "kit/layout_demo.html", context)
+
+
+@kit_only
+@require_POST
+def demo_signout(request: HttpRequest) -> HttpResponse:
+    messages.info(request, "Sign-out arrives with accounts in M4.")
+    return redirect(f"{reverse('kit:index')}#layouts")

@@ -11,7 +11,7 @@ def test_security_headers_on_success(client):
     assert "camera=()" in response["Permissions-Policy"]
 
 
-def test_security_headers_on_404(client):
+def test_security_headers_on_404(client, vite_build):
     response = client.get("/definitely-not-a-page/")
     assert response.status_code == 404
     assert response["X-Content-Type-Options"] == "nosniff"

@@ -9,4 +9,6 @@ urlpatterns = [
     path("demo/toast/", views.demo_toast, name="demo-toast"),
     path("demo/dialog/", views.demo_dialog, name="demo-dialog"),
     path("demo/bulk/", views.demo_bulk, name="demo-bulk"),
+    path("layouts/<slug:name>/", views.layout_demo, name="layout"),
+    path("demo/signout/", views.demo_signout, name="demo-signout"),
 ]

@@ -7,6 +7,8 @@ placeholders until Kenneth confirms them (spec §18, open questions 2–5).
 from decimal import Decimal
 from typing import TypedDict
 
+from django.urls import reverse
+
 
 class Status(TypedDict):
     label: str
@@ -73,3 +75,85 @@ def scholars() -> list[Scholar]:
             }
         )
     return rows
+
+
+class NavItem(TypedDict):
+    label: str
+    url: str
+    icon: str
+    current: bool
+    count: int
+
+
+PUBLIC_NAV = [("Programs", "school", 0), ("Help", "info", 0)]
+STUDENT_NAV = [
+    ("Dashboard", "layout-dashboard", 0),
+    ("Profile", "user", 0),
+    ("Find programs", "search", 0),
+    ("Applications", "file-text", 1),
+    ("Scholarships", "wallet", 0),
+]
+STAFF_NAV = [
+    ("Dashboard", "layout-dashboard", 0),
+    ("Applications", "file-text", 14),
+    ("Scholars", "users", 0),
+    ("Terms", "calendar", 0),
+    ("Disbursements", "banknote", 0),
+    ("Budget", "wallet", 0),
+    ("Reports", "chart-column", 0),
+    ("Tasks", "list-checks", 3),
+    ("Settings", "settings", 0),
+]
+OFFICE_NAV = [
+    ("Overview", "layout-dashboard", 0),
+    ("Programs", "school", 0),
+    ("Staff", "shield-check", 0),
+    ("Scholars", "users", 0),
+    ("Reports", "file-check", 3),
+    ("Analytics", "chart-column", 0),
+    ("Audit log", "eye", 0),
+    ("Schools", "building-2", 0),
+    ("Terms", "calendar", 0),
+]
+
+
+def nav(items: list[tuple[str, str, int]], current: str) -> list[NavItem]:
+    return [
+        {"label": label, "url": "#", "icon": icon, "current": label == current, "count": count}
+        for label, icon, count in items
+    ]
+
+
+def chrome(area: str, current: str = "") -> dict[str, object]:
+    """Layout context for a sample page in one area (public, auth, student, staff, office)."""
+    signed_in = {"home_url": "#", "logout_url": reverse("kit:demo-signout")}
+    if area == "public":
+        return {"nav_items": nav(PUBLIC_NAV, current)}
+    if area == "auth":
+        return {}
+    if area == "student":
+        return {
+            **signed_in,
+            "nav_items": nav(STUDENT_NAV, current or "Dashboard"),
+            "viewer": {"name": "Carolyn Hawkins", "first_name": "Carolyn", "role": "Student"},
+            "notifications_url": "#",
+            "notifications_count": 2,
+        }
+    if area == "staff":
+        return {
+            **signed_in,
+            "nav_items": nav(STAFF_NAV, current or "Dashboard"),
+            "viewer": {"name": "Krista Kelley", "role": "Program staff"},
+            "program": {"name": "TCU CEAA"},
+            "programs": [
+                {"name": "TCU CEAA", "url": "#", "current": True},
+                {"name": "LANI", "url": "#", "current": False},
+            ],
+        }
+    if area == "office":
+        return {
+            **signed_in,
+            "nav_items": nav(OFFICE_NAV, current or "Overview"),
+            "viewer": {"name": "Jessica Tate", "role": "Scholarship office"},
+        }
+    raise ValueError(f"unknown area {area!r}")

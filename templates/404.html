@@ -1,0 +1,9 @@
+{% extends "layouts/public.html" %}
+{% block title %}Page not found{% endblock %}
+{% block content %}
+<div class="error-page">
+  <h1>Page not found</h1>
+  <p>Check the address, or go back to the home page.</p>
+  <a class="btn btn--primary" href="{% url 'core:home' %}">Go to the home page</a>
+</div>
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends "layouts/public.html" %}
+{% block title %}Something went wrong on our side{% endblock %}
+{% block content %}
+<div class="error-page">
+  <h1>Something went wrong on our side</h1>
+  <p>Try again in a few minutes. If it keeps happening, contact the scholarship office.</p>
+  <a class="btn btn--primary" href="{% url 'core:home' %}">Go to the home page</a>
+</div>
+{% endblock %}
