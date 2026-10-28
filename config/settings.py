@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django_vite",
     "csp",
+    "template_partials",
     "apps.core",
     "apps.kit",
 ]
@@ -47,6 +48,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django_htmx.middleware.HtmxMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -97,6 +99,11 @@ TIME_ZONE = "Asia/Manila"
 USE_I18N = True
 USE_TZ = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+from django.contrib.messages import constants as message_constants  # noqa: E402
+
+# Toast tones (templates/components/toast.html) use "danger", not Django's "error".
+MESSAGE_TAGS = {message_constants.ERROR: "danger"}
 
 # Static files: Vite builds into static/dist; WhiteNoise's manifest storage hashes everything --
 STATIC_URL = "/static/"

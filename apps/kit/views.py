@@ -6,15 +6,17 @@ Development only: every view answers 404 unless settings.KIT_ENABLED, and pages 
 import json
 from collections.abc import Callable
 from functools import wraps
-from typing import Any
+from typing import Any, cast
 
 from django.conf import settings
+from django.contrib import messages
 from django.core.paginator import Paginator
 from django.http import Http404, HttpRequest, HttpResponse, QueryDict
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.urls import reverse
-from django.views.decorators.http import require_safe
+from django.views.decorators.http import require_POST, require_safe
 
+from apps.core.htmx import HtmxHttpRequest, Tone, toast
 from apps.kit import samples
 from apps.kit.forms import KitForm, invalid_kit_form
 
@@ -29,6 +31,7 @@ SECTIONS: list[tuple[str, str]] = [
     ("icons", "Icons"),
     ("controls", "Controls"),
     ("data", "Data display"),
+    ("feedback", "Feedback"),
 ]
 
 SWATCHES = [
@@ -104,7 +107,31 @@ def index_context(request: HttpRequest) -> dict[str, object]:
     }
 
 
+TONE_LEVELS: dict[str, int] = {
+    "info": messages.INFO,
+    "success": messages.SUCCESS,
+    "warning": messages.WARNING,
+    "danger": messages.ERROR,
+}
+
+
 @kit_only
 @require_safe
-def index(request: HttpRequest) -> HttpResponse:
-    return render(request, "kit/index.html", index_context(request))
+def index(request: HtmxHttpRequest) -> HttpResponse:
+    context = index_context(request)
+    if request.htmx and request.htmx.target == "scholars-table":
+        return render(request, "kit/sections/data.html#scholars_table", context)
+    return render(request, "kit/index.html", context)
+
+
+@kit_only
+@require_POST
+def demo_toast(request: HtmxHttpRequest) -> HttpResponse:
+    message = request.POST.get("message", "").strip()[:200] or "Saved"
+    tone = request.POST.get("tone", "")
+    if tone not in TONE_LEVELS:
+        tone = "info"
+    if request.htmx:
+        return toast(HttpResponse(status=204), message, cast(Tone, tone))
+    messages.add_message(request, TONE_LEVELS[tone], message)
+    return redirect(f"{reverse('kit:index')}#feedback")

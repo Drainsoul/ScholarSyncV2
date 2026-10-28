@@ -1,0 +1,26 @@
+<section class="kit-section" id="feedback" aria-labelledby="feedback-title">
+  <h2 id="feedback-title">Feedback</h2>
+  <div class="kit-state">
+    <h3>Toasts</h3>
+    <p>After an HTMX request the server sends the toast in <code>HX-Trigger</code>; after a normal POST it sends a Django message. Success and info toasts hide after 8 seconds unless hovered or focused. Warnings and errors stay until dismissed.</p>
+    <form method="post" action="{% url 'kit:demo-toast' %}" hx-post="{% url 'kit:demo-toast' %}" hx-swap="none">
+      {% csrf_token %}
+      <div class="field"><label class="field__label" for="toast-message">Message</label><input class="input" id="toast-message" name="message" value="Application saved" maxlength="200"></div>
+      <div class="btn-row">
+        <button class="btn btn--secondary" type="submit" name="tone" value="success">Show success</button>
+        <button class="btn btn--secondary" type="submit" name="tone" value="info">Show info</button>
+        <button class="btn btn--secondary" type="submit" name="tone" value="warning">Show warning</button>
+        <button class="btn btn--secondary" type="submit" name="tone" value="danger">Show error</button>
+      </div>
+    </form>
+  </div>
+  <div class="kit-state">
+    <h3>Toast styles</h3>
+    <div class="kit-toasts">
+      {% include "components/toast.html" with tone="success" text="Application submitted" %}
+      {% include "components/toast.html" with tone="info" text="Draft saved" %}
+      {% include "components/toast.html" with tone="warning" text="2 documents still need review" %}
+      {% include "components/toast.html" with tone="danger" text="We couldn't release the batch. Try again." %}
+    </div>
+  </div>
+</section>

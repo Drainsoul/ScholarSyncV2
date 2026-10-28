@@ -1,3 +1,4 @@
+import json
 import re
 from pathlib import Path
 
@@ -79,3 +80,35 @@ def test_kit_table_sorts_rows_and_pagination_links_stay_clean(client, kit_on, vi
     assert rows.index("₱10,000.00") < rows.index("₱7,500.00")
     plain = client.get("/_kit/").content.decode()
     assert 'href="?page=2"' in plain
+
+
+def test_htmx_filter_returns_only_the_table_partial(client, kit_on, vite_build):
+    response = client.get(
+        "/_kit/?q=shaw", headers={"HX-Request": "true", "HX-Target": "scholars-table"}
+    )
+    body = response.content.decode()
+    assert body.lstrip().startswith('<div id="scholars-table"')
+    assert "<html" not in body
+    assert "David Shaw" in body
+
+
+def test_demo_toast_over_htmx_returns_204_with_a_trigger(client, kit_on):
+    response = client.post(
+        "/_kit/demo/toast/", {"message": "Saved", "tone": "warning"}, headers={"HX-Request": "true"}
+    )
+    assert response.status_code == 204
+    assert json.loads(response["HX-Trigger"]) == {"toast": {"message": "Saved", "tone": "warning"}}
+
+
+def test_demo_toast_without_htmx_uses_messages(client, kit_on, vite_build):
+    response = client.post("/_kit/demo/toast/", {"message": "Saved", "tone": "danger"}, follow=True)
+    body = response.content.decode()
+    assert '<div class="toast toast--danger" data-toast data-tone="danger">' in body
+    assert "Saved" in body
+
+
+def test_demo_toast_rejects_unknown_tones(client, kit_on):
+    response = client.post(
+        "/_kit/demo/toast/", {"message": "x", "tone": "evil"}, headers={"HX-Request": "true"}
+    )
+    assert json.loads(response["HX-Trigger"])["toast"]["tone"] == "info"
