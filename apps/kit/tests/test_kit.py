@@ -71,3 +71,11 @@ def test_kit_table_filters_sorts_and_survives_bad_input(client, kit_on, vite_bui
         assert client.get(f"/_kit/{query}").status_code == 200
     empty = client.get("/_kit/?q=nobody-has-this-name").content.decode()
     assert "No scholars match these filters" in empty
+
+
+def test_kit_table_sorts_rows_and_pagination_links_stay_clean(client, kit_on, vite_build):
+    body = client.get("/_kit/?sort=-amount").content.decode()
+    rows = body[body.index("<tbody") : body.index("</tbody>")]
+    assert rows.index("₱10,000.00") < rows.index("₱7,500.00")
+    plain = client.get("/_kit/").content.decode()
+    assert 'href="?page=2"' in plain

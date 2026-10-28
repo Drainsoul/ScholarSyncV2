@@ -86,7 +86,7 @@ SORT_ICONS = {"ascending": "arrow-up", "descending": "arrow-down", "": "chevrons
 def sort_th(context: Context, label: str, key: str, css_class: str = "") -> SafeString:
     """A sortable column header: ?sort=key ascending, ?sort=-key descending (spec §12)."""
     request = context["request"]
-    current = request.GET.get("sort", "")
+    current = request.GET.get("sort") or context.get("default_sort", "")
     query = request.GET.copy()
     query.pop("page", None)
     if current == key:

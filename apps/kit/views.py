@@ -79,11 +79,6 @@ def filtered_scholars(params: QueryDict) -> list[samples.Scholar]:
 
 
 def index_context(request: HttpRequest) -> dict[str, object]:
-    if "sort" not in request.GET:
-        # The table opens sorted by name; sort_th reads request.GET, so make that visible to it.
-        params = request.GET.copy()
-        params["sort"] = "name"
-        request.GET = params  # type: ignore[assignment]
     rows = filtered_scholars(request.GET)
     return {
         "sections": [
@@ -96,6 +91,7 @@ def index_context(request: HttpRequest) -> dict[str, object]:
         "invalid_form": invalid_kit_form(),
         # get_page() turns ?page=abc or ?page=999 into a valid page instead of an error.
         "scholars": Paginator(rows, 5).get_page(request.GET.get("page")),
+        "default_sort": "name",
         "total": len(rows),
         "statuses": samples.STATUSES,
         "clear_url": f"{reverse('kit:index')}#data",
