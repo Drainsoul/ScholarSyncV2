@@ -1,4 +1,12 @@
-"""HTMX response helpers (spec §12): toasts and dialog closing travel in HX-Trigger."""
+"""HTMX response helpers (spec §12): toasts and dialog closing travel in HX-Trigger.
+
+Protocol for a form in the app dialog (hx-target="#app-dialog-body"), which later screens copy:
+- validation error: re-render the dialog fragment, with the errors, as a 200 into #app-dialog-body;
+- success: 204 + close_dialog(toast(response, "…")), which closes the dialog and shows the toast;
+- failure (4xx/5xx, or no connection): nothing special; toast.ts shows the global danger toast
+  ("Something went wrong on our side…" or "We couldn't reach the server…"); the dialog stays open.
+A full-page (no-JS) request gets the same form as a page, then a redirect with a Django message.
+"""
 
 from typing import Literal
 
