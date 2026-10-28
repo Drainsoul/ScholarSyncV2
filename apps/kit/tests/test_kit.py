@@ -52,3 +52,22 @@ def test_kit_shows_controls_in_every_state(client, kit_on, vite_build):
     assert '<div class="alert alert--danger" role="alert">' in body
     assert "<progress" in body
     assert "&lt;img src=x&gt;" in body  # echoed invalid choice, escaped
+
+
+def test_kit_shows_data_components(client, kit_on, vite_build):
+    body = client.get("/_kit/").content.decode()
+    assert '<section class="kit-section" id="data"' in body
+    for marker in ('class="stat ', 'class="pill pill--', 'class="card"', 'class="tabs"',
+                   'aria-label="Breadcrumb"', 'class="empty"', "<meter", 'class="steps"',
+                   'class="timeline"', 'aria-sort="ascending"'):  # fmt: skip
+        assert marker in body, marker
+
+
+def test_kit_table_filters_sorts_and_survives_bad_input(client, kit_on, vite_build):
+    body = client.get("/_kit/?q=shaw").content.decode()
+    assert "David Shaw" in body
+    assert "William Heath" not in body
+    for query in ("?page=abc", "?page=999", "?sort=__class__", "?status=nope"):
+        assert client.get(f"/_kit/{query}").status_code == 200
+    empty = client.get("/_kit/?q=nobody-has-this-name").content.decode()
+    assert "No scholars match these filters" in empty

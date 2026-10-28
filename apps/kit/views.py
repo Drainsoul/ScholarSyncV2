@@ -6,12 +6,16 @@ Development only: every view answers 404 unless settings.KIT_ENABLED, and pages 
 import json
 from collections.abc import Callable
 from functools import wraps
+from typing import Any
 
 from django.conf import settings
-from django.http import Http404, HttpRequest, HttpResponse
+from django.core.paginator import Paginator
+from django.http import Http404, HttpRequest, HttpResponse, QueryDict
 from django.shortcuts import render
+from django.urls import reverse
 from django.views.decorators.http import require_safe
 
+from apps.kit import samples
 from apps.kit.forms import KitForm, invalid_kit_form
 
 View = Callable[..., HttpResponse]
@@ -24,6 +28,7 @@ SECTIONS: list[tuple[str, str]] = [
     ("type", "Type"),
     ("icons", "Icons"),
     ("controls", "Controls"),
+    ("data", "Data display"),
 ]
 
 SWATCHES = [
@@ -51,7 +56,35 @@ def icon_names() -> list[str]:
     return names + sorted(path.stem for path in ICONS_DIR.glob("*.svg"))
 
 
+SORTS: dict[str, Callable[[samples.Scholar], Any]] = {
+    "name": lambda row: row["name"],
+    "school": lambda row: row["school"],
+    "amount": lambda row: row["amount"],
+}
+
+
+def filtered_scholars(params: QueryDict) -> list[samples.Scholar]:
+    """Filter and sort the sample rows. Unknown statuses and sort keys are ignored, never errors."""
+    rows = samples.scholars()
+    query = params.get("q", "").strip().casefold()
+    if query:
+        rows = [row for row in rows if query in row["name"].casefold()]
+    status = params.get("status", "")
+    if status in samples.STATUSES:
+        rows = [row for row in rows if row["status"] == status]
+    sort = params.get("sort", "name")
+    if key := SORTS.get(sort.removeprefix("-")):
+        rows.sort(key=key, reverse=sort.startswith("-"))
+    return rows
+
+
 def index_context(request: HttpRequest) -> dict[str, object]:
+    if "sort" not in request.GET:
+        # The table opens sorted by name; sort_th reads request.GET, so make that visible to it.
+        params = request.GET.copy()
+        params["sort"] = "name"
+        request.GET = params  # type: ignore[assignment]
+    rows = filtered_scholars(request.GET)
     return {
         "sections": [
             {"id": key, "title": title, "template": f"kit/sections/{key}.html"}
@@ -61,6 +94,17 @@ def index_context(request: HttpRequest) -> dict[str, object]:
         "icons": icon_names(),
         "empty_form": KitForm(prefix="empty"),
         "invalid_form": invalid_kit_form(),
+        # get_page() turns ?page=abc or ?page=999 into a valid page instead of an error.
+        "scholars": Paginator(rows, 5).get_page(request.GET.get("page")),
+        "total": len(rows),
+        "statuses": samples.STATUSES,
+        "clear_url": f"{reverse('kit:index')}#data",
+        "crumbs": [{"label": "Scholars", "url": "#data"}, {"label": "David Shaw", "url": ""}],
+        "tabs": [
+            {"label": "Overview", "url": "#data", "current": True, "count": 0},
+            {"label": "Documents", "url": "#data", "current": False, "count": 4},
+            {"label": "History", "url": "#data", "current": False, "count": 0},
+        ],
     }
 
 
