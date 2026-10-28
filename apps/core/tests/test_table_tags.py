@@ -56,3 +56,14 @@ def test_pagination_keeps_filters_and_links_neighbours():
 def test_pagination_is_empty_for_a_single_page():
     page = Paginator(range(3), 10).page(1)
     assert render("{% pagination page %}", "/x/", page=page).strip() == ""
+
+
+def test_sort_th_uses_the_views_default_sort_when_no_sort_param():
+    html = render('{% sort_th "Name" "name" %}', "/x/", default_sort="name")
+    assert 'aria-sort="ascending"' in html
+    assert 'href="?sort=-name"' in html
+
+
+def test_sort_th_explicit_sort_overrides_the_default():
+    html = render('{% sort_th "Name" "name" %}', "/x/?sort=school", default_sort="name")
+    assert "aria-sort" not in html
