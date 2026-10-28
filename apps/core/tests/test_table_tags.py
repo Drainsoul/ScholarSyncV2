@@ -14,6 +14,7 @@ def test_sort_th_marks_the_current_column_and_flips_it():
     html = render('{% sort_th "Name" "name" %}', "/x/?sort=name&page=3&q=ana")
     assert 'aria-sort="ascending"' in html
     assert 'href="?sort=-name&amp;q=ana"' in html
+    assert '<a class="sort" id="sort-name"' in html
     assert "#arrow-up" in html
 
 
@@ -51,6 +52,8 @@ def test_pagination_keeps_filters_and_links_neighbours():
     assert "Page 2 of 10" in html
     assert 'href="?status=active&page=1"' in unescape(html)
     assert 'href="?status=active&page=3"' in unescape(html)
+    assert 'id="page-prev"' in html
+    assert 'id="page-next"' in html
 
 
 def test_pagination_is_empty_for_a_single_page():
