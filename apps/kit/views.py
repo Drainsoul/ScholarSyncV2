@@ -14,6 +14,7 @@ from django.core.paginator import Paginator
 from django.http import Http404, HttpRequest, HttpResponse, QueryDict
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils.cache import patch_vary_headers
 from django.views.decorators.http import require_POST, require_safe
 
 from apps.core.htmx import HtmxHttpRequest, Tone, toast
@@ -120,8 +121,11 @@ TONE_LEVELS: dict[str, int] = {
 def index(request: HtmxHttpRequest) -> HttpResponse:
     context = index_context(request)
     if request.htmx and request.htmx.target == "scholars-table":
-        return render(request, "kit/sections/data.html#scholars_table", context)
-    return render(request, "kit/index.html", context)
+        response = render(request, "kit/sections/data.html#scholars_table", context)
+    else:
+        response = render(request, "kit/index.html", context)
+    patch_vary_headers(response, ("HX-Request", "HX-Target"))
+    return response
 
 
 @kit_only

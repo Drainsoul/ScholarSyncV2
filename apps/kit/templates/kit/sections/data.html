@@ -5,7 +5,7 @@
     <h3>Filter bar, sortable table and pagination</h3>
     <form class="filters" method="get" action="{% url 'kit:index' %}#data" role="search" aria-label="Filter scholars"
       hx-get="{% url 'kit:index' %}" hx-target="#scholars-table" hx-swap="outerHTML" hx-push-url="true"
-      hx-trigger="submit, input delay:300ms, change">
+      hx-sync="this:replace" hx-trigger="submit, input delay:300ms, change">
       <div class="field"><label class="field__label" for="filter-q">Name</label><input class="input" type="search" id="filter-q" name="q" value="{{ request.GET.q }}"></div>
       <div class="field">
         <label class="field__label" for="filter-status">Status</label>

@@ -55,7 +55,7 @@ export function initToasts(): void {
   document.addEventListener("click", (event) => {
     const button =
       event.target instanceof Element ? event.target.closest("[data-toast-close]") : null;
-    button?.closest("[data-toast]")?.remove();
+    button?.closest("#toasts [data-toast]")?.remove();
   });
   document.addEventListener("toast", (event) => {
     const detail: unknown = (event as CustomEvent<unknown>).detail;
