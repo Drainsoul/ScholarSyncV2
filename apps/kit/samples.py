@@ -7,7 +7,10 @@ placeholders until Kenneth confirms them (spec §18, open questions 2–5).
 from decimal import Decimal
 from typing import TypedDict
 
+from django.core.paginator import Paginator
 from django.urls import reverse
+
+from apps.kit.forms import ApplyForm, DecisionForm
 
 
 class Status(TypedDict):
@@ -157,3 +160,310 @@ def chrome(area: str, current: str = "") -> dict[str, object]:
             "viewer": {"name": "Jessica Tate", "role": "Scholarship office"},
         }
     raise ValueError(f"unknown area {area!r}")
+
+
+def student_dashboard() -> dict[str, object]:
+    return {
+        **chrome("student", "Dashboard"),
+        "award": {"program": "TCU CEAA", "tier": "Priority", "amount": Decimal("7500.00")},
+        "applications": [
+            {
+                "program": "TCU CEAA",
+                "submitted": "12 Jun 2026",
+                "label": "Approved",
+                "tone": "success",
+                "icon": "circle-check",
+            },
+            {
+                "program": "LANI",
+                "submitted": "2 Oct 2026",
+                "label": "Returned",
+                "tone": "warning",
+                "icon": "triangle-alert",
+            },
+        ],
+        "allowances": [
+            {
+                "term": "1st semester, 2026–2027",
+                "amount": Decimal("7500.00"),
+                "label": "Scheduled 14 Nov",
+                "tone": "info",
+                "icon": "calendar",
+            },
+            {
+                "term": "2nd semester, 2025–2026",
+                "amount": Decimal("7500.00"),
+                "label": "Released",
+                "tone": "success",
+                "icon": "circle-check",
+            },
+            {
+                "term": "1st semester, 2025–2026",
+                "amount": Decimal("5000.00"),
+                "label": "Released",
+                "tone": "success",
+                "icon": "circle-check",
+            },
+        ],
+        "notices": [
+            {
+                "text": "LANI returned your application: upload a clearer certificate of grades.",
+                "when": "20 Oct",
+            },
+            {"text": "Your 1st semester allowance is scheduled for 14 November.", "when": "15 Oct"},
+        ],
+    }
+
+
+def apply() -> dict[str, object]:
+    return {
+        **chrome("student", "Find programs"),
+        "crumbs": [{"label": "Find programs", "url": "#"}, {"label": "LANI", "url": ""}],
+        "documents": [
+            {
+                "id": "doc-grades",
+                "label": "Certificate of grades",
+                "help": "Your latest report card or certificate of grades.",
+                "state": "done",
+                "filename": "grades-2026.pdf",
+            },
+            {
+                "id": "doc-residency",
+                "label": "Proof of Taguig residency",
+                "help": "Voter's certificate or barangay certificate.",
+                "state": "uploading",
+                "progress": 60,
+                "filename": "barangay-certificate.jpg",
+            },
+            {
+                "id": "doc-enrollment",
+                "label": "Certificate of enrollment",
+                "help": "For the 1st semester, 2026–2027.",
+                "state": "error",
+                "error": "This file is 14 MB. Upload a file of 10 MB or less.",
+            },
+            {
+                "id": "doc-id",
+                "label": "Valid ID",
+                "help": "School ID or any government ID.",
+                "state": "idle",
+            },
+        ],
+        "rules": [
+            {
+                "text": "Taguig resident for at least 3 years",
+                "state": "met",
+                "icon": "circle-check",
+                "status": "Met",
+            },
+            {
+                "text": "Enrolled in a recognized school",
+                "state": "met",
+                "icon": "circle-check",
+                "status": "Met",
+            },
+            {
+                "text": "Family income up to ₱400,000.00 a year",
+                "state": "met",
+                "icon": "circle-check",
+                "status": "Met",
+            },
+            {
+                "text": "GWA of 85% or better",
+                "state": "pending",
+                "icon": "info",
+                "status": "Checked after you upload your grades",
+            },
+        ],
+        "form": ApplyForm(),
+    }
+
+
+def application_review() -> dict[str, object]:
+    return {
+        **chrome("staff", "Applications"),
+        "crumbs": [{"label": "Applications", "url": "#"}, {"label": "APP-2026-0147", "url": ""}],
+        "tabs": [
+            {"label": "Overview", "url": "#", "current": True, "count": 0},
+            {"label": "Documents", "url": "#", "current": False, "count": 4},
+            {"label": "Profile", "url": "#", "current": False, "count": 0},
+            {"label": "History", "url": "#", "current": False, "count": 0},
+        ],
+        "applicant": {
+            "name": "Daniel Montoya",
+            "school": "Taguig City University",
+            "course": "BS Information Technology, 2nd year",
+            "gwa": "1.75 (88%)",
+            "income": Decimal("312000.00"),
+            "barangay": "Western Bicutan",
+        },
+        "documents": [
+            {
+                "label": "Certificate of grades",
+                "file": "grades-2026.pdf",
+                "status": "Approved",
+                "tone": "success",
+                "icon": "circle-check",
+            },
+            {
+                "label": "Proof of residency",
+                "file": "voters-certificate.pdf",
+                "status": "Approved",
+                "tone": "success",
+                "icon": "circle-check",
+            },
+            {
+                "label": "Certificate of enrollment",
+                "file": "enrollment.jpg",
+                "status": "Waiting",
+                "tone": "info",
+                "icon": "file-text",
+            },
+            {
+                "label": "Valid ID",
+                "file": "school-id.jpg",
+                "status": "Declined",
+                "tone": "danger",
+                "icon": "circle-alert",
+            },
+        ],
+        "rules": [
+            {
+                "text": "Taguig resident for at least 3 years",
+                "state": "met",
+                "icon": "circle-check",
+                "status": "Met",
+            },
+            {
+                "text": "Family income up to ₱400,000.00 a year",
+                "state": "met",
+                "icon": "circle-check",
+                "status": "Met (₱312,000.00)",
+            },
+            {
+                "text": "GWA of 85% or better",
+                "state": "met",
+                "icon": "circle-check",
+                "status": "Met (88%)",
+            },
+            {
+                "text": "No other city scholarship this term",
+                "state": "unmet",
+                "icon": "circle-alert",
+                "status": "Not met: holds TCU CEAA",
+            },
+        ],
+        "history": [
+            {
+                "what": "Valid ID declined",
+                "when": "21 Oct 2026, 10:32 AM",
+                "datetime": "2026-10-21T10:32+08:00",
+                "who": "Krista Kelley",
+            },
+            {
+                "what": "Review started",
+                "when": "21 Oct 2026, 10:05 AM",
+                "datetime": "2026-10-21T10:05+08:00",
+                "who": "Krista Kelley",
+            },
+            {
+                "what": "Submitted",
+                "when": "2 Oct 2026, 9:14 AM",
+                "datetime": "2026-10-02T09:14+08:00",
+                "who": "the applicant",
+            },
+        ],
+        "decision_form": DecisionForm(),
+    }
+
+
+def disbursements() -> dict[str, object]:
+    statuses = [
+        ("Prepared", "neutral", "file-text"),
+        ("Approved", "info", "circle-check"),
+        ("Released", "success", "banknote"),
+    ]
+    rows = [
+        {
+            "id": row["id"],
+            "name": row["name"],
+            "tier": row["tier"],
+            "amount": row["amount"],
+            "label": statuses[index % 3][0],
+            "tone": statuses[index % 3][1],
+            "icon": statuses[index % 3][2],
+        }
+        for index, row in enumerate(scholars())
+    ]
+    return {
+        **chrome("staff", "Disbursements"),
+        "tabs": [
+            {"label": "Disbursements", "url": "#", "current": True, "count": 0},
+            {"label": "Schedules", "url": "#", "current": False, "count": 0},
+            {"label": "Budget", "url": "#", "current": False, "count": 0},
+        ],
+        "budget": {
+            "total": Decimal("12000000.00"),
+            "released": Decimal("6480000.00"),
+            "committed": Decimal("1250000.00"),
+            "available": Decimal("4270000.00"),
+            "used_percent": 64,
+        },
+        "page": Paginator(rows, 8).get_page(1),
+        "total": len(rows),
+    }
+
+
+def office_dashboard() -> dict[str, object]:
+    return {
+        **chrome("office", "Overview"),
+        "programs": [
+            {
+                "name": "TCU CEAA",
+                "window": "Closed",
+                "applications": 412,
+                "scholars": 968,
+                "used_percent": 64,
+            },
+            {
+                "name": "LANI",
+                "window": "Open until 15 Nov",
+                "applications": 233,
+                "scholars": 316,
+                "used_percent": 41,
+            },
+        ],
+        "months": [
+            {"label": "June", "count": 182},
+            {"label": "July", "count": 96},
+            {"label": "August", "count": 54},
+            {"label": "September", "count": 71},
+            {"label": "October", "count": 242},
+        ],
+        "attention": [
+            {"text": "3 program reports are waiting for your review", "icon": "file-check"},
+            {
+                "text": "LANI: 12 applications have waited more than 7 days",
+                "icon": "triangle-alert",
+            },
+            {"text": "TCU CEAA has used 64% of its budget with 2 months left", "icon": "wallet"},
+        ],
+        "activity": [
+            {
+                "what": "Krista Kelley approved 14 disbursements (TCU CEAA)",
+                "when": "Today, 9:40 AM",
+                "datetime": "2026-10-28T09:40+08:00",
+            },
+            {
+                "what": "Shannon Briggs opened LANI applications",
+                "when": "Yesterday, 4:12 PM",
+                "datetime": "2026-10-27T16:12+08:00",
+            },
+            {
+                "what": "Jessica Tate added Technological University of the Philippines",
+                "when": "25 Oct, 11:03 AM",
+                "datetime": "2026-10-25T11:03+08:00",
+            },
+        ],
+        "max_month": 242,
+    }

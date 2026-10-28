@@ -1,0 +1,57 @@
+{% extends "layouts/staff.html" %}{% load ui %}
+{% block title %}{{ applicant.name }}, application{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>{{ applicant.name }}</h1><p class="page-header__meta">Application APP-2026-0147 to {{ program.name }}, submitted <time datetime="2026-10-02">2 October 2026</time></p></div>
+  <span class="pill pill--info">{% icon "file-text" %}Under review</span>
+</div>
+{% include "components/tabs.html" with tabs_label="Application sections" %}
+<div class="split">
+  <div class="stack">
+    <section class="card" aria-labelledby="applicant-title">
+      <h2 class="card__title" id="applicant-title">Applicant</h2>
+      <dl class="details">
+        <dt>School</dt><dd>{{ applicant.school }}</dd>
+        <dt>Course and year</dt><dd>{{ applicant.course }}</dd>
+        <dt>GWA</dt><dd>{{ applicant.gwa }}</dd>
+        <dt>Family income</dt><dd class="num">{{ applicant.income|peso }} a year</dd>
+        <dt>Barangay</dt><dd>{{ applicant.barangay }}</dd>
+      </dl>
+    </section>
+    <section class="card" aria-labelledby="documents-title">
+      <div class="card__header"><h2 class="card__title" id="documents-title">Documents</h2><p class="text-sm text-muted">2 of 4 approved</p></div>
+      <div class="table-wrap" role="region" aria-labelledby="documents-title" tabindex="0">
+        <table class="table">
+          <thead><tr><th scope="col">Document</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+          <tbody>{% for doc in documents %}<tr>
+            <th scope="row">{{ doc.label }}<br><a class="text-sm" href="#">{% icon "download" %}{{ doc.file }}</a></th>
+            <td><span class="pill pill--{{ doc.tone }}">{% icon doc.icon %}{{ doc.status }}</span></td>
+            <td><div class="btn-row"><button type="button" class="btn btn--secondary">Approve</button><button type="button" class="btn btn--ghost">Decline</button></div></td>
+          </tr>{% endfor %}</tbody>
+        </table>
+      </div>
+    </section>
+    <section class="card" aria-labelledby="eligibility-title">
+      <h2 class="card__title" id="eligibility-title">Eligibility</h2>
+      <ul class="checklist">{% for rule in rules %}<li class="is-{{ rule.state }}">{% icon rule.icon %}<div><p>{{ rule.text }}</p><p class="text-sm text-muted">{{ rule.status }}</p></div></li>{% endfor %}</ul>
+      <div class="alert" role="note">{% icon "info" %}<div><p class="alert__title">Legacy model suggests: Priority tier</p><p>Advisory only. The rules above decide eligibility.</p></div></div>
+    </section>
+  </div>
+  <div class="stack">
+    <section class="card" aria-labelledby="decision-title">
+      <h2 class="card__title" id="decision-title">Decision</h2>
+      {% field decision_form.tier %}
+      {% field decision_form.note %}
+      <div class="btn-row">
+        <button type="button" class="btn btn--primary">{% icon "check" %}Approve</button>
+        <button type="button" class="btn btn--secondary">Return to applicant</button>
+        <button type="button" class="btn btn--danger">Reject</button>
+      </div>
+    </section>
+    <section class="card" aria-labelledby="history-title">
+      <h2 class="card__title" id="history-title">History</h2>
+      <ol class="timeline">{% for event in history %}<li><p class="timeline__what">{{ event.what }}</p><p class="timeline__when"><time datetime="{{ event.datetime }}">{{ event.when }}</time> by {{ event.who }}</p></li>{% endfor %}</ol>
+    </section>
+  </div>
+</div>
+{% endblock %}

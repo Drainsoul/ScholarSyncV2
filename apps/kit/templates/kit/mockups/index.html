@@ -1,0 +1,9 @@
+{% extends "kit/base.html" %}
+{% block title %}Key-screen mockups{% endblock %}
+{% block content %}
+<h1>Key-screen mockups</h1>
+<p>Five screens built from the real components and layouts with sample data, for approval before M4 (spec §16, M3 gate). Buttons don't act; links go nowhere.</p>
+<ul class="list">
+  {% for item in mockups %}<li><a href="{% url 'kit:mockup' item.slug %}">{{ item.title }}</a></li>{% endfor %}
+</ul>
+{% endblock %}
