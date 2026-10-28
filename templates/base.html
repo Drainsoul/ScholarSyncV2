@@ -18,9 +18,9 @@
     {% block content %}{% endblock %}
   </main>
   {% endblock %}
-  <div id="toasts" class="toasts" role="status" aria-live="polite">{% for message in messages %}{% include "components/toast.html" with tone=message.level_tag text=message.message %}{% endfor %}</div>
+  <div id="toasts" class="toasts" role="status" aria-live="polite" data-toast-region>{% for message in messages %}{% include "components/toast.html" with tone=message.level_tag text=message.message %}{% endfor %}</div>
   <template id="toast-template">{% include "components/toast.html" with tone="info" text="" %}</template>
-  <dialog id="app-dialog" class="dialog" aria-labelledby="app-dialog-title"><div id="app-dialog-body"></div></dialog>
+  <dialog id="app-dialog" class="dialog" aria-labelledby="app-dialog-title"><div id="app-dialog-body"></div><div class="toasts" role="status" aria-live="polite" data-toast-region></div></dialog>
   {% block scripts %}{% endblock %}
 </body>
 </html>

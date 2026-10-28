@@ -1,6 +1,9 @@
 // Row selection for bulk actions (spec §12): <form data-bulk> with [data-bulk-item] checkboxes, an optional
 // [data-bulk-all] checkbox and a [data-bulk-bar] whose buttons need a selection. Without JS the form still
-// posts whatever is checked.
+// posts whatever is checked. The server's "Select …, then choose an action." hint stays until the
+// selection first changes (or the browser restored a selection).
+
+const touched = new WeakSet<HTMLFormElement>();
 
 function update(form: HTMLFormElement): void {
   const items = [...form.querySelectorAll<HTMLInputElement>("input[data-bulk-item]")];
@@ -11,7 +14,9 @@ function update(form: HTMLFormElement): void {
     all.indeterminate = selected > 0 && selected < items.length;
   }
   const count = form.querySelector("[data-bulk-count]");
-  if (count) count.textContent = selected === 0 ? "None selected" : `${selected} selected`;
+  if (count && (selected > 0 || touched.has(form))) {
+    count.textContent = selected === 0 ? "None selected" : `${selected} selected`;
+  }
   for (const button of form.querySelectorAll<HTMLButtonElement>("[data-bulk-bar] button")) {
     button.disabled = selected === 0;
   }
@@ -28,6 +33,7 @@ export function initBulk(): void {
     if (!(input instanceof HTMLInputElement)) return;
     const form = input.closest<HTMLFormElement>("form[data-bulk]");
     if (!form) return;
+    touched.add(form);
     if (input.matches("[data-bulk-all]")) {
       for (const item of form.querySelectorAll<HTMLInputElement>("input[data-bulk-item]")) {
         item.checked = input.checked;

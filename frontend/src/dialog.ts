@@ -2,7 +2,9 @@
 // hx-target="#app-dialog-body"; after the swap the dialog opens. [data-dialog-close] closes the dialog it
 // sits in, and the server can close it with HX-Trigger "closeDialog". Focus returns to the opener.
 
-// Safari does not focus a clicked link, so the opener is remembered when the request starts.
+// Safari does not focus a clicked link, so the opener is remembered when the request starts, and
+// forgotten when it ends (the swap, which opens the dialog, has run by then), so a request that fails
+// or is cancelled cannot leave a stale opener for the next dialog.
 let opener: Element | null = null;
 
 function openDialog(dialog: HTMLDialogElement): void {
@@ -32,6 +34,10 @@ export function initDialogs(): void {
   document.addEventListener("htmx:beforeRequest", (event) => {
     const { elt, target } = (event as CustomEvent<{ elt: Element; target: Element }>).detail;
     if (target?.closest("#app-dialog-body")) opener = elt;
+  });
+  document.addEventListener("htmx:afterRequest", (event) => {
+    const { target } = (event as CustomEvent<{ target: Element | null }>).detail;
+    if (target?.closest("#app-dialog-body")) opener = null;
   });
   document.addEventListener("htmx:afterSwap", (event) => {
     const { target } = (event as CustomEvent<{ target: Element }>).detail;
