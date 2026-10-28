@@ -166,3 +166,23 @@ def test_demo_bulk_counts_only_known_rows(client, kit_on):
     }
     nothing = client.post("/_kit/demo/bulk/", {"action": "approve"}, headers={"HX-Request": "true"})
     assert json.loads(nothing["HX-Trigger"])["toast"]["tone"] == "warning"
+
+
+def test_demo_bulk_unknown_action_warns_about_the_action(client, kit_on):
+    response = client.post(
+        "/_kit/demo/bulk/", {"ids": ["1"], "action": "delete"}, headers={"HX-Request": "true"}
+    )
+    assert json.loads(response["HX-Trigger"])["toast"] == {
+        "message": "Choose an action for the selected applications.",
+        "tone": "warning",
+    }
+
+
+def test_demo_bulk_without_htmx_redirects_and_shows_a_toast(client, kit_on, vite_build):
+    response = client.post("/_kit/demo/bulk/", {"ids": ["1"], "action": "approve"})
+    assert response.status_code == 302
+    assert response["Location"] == "/_kit/#overlays"
+    page = client.get(response["Location"]).content.decode()
+    assert "toast--success" in page
+    assert "Approved 1 application" in page
+    assert "Approved 1 applications" not in page
