@@ -3,14 +3,16 @@
 Development only: every view answers 404 unless settings.KIT_ENABLED, and pages are never indexed.
 """
 
-import json
+import re
 from collections.abc import Callable
 from decimal import Decimal
 from functools import wraps
+from pathlib import Path
 from typing import Any, cast
 
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.staticfiles import finders
 from django.core.paginator import Paginator
 from django.http import Http404, HttpRequest, HttpResponse, QueryDict
 from django.shortcuts import redirect, render
@@ -25,7 +27,7 @@ from apps.kit.forms import KitForm, invalid_kit_form
 
 View = Callable[..., HttpResponse]
 
-ICONS_DIR = settings.BASE_DIR / "frontend" / "src" / "icons"
+SYMBOL_ID = re.compile(r'<symbol id="([^"]+)"')
 
 # (section id, title); the index includes kit/sections/<id>.html for each, in order.
 SECTIONS: list[tuple[str, str]] = [
@@ -60,8 +62,11 @@ def kit_only(view: View) -> View:
 
 
 def icon_names() -> list[str]:
-    names: list[str] = json.loads((ICONS_DIR / "icons.json").read_text(encoding="utf-8"))
-    return names + sorted(path.stem for path in ICONS_DIR.glob("*.svg"))
+    """Symbol ids in the built sprite (Vercel ships no frontend/src); [] if it is missing."""
+    sprite = finders.find("dist/icons.svg")
+    if not isinstance(sprite, str):
+        return []
+    return SYMBOL_ID.findall(Path(sprite).read_text(encoding="utf-8"))
 
 
 SORTS: dict[str, Callable[[samples.Scholar], Any]] = {
@@ -88,6 +93,7 @@ def filtered_scholars(params: QueryDict) -> list[samples.Scholar]:
 
 def index_context(request: HttpRequest) -> dict[str, object]:
     rows = filtered_scholars(request.GET)
+    sort = request.GET.get("sort", "")
     return {
         "sections": [
             {"id": key, "title": title, "template": f"kit/sections/{key}.html"}
@@ -102,6 +108,8 @@ def index_context(request: HttpRequest) -> dict[str, object]:
         # get_page() turns ?page=abc or ?page=999 into a valid page instead of an error.
         "scholars": Paginator(rows, 5).get_page(request.GET.get("page")),
         "default_sort": "name",
+        # A valid ?sort= rides along with filter requests; the default needs no parameter.
+        "sort": sort if sort.removeprefix("-") in SORTS else "",
         "total": len(rows),
         "statuses": samples.STATUSES,
         "clear_url": f"{reverse('kit:index')}#data",
@@ -127,6 +135,7 @@ TONE_LEVELS: dict[str, int] = {
 def index(request: HtmxHttpRequest) -> HttpResponse:
     context = index_context(request)
     if request.htmx and request.htmx.target == "scholars-table":
+        context["count_oob"] = True
         response = render(request, "kit/sections/data.html#scholars_table", context)
     else:
         response = render(request, "kit/index.html", context)

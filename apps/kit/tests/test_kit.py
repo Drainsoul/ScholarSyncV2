@@ -3,6 +3,7 @@ import re
 from pathlib import Path
 
 import pytest
+from django.contrib.staticfiles import finders
 
 from apps.kit.views import SWATCHES, icon_names
 
@@ -34,6 +35,20 @@ def test_kit_shows_every_icon(client, kit_on, vite_build):
     body = client.get("/_kit/").content.decode()
     for name in icon_names():
         assert f"icons.svg#{name}" in body
+
+
+def test_icon_names_come_from_the_built_sprite(vite_build):
+    sprite = Path(str(finders.find("dist/icons.svg"))).read_text(encoding="utf-8")
+    names = icon_names()
+    assert names
+    assert names == re.findall(r'<symbol id="([^"]+)"', sprite)
+
+
+def test_kit_index_renders_when_the_sprite_is_missing(client, kit_on, vite_build, monkeypatch):
+    """Vercel ships no frontend/src and a preview may lack the sprite: the kit still renders."""
+    monkeypatch.setattr(finders, "find", lambda *args, **kwargs: None)
+    assert icon_names() == []
+    assert client.get("/_kit/").status_code == 200
 
 
 def test_every_swatch_is_a_token_with_a_kit_style():
@@ -186,3 +201,40 @@ def test_demo_bulk_without_htmx_redirects_and_shows_a_toast(client, kit_on, vite
     assert "toast--success" in page
     assert "Approved 1 application" in page
     assert "Approved 1 applications" not in page
+
+
+def table_fragment(client, query: str) -> str:
+    response = client.get(
+        f"/_kit/{query}", headers={"HX-Request": "true", "HX-Target": "scholars-table"}
+    )
+    body: str = response.content.decode()
+    return body
+
+
+def test_result_count_is_a_live_region_outside_the_swapped_table(client, kit_on, vite_build):
+    body = client.get("/_kit/").content.decode()
+    count = '<p id="scholars-count" class="table-count" role="status">12 scholars</p>'
+    assert count in body
+    assert body.index(count) < body.index('<div id="scholars-table"')
+    assert "hx-swap-oob" not in body
+
+
+def test_table_swaps_send_the_count_out_of_band(client, kit_on, vite_build):
+    body = table_fragment(client, "?q=shaw")
+    assert '<p id="scholars-count" hx-swap-oob="innerHTML">1 scholar</p>' in body
+    assert body.count('id="scholars-count"') == 1
+
+
+def test_filter_form_carries_the_current_sort(client, kit_on, vite_build):
+    form = '<form id="scholar-filters" class="filters"'
+    hidden = '<input type="hidden" name="sort" value="-school" form="scholar-filters">'
+    assert form in client.get("/_kit/").content.decode()
+    assert hidden in client.get("/_kit/?sort=-school").content.decode()
+    assert hidden in table_fragment(client, "?sort=-school&q=a")
+    for query in ("", "?sort=__class__"):
+        assert 'name="sort"' not in table_fragment(client, query)
+
+
+def test_clear_filters_reloads_the_whole_page(client, kit_on, vite_build):
+    body = table_fragment(client, "?q=nobody-has-this-name")
+    assert re.search(r'<a class="btn btn--secondary" href="/_kit/#data" hx-boost="false">', body)

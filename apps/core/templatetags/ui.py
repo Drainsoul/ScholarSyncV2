@@ -84,7 +84,10 @@ SORT_ICONS = {"ascending": "arrow-up", "descending": "arrow-down", "": "chevrons
 
 @register.simple_tag(takes_context=True)
 def sort_th(context: Context, label: str, key: str, css_class: str = "") -> SafeString:
-    """A sortable column header: ?sort=key ascending, ?sort=-key descending (spec §12)."""
+    """A sortable column header: ?sort=key ascending, ?sort=-key descending (spec §12).
+
+    The link's id (sort-<key>) is stable, so htmx puts focus back on it after the table is swapped.
+    """
     request = context["request"]
     current = request.GET.get("sort") or context.get("default_sort", "")
     query = request.GET.copy()
@@ -96,9 +99,10 @@ def sort_th(context: Context, label: str, key: str, css_class: str = "") -> Safe
     else:
         query["sort"], direction = key, ""
     return format_html(
-        '<th scope="col"{}{}><a class="sort" href="?{}">{}{}</a></th>',
+        '<th scope="col"{}{}><a class="sort" id="sort-{}" href="?{}">{}{}</a></th>',
         format_html(' class="{}"', css_class) if css_class else "",
         format_html(' aria-sort="{}"', direction) if direction else "",
+        key,
         query.urlencode(),
         label,
         icon(SORT_ICONS[direction]),
