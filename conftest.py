@@ -7,6 +7,7 @@ from django.test import Client
 
 ROOT = Path(__file__).resolve().parent
 MANIFEST = ROOT / "static" / "dist" / ".vite" / "manifest.json"
+SPRITE = ROOT / "static" / "dist" / "icons.svg"
 
 
 class HttpsClient(Client):
@@ -34,7 +35,7 @@ def _plain_static_storage(settings):
 @pytest.fixture(scope="session")
 def vite_build() -> Path:
     """Build the front end once per session so django-vite has a real manifest."""
-    if not MANIFEST.exists():
+    if not (MANIFEST.exists() and SPRITE.exists()):
         npm = shutil.which("npm")
         assert npm, "npm is required to build the front end for tests"
         subprocess.run([npm, "--prefix", "frontend", "run", "build"], check=True, cwd=ROOT)  # noqa: S603
