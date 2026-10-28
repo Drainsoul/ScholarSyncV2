@@ -3,7 +3,9 @@
 from decimal import ROUND_HALF_UP, Decimal
 
 from django import template
+from django.core.paginator import Page
 from django.forms import BoundField
+from django.template import Context
 from django.templatetags.static import static
 from django.utils.html import format_html
 from django.utils.safestring import SafeString
@@ -75,3 +77,34 @@ def field(bound_field: BoundField) -> dict[str, object]:
         "error_id": error_id,
         "layout": layout,
     }
+
+
+SORT_ICONS = {"ascending": "arrow-up", "descending": "arrow-down", "": "chevrons-up-down"}
+
+
+@register.simple_tag(takes_context=True)
+def sort_th(context: Context, label: str, key: str, css_class: str = "") -> SafeString:
+    """A sortable column header: ?sort=key ascending, ?sort=-key descending (spec §12)."""
+    request = context["request"]
+    current = request.GET.get("sort", "")
+    query = request.GET.copy()
+    query.pop("page", None)
+    if current == key:
+        query["sort"], direction = f"-{key}", "ascending"
+    elif current == f"-{key}":
+        query["sort"], direction = key, "descending"
+    else:
+        query["sort"], direction = key, ""
+    return format_html(
+        '<th scope="col"{}{}><a class="sort" href="?{}">{}{}</a></th>',
+        format_html(' class="{}"', css_class) if css_class else "",
+        format_html(' aria-sort="{}"', direction) if direction else "",
+        query.urlencode(),
+        label,
+        icon(SORT_ICONS[direction]),
+    )
+
+
+@register.inclusion_tag("components/pagination.html", takes_context=True)
+def pagination(context: Context, page: Page[object]) -> dict[str, object]:
+    return {"page": page, "request": context["request"]}

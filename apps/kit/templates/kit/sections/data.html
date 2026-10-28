@@ -1,0 +1,97 @@
+{% load ui %}
+<section class="kit-section" id="data" aria-labelledby="data-title">
+  <h2 id="data-title">Data display</h2>
+  <div class="kit-state">
+    <h3>Filter bar, sortable table and pagination</h3>
+    <form class="filters" method="get" action="{% url 'kit:index' %}#data" role="search" aria-label="Filter scholars">
+      <div class="field"><label class="field__label" for="filter-q">Name</label><input class="input" type="search" id="filter-q" name="q" value="{{ request.GET.q }}"></div>
+      <div class="field">
+        <label class="field__label" for="filter-status">Status</label>
+        <select class="input" id="filter-status" name="status">
+          <option value="">Any status</option>
+          {% for key, status in statuses.items %}<option value="{{ key }}"{% if request.GET.status == key %} selected{% endif %}>{{ status.label }}</option>{% endfor %}
+        </select>
+      </div>
+      <button class="btn btn--secondary" type="submit">{% icon "filter" %}Apply filters</button>
+    </form>
+    <div id="scholars-table">
+      <p class="table-count">{{ total }} scholar{{ total|pluralize }}</p>
+      {% if scholars.object_list %}
+      <div class="table-wrap" role="region" aria-labelledby="scholars-caption" tabindex="0">
+        <table class="table">
+          <caption id="scholars-caption" class="visually-hidden">Scholars</caption>
+          <thead><tr>{% sort_th "Name" "name" %}{% sort_th "School" "school" %}<th scope="col">Tier</th>{% sort_th "Allowance" "amount" "num" %}<th scope="col">Status</th></tr></thead>
+          <tbody>
+            {% for scholar in scholars %}
+            <tr>
+              <th scope="row">{{ scholar.name }}</th>
+              <td>{{ scholar.school }}</td>
+              <td>{{ scholar.tier }}</td>
+              <td class="num">{{ scholar.amount|peso }}</td>
+              <td><span class="pill pill--{{ scholar.tone }}">{% icon scholar.icon %}{{ scholar.status_label }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% pagination scholars %}
+      {% else %}
+      {% include "components/empty_state.html" with icon="search" title="No scholars match these filters" body="Try another name or status." action_url=clear_url action_label="Clear filters" %}
+      {% endif %}
+    </div>
+  </div>
+  <div class="kit-state">
+    <h3>Stat tiles</h3>
+    <div class="stats">
+      {% include "components/stat_tile.html" with label="Active scholars" value="1,284" icon="users" tone="brand" hint="38 more than last term" %}
+      {% include "components/stat_tile.html" with label="Applications waiting" value="96" icon="file-text" tone="info" hint="12 waiting over 7 days" %}
+      {% include "components/stat_tile.html" with label="Released this year" value="₱18,240,000.00" icon="banknote" tone="success" %}
+      {% include "components/stat_tile.html" with label="At risk" value="23" icon="triangle-alert" tone="warning" hint="Below the renewal rule" %}
+    </div>
+  </div>
+  <div class="kit-state">
+    <h3>Status pills</h3>
+    <div class="btn-row">
+      <span class="pill pill--success">{% icon "circle-check" %}Approved</span>
+      <span class="pill pill--info">{% icon "file-text" %}Under review</span>
+      <span class="pill pill--warning">{% icon "triangle-alert" %}Returned</span>
+      <span class="pill pill--danger">{% icon "circle-alert" %}Rejected</span>
+      <span class="pill">{% icon "info" %}Draft</span>
+    </div>
+  </div>
+  <div class="kit-state">
+    <h3>Card, breadcrumbs, tabs and details</h3>
+    {% include "components/breadcrumbs.html" %}
+    {% include "components/tabs.html" with tabs_label="Scholar sections" %}
+    <div class="card">
+      <div class="card__header"><h4 class="card__title">TCU CEAA scholarship</h4><span class="pill pill--success">{% icon "circle-check" %}Active</span></div>
+      <dl class="details">
+        <dt>Tier</dt><dd>Priority</dd>
+        <dt>Allowance per term</dt><dd class="num">₱7,500.00</dd>
+        <dt>Started</dt><dd>1st semester, 2025–2026</dd>
+      </dl>
+    </div>
+  </div>
+  <div class="kit-state">
+    <h3>Meter, steps and timeline</h3>
+    <div class="meter-row">
+      <label for="kit-budget">Budget used</label>
+      <meter id="kit-budget" min="0" max="100" low="70" high="90" optimum="0" value="64">64%</meter>
+      <p class="num">64% of ₱12,000,000.00</p>
+    </div>
+    <ol class="steps" aria-label="Application progress">
+      <li class="steps__item steps__item--done"><span class="steps__marker">{% icon "check" %}</span>Profile<span class="visually-hidden"> (done)</span></li>
+      <li class="steps__item steps__item--current" aria-current="step"><span class="steps__marker">2</span>Documents</li>
+      <li class="steps__item"><span class="steps__marker">3</span>Review</li>
+      <li class="steps__item"><span class="steps__marker">4</span>Submit</li>
+    </ol>
+    <ol class="timeline">
+      <li><p class="timeline__what">Returned to the applicant</p><p class="timeline__when"><time datetime="2026-10-20T14:05+08:00">20 Oct 2026, 2:05 PM</time> by Krista Kelley</p></li>
+      <li><p class="timeline__what">Submitted</p><p class="timeline__when"><time datetime="2026-10-02T09:14+08:00">2 Oct 2026, 9:14 AM</time> by the applicant</p></li>
+    </ol>
+  </div>
+  <div class="kit-state">
+    <h3>Empty state</h3>
+    {% include "components/empty_state.html" with icon="inbox" title="No applications yet" body="Applications appear here as soon as students submit them." %}
+  </div>
+</section>
