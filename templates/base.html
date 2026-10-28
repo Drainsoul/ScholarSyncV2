@@ -20,6 +20,7 @@
   {% endblock %}
   <div id="toasts" class="toasts" role="status" aria-live="polite">{% for message in messages %}{% include "components/toast.html" with tone=message.level_tag text=message.message %}{% endfor %}</div>
   <template id="toast-template">{% include "components/toast.html" with tone="info" text="" %}</template>
+  <dialog id="app-dialog" class="dialog" aria-labelledby="app-dialog-title"><div id="app-dialog-body"></div></dialog>
   {% block scripts %}{% endblock %}
 </body>
 </html>

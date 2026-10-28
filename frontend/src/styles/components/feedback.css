@@ -98,3 +98,34 @@ html:not(.js) .toast__close {
     transform: translateY(0.5rem);
   }
 }
+
+.dialog {
+  width: min(32rem, calc(100vw - 2 * var(--space-4)));
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+  color: var(--text);
+}
+
+.dialog::backdrop {
+  background: rgb(17 24 39 / 0.5);
+}
+
+.dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-4) 0 var(--space-6);
+}
+
+.dialog__title {
+  margin: 0;
+  font-size: var(--text-xl);
+}
+
+.dialog__body {
+  padding: var(--space-4) var(--space-6) var(--space-6);
+}

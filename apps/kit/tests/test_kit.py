@@ -65,7 +65,9 @@ def test_kit_shows_data_components(client, kit_on, vite_build):
 
 
 def test_kit_table_filters_sorts_and_survives_bad_input(client, kit_on, vite_build):
-    body = client.get("/_kit/?q=shaw").content.decode()
+    body = client.get(
+        "/_kit/?q=shaw", headers={"HX-Request": "true", "HX-Target": "scholars-table"}
+    ).content.decode()
     assert "David Shaw" in body
     assert "William Heath" not in body
     for query in ("?page=abc", "?page=999", "?sort=__class__", "?status=nope"):
@@ -123,3 +125,44 @@ def test_index_varies_on_htmx_headers_for_full_page_and_partial(client, kit_on, 
         vary = response["Vary"]
         assert "HX-Request" in vary
         assert "HX-Target" in vary
+
+
+def test_base_layout_has_the_dialog_shell(client, kit_on, vite_build):
+    body = client.get("/_kit/").content.decode()
+    assert '<dialog id="app-dialog" class="dialog" aria-labelledby="app-dialog-title">' in body
+
+
+def test_demo_dialog_is_a_page_without_htmx_and_a_fragment_with_it(client, kit_on, vite_build):
+    page_response = client.get("/_kit/demo/dialog/")
+    page = page_response.content.decode()
+    assert "<h1>Release allowances</h1>" in page
+    assert "HX-Request" in page_response["Vary"]
+    fragment_response = client.get("/_kit/demo/dialog/", headers={"HX-Request": "true"})
+    fragment = fragment_response.content.decode()
+    assert "HX-Request" in fragment_response["Vary"]
+    assert '<h2 class="dialog__title" id="app-dialog-title">Release allowances</h2>' in fragment
+    assert "<html" not in fragment
+    assert "₱60,000.00" in fragment
+
+
+def test_demo_dialog_post_closes_the_dialog_and_toasts(client, kit_on):
+    response = client.post("/_kit/demo/dialog/", headers={"HX-Request": "true"})
+    assert response.status_code == 204
+    assert json.loads(response["HX-Trigger"]) == {
+        "toast": {"message": "Released ₱60,000.00 to 12 scholars", "tone": "success"},
+        "closeDialog": {},
+    }
+
+
+def test_demo_bulk_counts_only_known_rows(client, kit_on):
+    response = client.post(
+        "/_kit/demo/bulk/",
+        {"ids": ["1", "2", "999"], "action": "approve"},
+        headers={"HX-Request": "true"},
+    )
+    assert json.loads(response["HX-Trigger"])["toast"] == {
+        "message": "Approved 2 applications",
+        "tone": "success",
+    }
+    nothing = client.post("/_kit/demo/bulk/", {"action": "approve"}, headers={"HX-Request": "true"})
+    assert json.loads(nothing["HX-Trigger"])["toast"]["tone"] == "warning"
