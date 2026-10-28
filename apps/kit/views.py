@@ -172,8 +172,10 @@ def demo_bulk(request: HtmxHttpRequest) -> HttpResponse:
     ids = [value for value in request.POST.getlist("ids") if value in known]
     verb = BULK_VERBS.get(request.POST.get("action", ""))
     tone: Tone
-    if not ids or verb is None:
+    if not ids:
         text, tone = "Select at least one application first.", "warning"
+    elif verb is None:
+        text, tone = "Choose an action for the selected applications.", "warning"
     else:
         text, tone = f"{verb} {len(ids)} application{'s' if len(ids) != 1 else ''}", "success"
     if request.htmx:
