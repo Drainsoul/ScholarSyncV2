@@ -3,6 +3,7 @@
 from decimal import ROUND_HALF_UP, Decimal
 
 from django import template
+from django.forms import BoundField
 from django.templatetags.static import static
 from django.utils.html import format_html
 from django.utils.safestring import SafeString
@@ -10,6 +11,7 @@ from django.utils.safestring import SafeString
 register = template.Library()
 
 CENTAVO = Decimal("0.01")
+GROUP_WIDGETS = {"radioselect", "checkboxselectmultiple"}
 
 
 @register.simple_tag
@@ -38,3 +40,38 @@ def peso(value: Decimal | int | None) -> str:
     amount = Decimal(value).quantize(CENTAVO, rounding=ROUND_HALF_UP)
     sign = "-" if amount < 0 else ""
     return f"{sign}₱{abs(amount):,.2f}"
+
+
+@register.inclusion_tag("components/field.html")
+def field(bound_field: BoundField) -> dict[str, object]:
+    """Label, help, error and widget for one form field, with the ARIA links between them."""
+    help_id = f"{bound_field.auto_id}-help"
+    error_id = f"{bound_field.auto_id}-error"
+    described_by = [
+        element_id
+        for element_id, present in (
+            (help_id, bound_field.help_text),
+            (error_id, bound_field.errors),
+        )
+        if present
+    ]
+    attrs: dict[str, str | bool] = {}
+    if described_by:
+        attrs["aria-describedby"] = " ".join(described_by)
+    if bound_field.errors:
+        attrs["aria-invalid"] = "true"
+    widget_type = bound_field.widget_type
+    layout = (
+        "check"
+        if widget_type == "checkbox"
+        else "group"
+        if widget_type in GROUP_WIDGETS
+        else "stacked"
+    )
+    return {
+        "field": bound_field,
+        "widget": bound_field.as_widget(attrs=attrs),
+        "help_id": help_id,
+        "error_id": error_id,
+        "layout": layout,
+    }
