@@ -1,4 +1,6 @@
+/* Cards are size containers, so their contents (.details) can respond to the card's width. */
 .card {
+  container: card / inline-size;
   padding: var(--space-6);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -19,6 +21,10 @@
   font-size: var(--text-lg);
 }
 
+.card > .card__title {
+  margin-bottom: var(--space-4);
+}
+
 .stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
@@ -26,14 +32,30 @@
   margin-bottom: var(--space-6);
 }
 
+/* Tiles are size containers: a narrow tile puts the chip above the text, and a very narrow one
+   uses a smaller value, so a long peso amount fits; overflow-wrap is the last resort. */
 .stat {
+  container: stat / inline-size;
   display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
   align-items: flex-start;
-  gap: var(--space-4);
+  gap: var(--space-3) var(--space-4);
   padding: var(--space-5);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--surface);
+}
+
+.stat > div {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+@container stat (max-width: 16rem) {
+  .stat > div {
+    flex-basis: 100%;
+  }
 }
 
 .stat__chip {
@@ -80,6 +102,13 @@
   font-size: var(--text-2xl);
   font-weight: 600;
   line-height: var(--leading-tight);
+  overflow-wrap: anywhere;
+}
+
+@container stat (max-width: 12.5rem) {
+  .stat__value {
+    font-size: var(--text-xl);
+  }
 }
 
 .pill {
@@ -128,6 +157,10 @@
   margin-bottom: var(--space-4);
 }
 
+.card + .filters {
+  margin-top: var(--space-6);
+}
+
 .filters .field {
   flex: 1 1 12rem;
   margin: 0;
@@ -139,7 +172,9 @@
   color: var(--text-muted);
 }
 
+/* position: relative keeps visually hidden text in cells inside the scroll area (no page overflow). */
 .table-wrap {
+  position: relative;
   overflow-x: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -314,6 +349,17 @@
 }
 
 @media (max-width: 40rem) {
+  .details {
+    grid-template-columns: 1fr;
+    row-gap: var(--space-1);
+  }
+
+  .details dd {
+    margin-bottom: var(--space-3);
+  }
+}
+
+@container card (max-width: 28rem) {
   .details {
     grid-template-columns: 1fr;
     row-gap: var(--space-1);

@@ -182,6 +182,29 @@
   font-weight: 500;
 }
 
+/* From 64rem the top bar is one row: the name is read but not shown, and below 80rem the nav and
+   Sign out drop their icons. Below 64rem everything stacks in the menu, name included. */
+@media (min-width: 64rem) {
+  .topnav__viewer {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+
+@media (min-width: 64rem) and (max-width: 79.99rem) {
+  .topnav__list a {
+    padding: 0 var(--space-2);
+  }
+
+  :is(.topnav__list a, .topnav__account .btn) > .icon {
+    display: none;
+  }
+}
+
 @media (max-width: 63.99rem) {
   .topnav {
     flex-basis: 100%;
@@ -206,9 +229,12 @@
   min-height: 100vh;
 }
 
+/* The shell paints the sidebar column, so the navy runs the full page height (the sidebar itself
+   is sticky and only 100vh tall). */
 @media (min-width: 64rem) {
   .shell {
     grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+    background: linear-gradient(to right, var(--nav-bg) var(--sidebar-width), transparent 0);
   }
 }
 

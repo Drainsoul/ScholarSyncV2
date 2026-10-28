@@ -26,7 +26,7 @@
           <tbody>{% for doc in documents %}<tr>
             <th scope="row">{{ doc.label }}<br><a class="text-sm" href="#">{% icon "download" %}{{ doc.file }}</a></th>
             <td><span class="pill pill--{{ doc.tone }}">{% icon doc.icon %}{{ doc.status }}</span></td>
-            <td><div class="btn-row"><button type="button" class="btn btn--secondary">Approve</button><button type="button" class="btn btn--ghost">Decline</button></div></td>
+            <td>{% if doc.status == "Waiting" %}<div class="btn-row"><button type="button" class="btn btn--secondary">Approve<span class="visually-hidden"> {{ doc.label }}</span></button><button type="button" class="btn btn--ghost">Decline<span class="visually-hidden"> {{ doc.label }}</span></button></div>{% endif %}</td>
           </tr>{% endfor %}</tbody>
         </table>
       </div>
