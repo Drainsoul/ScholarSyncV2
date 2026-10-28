@@ -26,8 +26,8 @@ Programs (TCU CEAA, LANI, and future ones) are **data**, not code.
 
 ## File structure (apps beyond `core` arrive milestone by milestone)
 ```
-config/            settings.py (environs), test_settings.py (pytest: forces production security), e2e_settings.py (Playwright: HTTP live server,
-                   enforced CSP, kit on), urls.py, wsgi.py
+config/            settings.py (environs), test_settings.py (pytest: forces production security),
+                   e2e_settings.py (Playwright: HTTP live server, enforced CSP, kit on), urls.py, wsgi.py
 apps/
   accounts/        custom User, roles, allauth adapters
   programs/        Program, BenefitTier, RequiredDocument, School, AcademicTerm, memberships
@@ -56,10 +56,10 @@ manage.py  pyproject.toml  uv.lock  compose.yaml  vercel.json  .env.example
   first front-end install **inside** `frontend/` (`npm install`; `npm --prefix frontend install` breaks on npm 10)
 - Run: `python -m uv run python manage.py runserver` with `npm --prefix frontend run dev` (`VITE_DEV_MODE=true`), or
   build once with `npm --prefix frontend run build`
-- Checks (= CI): `python -m uv run ruff check .` · `python -m uv run ruff format --check .` · `python -m uv run mypy .` ·
-  `python -m uv run python manage.py makemigrations --check --dry-run` · `python -m uv run pytest -n auto` ·
-  `python -m uv run pytest -m e2e --ds=config.e2e_settings --browser chromium` (once:
-  `python -m uv run playwright install chromium`) · `npm --prefix frontend run typecheck|check|build|budget`
+- Checks (= CI): `python -m uv run ruff check .` · `python -m uv run ruff format --check .` ·
+  `python -m uv run mypy .` · `python -m uv run python manage.py makemigrations --check --dry-run` ·
+  `python -m uv run pytest -n auto` · `python -m uv run pytest -m e2e --ds=config.e2e_settings --browser chromium`
+  (once: `python -m uv run playwright install chromium`) · `npm --prefix frontend run typecheck|check|build|budget`
 - Deploy check (as CI runs it): `manage.py check --deploy --fail-level WARNING` with `DJANGO_DEBUG=false`,
   `DJANGO_ALLOWED_HOSTS=scholarsync.example` and `DJANGO_ENV_FILE=/nonexistent` so the local `.env` can't mask a
   missing variable (it did once: CI failed on an empty `ALLOWED_HOSTS` that passed locally)
