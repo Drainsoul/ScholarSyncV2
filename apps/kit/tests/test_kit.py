@@ -112,3 +112,14 @@ def test_demo_toast_rejects_unknown_tones(client, kit_on):
         "/_kit/demo/toast/", {"message": "x", "tone": "evil"}, headers={"HX-Request": "true"}
     )
     assert json.loads(response["HX-Trigger"])["toast"]["tone"] == "info"
+
+
+def test_index_varies_on_htmx_headers_for_full_page_and_partial(client, kit_on, vite_build):
+    full = client.get("/_kit/")
+    partial = client.get(
+        "/_kit/?q=shaw", headers={"HX-Request": "true", "HX-Target": "scholars-table"}
+    )
+    for response in (full, partial):
+        vary = response["Vary"]
+        assert "HX-Request" in vary
+        assert "HX-Target" in vary
