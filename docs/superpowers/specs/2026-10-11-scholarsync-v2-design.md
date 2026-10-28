@@ -1,6 +1,8 @@
 # ScholarSync V2: design spec
 
 - **Revision:** 2 (2026-10-28): M3 design-system details (§3, §12, §13, §14, §15, §16), proposed with the M3 plan.
+- **Revision:** 3 (2026-10-28): §12 visual redesign (UI UX Pro Max: Accessible & Ethical + Swiss; Lexend + Source Sans 3;
+  navy actions, red brand mark only) after Kenneth's M3 mockup review.
 - **Status:** rev 1 approved by Kenneth on 2026-10-12. M1 plan: `docs/superpowers/plans/2026-10-12-m1-vercel-spike.md`.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -44,7 +46,7 @@ Versions are pinned to the latest stable release when M2 scaffolds the project, 
 | Auth | **django-allauth** (account + Google provider), **argon2-cffi** | Email login, mandatory verification, rate limits, reauthentication |
 | Templates | Django templates + **django-htmx** + **django-template-partials** | `{% partialdef %}` for HTMX fragments |
 | Front-end build | **Vite** + strict **TypeScript** + **Biome**, **django-vite** | Same tooling as PersonalWebsite |
-| Charts / icons / fonts | **Chart.js** (lazy chunk), **Lucide** SVG sprite, **Fontsource** Poppins + Inter (self-hosted) | No runtime CDNs |
+| Charts / icons / fonts | **Chart.js** (lazy chunk), **Lucide** SVG sprite, **Fontsource** Lexend + Source Sans 3 (self-hosted) | No runtime CDNs |
 | Files | **Cloudflare R2** via **django-storages** (S3 backend, boto3), **Pillow**, **filetype** | Private bucket, presigned URLs |
 | Import/export | stdlib `csv`, **openpyxl** | Row-by-row Django Forms with a preview |
 | Email | **django-anymail** (Resend) + an `EmailOutbox` table | HTTP API, batch sends |
@@ -449,31 +451,58 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   Singapore. The code doesn't change, because §7 and §9 already assume no disk and no workers.
 
 ## 12. Frontend
-- **Brand,** kept from v1 and tidied:
-  - logo: the graduation-cap outline (`static/images/favicon.svg` in v1) plus the "ScholarSync" wordmark;
-  - visual style: white cards, a red accent, stat tiles with soft icon chips, rounded status pills.
-- **Tokens** (`frontend/src/styles/tokens.css`):
-  - **Brand red:** `--brand-600: #d10e0f` is used for text, buttons and links (5.6:1 on white, AA). `--brand-500:
-    #fd1415` is decorative only (4.0:1, fails AA for text). `--brand-400: #ff4546`.
-  - **Gold accent:** `--accent: #ebbf56`, decorative (1.7:1 on white): the active-nav marker and panel rules on navy.
-  - **Info:** `--info: #27488b` (also the focus ring). **Navy:** `--navy-800: #1b3366` for the staff/office sidebar
-    and the auth panel (white text 12:1, gold 7:1).
-  - Danger buttons are outlined, so they never look like the red primary button.
-  - `tests/test_tokens.py` checks every text/background pair the components use (4.5:1) and control borders and focus
-    rings (3:1).
-  - **Neutrals:** `#111827` → `#f9fafb`.
-  - **Status:** success `#047857`, warning `#b45309`, danger `--brand-600`. Text on tints is always AA.
-  - **Type:** Poppins 600/700 for headings, Inter 400/500/600 for body.
-  - **Scales:** 4 px spacing scale, radius scale, two shadows.
-  - Light theme in v2.0; tokens are named so a dark theme can be added later.
-- **Components** (`templates/components/` + CSS):
-  - controls: button (primary, secondary, ghost, danger), field (label, help, error), select, file input with progress;
-  - data: table (sortable header, pagination, row selection + bulk bar), filter bar, stat tile, card, status pill,
-    tabs;
-  - overlays and feedback: dialog, toast, empty state;
-  - navigation: breadcrumbs, top nav, sidebar with program switcher.
-- **Layouts:** public, auth (split panel, as in v1), student (top nav), staff (sidebar + program switcher), office
-  (sidebar). Navigation collapses behind a toggle (`nav.ts`) below 64rem and is fully visible without JS.
+- **Design direction (rev 3, 2026-10-28):** Kenneth found the M3 mockups "AI-generated and ugly" and asked for a
+  redesign with the UI UX Pro Max skill (github.com/nextlevelbuilder/ui-ux-pro-max-skill, `28b3b8d`). Its
+  recommendation for a government public-service product drives this section:
+  - style **Accessible & Ethical + Minimalism & Swiss Style** (flat, high contrast, typographic hierarchy, rules
+    instead of boxes); landing pattern "Minimal & Direct"; staff screens an "Executive Dashboard";
+  - type pairing **"Corporate Trust": Lexend (headings) + Source Sans 3 (body)**;
+  - palette focus "professional navy, high contrast" (7:1 where practical);
+  - avoid: ornament, soft gradients, decorative motion, AI purple/pink.
+  - **Removed AI tells:** soft icon chips on stat tiles, icons inside every pill/button/nav item, a soft rounded
+    card around everything, a single radius on everything, red primary buttons, Poppins/Inter.
+- **Brand:**
+  - logo: the v1 graduation-cap outline plus the "ScholarSync" wordmark (Lexend 600) and the "City of Taguig" label;
+  - Taguig red is the **brand mark and danger only**; actions are navy; gold is a civic accent (the 4 px stripe at
+    the top of every page, the active-nav marker, the focus halo).
+- **Tokens** (`frontend/src/styles/tokens.css`; every text pair ≥ 4.5:1, most ≥ 7:1, checked by
+  `tests/test_tokens.py`):
+  - **ink** `#0e1b2c` (text, 17:1); **muted** `#4b5563` (7.6:1); **bg** `#f5f4f0` (warm paper); **surface**
+    `#ffffff`; **sunken** `#ecebe6`; **border** `#d6d3cb`; **control border** `#5f6368` (6:1);
+  - **primary navy** `#1a3a6b` (buttons, links, current nav; white on it 11:1), hover `#10284d`, tint `#e8eef7`;
+  - **red** `#b8132a` (brand mark, danger; 6.6:1), tint `#fbecee`; **gold** `#f0b323` (decorative: 1.9:1 on white,
+    6:1 on navy, ink on gold 9:1);
+  - **status:** success `#11663a` on `#e7f3ec`; warning `#8a4b00` on `#fbf1e2`; danger = red on its tint; info =
+    navy on its tint;
+  - **focus:** 3 px ink outline plus a 3 px gold halo outside it (the ink ring carries the contrast);
+  - **type:** Lexend 500/600 headings, Source Sans 3 400/600 body at 17 px (1.0625rem), line height 1.55, tabular
+    figures for money; scale 1.25;
+  - **shape:** radius 3 px (controls, tags) and 4 px (panels, dialogs) — never pill-shaped; no shadows except
+    floating layers (dialog, toast, menus); 4 px spacing scale.
+  - Light theme in v2.0; tokens are role-named so a dark theme can be added later.
+- **Components** (`templates/components/` + CSS), flat and typographic:
+  - **buttons:** primary = solid navy; secondary = white with a 2 px navy border; link-style ghost; danger = white
+    with a 2 px red border and red text; 44 px tall; text only (icons only where they carry meaning: download,
+    close, menu);
+  - **fields:** label 600, hint muted, 2 px control border; an error puts a 4 px red bar beside the field group and
+    the message above the control (GOV.UK pattern); error summary at the top of the form;
+  - **panels** (was "card"): white, 1 px border, 4 px radius, title row separated by a rule; sections inside a page
+    are separated by rules, not nested boxes;
+  - **figures** (was "stat tile"): label + large Lexend number + optional note, no box, no icon, separated by vertical
+    rules in a row (stacked on phones);
+  - **tags** (was "status pill"): 3 px radius, tint background, 600 text, no icon (the text is the status);
+  - **table:** 2 px ink rule under the header, 1 px row rules, no zebra, numbers right-aligned in tabular figures;
+    sortable headers, pagination, row selection + bulk bar;
+  - **tabs:** text with a 4 px navy underline on the current tab; **breadcrumbs:** small text with `›`;
+  - **feedback:** notification banners (5 px coloured left bar, bold title) for alerts and toasts; dialog; empty
+    state (plain text + one action, no illustration).
+- **Layouts:** a 4 px civic stripe (red then gold) on top of every page.
+  - public and student: white header (logo + wordmark + "City of Taguig"), text navigation with a navy underline on
+    the current item; content max 72rem;
+  - auth: the split panel from v1, flat navy (no gradient) with one Lexend statement;
+  - staff and office: a navy top bar (logo, program switcher for staff, user, sign out) and a white left navigation
+    with text items (no icons) and a 4 px navy bar on the current item;
+  - navigation collapses behind a toggle (`nav.ts`) below 64rem and is fully visible without JS.
 - **Icons:** `scripts/sprite.mjs` builds `static/dist/icons.svg` from the Lucide names listed in `src/icons/icons.json`
   plus our own SVGs (the logo); templates use `{% icon "name" %}`. A misspelt name fails the build.
 - **Design kit:** `/_kit/` (every component in every state) and `/_kit/mockups/` (key screens with Faker sample data)
