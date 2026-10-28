@@ -1,0 +1,11 @@
+{% extends "base.html" %}{% load django_vite %}
+{% block title %}Design kit{% endblock %}
+{% block head %}{% vite_asset 'src/kit.ts' %}{% endblock %}
+{% block body %}
+<header class="kit-header">
+  <div class="container"><a class="kit-header__home" href="{% url 'kit:index' %}">ScholarSync design kit</a></div>
+</header>
+<main id="main" tabindex="-1" class="container page">
+  {% block content %}{% endblock %}
+</main>
+{% endblock %}

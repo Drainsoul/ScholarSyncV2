@@ -3,6 +3,7 @@
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
 from environs import Env
 
 from config.hosts import vercel_hosts
@@ -20,6 +21,11 @@ _vercel_hosts = vercel_hosts(os.environ)
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", []) + _vercel_hosts
 CSRF_TRUSTED_ORIGINS = [f"https://{host}" for host in _vercel_hosts]
 
+# Design kit (spec §12): /_kit/ answers 404 unless enabled, and is never allowed in production.
+KIT_ENABLED = env.bool("DJANGO_KIT", DEBUG)
+if KIT_ENABLED and os.environ.get("VERCEL_ENV") == "production":
+    raise ImproperlyConfigured("DJANGO_KIT must be off in production (VERCEL_ENV=production).")
+
 INSTALLED_APPS = [
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -29,6 +35,7 @@ INSTALLED_APPS = [
     "django_vite",
     "csp",
     "apps.core",
+    "apps.kit",
 ]
 
 MIDDLEWARE = [

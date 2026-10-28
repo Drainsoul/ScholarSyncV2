@@ -81,3 +81,36 @@ jobs:
       - run: npm run build
       - run: npm run budget
       - run: npm audit --audit-level=high
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: scholarsync
+          POSTGRES_PASSWORD: scholarsync
+          POSTGRES_DB: scholarsync
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U scholarsync -d scholarsync"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DJANGO_SECRET_KEY: ci-only-not-a-secret-0123456789abcdefghijklmnopqrstuvwxyz
+      DATABASE_URL: postgres://scholarsync:scholarsync@localhost:5432/scholarsync
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0  # no floating major tag is published; pin the full version
+        with:
+          enable-cache: true
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: uv sync --locked
+      - run: npm --prefix frontend ci
+      - run: npm --prefix frontend run build
+      - run: uv run playwright install --with-deps chromium
+      - run: uv run pytest -m e2e --ds=config.e2e_settings --browser chromium

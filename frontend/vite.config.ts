@@ -14,6 +14,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(root, "src/main.ts"),
+        kit: resolve(root, "src/kit.ts"),
       },
     },
   },

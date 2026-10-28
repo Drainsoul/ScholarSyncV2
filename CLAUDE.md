@@ -26,7 +26,8 @@ Programs (TCU CEAA, LANI, and future ones) are **data**, not code.
 
 ## File structure (apps beyond `core` arrive milestone by milestone)
 ```
-config/            settings.py (environs), test_settings.py (pytest: forces production security), urls.py, wsgi.py
+config/            settings.py (environs), test_settings.py (pytest: forces production security), e2e_settings.py (Playwright: HTTP live server,
+                   enforced CSP, kit on), urls.py, wsgi.py
 apps/
   accounts/        custom User, roles, allauth adapters
   programs/        Program, BenefitTier, RequiredDocument, School, AcademicTerm, memberships
@@ -39,12 +40,13 @@ apps/
   reports/         program reports and files
   workspace/       tasks, notifications, email outbox
   office/          super admin screens
+  kit/             design kit + key-screen mockups at /_kit/ (no models; DJANGO_KIT)
   core/            AuditEvent, permissions, layouts, health check
   <app>/           models.py services.py selectors.py views.py urls.py forms.py templates/ tests/
 templates/         base.html, layouts/, partials/, components/
 frontend/          Vite root: src/*.ts, src/styles/*.css (builds to static/dist/, git-ignored)
 scripts/           one-off tools (export_legacy_model.py)
-tests/             cross-app tests (permission matrix, Playwright e2e)
+tests/             cross-app tests (permission matrix), tests/e2e/ (Playwright)
 docs/              legacy-audit.md, superpowers/specs/, superpowers/plans/
 manage.py  pyproject.toml  uv.lock  compose.yaml  vercel.json  .env.example
 ```
@@ -56,7 +58,8 @@ manage.py  pyproject.toml  uv.lock  compose.yaml  vercel.json  .env.example
   build once with `npm --prefix frontend run build`
 - Checks (= CI): `python -m uv run ruff check .` · `python -m uv run ruff format --check .` · `python -m uv run mypy .` ·
   `python -m uv run python manage.py makemigrations --check --dry-run` · `python -m uv run pytest -n auto` ·
-  `npm --prefix frontend run typecheck|check|build|budget`
+  `python -m uv run pytest -m e2e --ds=config.e2e_settings --browser chromium` (once:
+  `python -m uv run playwright install chromium`) · `npm --prefix frontend run typecheck|check|build|budget`
 - Deploy check (as CI runs it): `manage.py check --deploy --fail-level WARNING` with `DJANGO_DEBUG=false`,
   `DJANGO_ALLOWED_HOSTS=scholarsync.example` and `DJANGO_ENV_FILE=/nonexistent` so the local `.env` can't mask a
   missing variable (it did once: CI failed on an empty `ALLOWED_HOSTS` that passed locally)
