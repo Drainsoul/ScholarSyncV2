@@ -1,0 +1,54 @@
+{% load ui %}
+<section class="kit-section" id="controls" aria-labelledby="controls-title">
+  <h2 id="controls-title">Controls</h2>
+  <div class="kit-state">
+    <h3>Buttons</h3>
+    <div class="btn-row">
+      <button type="button" class="btn btn--primary">Submit application</button>
+      <button type="button" class="btn btn--secondary">Save draft</button>
+      <button type="button" class="btn btn--ghost">Cancel</button>
+      <button type="button" class="btn btn--danger">{% icon "trash-2" %}Withdraw application</button>
+    </div>
+  </div>
+  <div class="kit-state">
+    <h3>Icons, disabled and busy</h3>
+    <div class="btn-row">
+      <a class="btn btn--secondary" href="#controls">{% icon "download" %}Export CSV</a>
+      <button type="button" class="btn btn--primary" disabled>Submit application</button>
+      <button type="button" class="btn btn--primary htmx-request" aria-busy="true"><span class="spinner htmx-indicator" aria-hidden="true"></span>Saving</button>
+      <button type="button" class="icon-btn" aria-label="Edit profile">{% icon "pencil" %}</button>
+    </div>
+  </div>
+  <div class="kit-state">
+    <h3>Fields</h3>
+    {% field empty_form.full_name %}
+    {% field empty_form.email %}
+    {% field empty_form.school %}
+    {% field empty_form.year_level %}
+    {% field empty_form.notes %}
+    {% field empty_form.consent %}
+  </div>
+  <div class="kit-state">
+    <h3>Fields with errors</h3>
+    {% include "components/form_errors.html" with form=invalid_form %}
+    {% field invalid_form.full_name %}
+    {% field invalid_form.email %}
+    {% field invalid_form.school %}
+    {% field invalid_form.year_level %}
+    {% field invalid_form.consent %}
+  </div>
+  <div class="kit-state">
+    <h3>File input</h3>
+    {% include "components/file_input.html" with id="file-idle" name="grades" label="Certificate of grades" help="PDF, JPG or PNG, up to 10 MB." state="idle" %}
+    {% include "components/file_input.html" with id="file-uploading" name="residency" label="Proof of residency" state="uploading" progress=40 filename="barangay-certificate.pdf" %}
+    {% include "components/file_input.html" with id="file-done" name="enrollment" label="Certificate of enrollment" state="done" filename="enrollment-2026.pdf" %}
+    {% include "components/file_input.html" with id="file-error" name="valid-id" label="Valid ID" help="PDF, JPG or PNG, up to 10 MB." state="error" error="This file is 14 MB. Upload a file of 10 MB or less." %}
+  </div>
+  <div class="kit-state">
+    <h3>Alerts</h3>
+    <div class="alert" role="status">{% icon "info" %}<div><p class="alert__title">Applications open on 3 November</p><p>You can finish your profile now.</p></div></div>
+    <div class="alert alert--success" role="status">{% icon "circle-check" %}<div><p>Your profile is complete.</p></div></div>
+    <div class="alert alert--warning" role="status">{% icon "triangle-alert" %}<div><p class="alert__title">Your application was returned</p><p>Upload a clearer copy of your certificate of grades by 7 November 2026.</p></div></div>
+    <div class="alert alert--danger" role="alert">{% icon "circle-alert" %}<div><p>We couldn't save your changes. Check your connection and try again.</p></div></div>
+  </div>
+</section>

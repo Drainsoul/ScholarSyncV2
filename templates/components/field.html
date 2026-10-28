@@ -1,0 +1,22 @@
+{% load ui %}{% if layout == "group" %}
+<fieldset class="field field--group{% if field.errors %} field--invalid{% endif %}">
+  <legend class="field__label">{{ field.label }}{% if field.field.required %} <span class="field__required">(required)</span>{% endif %}</legend>
+  {% if field.help_text %}<p class="field__help" id="{{ help_id }}">{{ field.help_text }}</p>{% endif %}
+  {% if field.errors %}<p class="field__error" id="{{ error_id }}">{% icon "circle-alert" %}<span>{{ field.errors|join:" " }}</span></p>{% endif %}
+  {{ widget }}
+</fieldset>
+{% elif layout == "check" %}
+<div class="field field--check{% if field.errors %} field--invalid{% endif %}">
+  {{ widget }}
+  <label class="field__label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+  {% if field.help_text %}<p class="field__help" id="{{ help_id }}">{{ field.help_text }}</p>{% endif %}
+  {% if field.errors %}<p class="field__error" id="{{ error_id }}">{% icon "circle-alert" %}<span>{{ field.errors|join:" " }}</span></p>{% endif %}
+</div>
+{% else %}
+<div class="field{% if field.errors %} field--invalid{% endif %}">
+  <label class="field__label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="field__required">(required)</span>{% endif %}</label>
+  {% if field.help_text %}<p class="field__help" id="{{ help_id }}">{{ field.help_text }}</p>{% endif %}
+  {% if field.errors %}<p class="field__error" id="{{ error_id }}">{% icon "circle-alert" %}<span>{{ field.errors|join:" " }}</span></p>{% endif %}
+  {{ widget }}
+</div>
+{% endif %}

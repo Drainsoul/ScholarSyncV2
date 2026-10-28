@@ -1,0 +1,117 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  padding: 0 var(--space-5);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font: 600 var(--text-base) / 1 var(--font-body);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--duration) var(--ease),
+    border-color var(--duration) var(--ease);
+}
+
+.btn--primary {
+  background: var(--brand-600);
+  color: var(--text-inverse);
+}
+
+.btn--primary:hover {
+  background: var(--brand-700);
+  color: var(--text-inverse);
+}
+
+.btn--secondary {
+  background: var(--surface);
+  border-color: var(--border-control);
+  color: var(--text);
+}
+
+.btn--secondary:hover {
+  background: var(--surface-sunken);
+  color: var(--text);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--link);
+}
+
+.btn--ghost:hover {
+  background: var(--danger-50);
+  color: var(--link-hover);
+}
+
+/* Outlined so a destructive action never looks like the red primary button (spec §12). */
+.btn--danger {
+  background: var(--surface);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.btn--danger:hover {
+  background: var(--danger-50);
+  color: var(--link-hover);
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.icon-btn {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: var(--control-height);
+  height: var(--control-height);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  background: var(--surface-sunken);
+  color: var(--text);
+}
+
+/* htmx adds .htmx-request to the element making a request (includeIndicatorStyles is off, spec §10). */
+.htmx-indicator {
+  display: none;
+}
+
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+  display: inline-block;
+}
+
+.spinner {
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: var(--radius-full);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(1turn);
+  }
+}

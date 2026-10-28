@@ -12,6 +12,8 @@ from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_safe
 
+from apps.kit.forms import KitForm, invalid_kit_form
+
 View = Callable[..., HttpResponse]
 
 ICONS_DIR = settings.BASE_DIR / "frontend" / "src" / "icons"
@@ -21,6 +23,7 @@ SECTIONS: list[tuple[str, str]] = [
     ("colour", "Colour"),
     ("type", "Type"),
     ("icons", "Icons"),
+    ("controls", "Controls"),
 ]
 
 SWATCHES = [
@@ -56,6 +59,8 @@ def index_context(request: HttpRequest) -> dict[str, object]:
         ],
         "swatches": SWATCHES,
         "icons": icon_names(),
+        "empty_form": KitForm(prefix="empty"),
+        "invalid_form": invalid_kit_form(),
     }
 
 

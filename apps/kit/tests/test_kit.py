@@ -41,3 +41,14 @@ def test_every_swatch_is_a_token_with_a_kit_style():
     for name in SWATCHES:
         assert re.search(rf"--{name}:", tokens), name
         assert re.search(rf"\.kit-swatch--{name}\s*\{{\s*background:\s*var\(--{name}\);", kit), name
+
+
+def test_kit_shows_controls_in_every_state(client, kit_on, vite_build):
+    body = client.get("/_kit/").content.decode()
+    assert '<section class="kit-section" id="controls"' in body
+    for marker in ("btn--primary", "btn--secondary", "btn--ghost", "btn--danger", " disabled>"):
+        assert marker in body
+    assert 'aria-invalid="true"' in body
+    assert '<div class="alert alert--danger" role="alert">' in body
+    assert "<progress" in body
+    assert "&lt;img src=x&gt;" in body  # echoed invalid choice, escaped
