@@ -1,0 +1,8 @@
+{% load ui %}
+<section class="kit-section" id="icons" aria-labelledby="icons-title">
+  <h2 id="icons-title">Icons</h2>
+  <p>Lucide icons from one sprite. Icons are decorative by default; give one a label when it is the only content of a control.</p>
+  <ul class="kit-icons">
+    {% for name in icons %}<li>{% icon name %}<code>{{ name }}</code></li>{% endfor %}
+  </ul>
+</section>

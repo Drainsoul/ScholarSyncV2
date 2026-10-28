@@ -22,6 +22,7 @@ dev = [
     "ruff>=0.17",
     "mypy>=2.4",
     "django-stubs[compatible-mypy]>=6.1.2",
+    "pytest-playwright>=0.10",
 ]
 
 [tool.vercel]
@@ -33,7 +34,8 @@ build = "python build.py"
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.test_settings"
 python_files = ["test_*.py"]
-addopts = "-q"
+addopts = "-q -m 'not e2e'"
+markers = ["e2e: Playwright browser tests; run with -m e2e --ds=config.e2e_settings --browser chromium"]
 
 [tool.ruff]
 line-length = 100

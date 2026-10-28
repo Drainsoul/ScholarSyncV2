@@ -1,0 +1,179 @@
+/* Design-kit pages only (apps/kit); not part of the app bundle. */
+.kit-header {
+  background: var(--nav-bg);
+}
+
+.kit-header__home {
+  display: inline-flex;
+  align-items: center;
+  min-height: 3.5rem;
+  color: var(--nav-text);
+  font-family: var(--font-heading);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.kit-header__home:hover {
+  color: var(--nav-text);
+  text-decoration: underline;
+}
+
+.kit-header :focus-visible {
+  outline-color: var(--nav-marker);
+}
+
+.kit-toc ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin: 0 0 var(--space-8);
+  padding: 0;
+  list-style: none;
+}
+
+.kit-section {
+  padding-block: var(--space-8);
+  border-top: 1px solid var(--border);
+}
+
+.kit-state {
+  margin-bottom: var(--space-8);
+}
+
+.kit-state > h3 {
+  font-size: var(--text-base);
+  color: var(--text-muted);
+}
+
+.kit-swatches,
+.kit-icons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kit-swatches li,
+.kit-icons li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.kit-swatch {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.kit-swatch--brand-700 {
+  background: var(--brand-700);
+}
+
+.kit-swatch--brand-600 {
+  background: var(--brand-600);
+}
+
+.kit-swatch--brand-500 {
+  background: var(--brand-500);
+}
+
+.kit-swatch--brand-400 {
+  background: var(--brand-400);
+}
+
+.kit-swatch--brand-50 {
+  background: var(--brand-50);
+}
+
+.kit-swatch--accent {
+  background: var(--accent);
+}
+
+.kit-swatch--accent-50 {
+  background: var(--accent-50);
+}
+
+.kit-swatch--navy-800 {
+  background: var(--navy-800);
+}
+
+.kit-swatch--navy-700 {
+  background: var(--navy-700);
+}
+
+.kit-swatch--navy-muted {
+  background: var(--navy-muted);
+}
+
+.kit-swatch--info {
+  background: var(--info);
+}
+
+.kit-swatch--info-50 {
+  background: var(--info-50);
+}
+
+.kit-swatch--success {
+  background: var(--success);
+}
+
+.kit-swatch--success-50 {
+  background: var(--success-50);
+}
+
+.kit-swatch--warning {
+  background: var(--warning);
+}
+
+.kit-swatch--warning-50 {
+  background: var(--warning-50);
+}
+
+.kit-swatch--gray-900 {
+  background: var(--gray-900);
+}
+
+.kit-swatch--gray-800 {
+  background: var(--gray-800);
+}
+
+.kit-swatch--gray-700 {
+  background: var(--gray-700);
+}
+
+.kit-swatch--gray-600 {
+  background: var(--gray-600);
+}
+
+.kit-swatch--gray-500 {
+  background: var(--gray-500);
+}
+
+.kit-swatch--gray-400 {
+  background: var(--gray-400);
+}
+
+.kit-swatch--gray-300 {
+  background: var(--gray-300);
+}
+
+.kit-swatch--gray-200 {
+  background: var(--gray-200);
+}
+
+.kit-swatch--gray-100 {
+  background: var(--gray-100);
+}
+
+.kit-swatch--gray-50 {
+  background: var(--gray-50);
+}
+
+.kit-swatch--white {
+  background: var(--white);
+}

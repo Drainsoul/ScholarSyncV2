@@ -1,0 +1,9 @@
+{% extends "kit/base.html" %}
+{% block content %}
+<h1>Design kit</h1>
+<p>Every component in every state, built from <code>frontend/src/styles</code> and <code>templates/components</code> (spec §12). Sample data only.</p>
+<nav class="kit-toc" aria-label="Sections">
+  <ul>{% for section in sections %}<li><a href="#{{ section.id }}">{{ section.title }}</a></li>{% endfor %}</ul>
+</nav>
+{% for section in sections %}{% include section.template %}{% endfor %}
+{% endblock %}

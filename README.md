@@ -27,6 +27,8 @@ npm --prefix frontend run build      # or `npm --prefix frontend run dev` with V
 python -m uv run python manage.py runserver
 ```
 
+The design kit is at <http://localhost:8000/_kit/> when `DJANGO_KIT=true` (the default with `DJANGO_DEBUG=true`).
+
 ### Checks (the same commands CI runs)
 ```powershell
 python -m uv run ruff check .
@@ -34,6 +36,8 @@ python -m uv run ruff format --check .
 python -m uv run mypy .
 python -m uv run python manage.py makemigrations --check --dry-run
 python -m uv run pytest -n auto
+python -m uv run playwright install chromium   # once
+python -m uv run pytest -m e2e --ds=config.e2e_settings --browser chromium
 npm --prefix frontend run typecheck
 npm --prefix frontend run check
 npm --prefix frontend run build; npm --prefix frontend run budget
