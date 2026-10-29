@@ -1,6 +1,8 @@
-{% load ui %}{% if form.non_field_errors %}
-<div class="alert alert--danger" role="alert">
-  {% icon "circle-alert" %}
-  <div>{% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div>
+{% if form.non_field_errors %}
+<div class="banner banner--danger" role="alert">
+  <div>
+    <p class="banner__title">There is a problem</p>
+    <ul>{% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}</ul>
+  </div>
 </div>
 {% endif %}

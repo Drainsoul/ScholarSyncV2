@@ -65,7 +65,7 @@ def test_kit_shows_controls_in_every_state(client, kit_on, vite_build):
     for marker in ("btn--primary", "btn--secondary", "btn--ghost", "btn--danger", " disabled>"):
         assert marker in body
     assert 'aria-invalid="true"' in body
-    assert '<div class="alert alert--danger" role="alert">' in body
+    assert '<div class="banner banner--danger" role="alert">' in body
     assert "<progress" in body
     assert "&lt;img src=x&gt;" in body  # echoed invalid choice, escaped
 

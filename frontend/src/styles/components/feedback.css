@@ -1,44 +1,60 @@
-.alert {
+/* .alert is kept as an alias of .banner until the kit sections stop using it. */
+:is(.banner, .alert) {
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
   margin: 0 0 var(--space-5);
-  padding: var(--space-4);
-  border-left: 4px solid currentColor;
-  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  border-left: 5px solid var(--info);
+  border-radius: 0;
   background: var(--info-50);
-  color: var(--info);
+  color: var(--text);
 }
 
-.alert > .icon {
+:is(.banner, .alert) > .icon {
   margin-top: 0.125rem;
 }
 
-.alert p {
+:is(.banner, .alert) p {
   margin: 0;
   color: var(--text);
 }
 
-.alert p + p {
+:is(.banner, .alert) p + p,
+:is(.banner__title, .alert__title) + :is(p, ul) {
   margin-top: var(--space-1);
 }
 
-.alert__title {
-  font-weight: 600;
+:is(.banner, .alert) ul {
+  margin: 0;
+  padding-left: var(--space-5);
 }
 
-.alert--success {
+:is(.banner__title, .alert__title) {
+  margin: 0;
+  font: 600 var(--text-base) / 1.4 var(--font-body);
+}
+
+:is(.banner--success, .alert--success) {
+  border-left-color: var(--success);
   background: var(--success-50);
-  color: var(--success);
 }
 
-.alert--warning {
+:is(.banner--warning, .alert--warning) {
+  border-left-color: var(--warning);
   background: var(--warning-50);
+}
+
+:is(.banner--danger, .alert--danger) {
+  border-left-color: var(--danger);
+  background: var(--danger-50);
+}
+
+:is(.banner--warning, .alert--warning) > .icon {
   color: var(--warning);
 }
 
-.alert--danger {
-  background: var(--danger-50);
+:is(.banner--danger, .alert--danger) > .icon {
   color: var(--danger);
 }
 
@@ -57,10 +73,10 @@
   align-items: flex-start;
   gap: var(--space-2);
   padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4);
-  border-left: 4px solid var(--info);
-  border-radius: var(--radius-md);
+  border-left: 5px solid var(--info);
+  border-radius: var(--radius-lg);
   background: var(--surface);
-  box-shadow: var(--shadow-2);
+  box-shadow: var(--shadow-float);
   color: var(--text);
 }
 
@@ -105,7 +121,7 @@ html:not(.js) .toast__close {
   border: 0;
   border-radius: var(--radius-lg);
   background: var(--surface);
-  box-shadow: var(--shadow-2);
+  box-shadow: var(--shadow-float);
   color: var(--text);
 }
 
@@ -118,14 +134,16 @@ html:not(.js) .toast__close {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  padding: var(--space-4) var(--space-4) 0 var(--space-6);
+  padding: var(--space-4) var(--space-4) var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--border);
 }
 
 .dialog__title {
   margin: 0;
+  font-family: var(--font-heading);
   font-size: var(--text-xl);
 }
 
 .dialog__body {
-  padding: var(--space-4) var(--space-6) var(--space-6);
+  padding: var(--space-5) var(--space-6) var(--space-6);
 }
