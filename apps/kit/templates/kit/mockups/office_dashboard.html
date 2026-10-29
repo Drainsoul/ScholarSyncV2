@@ -17,11 +17,10 @@
       <div class="card__header"><h2 class="card__title" id="programs-title">Programs</h2><a href="#">Manage programs</a></div>
       <div class="table-wrap" role="region" aria-labelledby="programs-title" tabindex="0">
         <table class="table">
-          <thead><tr><th scope="col">Program</th><th scope="col">Applications window</th><th scope="col" class="num">Applications</th><th scope="col" class="num">Scholars</th><th scope="col">Budget used</th></tr></thead>
+          <thead><tr><th scope="col">Program</th><th scope="col" class="num">Applications</th><th scope="col" class="num">Scholars</th><th scope="col" class="num">Budget used</th></tr></thead>
           <tbody>{% for item in programs %}<tr>
-            <th scope="row"><a href="#">{{ item.name }}</a></th><td>{{ item.window }}</td>
-            <td class="num">{{ item.applications }}</td><td class="num">{{ item.scholars }}</td>
-            <td><div class="meter-row"><meter min="0" max="100" low="70" high="90" optimum="0" value="{{ item.used_percent }}" aria-label="{{ item.name }} budget used">{{ item.used_percent }}%</meter><p class="num">{{ item.used_percent }}%</p></div></td>
+            <th scope="row" class="nowrap"><a href="#">{{ item.name }}</a><br><span class="text-sm text-muted">{{ item.window }}</span></th>
+            <td class="num">{{ item.applications }}</td><td class="num">{{ item.scholars }}</td><td class="num">{{ item.used_percent }}%</td>
           </tr>{% endfor %}</tbody>
         </table>
       </div>
@@ -31,7 +30,7 @@
       <div class="table-wrap" role="region" aria-labelledby="months-title" tabindex="0">
         <table class="table">
           <thead><tr><th scope="col">Month</th><th scope="col" class="num">Applications</th><th scope="col"><span class="visually-hidden">Relative volume</span></th></tr></thead>
-          <tbody>{% for month in months %}<tr><th scope="row">{{ month.label }}</th><td class="num">{{ month.count }}</td><td><meter min="0" max="{{ max_month }}" value="{{ month.count }}" aria-label="{{ month.label }}: {{ month.count }} applications">{{ month.count }}</meter></td></tr>{% endfor %}</tbody>
+          <tbody>{% for month in months %}<tr><th scope="row">{{ month.label }}</th><td class="num">{{ month.count }}</td><td class="bar"><meter min="0" max="{{ max_month }}" value="{{ month.count }}" aria-label="{{ month.label }}: {{ month.count }} applications">{{ month.count }}</meter></td></tr>{% endfor %}</tbody>
         </table>
       </div>
     </section>
@@ -39,7 +38,7 @@
   <div class="stack">
     <section class="card" aria-labelledby="attention-title">
       <h2 class="card__title" id="attention-title">Needs attention</h2>
-      <ul class="checklist">{% for item in attention %}<li class="is-pending">{% icon item.icon %}<div><p><a href="#">{{ item.text }}</a></p></div></li>{% endfor %}</ul>
+      <ul class="list">{% for item in attention %}<li><p><a href="#">{{ item.text }}</a></p></li>{% endfor %}</ul>
     </section>
     <section class="card" aria-labelledby="activity-title">
       <h2 class="card__title" id="activity-title">Recent activity</h2>

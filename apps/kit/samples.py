@@ -180,7 +180,7 @@ def student_dashboard() -> dict[str, object]:
             {
                 "term": "1st semester, 2026–2027",
                 "amount": Decimal("7500.00"),
-                "label": "Scheduled 14 Nov",
+                "label": "Scheduled",
                 "tone": "info",
             },
             {
@@ -412,14 +412,14 @@ def office_dashboard() -> dict[str, object]:
         "programs": [
             {
                 "name": "TCU CEAA",
-                "window": "Closed",
+                "window": "Applications closed",
                 "applications": 412,
                 "scholars": 968,
                 "used_percent": 64,
             },
             {
                 "name": "LANI",
-                "window": "Open until 15 Nov",
+                "window": "Open until 15 November",
                 "applications": 233,
                 "scholars": 316,
                 "used_percent": 41,
@@ -433,12 +433,9 @@ def office_dashboard() -> dict[str, object]:
             {"label": "October", "count": 242},
         ],
         "attention": [
-            {"text": "3 program reports are waiting for your review", "icon": "file-check"},
-            {
-                "text": "LANI: 12 applications have waited more than 7 days",
-                "icon": "triangle-alert",
-            },
-            {"text": "TCU CEAA has used 64% of its budget with 2 months left", "icon": "wallet"},
+            {"text": "3 program reports are waiting for your review"},
+            {"text": "12 LANI applications have waited more than 7 days"},
+            {"text": "TCU CEAA has used 64% of its budget with 2 months left"},
         ],
         "activity": [
             {

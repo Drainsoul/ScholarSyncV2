@@ -1,5 +1,5 @@
-/* .alert is kept as an alias of .banner until the kit sections stop using it. */
-:is(.banner, .alert) {
+/* Notification banners: 5 px coloured left bar, bold title. */
+.banner {
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
@@ -11,50 +11,51 @@
   color: var(--text);
 }
 
-:is(.banner, .alert) > .icon {
+.banner > .icon {
   margin-top: 0.125rem;
 }
 
-:is(.banner, .alert) p {
+.banner p {
   margin: 0;
   color: var(--text);
 }
 
-:is(.banner, .alert) p + p,
-:is(.banner__title, .alert__title) + :is(p, ul) {
-  margin-top: var(--space-1);
-}
-
-:is(.banner, .alert) ul {
+/* Before the spacing rules below: same specificity, so the later rule wins. */
+.banner ul {
   margin: 0;
   padding-left: var(--space-5);
 }
 
-:is(.banner__title, .alert__title) {
+.banner p + p,
+.banner__title + :is(p, ul) {
+  margin-top: var(--space-1);
+}
+
+.banner__title {
   margin: 0;
   font: 600 var(--text-base) / 1.4 var(--font-body);
 }
 
-:is(.banner--success, .alert--success) {
+.banner--success {
   border-left-color: var(--success);
   background: var(--success-50);
 }
 
-:is(.banner--warning, .alert--warning) {
+.banner--warning {
   border-left-color: var(--warning);
   background: var(--warning-50);
 }
 
-:is(.banner--danger, .alert--danger) {
+.banner--danger {
   border-left-color: var(--danger);
   background: var(--danger-50);
 }
 
-:is(.banner--warning, .alert--warning) > .icon {
+.banner--warning > .icon {
   color: var(--warning);
 }
 
-:is(.banner--danger, .alert--danger) > .icon {
+.banner--danger > .icon {
   color: var(--danger);
 }
 

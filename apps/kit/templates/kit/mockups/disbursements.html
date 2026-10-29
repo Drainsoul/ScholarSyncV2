@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-header">
   <div><h1>Disbursements</h1><p class="page-header__meta">{{ program.name }}, 1st semester 2026–2027</p></div>
-  <button type="button" class="btn btn--secondary">{% icon "plus" %}Generate disbursements</button>
+  <button type="button" class="btn btn--secondary">Generate disbursements</button>
 </div>
 {% include "components/tabs.html" with tabs_label="Money sections" %}
 <div class="figures">
@@ -12,7 +12,7 @@
   {% include "components/stat_tile.html" with label="Approved, not yet released" value=budget.committed|peso %}
   {% include "components/stat_tile.html" with label="Available" value=budget.available|peso %}
 </div>
-<div class="card meter-row">
+<div class="meter-row">
   <label for="budget-used">Budget used</label>
   <meter id="budget-used" min="0" max="100" low="70" high="90" optimum="0" value="{{ budget.used_percent }}">{{ budget.used_percent }}%</meter>
   <p class="num">{{ budget.used_percent }}% of {{ budget.total|peso }}, counting approved disbursements</p>
@@ -21,7 +21,7 @@
   <div class="field"><label class="field__label" for="d-q">Scholar</label><input class="input" type="search" id="d-q" name="q"></div>
   <div class="field"><label class="field__label" for="d-status">Status</label><select class="input" id="d-status" name="status"><option>Any status</option><option>Prepared</option><option>Approved</option><option>Released</option></select></div>
   <div class="field"><label class="field__label" for="d-tier">Tier</label><select class="input" id="d-tier" name="tier"><option>Any tier</option><option>Basic</option><option>Priority</option><option>Honors</option></select></div>
-  <button class="btn btn--secondary" type="submit">{% icon "filter" %}Apply filters</button>
+  <button class="btn btn--secondary" type="submit">Apply filters</button>
 </form>
 <form method="post" action="" data-bulk>
   {% csrf_token %}
@@ -29,7 +29,7 @@
     <p class="bulk-bar__count" data-bulk-count aria-live="polite">Select disbursements, then choose an action.</p>
     <div class="btn-row">
       <button class="btn btn--primary" type="button">Approve selected</button>
-      <button class="btn btn--secondary" type="button">{% icon "shield-check" %}Release selected</button>
+      <button class="btn btn--secondary" type="button">Release selected</button>
     </div>
   </div>
   <p class="table-count">{{ total }} disbursements. Releasing needs a program head and asks for your password again.</p>

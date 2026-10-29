@@ -110,6 +110,11 @@ code {
   font-variant-numeric: tabular-nums;
 }
 
+/* Short labels that read badly broken across lines (a table scrolls instead). */
+.nowrap {
+  white-space: nowrap;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;

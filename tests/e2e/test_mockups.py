@@ -24,6 +24,15 @@ OVERFLOWING_STATS = """() => [...document.querySelectorAll(".figure__value")]
     return box.right > tile.right || box.left < tile.left || value.scrollWidth > value.clientWidth;
   })
   .map((value) => value.textContent)"""
+# Each figure value that wraps onto a second line (money must never break mid-number).
+WRAPPING_STATS = """() => [...document.querySelectorAll(".figure__value")]
+  .filter((value) => {
+    const text = document.createRange();
+    text.selectNodeContents(value);
+    const tops = new Set([...text.getClientRects()].map((rect) => Math.round(rect.top)));
+    return tops.size > 1;
+  })
+  .map((value) => value.textContent)"""
 
 
 @pytest.mark.parametrize("viewport", list(VIEWPORTS))
@@ -38,7 +47,10 @@ def test_mockup_fits_and_has_no_errors(
     assert page.evaluate("document.documentElement.scrollWidth") <= size["width"]
     assert console_errors == []
     if folder := os.environ.get("MOCKUP_SCREENSHOTS"):
-        page.screenshot(path=Path(folder) / f"{slug}-{viewport}.png", full_page=True)
+        # Settled styles: a load-time transition must not leave a half-faded button in the shot.
+        page.screenshot(
+            path=Path(folder) / f"{slug}-{viewport}.png", full_page=True, animations="disabled"
+        )
 
 
 @pytest.mark.parametrize("viewport", list(VIEWPORTS))
@@ -48,4 +60,14 @@ def test_stat_values_stay_inside_their_tiles(page: Page, live_server, vite_build
     page.goto(f"{live_server.url}/_kit/mockups/{slug}/")
     page.evaluate("document.fonts.ready")
     assert page.locator(".figure__value").count() >= 4
+    assert page.evaluate(OVERFLOWING_STATS) == []
+
+
+@pytest.mark.parametrize("width", [375, 768, 1024, 1280, 1440])
+@pytest.mark.parametrize("slug", STAT_SLUGS)
+def test_money_figures_never_break_mid_number(page: Page, live_server, vite_build, slug, width):
+    page.set_viewport_size({"width": width, "height": 900})
+    page.goto(f"{live_server.url}/_kit/mockups/{slug}/")
+    page.evaluate("document.fonts.ready")
+    assert page.evaluate(WRAPPING_STATS) == []
     assert page.evaluate(OVERFLOWING_STATS) == []
