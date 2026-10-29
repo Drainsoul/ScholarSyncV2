@@ -42,10 +42,9 @@ SECTIONS: list[tuple[str, str]] = [
 ]
 
 SWATCHES = [
-    "brand-700", "brand-600", "brand-500", "brand-400", "brand-50", "accent", "accent-50",
-    "navy-800", "navy-700", "navy-muted", "info", "info-50", "success", "success-50",
-    "warning", "warning-50", "gray-900", "gray-800", "gray-700", "gray-600", "gray-500",
-    "gray-400", "gray-300", "gray-200", "gray-100", "gray-50", "white",
+    "ink-900", "ink-600", "stone-50", "stone-100", "stone-300", "stone-600", "white",
+    "navy-700", "navy-800", "navy-50", "navy-muted", "red-700", "red-50", "gold-400",
+    "green-800", "green-50", "amber-800", "amber-50",
 ]  # fmt: skip
 
 

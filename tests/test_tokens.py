@@ -38,34 +38,38 @@ def contrast(a: str, b: str) -> float:
 TEXT_PAIRS = [
     ("text", "surface"),
     ("text", "bg"),
+    ("text", "surface-sunken"),
     ("text-muted", "surface"),
     ("text-muted", "bg"),
     ("text-muted", "surface-sunken"),
     ("link", "surface"),
     ("link", "bg"),
-    ("link-hover", "danger-50"),
-    ("text-inverse", "brand-600"),
-    ("text-inverse", "brand-700"),
+    ("link-hover", "primary-50"),
+    ("on-primary", "primary"),
+    ("on-primary", "primary-hover"),
+    ("primary", "primary-50"),
+    ("danger", "surface"),
     ("danger", "danger-50"),
-    ("info", "info-50"),
+    ("text-inverse", "danger"),
     ("success", "success-50"),
     ("warning", "warning-50"),
-    ("gray-700", "gray-100"),
-    ("text", "accent-50"),
+    ("info", "info-50"),
     ("nav-text", "nav-bg"),
     ("nav-text-muted", "nav-bg"),
     ("nav-text", "nav-bg-hover"),
+    ("text", "accent"),
 ]
-# Control borders, focus rings and the active-nav marker must reach 3:1 (WCAG 1.4.11).
+# Control borders, focus rings and markers must reach 3:1 (WCAG 1.4.11).
 NON_TEXT_PAIRS = [
     ("border-control", "surface"),
     ("focus", "surface"),
     ("focus", "bg"),
+    ("focus-halo", "nav-bg"),
     ("nav-marker", "nav-bg"),
-    ("nav-marker", "nav-bg-hover"),
+    ("primary", "surface"),
 ]
 DECORATIVE_AS_TEXT = re.compile(
-    r"(?<![-\w])color:\s*var\(--(brand-500|brand-400|accent|nav-marker)\)"
+    r"(?<![-\w])color:\s*var\(--(accent|gold-400|focus-halo|nav-marker)\)"
 )
 
 
@@ -99,7 +103,7 @@ def test_fonts_are_self_hosted(vite_build):
         (dist / name).read_text(encoding="utf-8") for name in manifest["src/main.ts"]["css"]
     )
     assert "@font-face" in css
-    assert "Inter" in css
-    assert "Poppins" in css
+    assert "Lexend" in css
+    assert "Source Sans 3" in css
     assert ".woff2" in css
     assert "//fonts." not in css
