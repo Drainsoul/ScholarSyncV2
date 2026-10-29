@@ -14,7 +14,7 @@
           {% for key, status in statuses.items %}<option value="{{ key }}"{% if request.GET.status == key %} selected{% endif %}>{{ status.label }}</option>{% endfor %}
         </select>
       </div>
-      <button class="btn btn--secondary" type="submit">{% icon "filter" %}Apply filters</button>
+      <button class="btn btn--secondary" type="submit">Apply filters</button>
     </form>
     {# The count is a live region outside the swap target, so screen readers hear each new result. #}
     <p id="scholars-count" class="table-count" role="status">{{ total }} scholar{{ total|pluralize }}</p>
