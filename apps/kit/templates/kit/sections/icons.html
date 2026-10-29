@@ -1,7 +1,7 @@
 {% load ui %}
 <section class="kit-section" id="icons" aria-labelledby="icons-title">
   <h2 id="icons-title">Icons</h2>
-  <p>Lucide icons from one sprite, used sparingly. A button carries an icon only to download, close, open the menu or sign out; tags, figures and navigation items never do. Checklists keep their met and not-met icons because they sit beside the words. Icons are decorative by default; give one a label when it is the only content of a control.</p>
+  <p>Lucide icons from one sprite, used sparingly. A button carries an icon only to download, close, open the menu or sign out; tags, figures and navigation items never do. A banner leads with an icon only for a warning or an error. Checklists keep their met and not-met icons because they sit beside the words. Icons are decorative by default; give one a label when it is the only content of a control.</p>
   <ul class="kit-icons">
     {% for name in icons %}<li>{% icon name %}<code>{{ name }}</code></li>{% endfor %}
   </ul>

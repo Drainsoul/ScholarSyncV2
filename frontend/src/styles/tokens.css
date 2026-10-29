@@ -48,6 +48,8 @@
   --accent: var(--gold-400);
   --focus: var(--ink-900);
   --focus-halo: var(--gold-400);
+  /* The gold halo outside the 3 px ink outline; components that draw their own inset marker add it. */
+  --focus-ring: 0 0 0 6px var(--focus-halo);
   --nav-bg: var(--navy-700);
   --nav-bg-hover: var(--navy-800);
   --nav-text: var(--white);
@@ -89,7 +91,7 @@
   /* Sizes and motion */
   --control-height: 2.75rem;
   --sidebar-width: 15rem;
-  --content-max: 76rem;
+  --content-max: 72rem;
   --duration: 150ms;
   --ease: cubic-bezier(0.2, 0, 0, 1);
 }

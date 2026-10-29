@@ -15,7 +15,7 @@ from apps.kit.forms import ApplyForm, DecisionForm
 
 class Status(TypedDict):
     label: str
-    tone: str
+    tone: str  # a tag modifier (success, warning, danger, info); "" renders a plain grey tag
 
 
 class Scholar(TypedDict):
@@ -48,7 +48,7 @@ TIERS = [
 STATUSES: dict[str, Status] = {
     "active": {"label": "Active", "tone": "success"},
     "at_risk": {"label": "At risk", "tone": "warning"},
-    "on_hold": {"label": "On hold", "tone": "neutral"},
+    "on_hold": {"label": "On hold", "tone": ""},
     "ended": {"label": "Ended", "tone": "danger"},
 }
 _SCHOLAR_STATUSES = [
@@ -372,7 +372,7 @@ def application_review() -> dict[str, object]:
 
 def disbursements() -> dict[str, object]:
     statuses = [
-        ("Prepared", "neutral"),
+        ("Prepared", ""),
         ("Approved", "info"),
         ("Released", "success"),
     ]

@@ -71,3 +71,66 @@ def test_money_figures_never_break_mid_number(page: Page, live_server, vite_buil
     page.evaluate("document.fonts.ready")
     assert page.evaluate(WRAPPING_STATS) == []
     assert page.evaluate(OVERFLOWING_STATS) == []
+
+
+# Each element inside a panel that pokes out of it, and each panel table that scrolls sideways.
+CLIPPED_IN_PANELS = """() => {
+  const out = [];
+  for (const card of document.querySelectorAll(".card")) {
+    const box = card.getBoundingClientRect();
+    for (const el of card.querySelectorAll("*")) {
+      const r = el.getBoundingClientRect();
+      if (r.width <= 1 || r.height <= 1) continue;  // visually hidden text
+      if (r.left < box.left - 0.5 || r.right > box.right + 0.5) out.push(el.outerHTML.slice(0, 80));
+    }
+    for (const wrap of card.querySelectorAll(".table-wrap")) {
+      const name = wrap.getAttribute("aria-labelledby");
+      if (wrap.scrollWidth > wrap.clientWidth) out.push(`scrolls: ${name}`);
+    }
+  }
+  return out;
+}"""
+
+
+@pytest.mark.parametrize("slug", list(MOCKUPS))
+def test_nothing_in_a_panel_is_clipped_on_a_phone(page: Page, live_server, vite_build, slug):
+    page.set_viewport_size(VIEWPORTS["phone"])
+    page.goto(f"{live_server.url}/_kit/mockups/{slug}/")
+    page.evaluate("document.fonts.ready")
+    assert page.evaluate(CLIPPED_IN_PANELS) == []
+
+
+def test_file_links_keep_the_icon_with_the_name(page: Page, live_server, vite_build):
+    page.set_viewport_size(VIEWPORTS["phone"])
+    page.goto(f"{live_server.url}/_kit/mockups/application-review/")
+    page.evaluate("document.fonts.ready")
+    # One line tall: an icon on a line of its own, or a name broken mid-word, makes it taller.
+    tall = page.evaluate(
+        """() => [...document.querySelectorAll(".file-link")].filter((link) => {
+          const lineHeight = parseFloat(getComputedStyle(link).fontSize) * 1.6;
+          return link.getBoundingClientRect().height > lineHeight;
+        }).map((link) => link.textContent)"""
+    )
+    assert page.locator(".file-link").count() == 4
+    assert tall == []
+
+
+def test_panel_header_text_has_no_stray_margin(page: Page, live_server, vite_build):
+    page.goto(f"{live_server.url}/_kit/mockups/application-review/")
+    margins = page.locator(".card__header > p").evaluate_all(
+        "(els) => els.map((el) => getComputedStyle(el).marginBottom)"
+    )
+    assert margins and set(margins) == {"0px"}
+
+
+@pytest.mark.parametrize("slug", list(MOCKUPS))
+def test_no_transition_runs_on_load(page: Page, live_server, vite_build, slug):
+    """Buttons used to fade in on load: a size container restyled its contents after load."""
+    page.add_init_script(
+        "window.__transitions = [];"
+        "document.addEventListener('transitionrun', (event) =>"
+        " window.__transitions.push(event.target.className), true);"
+    )
+    page.goto(f"{live_server.url}/_kit/mockups/{slug}/")
+    page.wait_for_timeout(400)
+    assert page.evaluate("window.__transitions") == []

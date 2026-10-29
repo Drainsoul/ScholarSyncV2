@@ -199,7 +199,7 @@
 .topnav__list a[aria-current="page"]:focus-visible {
   box-shadow:
     inset 0 -4px 0 var(--primary),
-    0 0 0 6px var(--focus-halo);
+    var(--focus-ring);
 }
 
 .topnav__account {
@@ -217,20 +217,9 @@
   font-weight: 600;
 }
 
-/* From 64rem the header is one row: the name is read but not shown, and below 80rem the Sign out icon drops out so it
-   still fits. Below 64rem everything stacks
-   in the menu, name included. */
-@media (min-width: 64rem) {
-  .topnav__viewer {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-  }
-}
-
+/* From 64rem the header is one row: the name is read but not shown (see the viewer rule under the
+   app bar), and below 80rem the Sign out icon drops out so it still fits. Below 64rem everything
+   stacks in the menu, name included. */
 @media (min-width: 64rem) and (max-width: 79.99rem) {
   .topnav__list a {
     padding: 0 var(--space-2);
@@ -327,6 +316,20 @@
   font-weight: 400;
 }
 
+/* The viewer's name is read but not shown (the .visually-hidden pattern) where its bar has no room
+   for it: the student header from 64rem, where it is one row, and the app bar on phones. The two
+   widths differ, so CSS needs one block per width; keep them together and identical. */
+@media (min-width: 64rem) {
+  .topnav__viewer {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+
 @media (max-width: 39.99rem) {
   .appbar__viewer {
     position: absolute;
@@ -353,10 +356,18 @@
   align-items: stretch;
 }
 
+/* From 64rem the side nav runs to the bottom of the window: the body is a column and the shell takes
+   what the stripe and app bar leave, whatever height the bar wraps to. */
 @media (min-width: 64rem) {
+  body:has(> .shell) {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
   .shell {
+    flex: 1;
     grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
-    min-height: calc(100vh - 3.5rem - 4px);
   }
 }
 
@@ -415,7 +426,7 @@
 .sidenav__list a[aria-current="page"]:focus-visible {
   box-shadow:
     inset 4px 0 0 var(--primary),
-    0 0 0 6px var(--focus-halo);
+    var(--focus-ring);
 }
 
 .shell__main {
@@ -549,6 +560,17 @@
 .auth__main {
   display: flex;
   align-items: center;
+}
+
+/* On a phone the panel is a compact header and the form starts right under it, not below the fold. */
+@media (max-width: 55.99rem) {
+  .auth {
+    grid-template-rows: auto 1fr;
+  }
+
+  .auth__main {
+    align-items: flex-start;
+  }
 }
 
 .auth__form {
