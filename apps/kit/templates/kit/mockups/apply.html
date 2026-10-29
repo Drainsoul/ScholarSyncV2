@@ -28,16 +28,16 @@
     </section>
   </div>
   <div class="stack">
-    <section class="card" aria-labelledby="program-title">
-      <h2 class="card__title" id="program-title">About LANI</h2>
+    <section class="section" aria-labelledby="program-title">
+      <h2 class="section__title" id="program-title">About LANI</h2>
       <dl class="details">
         <dt>For</dt><dd>College students from Taguig in any recognized school</dd>
         <dt>Allowance</dt><dd class="num">₱5,000.00 to ₱10,000.00 a term, by tier</dd>
         <dt>Closes</dt><dd>15 November 2026</dd>
       </dl>
     </section>
-    <section class="card" aria-labelledby="match-title">
-      <h2 class="card__title" id="match-title">Do you qualify?</h2>
+    <section class="section" aria-labelledby="match-title">
+      <h2 class="section__title" id="match-title">Do you qualify?</h2>
       <ul class="checklist">{% for rule in rules %}<li class="is-{{ rule.state }}">{% icon rule.icon %}<div><p>{{ rule.text }}</p><p class="text-sm text-muted">{{ rule.status }}</p></div></li>{% endfor %}</ul>
     </section>
   </div>

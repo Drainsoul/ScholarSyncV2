@@ -24,15 +24,42 @@
   margin: 0;
 }
 
-.card__title {
+.card__title,
+.section__title {
   margin: 0;
   font-family: var(--font-heading);
   font-size: var(--text-lg);
   font-weight: 600;
 }
 
-.card > .card__title {
+.card > .card__title,
+.section > .section__title {
   margin-bottom: var(--space-4);
+}
+
+/* A section is an unboxed region on the page background, headed by the same 2 px rule as the
+   figures: rules instead of boxes (spec §12). Panels (.card) are kept for tables and forms. */
+.section {
+  padding-top: var(--space-3);
+  border-top: 2px solid var(--border-strong);
+}
+
+.section__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.section__header > *,
+.section > :last-child {
+  margin-bottom: 0;
+}
+
+.section__header > * {
+  margin-top: 0;
 }
 
 @media (max-width: 40rem) {
@@ -249,10 +276,11 @@
     border-top: 2px solid var(--border-strong);
   }
 
+  /* Cells sit on the value line: a tag lines up with a labelled value, not with its label. */
   .table--stack tr {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
+    align-items: flex-end;
     gap: var(--space-2) var(--space-6);
     padding: var(--space-3) var(--space-4);
     border-bottom: 1px solid var(--border);
@@ -483,7 +511,7 @@ meter::-moz-meter-bar {
   font-size: var(--text-sm);
 }
 
-.card > .meter-row {
+:is(.card, .section) > .meter-row {
   margin-bottom: var(--space-4);
 }
 

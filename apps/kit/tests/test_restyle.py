@@ -147,3 +147,38 @@ def test_file_input_error_sits_above_the_control_without_an_icon(client, kit_on,
     assert error
     assert "<svg" not in error.group(1)
     assert html.index('id="file-error-error"') < html.index('<input class="file-input__control"')
+
+
+# Secondary regions are unboxed, ruled sections; panels are kept for tables and forms (spec §12).
+SECTIONS = {
+    "student-dashboard": ["award-title", "profile-title", "notices-title"],
+    "apply": ["program-title", "match-title"],
+    "application-review": ["applicant-title", "eligibility-title", "history-title"],
+    "office-dashboard": ["attention-title", "activity-title"],
+}
+
+
+@pytest.mark.parametrize("slug", list(SECTIONS))
+def test_secondary_regions_are_sections_not_panels(client, kit_on, vite_build, slug):
+    body = client.get(f"/_kit/mockups/{slug}/").content.decode()
+    for title in SECTIONS[slug]:
+        assert f'<section class="section" aria-labelledby="{title}">' in body, title
+
+
+def test_review_status_sits_on_the_meta_line(client, kit_on, vite_build):
+    body = client.get("/_kit/mockups/application-review/").content.decode()
+    meta = re.search(r'<p class="page-header__meta">(.*?)</p>', body, re.S)
+    assert meta and '<span class="tag tag--info">Under review</span>' in meta.group(1)
+
+
+def test_student_dashboard_has_a_service_title(client, kit_on, vite_build):
+    body = client.get("/_kit/mockups/student-dashboard/").content.decode()
+    assert "<h1>Your scholarships</h1>" in body
+    assert "Hello" not in body
+    meta = re.search(r'<p class="page-header__meta">(.*?)</p>', body)
+    assert meta and "Carolyn Hawkins" in meta.group(1)
+
+
+def test_kit_shows_an_unboxed_section(client, kit_on, vite_build):
+    body = client.get("/_kit/").content.decode()
+    assert re.search(r'<section class="section[ "]', body)
