@@ -26,7 +26,7 @@ def test_layout_fits_a_phone_and_nav_toggles(
     assert console_errors == []
 
 
-def test_sidebar_is_open_on_desktop(page: Page, live_server, vite_build):
+def test_side_nav_is_open_on_desktop(page: Page, live_server, vite_build):
     page.set_viewport_size(DESKTOP)
     page.goto(f"{live_server.url}/_kit/layouts/staff/")
     expect(page.get_by_role("button", name="Menu")).to_be_hidden()
