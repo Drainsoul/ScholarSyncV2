@@ -5,11 +5,11 @@
   <div><h1>Overview</h1><p class="page-header__meta">All programs, school year 2026–2027</p></div>
   <a class="btn btn--secondary" href="#">{% icon "download" %}Export report</a>
 </div>
-<div class="stats">
-  {% include "components/stat_tile.html" with label="Programs" value="2" icon="school" tone="info" hint="1 accepting applications" %}
-  {% include "components/stat_tile.html" with label="Active scholars" value="1,284" icon="users" tone="brand" hint="38 more than last term" %}
-  {% include "components/stat_tile.html" with label="Applications waiting" value="96" icon="file-text" tone="warning" hint="12 waiting over 7 days" %}
-  {% include "components/stat_tile.html" with label="Released this year" value="₱18,240,000.00" icon="banknote" tone="success" %}
+<div class="figures">
+  {% include "components/stat_tile.html" with label="Programs" value="2" hint="1 accepting applications" %}
+  {% include "components/stat_tile.html" with label="Active scholars" value="1,284" hint="38 more than last term" %}
+  {% include "components/stat_tile.html" with label="Applications waiting" value="96" hint="12 waiting over 7 days" %}
+  {% include "components/stat_tile.html" with label="Released this year" value="₱18,240,000.00" %}
 </div>
 <div class="split">
   <div class="stack">

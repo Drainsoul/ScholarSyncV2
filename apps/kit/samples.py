@@ -16,7 +16,6 @@ from apps.kit.forms import ApplyForm, DecisionForm
 class Status(TypedDict):
     label: str
     tone: str
-    icon: str
 
 
 class Scholar(TypedDict):
@@ -28,7 +27,6 @@ class Scholar(TypedDict):
     status: str
     status_label: str
     tone: str
-    icon: str
 
 
 NAMES = [
@@ -48,10 +46,10 @@ TIERS = [
     ("Honors", Decimal("10000.00")),
 ]
 STATUSES: dict[str, Status] = {
-    "active": {"label": "Active", "tone": "success", "icon": "circle-check"},
-    "at_risk": {"label": "At risk", "tone": "warning", "icon": "triangle-alert"},
-    "on_hold": {"label": "On hold", "tone": "neutral", "icon": "info"},
-    "ended": {"label": "Ended", "tone": "danger", "icon": "circle-alert"},
+    "active": {"label": "Active", "tone": "success"},
+    "at_risk": {"label": "At risk", "tone": "warning"},
+    "on_hold": {"label": "On hold", "tone": "neutral"},
+    "ended": {"label": "Ended", "tone": "danger"},
 }
 _SCHOLAR_STATUSES = [
     "active", "active", "at_risk", "active", "on_hold", "active",
@@ -74,7 +72,6 @@ def scholars() -> list[Scholar]:
                 "status": status,
                 "status_label": info["label"],
                 "tone": info["tone"],
-                "icon": info["icon"],
             }
         )
     return rows
@@ -172,14 +169,12 @@ def student_dashboard() -> dict[str, object]:
                 "submitted": "12 Jun 2026",
                 "label": "Approved",
                 "tone": "success",
-                "icon": "circle-check",
             },
             {
                 "program": "LANI",
                 "submitted": "2 Oct 2026",
                 "label": "Returned",
                 "tone": "warning",
-                "icon": "triangle-alert",
             },
         ],
         "allowances": [
@@ -188,21 +183,18 @@ def student_dashboard() -> dict[str, object]:
                 "amount": Decimal("7500.00"),
                 "label": "Scheduled 14 Nov",
                 "tone": "info",
-                "icon": "calendar",
             },
             {
                 "term": "2nd semester, 2025–2026",
                 "amount": Decimal("7500.00"),
                 "label": "Released",
                 "tone": "success",
-                "icon": "circle-check",
             },
             {
                 "term": "1st semester, 2025–2026",
                 "amount": Decimal("5000.00"),
                 "label": "Released",
                 "tone": "success",
-                "icon": "circle-check",
             },
         ],
         "notices": [
@@ -309,28 +301,24 @@ def application_review() -> dict[str, object]:
                 "file": "grades-2026.pdf",
                 "status": "Approved",
                 "tone": "success",
-                "icon": "circle-check",
             },
             {
                 "label": "Proof of residency",
                 "file": "voters-certificate.pdf",
                 "status": "Approved",
                 "tone": "success",
-                "icon": "circle-check",
             },
             {
                 "label": "Certificate of enrollment",
                 "file": "enrollment.jpg",
                 "status": "Waiting",
                 "tone": "info",
-                "icon": "file-text",
             },
             {
                 "label": "Valid ID",
                 "file": "school-id.jpg",
                 "status": "Declined",
                 "tone": "danger",
-                "icon": "circle-alert",
             },
         ],
         "rules": [
@@ -385,9 +373,9 @@ def application_review() -> dict[str, object]:
 
 def disbursements() -> dict[str, object]:
     statuses = [
-        ("Prepared", "neutral", "file-text"),
-        ("Approved", "info", "circle-check"),
-        ("Released", "success", "banknote"),
+        ("Prepared", "neutral"),
+        ("Approved", "info"),
+        ("Released", "success"),
     ]
     rows = [
         {
@@ -397,7 +385,6 @@ def disbursements() -> dict[str, object]:
             "amount": row["amount"],
             "label": statuses[index % 3][0],
             "tone": statuses[index % 3][1],
-            "icon": statuses[index % 3][2],
         }
         for index, row in enumerate(scholars())
     ]
