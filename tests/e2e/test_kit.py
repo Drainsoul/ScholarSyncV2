@@ -18,7 +18,7 @@ def test_kit_renders_under_an_enforced_csp(page: Page, live_server, vite_build, 
     assert "content-security-policy" in response.headers
     expect(page.get_by_role("heading", level=1)).to_have_text("Design kit")
     families = page.evaluate(LOADED_FONTS)
-    assert "Inter" in families
-    assert "Poppins" in families
+    assert "Lexend" in families
+    assert "Source Sans 3" in families
     assert page.request.get(f"{live_server.url}/static/dist/icons.svg").ok
     assert console_errors == []

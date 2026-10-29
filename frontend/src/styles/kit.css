@@ -70,114 +70,77 @@
   border-radius: var(--radius-md);
 }
 
-.kit-swatch--brand-700 {
-  background: var(--brand-700);
+.kit-swatch--ink-900 {
+  background: var(--ink-900);
 }
 
-.kit-swatch--brand-600 {
-  background: var(--brand-600);
+.kit-swatch--ink-600 {
+  background: var(--ink-600);
 }
 
-.kit-swatch--brand-500 {
-  background: var(--brand-500);
+.kit-swatch--stone-50 {
+  background: var(--stone-50);
 }
 
-.kit-swatch--brand-400 {
-  background: var(--brand-400);
+.kit-swatch--stone-100 {
+  background: var(--stone-100);
 }
 
-.kit-swatch--brand-50 {
-  background: var(--brand-50);
+.kit-swatch--stone-300 {
+  background: var(--stone-300);
 }
 
-.kit-swatch--accent {
-  background: var(--accent);
-}
-
-.kit-swatch--accent-50 {
-  background: var(--accent-50);
-}
-
-.kit-swatch--navy-800 {
-  background: var(--navy-800);
-}
-
-.kit-swatch--navy-700 {
-  background: var(--navy-700);
-}
-
-.kit-swatch--navy-muted {
-  background: var(--navy-muted);
-}
-
-.kit-swatch--info {
-  background: var(--info);
-}
-
-.kit-swatch--info-50 {
-  background: var(--info-50);
-}
-
-.kit-swatch--success {
-  background: var(--success);
-}
-
-.kit-swatch--success-50 {
-  background: var(--success-50);
-}
-
-.kit-swatch--warning {
-  background: var(--warning);
-}
-
-.kit-swatch--warning-50 {
-  background: var(--warning-50);
-}
-
-.kit-swatch--gray-900 {
-  background: var(--gray-900);
-}
-
-.kit-swatch--gray-800 {
-  background: var(--gray-800);
-}
-
-.kit-swatch--gray-700 {
-  background: var(--gray-700);
-}
-
-.kit-swatch--gray-600 {
-  background: var(--gray-600);
-}
-
-.kit-swatch--gray-500 {
-  background: var(--gray-500);
-}
-
-.kit-swatch--gray-400 {
-  background: var(--gray-400);
-}
-
-.kit-swatch--gray-300 {
-  background: var(--gray-300);
-}
-
-.kit-swatch--gray-200 {
-  background: var(--gray-200);
-}
-
-.kit-swatch--gray-100 {
-  background: var(--gray-100);
-}
-
-.kit-swatch--gray-50 {
-  background: var(--gray-50);
+.kit-swatch--stone-600 {
+  background: var(--stone-600);
 }
 
 .kit-swatch--white {
   background: var(--white);
 }
 
+.kit-swatch--navy-700 {
+  background: var(--navy-700);
+}
+
+.kit-swatch--navy-800 {
+  background: var(--navy-800);
+}
+
+.kit-swatch--navy-50 {
+  background: var(--navy-50);
+}
+
+.kit-swatch--navy-muted {
+  background: var(--navy-muted);
+}
+
+.kit-swatch--red-700 {
+  background: var(--red-700);
+}
+
+.kit-swatch--red-50 {
+  background: var(--red-50);
+}
+
+.kit-swatch--gold-400 {
+  background: var(--gold-400);
+}
+
+.kit-swatch--green-800 {
+  background: var(--green-800);
+}
+
+.kit-swatch--green-50 {
+  background: var(--green-50);
+}
+
+.kit-swatch--amber-800 {
+  background: var(--amber-800);
+}
+
+.kit-swatch--amber-50 {
+  background: var(--amber-50);
+}
 .kit-toasts {
   display: grid;
   gap: var(--space-2);

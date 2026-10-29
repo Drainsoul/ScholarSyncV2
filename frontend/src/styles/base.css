@@ -35,6 +35,7 @@ h4,
   margin: 0 0 var(--space-4);
   font-family: var(--font-heading);
   font-weight: 600;
+  letter-spacing: -0.01em;
   line-height: var(--leading-tight);
   color: var(--text);
   text-wrap: balance;
@@ -43,7 +44,6 @@ h4,
 h1,
 .h1 {
   font-size: var(--text-3xl);
-  font-weight: 700;
 }
 
 h2,
@@ -68,11 +68,13 @@ p {
 
 a {
   color: var(--link);
-  text-underline-offset: 0.15em;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
 }
 
 a:hover {
   color: var(--link-hover);
+  text-decoration-thickness: 2px;
 }
 
 code {
@@ -137,7 +139,8 @@ code {
 
 :focus-visible {
   outline: 3px solid var(--focus);
-  outline-offset: 2px;
+  outline-offset: 0;
+  box-shadow: 0 0 0 6px var(--focus-halo);
 }
 
 main:focus {
