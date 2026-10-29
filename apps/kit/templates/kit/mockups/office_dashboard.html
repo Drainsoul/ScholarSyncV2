@@ -16,11 +16,11 @@
     <section class="card" aria-labelledby="programs-title">
       <div class="card__header"><h2 class="card__title" id="programs-title">Programs</h2><a href="#">Manage programs</a></div>
       <div class="table-wrap" role="region" aria-labelledby="programs-title" tabindex="0">
-        <table class="table">
+        <table class="table table--stack">
           <thead><tr><th scope="col">Program</th><th scope="col" class="num">Applications</th><th scope="col" class="num">Scholars</th><th scope="col" class="num">Budget used</th></tr></thead>
           <tbody>{% for item in programs %}<tr>
             <th scope="row" class="nowrap"><a href="#">{{ item.name }}</a><br><span class="text-sm text-muted">{{ item.window }}</span></th>
-            <td class="num">{{ item.applications }}</td><td class="num">{{ item.scholars }}</td><td class="num">{{ item.used_percent }}%</td>
+            <td class="num" data-label="Applications">{{ item.applications }}</td><td class="num" data-label="Scholars">{{ item.scholars }}</td><td class="num" data-label="Budget used">{{ item.used_percent }}%</td>
           </tr>{% endfor %}</tbody>
         </table>
       </div>

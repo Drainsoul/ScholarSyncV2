@@ -1,4 +1,4 @@
-{% load ui %}{% if layout == "group" %}
+{% if layout == "group" %}
 <fieldset class="field field--group{% if field.errors %} field--invalid{% endif %}">
   <legend class="field__label">{{ field.label }}{% if field.field.required %} <span class="field__required">(required)</span>{% endif %}</legend>
   {% if field.help_text %}<p class="field__help" id="{{ help_id }}">{{ field.help_text }}</p>{% endif %}

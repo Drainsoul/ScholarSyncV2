@@ -64,7 +64,8 @@ select.input,
   background-size: 1.25rem;
 }
 
-.field.field--invalid {
+/* A 4 px red bar beside the group, the message above the control (spec §12, GOV.UK pattern). */
+:is(.field, .file-input).field--invalid {
   padding-left: var(--space-4);
   border-left: 4px solid var(--danger);
 }

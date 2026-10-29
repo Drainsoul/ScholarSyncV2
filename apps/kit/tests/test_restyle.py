@@ -89,6 +89,61 @@ def test_pages_use_banners_and_plain_meta(client, kit_on, vite_build, url):
 def test_kit_copy_describes_the_civic_design(client, kit_on, vite_build):
     body = client.get("/_kit/").content.decode()
     for stale in ("Poppins", "Inter ", "Brand red is for actions", "Stat tiles", "pill", "sidebar"):
-        assert stale not in body, stale
+        assert not re.search(rf"{stale}", body), stale  # whole words: "pillar" is fine
     for current in ("Lexend", "Source Sans 3", "Figures"):
         assert current in body, current
+
+
+class Banners(HTMLParser):
+    """Records each banner's modifier classes and whether an icon sits anywhere inside it."""
+
+    VOID = CardDepth.VOID
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.stack: list[int | None] = []  # per open element: its index in found, if a banner
+        self.found: list[list[str | bool]] = []  # [modifiers, has_icon]
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in self.VOID:
+            return
+        classes = (dict(attrs).get("class") or "").split()
+        if tag == "svg":
+            for index in (i for i in self.stack if i is not None):
+                self.found[index][1] = True
+        if "banner" in classes:
+            self.found.append([" ".join(c for c in classes if c.startswith("banner--")), False])
+            self.stack.append(len(self.found) - 1)
+        else:
+            self.stack.append(None)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag not in self.VOID and self.stack:
+            self.stack.pop()
+
+
+@pytest.mark.parametrize("url", KIT_PAGES)
+def test_only_warning_and_danger_banners_carry_an_icon(client, kit_on, vite_build, url):
+    parser = Banners()
+    parser.feed(client.get(url).content.decode())
+    assert parser.found or url != "/_kit/"
+    with_icons = [mods or "info" for mods, has_icon in parser.found if has_icon]
+    assert set(with_icons) <= {"banner--warning", "banner--danger"}, with_icons
+
+
+@pytest.mark.parametrize("url", KIT_PAGES)
+def test_tags_use_only_defined_tones(client, kit_on, vite_build, url):
+    body = client.get(url).content.decode()
+    tones = set(re.findall(r'class="tag tag--([a-z-]+)"', body))
+    assert tones <= {"success", "warning", "danger", "info"}, tones
+
+
+def test_file_input_error_sits_above_the_control_without_an_icon(client, kit_on, vite_build):
+    body = client.get("/_kit/").content.decode()
+    block = re.search(r'<div class="file-input field--invalid">(.*?)</div>', body, re.S)
+    assert block, "the error state marks the file input invalid"
+    html = block.group(1)
+    error = re.search(r'<p class="field__error" id="file-error-error">(.*?)</p>', html, re.S)
+    assert error
+    assert "<svg" not in error.group(1)
+    assert html.index('id="file-error-error"') < html.index('<input class="file-input__control"')

@@ -21,11 +21,11 @@
     <section class="card" aria-labelledby="documents-title">
       <div class="card__header"><h2 class="card__title" id="documents-title">Documents</h2><p class="text-sm text-muted">2 of 4 approved</p></div>
       <div class="table-wrap" role="region" aria-labelledby="documents-title" tabindex="0">
-        <table class="table">
+        <table class="table table--stack">
           <thead><tr><th scope="col">Document</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
           <tbody>{% for doc in documents %}<tr>
-            <th scope="row">{{ doc.label }}<br><a class="text-sm" href="#">{% icon "download" %}{{ doc.file }}</a></th>
-            <td><span class="tag tag--{{ doc.tone }}">{{ doc.status }}</span></td>
+            <th scope="row">{{ doc.label }}<br><a class="text-sm file-link" href="#">{% icon "download" %}{{ doc.file }}</a></th>
+            <td><span class="tag{% if doc.tone %} tag--{{ doc.tone }}{% endif %}">{{ doc.status }}</span></td>
             <td>{% if doc.status == "Waiting" %}<div class="btn-row"><button type="button" class="btn btn--secondary">Approve<span class="visually-hidden"> {{ doc.label }}</span></button><button type="button" class="btn btn--ghost">Decline<span class="visually-hidden"> {{ doc.label }}</span></button></div>{% endif %}</td>
           </tr>{% endfor %}</tbody>
         </table>
@@ -34,7 +34,7 @@
     <section class="card" aria-labelledby="eligibility-title">
       <h2 class="card__title" id="eligibility-title">Eligibility</h2>
       <ul class="checklist">{% for rule in rules %}<li class="is-{{ rule.state }}">{% icon rule.icon %}<div><p>{{ rule.text }}</p><p class="text-sm text-muted">{{ rule.status }}</p></div></li>{% endfor %}</ul>
-      <div class="banner" role="note">{% icon "info" %}<div><p class="banner__title">Legacy model suggests: Priority tier</p><p>Advisory only. The rules above decide eligibility.</p></div></div>
+      <div class="banner" role="note"><div><p class="banner__title">Legacy model suggests: Priority tier</p><p>Advisory only. The rules above decide eligibility.</p></div></div>
     </section>
   </div>
   <div class="stack">
