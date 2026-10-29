@@ -1,5 +1,5 @@
 {% extends "layouts/app.html" %}{% load ui %}
-{% block sidebar_context %}
+{% block appbar_context %}
 <details class="switcher">
   <summary><span><span class="switcher__label">Program</span>{{ program.name }}</span>{% icon "chevrons-up-down" %}</summary>
   <ul role="list">{% for item in programs %}<li><a href="{{ item.url }}"{% if item.current %} aria-current="true"{% endif %}>{{ item.name }}</a></li>{% endfor %}</ul>

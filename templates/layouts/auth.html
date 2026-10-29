@@ -1,8 +1,9 @@
 {% extends "base.html" %}{% load ui %}
 {% block body %}
+<div class="civic-stripe" aria-hidden="true"></div>
 <div class="auth">
   <div class="auth__panel">
-    <a class="brand" href="{% url 'core:home' %}">{% icon "logo" %}<span>ScholarSync</span></a>
+    <a class="brand" href="{% url 'core:home' %}">{% icon "logo" %}<span class="brand__name">ScholarSync</span><span class="brand__city">City of Taguig</span></a>
     <div>
       <p class="auth__tagline">Scholarships for the students of Taguig.</p>
       <p class="auth__note">Apply to city scholarship programs, upload your documents once, and follow your allowances term by term.</p>

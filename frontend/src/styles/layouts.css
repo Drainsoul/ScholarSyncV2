@@ -1,48 +1,65 @@
-/* Shared */
+/* Civic stripe: two flat halves, red then gold, above every layout */
+.civic-stripe {
+  height: 4px;
+  background: linear-gradient(to right, var(--brand) 0 50%, var(--accent) 50% 100%);
+}
+
+/* Brand block: logo, name, city */
 .brand {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
   min-height: var(--control-height);
-  color: var(--brand-600);
+  color: var(--text);
   font-family: var(--font-heading);
-  font-size: var(--text-xl);
-  font-weight: 700;
+  font-size: var(--text-lg);
+  font-weight: 600;
   text-decoration: none;
-}
-
-.brand:hover {
-  color: var(--brand-700);
 }
 
 .brand .icon {
   width: 1.75rem;
   height: 1.75rem;
+  color: var(--brand);
 }
 
-.nav-count,
-.badge {
-  display: inline-grid;
-  place-items: center;
-  min-width: 1.25rem;
-  height: 1.25rem;
-  padding: 0 0.3rem;
-  border-radius: var(--radius-full);
-  background: var(--brand-600);
-  color: var(--text-inverse);
-  font-size: 0.75rem;
-  font-weight: 600;
-  line-height: 1;
+.brand__city {
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 400;
 }
 
-.nav-count {
-  margin-left: auto;
+.appbar .brand,
+.auth__panel .brand {
+  color: var(--nav-text);
+}
+
+.appbar .brand .icon,
+.auth__panel .brand .icon {
+  color: var(--nav-text);
+}
+
+.appbar .brand__city,
+.auth__panel .brand__city {
+  color: var(--nav-text-muted);
 }
 
 .badge {
   position: absolute;
   top: 0.2rem;
   right: 0.2rem;
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.3rem;
+  border-radius: var(--radius-sm);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1;
 }
 
 .page-header {
@@ -52,6 +69,8 @@
   justify-content: space-between;
   gap: var(--space-4);
   margin-bottom: var(--space-6);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
 }
 
 .page-header h1 {
@@ -107,11 +126,10 @@
   }
 }
 
-/* Top bar: public and student */
+/* Header: public and student */
 .topbar {
   border-bottom: 1px solid var(--border);
   background: var(--surface);
-  box-shadow: inset 0 -3px 0 var(--accent);
 }
 
 .topbar__inner {
@@ -151,20 +169,23 @@
   gap: var(--space-2);
   min-height: var(--control-height);
   padding: 0 var(--space-3);
-  border-radius: var(--radius-md);
-  color: var(--text-muted);
-  font-weight: 500;
+  color: var(--text);
+  font-weight: 600;
   text-decoration: none;
 }
 
 .topnav__list a:hover {
-  background: var(--surface-sunken);
-  color: var(--text);
+  color: var(--primary);
 }
 
 .topnav__list a[aria-current="page"] {
-  background: var(--brand-50);
-  color: var(--brand-600);
+  box-shadow: inset 0 -4px 0 var(--primary);
+}
+
+.topnav__list a[aria-current="page"]:focus-visible {
+  box-shadow:
+    inset 0 -4px 0 var(--primary),
+    0 0 0 6px var(--focus-halo);
 }
 
 .topnav__account {
@@ -179,11 +200,12 @@
 }
 
 .topnav__viewer {
-  font-weight: 500;
+  font-weight: 600;
 }
 
-/* From 64rem the top bar is one row: the name is read but not shown, and below 80rem the nav and
-   Sign out drop their icons. Below 64rem everything stacks in the menu, name included. */
+/* From 64rem the header is one row: the name is read but not shown, and below 80rem the city and the Sign out icon
+   drop out so it still fits. Below 64rem everything stacks
+   in the menu, name included. */
 @media (min-width: 64rem) {
   .topnav__viewer {
     position: absolute;
@@ -200,7 +222,8 @@
     padding: 0 var(--space-2);
   }
 
-  :is(.topnav__list a, .topnav__account .btn) > .icon {
+  .topnav__account .btn > .icon,
+  .topbar .brand__city {
     display: none;
   }
 }
@@ -223,75 +246,126 @@
   }
 }
 
-/* Sidebar shell: staff and office */
-.shell {
-  display: grid;
-  min-height: 100vh;
-}
-
-/* The shell paints the sidebar column, so the navy runs the full page height (the sidebar itself
-   is sticky and only 100vh tall). */
-@media (min-width: 64rem) {
-  .shell {
-    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
-    background: linear-gradient(to right, var(--nav-bg) var(--sidebar-width), transparent 0);
-  }
-}
-
-.sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  padding: var(--space-3) var(--space-4);
+/* App bar: staff and office */
+.appbar {
   background: var(--nav-bg);
   color: var(--nav-text);
 }
 
+.appbar__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-4);
+  min-height: 3.5rem;
+  padding-block: var(--space-1);
+  padding-inline: var(--space-4);
+}
+
 @media (min-width: 64rem) {
-  .sidebar {
-    position: sticky;
-    top: 0;
-    height: 100vh;
-    padding-block: var(--space-5);
-    overflow-y: auto;
+  .appbar__inner {
+    flex-wrap: nowrap;
+    padding-inline: var(--space-6);
   }
 }
 
-.sidebar :focus-visible,
-.auth__panel :focus-visible {
-  outline-color: var(--nav-marker);
+/* Phone: the toggle sits beside the brand, the switcher and account wrap onto the next row. */
+@media (max-width: 63.99rem) {
+  .appbar__inner > :not(.brand, .nav-toggle) {
+    order: 2;
+  }
 }
 
-.sidebar .brand,
-.sidebar .brand:hover {
+.appbar .nav-toggle {
+  margin-left: auto;
   color: var(--nav-text);
 }
 
-.sidebar .icon-btn {
-  color: var(--nav-text);
-}
-
-.sidebar .icon-btn:hover {
+.appbar .nav-toggle:hover {
   background: var(--nav-bg-hover);
+  color: var(--nav-text);
 }
 
-.sidebar__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.sidebar__nav {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.sidebar__area {
+.appbar__area {
   margin: 0;
   color: var(--nav-text-muted);
   font-size: var(--text-sm);
+}
+
+.appbar__account {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+@media (min-width: 64rem) {
+  .appbar__account {
+    margin-left: auto;
+  }
+}
+
+.appbar__account form {
+  margin: 0;
+}
+
+.appbar__viewer {
+  display: grid;
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+.appbar__viewer span {
+  color: var(--nav-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 400;
+}
+
+@media (max-width: 39.99rem) {
+  .appbar__viewer {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+
+.appbar .btn--ghost,
+.appbar .btn--ghost:hover {
+  color: var(--nav-text);
+}
+
+.appbar .btn--ghost:hover {
+  background: var(--nav-bg-hover);
+}
+
+/* Side nav shell: staff and office */
+.shell {
+  display: grid;
+  align-items: stretch;
+}
+
+@media (min-width: 64rem) {
+  .shell {
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+    min-height: calc(100vh - 3.5rem - 4px);
+  }
+}
+
+.sidenav {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+@media (min-width: 64rem) {
+  .sidenav {
+    padding: var(--space-5) var(--space-3);
+    border-right: 1px solid var(--border);
+    border-bottom: 0;
+  }
 }
 
 .sidenav__list {
@@ -302,127 +376,40 @@
   list-style: none;
 }
 
+@media (min-width: 64rem) {
+  .sidenav__list {
+    position: sticky;
+    top: var(--space-4);
+  }
+}
+
 .sidenav__list a {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  min-height: var(--control-height);
-  padding: 0 var(--space-3);
-  border-radius: var(--radius-md);
-  color: var(--nav-text-muted);
-  font-weight: 500;
-  text-decoration: none;
-}
-
-.sidenav__list a:hover {
-  background: var(--nav-bg-hover);
-  color: var(--nav-text);
-}
-
-.sidenav__list a[aria-current="page"] {
-  background: var(--nav-bg-hover);
-  box-shadow: inset 3px 0 0 var(--nav-marker);
-  color: var(--nav-text);
-}
-
-.sidebar__footer {
-  margin-top: auto;
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--nav-bg-hover);
-}
-
-.sidebar__viewer {
-  display: grid;
-  margin: 0 0 var(--space-2);
-  font-weight: 600;
-}
-
-.sidebar__viewer span {
-  color: var(--nav-text-muted);
-  font-size: var(--text-sm);
-  font-weight: 400;
-}
-
-.sidebar__signout {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: var(--control-height);
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--nav-text-muted);
-  font: inherit;
-  cursor: pointer;
-}
-
-.sidebar__signout:hover {
-  color: var(--nav-text);
-}
-
-.switcher {
-  position: relative;
-}
-
-.switcher summary {
-  display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: var(--space-2);
-  min-height: var(--control-height);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--nav-text-muted);
-  border-radius: var(--radius-md);
-  font-weight: 600;
-  list-style: none;
-  cursor: pointer;
-}
-
-.switcher summary::-webkit-details-marker {
-  display: none;
-}
-
-.switcher__label {
-  display: block;
-  color: var(--nav-text-muted);
-  font-size: var(--text-sm);
-  font-weight: 400;
-}
-
-.switcher ul {
-  position: absolute;
-  z-index: 10;
-  top: calc(100% + var(--space-1));
-  inset-inline: 0;
-  margin: 0;
-  padding: var(--space-1);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  box-shadow: var(--shadow-2);
-  list-style: none;
-}
-
-.switcher ul a {
-  display: flex;
-  align-items: center;
+  gap: var(--space-3);
   min-height: var(--control-height);
   padding: 0 var(--space-3);
   border-radius: var(--radius-sm);
   color: var(--text);
+  font-weight: 600;
   text-decoration: none;
 }
 
-.switcher ul a:hover {
+.sidenav__list a:hover {
   background: var(--surface-sunken);
 }
 
-.switcher ul a[aria-current="true"] {
-  color: var(--brand-600);
-  font-weight: 600;
+.sidenav__list a[aria-current="page"] {
+  background: var(--primary-50);
+  box-shadow: inset 4px 0 0 var(--primary);
+  color: var(--primary);
 }
 
-.sidebar .switcher ul :focus-visible {
-  outline-color: var(--focus);
+.sidenav__list a[aria-current="page"]:focus-visible {
+  box-shadow:
+    inset 4px 0 0 var(--primary),
+    0 0 0 6px var(--focus-halo);
 }
 
 .shell__main {
@@ -438,10 +425,80 @@
   }
 }
 
-/* Auth: split panel, as in v1 */
+/* Program switcher (staff app bar) */
+.switcher {
+  position: relative;
+}
+
+.switcher summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--nav-text-muted);
+  border-radius: var(--radius-sm);
+  color: var(--nav-text);
+  font-weight: 600;
+  list-style: none;
+  cursor: pointer;
+}
+
+.switcher summary::-webkit-details-marker {
+  display: none;
+}
+
+.switcher summary > span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.switcher__label {
+  color: var(--nav-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 400;
+}
+
+.switcher ul {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  min-width: 100%;
+  margin: 0;
+  padding: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-float);
+  list-style: none;
+}
+
+.switcher ul a {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-height);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.switcher ul a:hover {
+  background: var(--surface-sunken);
+}
+
+.switcher ul a[aria-current="true"] {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* Auth: split panel */
 .auth {
   display: grid;
-  min-height: 100vh;
+  min-height: calc(100vh - 4px);
   background: var(--surface);
 }
 
@@ -456,7 +513,6 @@
   flex-direction: column;
   gap: var(--space-6);
   padding: var(--space-6);
-  border-bottom: 4px solid var(--accent);
   background: var(--nav-bg);
   color: var(--nav-text);
 }
@@ -465,14 +521,7 @@
   .auth__panel {
     justify-content: space-between;
     padding: var(--space-12);
-    border-right: 4px solid var(--accent);
-    border-bottom: 0;
   }
-}
-
-.auth__panel .brand,
-.auth__panel .brand:hover {
-  color: var(--nav-text);
 }
 
 .auth__tagline {
@@ -481,7 +530,7 @@
   color: var(--nav-text);
   font-family: var(--font-heading);
   font-size: var(--text-3xl);
-  font-weight: 700;
+  font-weight: 600;
   line-height: var(--leading-tight);
 }
 

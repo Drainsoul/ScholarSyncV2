@@ -1,8 +1,9 @@
 {% extends "base.html" %}{% load ui %}
 {% block body %}
+<div class="civic-stripe" aria-hidden="true"></div>
 <header class="topbar">
   <div class="container topbar__inner">
-    <a class="brand" href="{% url 'core:home' %}">{% icon "logo" %}<span>ScholarSync</span></a>
+    <a class="brand" href="{% url 'core:home' %}">{% icon "logo" %}<span class="brand__name">ScholarSync</span><span class="brand__city">City of Taguig</span></a>
     {% if nav_items %}
     <button type="button" class="icon-btn nav-toggle" data-nav-toggle aria-controls="site-nav" aria-expanded="false" aria-label="Menu" hidden>{% icon "menu" %}</button>
     <nav id="site-nav" class="topnav" aria-label="Main">{% include "components/nav_list.html" with list_class="topnav__list" %}</nav>

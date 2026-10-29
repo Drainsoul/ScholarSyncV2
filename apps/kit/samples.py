@@ -80,47 +80,46 @@ def scholars() -> list[Scholar]:
 class NavItem(TypedDict):
     label: str
     url: str
-    icon: str
     current: bool
     count: int
 
 
-PUBLIC_NAV = [("Programs", "school", 0), ("Help", "info", 0)]
+PUBLIC_NAV = [("Programs", 0), ("Help", 0)]
 STUDENT_NAV = [
-    ("Dashboard", "layout-dashboard", 0),
-    ("Profile", "user", 0),
-    ("Find programs", "search", 0),
-    ("Applications", "file-text", 1),
-    ("Scholarships", "wallet", 0),
+    ("Dashboard", 0),
+    ("Profile", 0),
+    ("Find programs", 0),
+    ("Applications", 1),
+    ("Scholarships", 0),
 ]
 STAFF_NAV = [
-    ("Dashboard", "layout-dashboard", 0),
-    ("Applications", "file-text", 14),
-    ("Scholars", "users", 0),
-    ("Terms", "calendar", 0),
-    ("Disbursements", "banknote", 0),
-    ("Budget", "wallet", 0),
-    ("Reports", "chart-column", 0),
-    ("Tasks", "list-checks", 3),
-    ("Settings", "settings", 0),
+    ("Dashboard", 0),
+    ("Applications", 14),
+    ("Scholars", 0),
+    ("Terms", 0),
+    ("Disbursements", 0),
+    ("Budget", 0),
+    ("Reports", 0),
+    ("Tasks", 3),
+    ("Settings", 0),
 ]
 OFFICE_NAV = [
-    ("Overview", "layout-dashboard", 0),
-    ("Programs", "school", 0),
-    ("Staff", "shield-check", 0),
-    ("Scholars", "users", 0),
-    ("Reports", "file-check", 3),
-    ("Analytics", "chart-column", 0),
-    ("Audit log", "eye", 0),
-    ("Schools", "building-2", 0),
-    ("Terms", "calendar", 0),
+    ("Overview", 0),
+    ("Programs", 0),
+    ("Staff", 0),
+    ("Scholars", 0),
+    ("Reports", 3),
+    ("Analytics", 0),
+    ("Audit log", 0),
+    ("Schools", 0),
+    ("Terms", 0),
 ]
 
 
-def nav(items: list[tuple[str, str, int]], current: str) -> list[NavItem]:
+def nav(items: list[tuple[str, int]], current: str) -> list[NavItem]:
     return [
-        {"label": label, "url": "#", "icon": icon, "current": label == current, "count": count}
-        for label, icon, count in items
+        {"label": label, "url": "#", "current": label == current, "count": count}
+        for label, count in items
     ]
 
 

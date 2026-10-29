@@ -5,14 +5,8 @@ from django.template.loader import render_to_string
 from django.test import RequestFactory
 
 NAV = [
-    {"label": "Dashboard", "url": "/me/", "icon": "layout-dashboard", "current": True, "count": 0},
-    {
-        "label": "Applications",
-        "url": "/me/applications/",
-        "icon": "file-text",
-        "current": False,
-        "count": 2,
-    },
+    {"label": "Dashboard", "url": "/me/", "current": True, "count": 0},
+    {"label": "Applications", "url": "/me/applications/", "current": False, "count": 2},
 ]
 PROGRAMS = [
     {"name": "TCU CEAA", "url": "/staff/tcu-ceaa/", "current": True},
@@ -51,7 +45,7 @@ def test_current_nav_item_is_marked(vite_build):
     html = render("layouts/student.html")
     assert '<a href="/me/" aria-current="page">' in html
     assert html.count('aria-current="page"') == 1
-    assert '<span class="nav-count">2</span>' in html
+    assert '<span class="tag">2</span>' in html
 
 
 def test_nav_toggle_is_hidden_until_javascript_runs(vite_build):
@@ -78,7 +72,30 @@ def test_sign_out_is_a_post_form_only_when_a_url_is_given(vite_build):
 
 
 @pytest.mark.parametrize("layout", ["layouts/staff.html", "layouts/office.html"])
-def test_sidebar_is_the_banner_landmark(layout, vite_build):
+def test_app_bar_is_the_banner_landmark(layout, vite_build):
     html = render(layout)
-    assert '<header class="sidebar">' in html
+    assert '<header class="appbar">' in html
     assert html.count("<header") == 1
+
+
+@pytest.mark.parametrize(
+    "layout",
+    [
+        "layouts/public.html",
+        "layouts/auth.html",
+        "layouts/student.html",
+        "layouts/staff.html",
+        "layouts/office.html",
+    ],
+)
+def test_every_layout_has_the_civic_stripe(layout, vite_build):
+    assert '<div class="civic-stripe" aria-hidden="true"></div>' in render(layout)
+
+
+def test_app_shell_has_a_navy_top_bar_and_text_only_side_nav(vite_build):
+    html = render("layouts/staff.html")
+    assert '<header class="appbar">' in html
+    nav = html[html.index('<nav class="sidenav"') :]
+    nav = nav[: nav.index("</nav>")]
+    assert "<svg" not in nav
+    assert 'aria-current="page"' in nav
