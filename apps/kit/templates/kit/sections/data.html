@@ -66,7 +66,8 @@
     </div>
   </div>
   <div class="kit-state">
-    <h3>Panel, breadcrumbs, tabs and details</h3>
+    <h3>Panel, section, breadcrumbs, tabs and details</h3>
+    <p>A panel (white, bordered) holds a table or a form. Any other region is a section: no box, a 2 px rule on top, as in the side column of every mockup.</p>
     {% include "components/breadcrumbs.html" %}
     {% include "components/tabs.html" with tabs_label="Scholar sections" %}
     <div class="card">
@@ -77,6 +78,13 @@
         <dt>Started</dt><dd>1st semester, 2025–2026</dd>
       </dl>
     </div>
+    <section class="section kit-gap" aria-labelledby="kit-section-title">
+      <h4 class="section__title" id="kit-section-title">Notifications</h4>
+      <ul class="list">
+        <li><p>LANI received your application.</p><p class="text-sm text-muted">2 October 2026</p></li>
+        <li><p>Your allowance for the 2nd semester was released.</p><p class="text-sm text-muted">14 May 2026</p></li>
+      </ul>
+    </section>
   </div>
   <div class="kit-state">
     <h3>Meter, steps and timeline</h3>

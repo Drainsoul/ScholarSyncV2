@@ -36,12 +36,12 @@
     </section>
   </div>
   <div class="stack">
-    <section class="card" aria-labelledby="attention-title">
-      <h2 class="card__title" id="attention-title">Needs attention</h2>
+    <section class="section" aria-labelledby="attention-title">
+      <h2 class="section__title" id="attention-title">Needs attention</h2>
       <ul class="list">{% for item in attention %}<li><p><a href="#">{{ item.text }}</a></p></li>{% endfor %}</ul>
     </section>
-    <section class="card" aria-labelledby="activity-title">
-      <h2 class="card__title" id="activity-title">Recent activity</h2>
+    <section class="section" aria-labelledby="activity-title">
+      <h2 class="section__title" id="activity-title">Recent activity</h2>
       <ol class="timeline">{% for event in activity %}<li><p class="timeline__what">{{ event.what }}</p><p class="timeline__when"><time datetime="{{ event.datetime }}">{{ event.when }}</time></p></li>{% endfor %}</ol>
     </section>
   </div>

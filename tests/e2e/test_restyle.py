@@ -60,3 +60,12 @@ def test_auth_form_starts_near_the_top_on_a_phone(page: Page, live_server, vite_
     heading = page.locator("#main h1, #main h2").first
     top = heading.evaluate("(el) => el.getBoundingClientRect().top")
     assert top < 812 / 2
+
+
+@pytest.mark.parametrize("slug", ["office-dashboard", "disbursements", "application-review"])
+def test_page_header_drops_its_rule_above_figures_or_tabs(
+    page: Page, live_server, vite_build, slug
+):
+    page.goto(f"{live_server.url}/_kit/mockups/{slug}/")
+    rule = page.locator(".page-header").evaluate("(el) => getComputedStyle(el).borderBottomWidth")
+    assert rule == "0px"

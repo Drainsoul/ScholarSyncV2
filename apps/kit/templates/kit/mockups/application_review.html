@@ -2,14 +2,13 @@
 {% block title %}{{ applicant.name }}, application{% endblock %}
 {% block content %}
 <div class="page-header">
-  <div><h1>{{ applicant.name }}</h1><p class="page-header__meta">Application APP-2026-0147 to {{ program.name }}, submitted <time datetime="2026-10-02">2 October 2026</time></p></div>
-  <span class="tag tag--info">Under review</span>
+  <div><h1>{{ applicant.name }}</h1><p class="page-header__meta">Application APP-2026-0147 to {{ program.name }}, submitted <time datetime="2026-10-02">2 October 2026</time> <span class="tag tag--info">Under review</span></p></div>
 </div>
 {% include "components/tabs.html" with tabs_label="Application sections" %}
 <div class="split">
   <div class="stack">
-    <section class="card" aria-labelledby="applicant-title">
-      <h2 class="card__title" id="applicant-title">Applicant</h2>
+    <section class="section" aria-labelledby="applicant-title">
+      <h2 class="section__title" id="applicant-title">Applicant</h2>
       <dl class="details">
         <dt>School</dt><dd>{{ applicant.school }}</dd>
         <dt>Course and year</dt><dd>{{ applicant.course }}</dd>
@@ -31,8 +30,8 @@
         </table>
       </div>
     </section>
-    <section class="card" aria-labelledby="eligibility-title">
-      <h2 class="card__title" id="eligibility-title">Eligibility</h2>
+    <section class="section" aria-labelledby="eligibility-title">
+      <h2 class="section__title" id="eligibility-title">Eligibility</h2>
       <ul class="checklist">{% for rule in rules %}<li class="is-{{ rule.state }}">{% icon rule.icon %}<div><p>{{ rule.text }}</p><p class="text-sm text-muted">{{ rule.status }}</p></div></li>{% endfor %}</ul>
       <div class="banner" role="note"><div><p class="banner__title">Legacy model suggests: Priority tier</p><p>Advisory only. The rules above decide eligibility.</p></div></div>
     </section>
@@ -48,8 +47,8 @@
         <button type="button" class="btn btn--danger">Reject</button>
       </div>
     </section>
-    <section class="card" aria-labelledby="history-title">
-      <h2 class="card__title" id="history-title">History</h2>
+    <section class="section" aria-labelledby="history-title">
+      <h2 class="section__title" id="history-title">History</h2>
       <ol class="timeline">{% for event in history %}<li><p class="timeline__what">{{ event.what }}</p><p class="timeline__when"><time datetime="{{ event.datetime }}">{{ event.when }}</time> by {{ event.who }}</p></li>{% endfor %}</ol>
     </section>
   </div>
