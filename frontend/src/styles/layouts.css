@@ -6,9 +6,10 @@
 
 /* Brand block: logo, name, city */
 .brand {
-  display: inline-flex;
+  display: inline-grid;
+  grid-template-columns: auto auto;
   align-items: center;
-  gap: var(--space-2);
+  column-gap: var(--space-2);
   min-height: var(--control-height);
   color: var(--text);
   font-family: var(--font-heading);
@@ -18,12 +19,19 @@
 }
 
 .brand .icon {
+  grid-row: 1 / span 2;
   width: 1.75rem;
   height: 1.75rem;
   color: var(--brand);
 }
 
+.brand__name {
+  line-height: 1.15;
+}
+
 .brand__city {
+  grid-column: 2;
+  line-height: 1.15;
   color: var(--text-muted);
   font-family: var(--font-body);
   font-size: var(--text-sm);
@@ -203,8 +211,8 @@
   font-weight: 600;
 }
 
-/* From 64rem the header is one row: the name is read but not shown, and below 80rem the city and the Sign out icon
-   drop out so it still fits. Below 64rem everything stacks
+/* From 64rem the header is one row: the name is read but not shown, and below 80rem the Sign out icon drops out so it
+   still fits. Below 64rem everything stacks
    in the menu, name included. */
 @media (min-width: 64rem) {
   .topnav__viewer {
@@ -222,8 +230,7 @@
     padding: 0 var(--space-2);
   }
 
-  .topnav__account .btn > .icon,
-  .topbar .brand__city {
+  .topnav__account .btn > .icon {
     display: none;
   }
 }
@@ -266,13 +273,6 @@
   .appbar__inner {
     flex-wrap: nowrap;
     padding-inline: var(--space-6);
-  }
-}
-
-/* Phone: the toggle sits beside the brand, the switcher and account wrap onto the next row. */
-@media (max-width: 63.99rem) {
-  .appbar__inner > :not(.brand, .nav-toggle) {
-    order: 2;
   }
 }
 
