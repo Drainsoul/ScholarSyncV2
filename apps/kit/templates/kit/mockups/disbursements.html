@@ -6,11 +6,11 @@
   <button type="button" class="btn btn--secondary">{% icon "plus" %}Generate disbursements</button>
 </div>
 {% include "components/tabs.html" with tabs_label="Money sections" %}
-<div class="stats">
-  {% include "components/stat_tile.html" with label="Budget for 2026" value=budget.total|peso icon="wallet" tone="info" hint="January to December" %}
-  {% include "components/stat_tile.html" with label="Released" value=budget.released|peso icon="banknote" tone="success" %}
-  {% include "components/stat_tile.html" with label="Approved, not yet released" value=budget.committed|peso icon="hand-coins" tone="warning" %}
-  {% include "components/stat_tile.html" with label="Available" value=budget.available|peso icon="wallet" tone="brand" %}
+<div class="figures">
+  {% include "components/stat_tile.html" with label="Budget for 2026" value=budget.total|peso hint="January to December" %}
+  {% include "components/stat_tile.html" with label="Released" value=budget.released|peso %}
+  {% include "components/stat_tile.html" with label="Approved, not yet released" value=budget.committed|peso %}
+  {% include "components/stat_tile.html" with label="Available" value=budget.available|peso %}
 </div>
 <div class="card meter-row">
   <label for="budget-used">Budget used</label>
@@ -40,7 +40,7 @@
       <tbody>{% for row in page %}<tr>
         <td class="select"><input type="checkbox" name="ids" value="{{ row.id }}" data-bulk-item aria-label="Select {{ row.name }}"></td>
         <th scope="row">{{ row.name }}</th><td>{{ row.tier }}</td><td class="num">{{ row.amount|peso }}</td>
-        <td><span class="pill pill--{{ row.tone }}">{% icon row.icon %}{{ row.label }}</span></td>
+        <td><span class="tag tag--{{ row.tone }}">{{ row.label }}</span></td>
       </tr>{% endfor %}</tbody>
     </table>
   </div>

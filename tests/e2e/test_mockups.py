@@ -14,10 +14,10 @@ VIEWPORTS: dict[str, ViewportSize] = {
     "desktop": {"width": 1440, "height": 900},
 }
 STAT_SLUGS = ["office-dashboard", "disbursements"]
-# Each stat value whose text runs past its tile (bounding boxes, so overflow: visible counts too).
-OVERFLOWING_STATS = """() => [...document.querySelectorAll(".stat__value")]
+# Each figure value whose text runs past its figure (bounding boxes, so visible overflow counts).
+OVERFLOWING_STATS = """() => [...document.querySelectorAll(".figure__value")]
   .filter((value) => {
-    const tile = value.closest(".stat").getBoundingClientRect();
+    const tile = value.closest(".figure").getBoundingClientRect();
     const text = document.createRange();
     text.selectNodeContents(value);
     const box = text.getBoundingClientRect();
@@ -47,5 +47,5 @@ def test_stat_values_stay_inside_their_tiles(page: Page, live_server, vite_build
     page.set_viewport_size(VIEWPORTS[viewport])
     page.goto(f"{live_server.url}/_kit/mockups/{slug}/")
     page.evaluate("document.fonts.ready")
-    assert page.locator(".stat__value").count() >= 4
+    assert page.locator(".figure__value").count() >= 4
     assert page.evaluate(OVERFLOWING_STATS) == []

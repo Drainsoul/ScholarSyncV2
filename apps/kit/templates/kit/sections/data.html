@@ -34,7 +34,7 @@
               <td>{{ scholar.school }}</td>
               <td>{{ scholar.tier }}</td>
               <td class="num">{{ scholar.amount|peso }}</td>
-              <td><span class="pill pill--{{ scholar.tone }}">{% icon scholar.icon %}{{ scholar.status_label }}</span></td>
+              <td><span class="tag tag--{{ scholar.tone }}">{{ scholar.status_label }}</span></td>
             </tr>
             {% endfor %}
           </tbody>
@@ -42,27 +42,27 @@
       </div>
       {% pagination scholars %}
       {% else %}
-      {% include "components/empty_state.html" with icon="search" title="No scholars match these filters" body="Try another name or status." action_url=clear_url action_label="Clear filters" action_reload=True %}
+      {% include "components/empty_state.html" with title="No scholars match these filters" body="Try another name or status." action_url=clear_url action_label="Clear filters" action_reload=True %}
       {% endif %}
     </div>{% endpartialdef %}
   </div>
   <div class="kit-state">
     <h3>Stat tiles</h3>
-    <div class="stats">
-      {% include "components/stat_tile.html" with label="Active scholars" value="1,284" icon="users" tone="brand" hint="38 more than last term" %}
-      {% include "components/stat_tile.html" with label="Applications waiting" value="96" icon="file-text" tone="info" hint="12 waiting over 7 days" %}
-      {% include "components/stat_tile.html" with label="Released this year" value="₱18,240,000.00" icon="banknote" tone="success" %}
-      {% include "components/stat_tile.html" with label="At risk" value="23" icon="triangle-alert" tone="warning" hint="Below the renewal rule" %}
+    <div class="figures">
+      {% include "components/stat_tile.html" with label="Active scholars" value="1,284" hint="38 more than last term" %}
+      {% include "components/stat_tile.html" with label="Applications waiting" value="96" hint="12 waiting over 7 days" %}
+      {% include "components/stat_tile.html" with label="Released this year" value="₱18,240,000.00" %}
+      {% include "components/stat_tile.html" with label="At risk" value="23" hint="Below the renewal rule" %}
     </div>
   </div>
   <div class="kit-state">
-    <h3>Status pills</h3>
+    <h3>Status tags</h3>
     <div class="btn-row">
-      <span class="pill pill--success">{% icon "circle-check" %}Approved</span>
-      <span class="pill pill--info">{% icon "file-text" %}Under review</span>
-      <span class="pill pill--warning">{% icon "triangle-alert" %}Returned</span>
-      <span class="pill pill--danger">{% icon "circle-alert" %}Rejected</span>
-      <span class="pill">{% icon "info" %}Draft</span>
+      <span class="tag tag--success">Approved</span>
+      <span class="tag tag--info">Under review</span>
+      <span class="tag tag--warning">Returned</span>
+      <span class="tag tag--danger">Rejected</span>
+      <span class="tag">Draft</span>
     </div>
   </div>
   <div class="kit-state">
@@ -70,7 +70,7 @@
     {% include "components/breadcrumbs.html" %}
     {% include "components/tabs.html" with tabs_label="Scholar sections" %}
     <div class="card">
-      <div class="card__header"><h4 class="card__title">TCU CEAA scholarship</h4><span class="pill pill--success">{% icon "circle-check" %}Active</span></div>
+      <div class="card__header"><h4 class="card__title">TCU CEAA scholarship</h4><span class="tag tag--success">Active</span></div>
       <dl class="details">
         <dt>Tier</dt><dd>Priority</dd>
         <dt>Allowance per term</dt><dd class="num">₱7,500.00</dd>
@@ -98,6 +98,6 @@
   </div>
   <div class="kit-state">
     <h3>Empty state</h3>
-    {% include "components/empty_state.html" with icon="inbox" title="No applications yet" body="Applications appear here as soon as students submit them." %}
+    {% include "components/empty_state.html" with title="No applications yet" body="Applications appear here as soon as students submit them." %}
   </div>
 </section>

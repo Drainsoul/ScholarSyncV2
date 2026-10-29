@@ -73,7 +73,7 @@ def test_kit_shows_controls_in_every_state(client, kit_on, vite_build):
 def test_kit_shows_data_components(client, kit_on, vite_build):
     body = client.get("/_kit/").content.decode()
     assert '<section class="kit-section" id="data"' in body
-    for marker in ('class="stat ', 'class="pill pill--', 'class="card"', 'class="tabs"',
+    for marker in ('class="figure"', 'class="tag tag--', 'class="card"', 'class="tabs"',
                    'aria-label="Breadcrumb"', 'class="empty"', "<meter", 'class="steps"',
                    'class="timeline"', 'aria-sort="ascending"'):  # fmt: skip
         assert marker in body, marker
