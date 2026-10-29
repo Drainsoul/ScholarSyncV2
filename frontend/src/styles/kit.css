@@ -141,6 +141,11 @@
 .kit-swatch--amber-50 {
   background: var(--amber-50);
 }
+
+.kit-state > .meter-row {
+  margin-bottom: var(--space-6);
+}
+
 .kit-toasts {
   display: grid;
   gap: var(--space-2);

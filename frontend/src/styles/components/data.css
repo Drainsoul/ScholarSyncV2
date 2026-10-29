@@ -1,7 +1,8 @@
 /* Cards are size containers, so their contents (.details) can respond to the card's width. */
 .card {
+  --panel-pad: var(--space-6);
   container: card / inline-size;
-  padding: var(--space-6);
+  padding: var(--panel-pad);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--surface);
@@ -29,24 +30,31 @@
   margin-bottom: var(--space-4);
 }
 
+@media (max-width: 40rem) {
+  .card {
+    --panel-pad: var(--space-4);
+  }
+}
+
+/* Four figures in a row from 52rem of width, else two (never three and one); one on phones.
+   Every figure has the same left rule and gutter; the row starts one gutter left of the content
+   edge and clips it, so the first figure of each row lines up with the page, whatever the count. */
 .figures {
+  --figure-gutter: var(--space-5);
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-  margin-bottom: var(--space-6);
+  grid-template-columns: repeat(auto-fit, minmax(clamp(25%, (52rem - 100%) * 999, 50%), 1fr));
+  margin: 0 0 var(--space-6) calc(-1 * var(--figure-gutter));
   border-top: 2px solid var(--border-strong);
-  /* Clips the left rule of the first figure in each row. */
-  overflow: hidden;
+  clip-path: inset(0 0 0 var(--figure-gutter));
 }
 
+/* Each figure is a size container, so its value can shrink to fit instead of wrapping. */
 .figure {
+  container-type: inline-size;
   min-width: 0;
-  margin-left: -1px;
-  padding: var(--space-4) var(--space-4) var(--space-4) var(--space-5);
+  padding: var(--space-4) var(--space-4) var(--space-4) var(--figure-gutter);
+  border-bottom: 1px solid var(--border);
   border-left: 1px solid var(--border);
-}
-
-.figure:first-child {
-  padding-left: 0;
 }
 
 .figure p {
@@ -63,29 +71,20 @@
   font-weight: 600;
 }
 
+/* Money never breaks mid-number: one line, and the size steps down in a narrow figure
+   (12cqi fits "₱12,000,000.00" in Lexend). */
 .figure__value {
   font-family: var(--font-heading);
-  font-size: var(--text-2xl);
+  font-size: min(var(--text-2xl), 12cqi);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   line-height: var(--leading-tight);
-  overflow-wrap: anywhere;
+  white-space: nowrap;
 }
 
 @media (max-width: 40rem) {
   .figures {
     grid-template-columns: 1fr;
-  }
-
-  .figure,
-  .figure:first-child {
-    margin-left: 0;
-    padding-left: 0;
-    border-left: 0;
-  }
-
-  .figure + .figure {
-    border-top: 1px solid var(--border);
   }
 }
 
@@ -127,10 +126,6 @@
   align-items: flex-end;
   gap: var(--space-3);
   margin-bottom: var(--space-4);
-}
-
-.card + .filters {
-  margin-top: var(--space-6);
 }
 
 .filters .field {
@@ -193,6 +188,34 @@
 
 .table .select {
   width: 3rem;
+}
+
+/* A cell holding a relative-volume meter gets room for the bar. */
+.table .bar {
+  width: 40%;
+}
+
+/* A table in a panel is ruled, not boxed: the panel is its frame (no nested boxes). It runs to the
+   panel's edges, so a table that scrolls on a phone is clipped by the panel border, not mid-panel. */
+.card .table-wrap {
+  margin-inline: calc(-1 * var(--panel-pad));
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.card .table :is(th, td):first-child {
+  padding-left: var(--panel-pad);
+}
+
+.card .table :is(th, td):last-child {
+  padding-right: var(--panel-pad);
+}
+
+/* The table's 2 px header rule already separates it from the title row. */
+.card__header:has(+ .table-wrap) {
+  padding-bottom: 0;
+  border-bottom: 0;
 }
 
 .table input[type="checkbox"] {
@@ -371,6 +394,14 @@ meter::-moz-meter-bar {
 .meter-row p {
   margin: 0;
   font-size: var(--text-sm);
+}
+
+.card > .meter-row {
+  margin-bottom: var(--space-4);
+}
+
+.figures + .meter-row {
+  margin-bottom: var(--space-6);
 }
 
 .steps {

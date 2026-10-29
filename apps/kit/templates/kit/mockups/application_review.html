@@ -34,7 +34,7 @@
     <section class="card" aria-labelledby="eligibility-title">
       <h2 class="card__title" id="eligibility-title">Eligibility</h2>
       <ul class="checklist">{% for rule in rules %}<li class="is-{{ rule.state }}">{% icon rule.icon %}<div><p>{{ rule.text }}</p><p class="text-sm text-muted">{{ rule.status }}</p></div></li>{% endfor %}</ul>
-      <div class="alert" role="note">{% icon "info" %}<div><p class="alert__title">Legacy model suggests: Priority tier</p><p>Advisory only. The rules above decide eligibility.</p></div></div>
+      <div class="banner" role="note">{% icon "info" %}<div><p class="banner__title">Legacy model suggests: Priority tier</p><p>Advisory only. The rules above decide eligibility.</p></div></div>
     </section>
   </div>
   <div class="stack">
@@ -43,7 +43,7 @@
       {% field decision_form.tier %}
       {% field decision_form.note %}
       <div class="btn-row">
-        <button type="button" class="btn btn--primary">{% icon "check" %}Approve</button>
+        <button type="button" class="btn btn--primary">Approve</button>
         <button type="button" class="btn btn--secondary">Return to applicant</button>
         <button type="button" class="btn btn--danger">Reject</button>
       </div>

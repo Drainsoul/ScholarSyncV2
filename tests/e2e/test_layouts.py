@@ -53,3 +53,14 @@ def test_student_top_bar_is_one_row_from_64rem(page: Page, live_server, vite_bui
     assert brand and nav and account
     assert nav["y"] == brand["y"] == account["y"]
     assert account["x"] + account["width"] <= width
+
+
+@pytest.mark.parametrize("name", ["public", "auth", "student", "staff", "office"])
+@pytest.mark.parametrize("viewport", [PHONE, DESKTOP])
+def test_logo_sits_beside_the_name(page: Page, live_server, vite_build, name, viewport):
+    page.set_viewport_size(viewport)
+    page.goto(f"{live_server.url}/_kit/layouts/{name}/")
+    logo = page.locator(".brand .icon").bounding_box()
+    wordmark = page.locator(".brand__name").bounding_box()
+    assert logo and wordmark
+    assert 0 <= wordmark["x"] - (logo["x"] + logo["width"]) <= 16
