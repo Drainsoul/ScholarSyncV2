@@ -115,13 +115,24 @@ def test_text_pairs_include_the_status_tones():
     assert {"danger", "success", "warning", "info", "secondary"} <= foregrounds
 
 
+# The one exception: the award card's release date, Lexend 20 px bold (large text, 3:1) on red.
+LARGE_TEXT_RULE = re.compile(r"\.award-card__release \{[^}]*\}")
+
+
 def test_decorative_colours_are_never_text():
     offenders = [
         f"{path.name}: {match.group(0)}"
         for path in STYLES.rglob("*.css")
-        for match in DECORATIVE_AS_TEXT.finditer(path.read_text(encoding="utf-8"))
+        for match in DECORATIVE_AS_TEXT.finditer(
+            LARGE_TEXT_RULE.sub("", path.read_text(encoding="utf-8"))
+        )
     ]
     assert offenders == []
+
+
+def test_yellow_release_date_is_large_text_on_red_at_3_to_1():
+    colours = tokens()
+    assert contrast(colours["accent"], colours["primary"]) >= 3.0
 
 
 def test_fonts_are_self_hosted(vite_build):
