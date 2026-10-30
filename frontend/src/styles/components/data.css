@@ -97,7 +97,7 @@
 
 /* Status: bold text in its tone's colour, never a pill or a tinted tag ({% status %}). */
 .status {
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .status--success {

@@ -72,3 +72,24 @@ def test_page_header_drops_its_rule_above_figures_or_tabs(
     page.goto(f"{live_server.url}/_kit/mockups/{slug}/")
     rule = page.locator(".page-header").evaluate("(el) => getComputedStyle(el).borderBottomWidth")
     assert rule == "0px"
+
+
+def test_invalid_field_keeps_the_focus_halo(page: Page, live_server, vite_build):
+    page.goto(f"{live_server.url}/_kit/")
+    field = page.locator(".field--invalid input:not([type=checkbox], [type=radio])").first
+    field.focus()
+    page.keyboard.press("Shift+Tab")
+    page.keyboard.press("Tab")  # keyboard focus, so :focus-visible applies
+    shadow = field.evaluate("(el) => getComputedStyle(el).boxShadow")
+    assert "rgb(242, 183, 5)" in shadow  # yellow halo
+    assert "inset" in shadow  # and the second pixel of the danger edge
+
+
+def test_checked_radio_stays_visible_in_forced_colours(page: Page, live_server, vite_build):
+    page.emulate_media(forced_colors="active")
+    page.goto(f"{live_server.url}/_kit/")
+    radio = page.locator('.field input[type="radio"]').first
+    radio.check()
+    assert radio.evaluate("(el) => getComputedStyle(el).appearance") == "auto"
+    checkbox = page.locator('.field input[type="checkbox"]').first
+    assert checkbox.evaluate("(el) => getComputedStyle(el).appearance") == "auto"

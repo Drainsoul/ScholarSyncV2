@@ -132,3 +132,29 @@ def test_fonts_are_self_hosted(vite_build):
     assert "Source Sans 3" in css
     assert ".woff2" in css
     assert "//fonts." not in css
+    # Status text is bold 700 (spec §12 rev 4: Source Sans 3 400/600/700), never a synthesised bold.
+    faces = re.findall(r"@font-face\{[^}]*\}", css)
+    weights = {
+        re.search(r"font-weight:\s*(\d+)", face).group(1)  # type: ignore[union-attr]
+        for face in faces
+        if "Source Sans 3" in face
+    }
+    assert {"400", "600", "700"} <= weights, weights
+
+
+def test_status_text_is_bold_700():
+    css = (STYLES / "components" / "data.css").read_text(encoding="utf-8")
+    rule = re.search(r"\.status \{([^}]*)\}", css)
+    assert rule and "font-weight: 700;" in rule.group(1)
+
+
+def test_drawn_checkboxes_and_radios_fall_back_in_forced_colours():
+    """appearance: none draws the checked state with a white tick and an inset shadow, both of which
+    vanish in Windows High Contrast: there the native control comes back."""
+    css = (STYLES / "components" / "forms.css").read_text(encoding="utf-8")
+    block = re.search(r"@media \(forced-colors: active\) \{(.*?)\n\}", css, re.S)
+    assert block, "forms.css needs a forced-colors block"
+    assert re.search(
+        r'input:is\(\[type="checkbox"\], \[type="radio"\]\) \{[^}]*appearance: auto;',
+        block.group(1),
+    )
