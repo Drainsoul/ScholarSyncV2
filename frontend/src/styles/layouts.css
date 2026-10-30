@@ -111,6 +111,17 @@
   }
 }
 
+/* Rows of cards in a split: stacked rows keep the page gap, and the two cards share a height. */
+.split + .split {
+  margin-top: var(--space-6);
+}
+
+@media (min-width: 64rem) {
+  .split--even {
+    align-items: stretch;
+  }
+}
+
 .stack {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
