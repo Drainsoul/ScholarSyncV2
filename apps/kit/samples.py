@@ -178,6 +178,7 @@ def student_dashboard() -> dict[str, object]:
     return {
         **chrome("student", "Home"),
         "award": {"program": "TCU CEAA", "tier": "Priority", "amount": Decimal("7500.00")},
+        "profile_percent": 85,
         "applications": [
             {
                 "program": "TCU CEAA",
@@ -302,6 +303,7 @@ def application_review() -> dict[str, object]:
             {"label": "Profile", "url": "#", "current": False, "count": 0},
             {"label": "History", "url": "#", "current": False, "count": 0},
         ],
+        "checks": {"passed": 5, "total": 8, "percent": 63},
         "applicant": {
             "name": "Daniel Montoya",
             "school": "Taguig City University",

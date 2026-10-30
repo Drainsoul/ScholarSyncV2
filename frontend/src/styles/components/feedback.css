@@ -56,6 +56,19 @@
   color: var(--warning);
 }
 
+.banner:has(> .banner__action) {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.banner:has(> .banner__action) > div {
+  flex: 1 1 16rem;
+}
+
+.banner__action {
+  margin-left: auto;
+}
+
 .banner--danger > .icon {
   color: var(--danger);
 }

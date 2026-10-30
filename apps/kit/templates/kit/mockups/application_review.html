@@ -1,54 +1,77 @@
 {% extends "layouts/staff.html" %}{% load ui %}
 {% block title %}{{ applicant.name }}, application{% endblock %}
-{% block content %}
-<div class="page-header">
-  <div><h1>{{ applicant.name }}</h1><p class="page-header__meta">Application APP-2026-0147 to {{ program.name }}, submitted <time datetime="2026-10-02">2 October 2026</time> {% status "info" "Under review" %}</p></div>
+{% block topbar_extra %}
+<div class="pager">
+  <span class="pager__count num">3 of 12 waiting</span>
+  <a class="icon-btn pager__btn" href="#" aria-label="Previous application">{% icon "chevron-left" %}</a>
+  <a class="icon-btn pager__btn" href="#" aria-label="Next application">{% icon "chevron-right" %}</a>
 </div>
-{% include "components/tabs.html" with tabs_label="Application sections" %}
+{% endblock %}
+{% block content %}
+<div class="card review-head">
+  <div class="page-header">
+    <div class="identity">
+      {% avatar applicant.name 1 "lg" %}
+      <div class="identity__text">
+        <div class="review-head__title"><h1>{{ applicant.name }}</h1>{% status "info" "Under review" %}</div>
+        <p class="page-header__meta">Application APP-2026-0147 to {{ program.name }}, submitted <time datetime="2026-10-02">2 October 2026</time></p>
+      </div>
+    </div>
+    <div class="review-head__checks">
+      <div class="review-head__figures"><span class="review-head__label">Review checks</span><span class="num">{{ checks.passed }} of {{ checks.total }} passed ({{ checks.percent }}%)</span></div>
+      <progress class="progress progress--secondary" max="{{ checks.total }}" value="{{ checks.passed }}" aria-label="Review checks passed">{{ checks.percent }}%</progress>
+    </div>
+  </div>
+  {% include "components/tabs.html" with tabs_label="Application sections" %}
+</div>
 <div class="split">
   <div class="stack">
-    <section class="section" aria-labelledby="applicant-title">
-      <h2 class="section__title" id="applicant-title">Applicant</h2>
-      <dl class="details">
-        <dt>School</dt><dd>{{ applicant.school }}</dd>
-        <dt>Course and year</dt><dd>{{ applicant.course }}</dd>
-        <dt>GWA</dt><dd>{{ applicant.gwa }}</dd>
-        <dt>Family income</dt><dd class="num">{{ applicant.income|peso }} a year</dd>
-        <dt>Barangay</dt><dd>{{ applicant.barangay }}</dd>
+    <section class="card" aria-labelledby="applicant-title">
+      <h2 class="card__title" id="applicant-title">Applicant</h2>
+      <dl class="details details--grid">
+        <div><dt>School</dt><dd>{{ applicant.school }}</dd></div>
+        <div><dt>Course and year</dt><dd>{{ applicant.course }}</dd></div>
+        <div><dt>GWA</dt><dd class="num">{{ applicant.gwa }}</dd></div>
+        <div><dt>Family income</dt><dd class="num">{{ applicant.income|peso }} a year</dd></div>
+        <div><dt>Barangay</dt><dd>{{ applicant.barangay }}</dd></div>
       </dl>
     </section>
     <section class="card" aria-labelledby="documents-title">
-      <div class="card__header"><h2 class="card__title" id="documents-title">Documents</h2><p class="text-sm text-muted">2 of 4 approved</p></div>
+      <div class="card__header">
+        <h2 class="card__title" id="documents-title">Documents</h2>
+        <div class="progress-inline"><progress class="progress progress--success" max="4" value="2" aria-label="Documents approved">2 of 4</progress><span class="num">2 of 4 approved</span></div>
+      </div>
       <div class="table-wrap" role="region" aria-labelledby="documents-title" tabindex="0">
         <table class="table table--stack">
           <thead><tr><th scope="col">Document</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
           <tbody>{% for doc in documents %}<tr>
             <th scope="row">{{ doc.label }}<br><a class="text-sm file-link" href="#">{% icon "download" %}{{ doc.file }}</a></th>
             <td>{% status doc.tone|default:"neutral" doc.status %}</td>
-            <td>{% if doc.status == "Waiting" %}<div class="btn-row"><button type="button" class="btn btn--secondary">Approve<span class="visually-hidden"> {{ doc.label }}</span></button><button type="button" class="btn btn--ghost">Decline<span class="visually-hidden"> {{ doc.label }}</span></button></div>{% endif %}</td>
+            <td>{% if doc.status == "Waiting" %}<div class="btn-row"><a class="btn btn--secondary" href="#">Download<span class="visually-hidden"> {{ doc.label }}</span></a><button type="button" class="btn btn--primary">Approve<span class="visually-hidden"> {{ doc.label }}</span></button><button type="button" class="btn btn--danger">Decline<span class="visually-hidden"> {{ doc.label }}</span></button></div>{% endif %}</td>
           </tr>{% endfor %}</tbody>
         </table>
       </div>
     </section>
-    <section class="section" aria-labelledby="eligibility-title">
-      <h2 class="section__title" id="eligibility-title">Eligibility</h2>
-      <ul class="checklist">{% for rule in rules %}<li class="is-{{ rule.state }}">{% icon rule.icon %}<div><p>{{ rule.text }}</p><p class="text-sm text-muted">{{ rule.status }}</p></div></li>{% endfor %}</ul>
+    <section class="card" aria-labelledby="eligibility-title">
+      <div class="card__header"><h2 class="card__title" id="eligibility-title">Eligibility</h2><p class="text-sm text-muted num">3 of 4 rules met</p></div>
+      <ul class="checklist">{% for rule in rules %}<li class="is-{{ rule.state }}">{% icon rule.icon %}<div><p>{{ rule.text }}</p><p class="text-sm">{% if rule.state == "unmet" %}{% status "warning" rule.status %}{% else %}{% status "success" rule.status %}{% endif %}</p></div></li>{% endfor %}</ul>
       <div class="banner" role="note"><div><p class="banner__title">Legacy model suggests: Priority tier</p><p>Advisory only. The rules above decide eligibility.</p></div></div>
     </section>
   </div>
   <div class="stack">
     <section class="card" aria-labelledby="decision-title">
       <h2 class="card__title" id="decision-title">Decision</h2>
-      {% field decision_form.tier %}
+      <fieldset class="choices">
+        <legend class="visually-hidden">Choose a decision</legend>
+        <label class="choice"><input type="radio" name="decision" value="approve"><span><span class="choice__label">Approve</span><span class="choice__hint">All documents approved and rules met.</span></span></label>
+        <label class="choice"><input type="radio" name="decision" value="return" checked><span><span class="choice__label">Return to applicant</span><span class="choice__hint">Ask for a fix. The application keeps its place.</span></span></label>
+        <label class="choice"><input type="radio" name="decision" value="reject"><span><span class="choice__label">Reject</span><span class="choice__hint">Ends this application. The applicant is told why.</span></span></label>
+      </fieldset>
       {% field decision_form.note %}
-      <div class="btn-row">
-        <button type="button" class="btn btn--primary">Approve</button>
-        <button type="button" class="btn btn--secondary">Return to applicant</button>
-        <button type="button" class="btn btn--danger">Reject</button>
-      </div>
+      <button class="btn btn--primary" type="submit">Submit decision</button>
     </section>
-    <section class="section" aria-labelledby="history-title">
-      <h2 class="section__title" id="history-title">History</h2>
+    <section class="card" aria-labelledby="history-title">
+      <h2 class="card__title" id="history-title">History</h2>
       <ol class="timeline">{% for event in history %}<li><p class="timeline__what">{{ event.what }}</p><p class="timeline__when"><time datetime="{{ event.datetime }}">{{ event.when }}</time> by {{ event.who }}</p></li>{% endfor %}</ol>
     </section>
   </div>

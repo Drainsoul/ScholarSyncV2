@@ -48,8 +48,8 @@ def test_review_mockup_acts_only_on_waiting_documents(client, kit_on, vite_build
     assert f"Approve{hidden}" in body
     assert f"Decline{hidden}" in body
     assert "Decline</button>" not in body
-    assert body.count('class="btn btn--secondary">Approve') == 1
-    assert body.count('class="btn btn--ghost">Decline') == 1
+    assert body.count('class="btn btn--primary">Approve') == 1
+    assert body.count('class="btn btn--danger">Decline') == 1
 
 
 @pytest.fixture
@@ -97,3 +97,56 @@ def test_chart_percent_steps_are_multiples_of_five(office):
     percents = [int(p) for p in re.findall(r'data-percent="(\d+)"', office)]
     assert len(percents) == 5
     assert all(p % 5 == 0 and 0 <= p <= 100 for p in percents)
+
+
+@pytest.fixture
+def review(client, kit_on, vite_build):
+    return client.get("/_kit/mockups/application-review/").content.decode()
+
+
+def test_review_has_a_checks_progress_and_no_step_pills(review):
+    assert '<progress class="progress progress--secondary" max="8" value="5"' in review
+    assert "5 of 8 passed (63%)" in review
+    assert "steps" not in review
+    assert "·" not in review.split('<main id="main"')[1]  # the tab title may keep its dot
+
+
+def test_review_decision_is_a_radio_group(review):
+    decision = review.split('id="decision-title"')[1].split("</section>")[0]
+    assert "<fieldset" in decision
+    assert decision.count('type="radio"') == 3
+    for label in ("Approve", "Return to applicant", "Reject"):
+        assert label in decision
+    assert decision.count('type="radio" name="decision"') == 3
+    assert decision.count(" checked") == 1
+    assert 'class="btn btn--primary" type="submit">Submit decision' in decision
+    assert "btn--danger" not in decision
+
+
+def test_review_history_has_no_dots(review):
+    history = review.split('id="history-title"')[1].split("</section>")[0]
+    assert 'class="timeline"' in history
+    assert "dot" not in history
+
+
+@pytest.fixture
+def student(client, kit_on, vite_build):
+    return client.get("/_kit/mockups/student-dashboard/").content.decode()
+
+
+def test_student_award_card_status_is_text(student):
+    card = student.split('class="award-card"')[1].split("</section>")[0]
+    assert '<span class="award-card__status">Active</span>' in card
+    assert 'class="status' not in card
+
+
+def test_student_next_release_is_large_yellow_text(student):
+    assert 'class="award-card__release"' in student
+    assert "Next release" in student
+
+
+def test_student_dashboard_keeps_its_banner_and_notifications(student):
+    assert "LANI returned your application" in student
+    assert "Fix application</a>" in student
+    assert 'class="progress progress--secondary" max="100" value="85"' in student
+    assert "<meter" not in student
