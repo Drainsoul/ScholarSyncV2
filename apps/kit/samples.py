@@ -422,9 +422,30 @@ def disbursements() -> dict[str, object]:
     }
 
 
+def _month_bars(counts: list[tuple[str, int]], peak: int) -> list[dict[str, object]]:
+    """Chart months: bar height is the share of the peak, in the 5 % steps the CSS maps."""
+    return [
+        {
+            "label": label,
+            "short": label[:3],
+            "count": count,
+            "percent": min(100, round(count / peak * 20) * 5),
+            "current": index == len(counts) - 1,
+        }
+        for index, (label, count) in enumerate(counts)
+    ]
+
+
 def office_dashboard() -> dict[str, object]:
     return {
         **chrome("office", "Overview"),
+        "greeting": "Good morning, Jessica",
+        "figures": [
+            {"label": "Scholars", "value": "1,284"},
+            {"label": "Applications", "value": "645"},
+            {"label": "Waiting over 7 days", "value": "12"},
+            {"label": "Reports to review", "value": "3"},
+        ],
         "programs": [
             {
                 "name": "TCU CEAA",
@@ -432,6 +453,7 @@ def office_dashboard() -> dict[str, object]:
                 "applications": 412,
                 "scholars": 968,
                 "used_percent": 64,
+                "initials_index": 0,
             },
             {
                 "name": "LANI",
@@ -439,19 +461,32 @@ def office_dashboard() -> dict[str, object]:
                 "applications": 233,
                 "scholars": 316,
                 "used_percent": 41,
+                "initials_index": 2,
             },
         ],
-        "months": [
-            {"label": "June", "count": 182},
-            {"label": "July", "count": 96},
-            {"label": "August", "count": 54},
-            {"label": "September", "count": 71},
-            {"label": "October", "count": 242},
-        ],
+        "months": _month_bars(
+            [("June", 182), ("July", 96), ("August", 54), ("September", 71), ("October", 242)],
+            250,
+        ),
         "attention": [
-            {"text": "3 program reports are waiting for your review"},
-            {"text": "12 LANI applications have waited more than 7 days"},
-            {"text": "TCU CEAA has used 64% of its budget with 2 months left"},
+            {
+                "title": "3 program reports are waiting for your review",
+                "detail": "Oldest sent 4 days ago",
+                "tone": "warning",
+                "url": "#",
+            },
+            {
+                "title": "12 LANI applications have waited more than 7 days",
+                "detail": "Overdue: window closes 15 November",
+                "tone": "danger",
+                "url": "#",
+            },
+            {
+                "title": "TCU CEAA has used 64% of its budget",
+                "detail": "2 months left in the school year",
+                "tone": "warning",
+                "url": "#",
+            },
         ],
         "activity": [
             {
@@ -470,5 +505,4 @@ def office_dashboard() -> dict[str, object]:
                 "datetime": "2026-10-25T11:03+08:00",
             },
         ],
-        "max_month": 242,
     }
