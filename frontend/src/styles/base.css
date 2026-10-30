@@ -106,6 +106,10 @@ code {
   font-size: var(--text-sm);
 }
 
+.text-xs {
+  font-size: var(--text-xs);
+}
+
 .num {
   font-variant-numeric: tabular-nums;
 }
