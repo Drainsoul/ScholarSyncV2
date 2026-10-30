@@ -1,12 +1,13 @@
-/* Notification banners: 5 px coloured left bar, bold title. */
+/* Notification banners: a tinted box with a 1 px border in the tone's 100 colour and a bold title.
+   Only warning and danger carry an icon. */
 .banner {
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
   margin: 0 0 var(--space-5);
   padding: var(--space-4) var(--space-5);
-  border-left: 5px solid var(--info);
-  border-radius: 0;
+  border: 1px solid var(--info-100);
+  border-radius: var(--radius-lg);
   background: var(--info-50);
   color: var(--text);
 }
@@ -37,17 +38,17 @@
 }
 
 .banner--success {
-  border-left-color: var(--success);
+  border-color: var(--success-100);
   background: var(--success-50);
 }
 
 .banner--warning {
-  border-left-color: var(--warning);
+  border-color: var(--warning-100);
   background: var(--warning-50);
 }
 
 .banner--danger {
-  border-left-color: var(--danger);
+  border-color: var(--danger-100);
   background: var(--danger-50);
 }
 
@@ -147,4 +148,61 @@ html:not(.js) .toast__close {
 
 .dialog__body {
   padding: var(--space-5) var(--space-6) var(--space-6);
+}
+
+/* A slide-over detail panel (spec §12 rev 4): server-rendered, opened and closed by links, so a list
+   keeps its place. Full width below 64rem; from 64rem a 400 px panel on the right edge. */
+.drawer {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background: var(--surface);
+  color: var(--text);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@media (min-width: 64rem) {
+  .drawer {
+    inset: 0 0 0 auto;
+    width: var(--drawer-width);
+    border-left: 1px solid var(--border);
+    box-shadow: var(--shadow-float);
+  }
+}
+
+.drawer:focus {
+  outline: none;
+}
+
+.drawer__header {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4) var(--space-3) var(--space-6);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.drawer__title {
+  margin: 0;
+  color: var(--text-secondary);
+  font: 600 var(--text-base) / var(--leading-body) var(--font-body);
+  letter-spacing: 0;
+}
+
+.drawer__body {
+  display: grid;
+  gap: var(--space-6);
+  padding: var(--space-6);
+}
+
+.drawer__body > * {
+  margin: 0;
 }

@@ -5,7 +5,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from django import template
 from django.core.paginator import Page
 from django.forms import BoundField
-from django.template import Context
+from django.template import Context, TemplateSyntaxError
 from django.templatetags.static import static
 from django.utils.html import format_html
 from django.utils.safestring import SafeString
@@ -29,6 +29,40 @@ def icon(name: str, label: str = "") -> SafeString:
         )
     return format_html(
         '<svg class="icon" aria-hidden="true" focusable="false"><use href="{}"></use></svg>', href
+    )
+
+
+STATUS_TONES = frozenset({"success", "warning", "info", "danger", "neutral"})
+AVATAR_TONES = ("red", "blue", "yellow")
+AVATAR_SIZES = frozenset({"", "lg"})
+
+
+@register.simple_tag
+def status(tone: str, text: object) -> SafeString:
+    """A status as bold text in its tone's colour, never a pill or an icon (spec §12 rev 4)."""
+    if tone not in STATUS_TONES:
+        raise TemplateSyntaxError(
+            f"status tone must be one of {sorted(STATUS_TONES)}, not {tone!r}"
+        )
+    return format_html('<span class="status status--{}">{}</span>', tone, text)
+
+
+@register.simple_tag
+def avatar(name: str, index: int, size: str = "") -> SafeString:
+    """Initials (first and last word) in a circle tinted red, blue or yellow by position.
+
+    Decorative: the name is always written next to it, so screen readers skip the circle.
+    """
+    if size not in AVATAR_SIZES:
+        raise TemplateSyntaxError(f"avatar size must be 'lg' or left out, not {size!r}")
+    words = str(name).split()
+    initials = "".join(word[0] for word in (words[:1] + words[1:][-1:])).upper()
+    tone = AVATAR_TONES[int(index) % len(AVATAR_TONES)]
+    return format_html(
+        '<span class="avatar avatar--{}{}" aria-hidden="true">{}</span>',
+        tone,
+        f" avatar--{size}" if size else "",
+        initials,
     )
 
 
@@ -111,4 +145,10 @@ def sort_th(context: Context, label: str, key: str, css_class: str = "") -> Safe
 
 @register.inclusion_tag("components/pagination.html", takes_context=True)
 def pagination(context: Context, page: Page[object]) -> dict[str, object]:
-    return {"page": page, "request": context["request"]}
+    """Numbered pages around the current one; None marks a gap (rendered as an ellipsis)."""
+    numbers = page.paginator.get_elided_page_range(page.number, on_each_side=1, on_ends=1)
+    return {
+        "page": page,
+        "numbers": [number if isinstance(number, int) else None for number in numbers],
+        "request": context["request"],
+    }

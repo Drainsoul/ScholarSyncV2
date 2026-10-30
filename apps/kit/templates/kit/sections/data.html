@@ -2,18 +2,20 @@
 <section class="kit-section" id="data" aria-labelledby="data-title">
   <h2 id="data-title">Data display</h2>
   <div class="kit-state">
-    <h3>Filter bar, sortable table and pagination</h3>
-    <form id="scholar-filters" class="filters" method="get" action="{% url 'kit:index' %}#data" role="search" aria-label="Filter scholars"
+    <h3>Toolbar, sortable table and numbered pagination</h3>
+    <p>Search and filter selects sit in a toolbar above the table. Headers are 13 px bold on a pale band, rows tint on hover, money is right-aligned in tabular figures, and the current page is red.</p>
+    <form id="scholar-filters" class="table-toolbar" method="get" action="{% url 'kit:index' %}#data" role="search" aria-label="Filter scholars"
       hx-get="{% url 'kit:index' %}" hx-target="#scholars-table" hx-swap="outerHTML" hx-push-url="true"
       hx-sync="this:replace" hx-trigger="submit, input delay:300ms, change">
-      <div class="field"><label class="field__label" for="filter-q">Name</label><input class="input" type="search" id="filter-q" name="q" value="{{ request.GET.q }}"></div>
-      <div class="field">
-        <label class="field__label" for="filter-status">Status</label>
-        <select class="input" id="filter-status" name="status">
-          <option value="">Any status</option>
-          {% for key, status in statuses.items %}<option value="{{ key }}"{% if request.GET.status == key %} selected{% endif %}>{{ status.label }}</option>{% endfor %}
-        </select>
+      <div class="table-toolbar__search">
+        <label class="visually-hidden" for="filter-q">Name</label>
+        {% icon "search" %}<input class="input" type="search" id="filter-q" name="q" value="{{ request.GET.q }}" placeholder="Search by name">
       </div>
+      <label class="visually-hidden" for="filter-status">Status</label>
+      <select class="input" id="filter-status" name="status">
+        <option value="">Any status</option>
+        {% for key, status in statuses.items %}<option value="{{ key }}"{% if request.GET.status == key %} selected{% endif %}>{{ status.label }}</option>{% endfor %}
+      </select>
       <button class="btn btn--secondary" type="submit">Apply filters</button>
     </form>
     {# The count is a live region outside the swap target, so screen readers hear each new result. #}
@@ -34,7 +36,7 @@
               <td>{{ scholar.school }}</td>
               <td>{{ scholar.tier }}</td>
               <td class="num">{{ scholar.amount|peso }}</td>
-              <td><span class="tag{% if scholar.tone %} tag--{{ scholar.tone }}{% endif %}">{{ scholar.status_label }}</span></td>
+              <td>{% status scholar.tone|default:"neutral" scholar.status_label %}</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -48,42 +50,70 @@
   </div>
   <div class="kit-state">
     <h3>Figures</h3>
-    <div class="figures">
-      {% include "components/stat_tile.html" with label="Active scholars" value="1,284" hint="38 more than last term" %}
-      {% include "components/stat_tile.html" with label="Applications waiting" value="96" hint="12 waiting over 7 days" %}
-      {% include "components/stat_tile.html" with label="Released this year" value="₱18,240,000.00" %}
-      {% include "components/stat_tile.html" with label="At risk" value="23" hint="Below the renewal rule" %}
-    </div>
+    <p>One bordered box of label and number cells, with no icons, captions or bars. Cells wrap on narrow screens.</p>
+    {% include "components/figures.html" with figures=figures %}
   </div>
   <div class="kit-state">
-    <h3>Status tags</h3>
+    <h3>Status</h3>
+    <p>Bold text in its tone's colour, never a pill or a tinted tag: <code>{% templatetag openblock %} status tone text {% templatetag closeblock %}</code>.</p>
     <div class="btn-row">
-      <span class="tag tag--success">Approved</span>
-      <span class="tag tag--info">Under review</span>
-      <span class="tag tag--warning">Returned</span>
-      <span class="tag tag--danger">Rejected</span>
-      <span class="tag">Draft</span>
+      {% status "success" "Active" %}
+      {% status "warning" "At risk" %}
+      {% status "info" "Under review" %}
+      {% status "danger" "Ended" %}
+      {% status "neutral" "On hold" %}
     </div>
   </div>
   <div class="kit-state">
-    <h3>Panel, section, breadcrumbs, tabs and details</h3>
-    <p>A panel (white, bordered) holds a table or a form. Any other region is a section: no box, a 2 px rule on top, as in the side column of every mockup.</p>
+    <h3>Counts and avatars</h3>
+    <p>Counts are the only pills: grey by default, yellow in the navigation, red on the current tab. Avatars are initials tinted red, blue and yellow by position.</p>
+    <div class="btn-row">
+      <span class="count">4</span>
+      <span class="count count--accent">12</span>
+      <span class="count count--current">968</span>
+    </div>
+    <div class="btn-row kit-gap">
+      {% for row in bulk_rows|slice:":3" %}{% avatar row.name forloop.counter0 %}<span>{{ row.name }}</span>{% endfor %}
+      {% with person=bulk_rows.0 %}{% avatar person.name 0 size="lg" %}<span>{{ person.name }} (large)</span>{% endwith %}
+    </div>
+  </div>
+  <div class="kit-state">
+    <h3>Card, breadcrumbs, tabs and details</h3>
+    <p>Every section of a page is a white card on the grey ground, with its title on the left and an optional link on the right. A card never sits inside another card.</p>
     {% include "components/breadcrumbs.html" %}
     {% include "components/tabs.html" with tabs_label="Scholar sections" %}
-    <div class="card">
-      <div class="card__header"><h4 class="card__title">TCU CEAA scholarship</h4><span class="tag tag--success">Active</span></div>
+    <section class="card" aria-labelledby="kit-card-title">
+      <div class="card__header"><h4 class="card__title" id="kit-card-title">TCU CEAA scholarship</h4><a href="#data">View program</a></div>
       <dl class="details">
+        <dt>Status</dt><dd>{% status "success" "Active" %}</dd>
         <dt>Tier</dt><dd>Priority</dd>
         <dt>Allowance per term</dt><dd class="num">₱7,500.00</dd>
         <dt>Started</dt><dd>1st semester, 2025–2026</dd>
       </dl>
+    </section>
+  </div>
+  <div class="kit-state">
+    <h3>Progress</h3>
+    <p>An 8 px bar on the pale track: red for budgets, blue for progress toward a goal, green for work done.</p>
+    <div class="meter-row">
+      <label for="kit-progress-budget">Budget used: 64% of ₱12,000,000.00</label>
+      {% include "components/progress.html" with id="kit-progress-budget" value=64 %}
     </div>
-    <section class="section kit-gap" aria-labelledby="kit-section-title">
-      <h4 class="section__title" id="kit-section-title">Notifications</h4>
-      <ul class="list">
-        <li><p>LANI received your application.</p><p class="text-sm text-muted">2 October 2026</p></li>
-        <li><p>Your allowance for the 2nd semester was released.</p><p class="text-sm text-muted">14 May 2026</p></li>
-      </ul>
+    <div class="meter-row kit-gap">
+      <label for="kit-progress-checks">Review checks: 5 of 8 passed (63%)</label>
+      {% include "components/progress.html" with id="kit-progress-checks" value=5 max=8 tone="secondary" %}
+    </div>
+    <div class="meter-row kit-gap">
+      <label for="kit-progress-documents">Documents approved: 2 of 4</label>
+      {% include "components/progress.html" with id="kit-progress-documents" value=2 max=4 tone="success" %}
+    </div>
+  </div>
+  <div class="kit-state">
+    <h3>Row links</h3>
+    <p>Whole-row links for task lists: no underline, a tint and an underlined title on hover, an arrow on the right, and a detail line coloured by severity.</p>
+    <section class="card kit-narrow" aria-labelledby="kit-attention-title">
+      <div class="card__header"><h4 class="card__title" id="kit-attention-title">Needs attention</h4></div>
+      {% include "components/row_links.html" with items=attention %}
     </section>
   </div>
   <div class="kit-state">

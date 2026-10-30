@@ -8,7 +8,7 @@
 <div class="split">
   <div class="stack">
     <section class="section" aria-labelledby="award-title">
-      <div class="section__header"><h2 class="section__title" id="award-title">{{ award.program }} scholarship</h2><span class="tag tag--success">Active</span></div>
+      <div class="section__header"><h2 class="section__title" id="award-title">{{ award.program }} scholarship</h2>{% status "success" "Active" %}</div>
       <dl class="details">
         <dt>Tier</dt><dd>{{ award.tier }}</dd>
         <dt>Allowance per term</dt><dd class="num">{{ award.amount|peso }}</dd>
@@ -21,7 +21,7 @@
       <div class="table-wrap" role="region" aria-labelledby="apps-title" tabindex="0">
         <table class="table">
           <thead><tr><th scope="col">Program</th><th scope="col">Submitted</th><th scope="col">Status</th></tr></thead>
-          <tbody>{% for item in applications %}<tr><th scope="row"><a href="#">{{ item.program }}</a></th><td>{{ item.submitted }}</td><td><span class="tag{% if item.tone %} tag--{{ item.tone }}{% endif %}">{{ item.label }}</span></td></tr>{% endfor %}</tbody>
+          <tbody>{% for item in applications %}<tr><th scope="row"><a href="#">{{ item.program }}</a></th><td>{{ item.submitted }}</td><td>{% status item.tone|default:"neutral" item.label %}</td></tr>{% endfor %}</tbody>
         </table>
       </div>
     </section>
@@ -30,7 +30,7 @@
       <div class="table-wrap" role="region" aria-labelledby="money-title" tabindex="0">
         <table class="table table--stack">
           <thead><tr><th scope="col">Term</th><th scope="col" class="num">Amount</th><th scope="col">Status</th></tr></thead>
-          <tbody>{% for item in allowances %}<tr><th scope="row">{{ item.term }}</th><td class="num" data-label="Amount">{{ item.amount|peso }}</td><td><span class="tag{% if item.tone %} tag--{{ item.tone }}{% endif %}">{{ item.label }}</span></td></tr>{% endfor %}</tbody>
+          <tbody>{% for item in allowances %}<tr><th scope="row">{{ item.term }}</th><td class="num" data-label="Amount">{{ item.amount|peso }}</td><td>{% status item.tone|default:"neutral" item.label %}</td></tr>{% endfor %}</tbody>
         </table>
       </div>
     </section>

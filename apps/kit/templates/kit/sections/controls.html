@@ -3,18 +3,24 @@
   <h2 id="controls-title">Controls</h2>
   <div class="kit-state">
     <h3>Buttons</h3>
+    <p>Red primary for the main action, white secondary, blue soft, ghost with a hover tint, and danger outlined in a darker red. Icons only where they carry meaning: download, add, mail, close, menu, sign out and pause.</p>
     <div class="btn-row">
       <button type="button" class="btn btn--primary">Submit application</button>
       <button type="button" class="btn btn--secondary">Save draft</button>
+      <button type="button" class="btn btn--soft">View program</button>
       <button type="button" class="btn btn--ghost">Cancel</button>
       <button type="button" class="btn btn--danger">Withdraw application</button>
     </div>
   </div>
   <div class="kit-state">
-    <h3>Download, disabled, busy and icon-only</h3>
+    <h3>Icons, disabled, busy and icon-only</h3>
     <div class="btn-row">
+      <button type="button" class="btn btn--primary">{% icon "plus" %}Add scholar</button>
       <a class="btn btn--secondary" href="#controls">{% icon "download" %}Export CSV</a>
+      <a class="btn btn--secondary" href="#controls">{% icon "mail" %}Email</a>
+      <button type="button" class="btn btn--danger">{% icon "circle-pause" %}Pause award</button>
       <button type="button" class="btn btn--primary" disabled>Submit application</button>
+      <button type="button" class="btn btn--secondary" disabled>Save draft</button>
       <button type="button" class="btn btn--primary htmx-request" aria-busy="true"><span class="spinner htmx-indicator" aria-hidden="true"></span>Saving</button>
       <button type="button" class="icon-btn" aria-label="Close">{% icon "x" %}</button>
     </div>
@@ -43,12 +49,5 @@
     {% include "components/file_input.html" with id="file-uploading" name="residency" label="Proof of residency" state="uploading" progress=40 filename="barangay-certificate.pdf" %}
     {% include "components/file_input.html" with id="file-done" name="enrollment" label="Certificate of enrollment" state="done" filename="enrollment-2026.pdf" %}
     {% include "components/file_input.html" with id="file-error" name="valid-id" label="Valid ID" help="PDF, JPG or PNG, up to 10 MB." state="error" error="This file is 14 MB. Upload a file of 10 MB or less." %}
-  </div>
-  <div class="kit-state">
-    <h3>Banners</h3>
-    <div class="banner" role="status"><div><p class="banner__title">Applications open on 3 November</p><p>You can finish your profile now.</p></div></div>
-    <div class="banner banner--success" role="status"><div><p>Your profile is complete.</p></div></div>
-    <div class="banner banner--warning" role="status">{% icon "triangle-alert" %}<div><p class="banner__title">Your application was returned</p><p>Upload a clearer copy of your certificate of grades by 7 November 2026.</p></div></div>
-    <div class="banner banner--danger" role="alert">{% icon "circle-alert" %}<div><p>We couldn't save your changes. Check your connection and try again.</p></div></div>
   </div>
 </section>

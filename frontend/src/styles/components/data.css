@@ -1,13 +1,16 @@
-/* Not a size container: Chromium restyles a container's contents after load, which ran the
-   buttons' colour transition (a visible fade) on every page with a button in a panel. */
+/* Cards (spec §12 rev 4): every section of a page is a white card on the grey ground; a card never
+   sits inside another card. Not a size container: Chromium restyles a container's contents after
+   load, which ran the buttons' colour transition (a visible fade) on every page with a button in a
+   card. */
 .card {
   --panel-pad: var(--space-6);
-  padding: var(--panel-pad);
+  padding: var(--space-5) var(--panel-pad);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--surface);
 }
 
+/* The title on the left and an optional link or action on the right. */
 .card__header {
   display: flex;
   flex-wrap: wrap;
@@ -15,91 +18,69 @@
   justify-content: space-between;
   gap: var(--space-2) var(--space-4);
   margin-bottom: var(--space-4);
-  padding-bottom: var(--space-3);
-  border-bottom: 1px solid var(--border);
 }
 
-/* The row's gap does the spacing: a paragraph's bottom margin would leave a gap under the rule. */
+/* The row's gap does the spacing: a paragraph's bottom margin would add to it. */
 .card__header > * {
   margin: 0;
 }
 
-.card__title,
-.section__title {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--text-lg);
+.card__header a {
+  font-size: var(--text-sm);
   font-weight: 600;
 }
 
-.card > .card__title,
-.section > .section__title {
+.card__title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.card > .card__title {
   margin-bottom: var(--space-4);
 }
 
-/* A section is an unboxed region on the page background, headed by the same 2 px rule as the
-   figures: rules instead of boxes (spec §12). Panels (.card) are kept for tables and forms. */
-.section {
-  padding-top: var(--space-3);
-  border-top: 2px solid var(--border-strong);
-}
-
-.section__header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2) var(--space-4);
-  margin-bottom: var(--space-4);
-}
-
-.section__header > *,
-.section > :last-child {
+.card > :last-child {
   margin-bottom: 0;
-}
-
-.section__header > * {
-  margin-top: 0;
 }
 
 @media (max-width: 40rem) {
   .card {
     --panel-pad: var(--space-4);
+    padding-block: var(--space-4);
   }
 }
 
-/* Four figures in a row from 52rem of width, else two (never three and one); one on phones.
-   Every figure has the same left rule and gutter; the row starts one gutter left of the content
-   edge and clips it, so the first figure of each row lines up with the page, whatever the count. */
+/* Figures: one bordered box of label + number cells divided by 1 px rules (the box's border colour
+   showing through 1 px gaps). Cells wrap on narrow screens and stretch to fill each row. No icons,
+   captions or bars in it (Kenneth's ruling, spec §12 rev 4). */
 .figures {
-  --figure-gutter: var(--space-5);
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(clamp(25%, (52rem - 100%) * 999, 50%), 1fr));
-  margin: 0 0 var(--space-6) calc(-1 * var(--figure-gutter));
-  border-top: 2px solid var(--border-strong);
-  clip-path: inset(0 0 0 var(--figure-gutter));
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  margin: 0 0 var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--border);
+  overflow: hidden;
 }
 
 /* Each figure is a size container, so its value can shrink to fit instead of wrapping. */
 .figure {
   container-type: inline-size;
+  flex: 1 1 11.25rem;
   min-width: 0;
-  padding: var(--space-4) var(--space-4) var(--space-4) var(--figure-gutter);
-  border-bottom: 1px solid var(--border);
-  border-left: 1px solid var(--border);
+  padding: var(--space-4) var(--space-6);
+  background: var(--surface);
 }
 
 .figure p {
   margin: 0;
 }
 
-.figure__label,
-.figure__note {
-  color: var(--text-muted);
-  font-size: var(--text-sm);
-}
-
 .figure__label {
+  color: var(--text-secondary);
   font-weight: 600;
 }
 
@@ -107,49 +88,137 @@
    (12cqi fits "₱12,000,000.00" in Lexend). */
 .figure__value {
   font-family: var(--font-heading);
-  font-size: min(var(--text-2xl), 12cqi);
+  font-size: min(var(--text-3xl), 12cqi);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   line-height: var(--leading-tight);
   white-space: nowrap;
 }
 
-@media (max-width: 40rem) {
-  .figures {
-    grid-template-columns: 1fr;
-  }
-}
-
-.tag {
-  display: inline-block;
-  padding: 0.125rem var(--space-2);
-  border-radius: var(--radius-sm);
-  background: var(--surface-sunken);
-  color: var(--text);
-  font-size: var(--text-sm);
+/* Status: bold text in its tone's colour, never a pill or a tinted tag ({% status %}). */
+.status {
   font-weight: 600;
-  line-height: var(--leading-tight);
-  white-space: nowrap;
 }
 
-.tag--success {
-  background: var(--success-50);
+.status--success {
   color: var(--success);
 }
 
-.tag--warning {
-  background: var(--warning-50);
+.status--warning {
   color: var(--warning);
 }
 
-.tag--danger {
-  background: var(--danger-50);
+.status--info {
+  color: var(--info);
+}
+
+.status--danger {
   color: var(--danger);
 }
 
-.tag--info {
-  background: var(--info-50);
-  color: var(--info);
+.status--neutral {
+  color: var(--text-secondary);
+}
+
+/* Counts: small pills, the only pills in the system. Nav counts are yellow with ink text; the
+   current tab's count is red on the red tint. */
+.count {
+  display: inline-block;
+  min-width: var(--space-6);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--track);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  line-height: var(--leading-body);
+  text-align: center;
+}
+
+.count--accent {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.count--current {
+  background: var(--primary-50);
+  color: var(--primary);
+}
+
+/* Avatars ({% avatar %}): initials in a tinted circle, red, blue or yellow by position. */
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: var(--space-10);
+  height: var(--space-10);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.avatar--red {
+  background: var(--primary-50);
+  color: var(--primary);
+}
+
+.avatar--blue {
+  background: var(--secondary-50);
+  color: var(--secondary);
+}
+
+.avatar--yellow {
+  background: var(--accent-100);
+  color: var(--on-accent);
+}
+
+.avatar--lg {
+  width: var(--space-16);
+  height: var(--space-16);
+  font-family: var(--font-heading);
+  font-size: var(--text-xl);
+}
+
+/* Progress: a real <progress> (the CSP forbids inline widths), 8 px on the track; the modifier
+   colours the fill. */
+progress {
+  width: 100%;
+  height: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--track);
+  color: var(--primary);
+  appearance: none;
+  overflow: hidden;
+}
+
+progress::-webkit-progress-bar {
+  border-radius: var(--radius-pill);
+  background: var(--track);
+}
+
+progress::-webkit-progress-value {
+  border-radius: var(--radius-pill);
+  background: currentColor;
+}
+
+progress::-moz-progress-bar {
+  border-radius: var(--radius-pill);
+  background: currentColor;
+}
+
+.progress--primary {
+  color: var(--primary);
+}
+
+.progress--secondary {
+  color: var(--secondary);
+}
+
+.progress--success {
+  color: var(--success);
 }
 
 .filters {
@@ -163,6 +232,50 @@
 .filters .field {
   flex: 1 1 12rem;
   margin: 0;
+}
+
+/* Above a table: search, filter selects and buttons on one wrapping row (labels are visually
+   hidden; each control names itself). */
+.table-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.table-toolbar > * {
+  margin: 0;
+}
+
+.table-toolbar .input {
+  width: auto;
+}
+
+.table-toolbar__search {
+  position: relative;
+  flex: 1 1 15rem;
+  max-width: 21rem;
+}
+
+.table-toolbar__search .icon {
+  position: absolute;
+  top: 50%;
+  left: var(--space-3);
+  color: var(--text-muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.table-toolbar .table-toolbar__search .input {
+  width: 100%;
+  padding-left: var(--space-10);
+}
+
+.table-toolbar__meta {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
 }
 
 .table-count {
@@ -188,20 +301,21 @@
 
 .table :is(th, td) {
   padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--track);
   text-align: left;
   vertical-align: middle;
 }
 
 .table thead th {
-  border-bottom: 2px solid var(--border-strong);
-  background: none;
-  color: var(--text);
+  border-bottom-color: var(--border);
+  background: var(--surface-header);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
   font-weight: 600;
   white-space: nowrap;
 }
 
-/* Row headers stay regular: Source Sans 3 ships 400 and 600 only, and 600 is for the column headers. */
+/* Row headers stay regular, like the other cells. */
 .table tbody th {
   font-weight: 400;
 }
@@ -211,12 +325,16 @@
 }
 
 .table tbody tr:hover {
-  background: var(--surface-sunken);
+  background: var(--surface-hover);
 }
 
 .table .num {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.table .status {
+  white-space: nowrap;
 }
 
 .table .select {
@@ -228,11 +346,12 @@
   width: 40%;
 }
 
-/* A table in a panel is ruled, not boxed: the panel is its frame (no nested boxes). It runs to the
-   panel's edges, so a table that scrolls on a phone is clipped by the panel border, not mid-panel. */
+/* A table in a card runs to the card's edges, so a table that scrolls on a phone is clipped by the
+   card border, not mid-card; the card is its frame (no nested boxes). */
 .card .table-wrap {
   margin-inline: calc(-1 * var(--panel-pad));
   border: 0;
+  border-top: 1px solid var(--border);
   border-radius: 0;
   background: none;
 }
@@ -243,12 +362,6 @@
 
 .card .table :is(th, td):last-child {
   padding-right: var(--panel-pad);
-}
-
-/* The table's 2 px header rule already separates it from the title row. */
-.card__header:has(+ .table-wrap) {
-  padding-bottom: 0;
-  border-bottom: 0;
 }
 
 /* A file link never breaks between its icon and the name, or inside the name. */
@@ -273,17 +386,16 @@
 
   .table--stack tbody {
     display: block;
-    border-top: 2px solid var(--border-strong);
   }
 
-  /* Cells sit on the value line: a tag lines up with a labelled value, not with its label. */
+  /* Cells sit on the value line: a status lines up with a labelled value, not with its label. */
   .table--stack tr {
     display: flex;
     flex-wrap: wrap;
     align-items: flex-end;
     gap: var(--space-2) var(--space-6);
     padding: var(--space-3) var(--space-4);
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--track);
   }
 
   .table--stack tbody tr:last-child {
@@ -315,7 +427,7 @@
     content: attr(data-label);
     display: block;
     color: var(--text-muted);
-    font-size: var(--text-sm);
+    font-size: var(--text-xs);
     font-weight: 600;
   }
 
@@ -326,12 +438,6 @@
   .card .table.table--stack :is(th, td) {
     padding: 0;
   }
-}
-
-.table input[type="checkbox"] {
-  width: 1.25rem;
-  height: 1.25rem;
-  accent-color: var(--primary);
 }
 
 .sort {
@@ -345,9 +451,6 @@
 .sort .icon {
   width: 1rem;
   height: 1rem;
-}
-
-.sort .icon {
   color: var(--text-muted);
 }
 
@@ -356,26 +459,46 @@
   color: var(--text);
 }
 
+/* Numbered pagination: the current page is a red button; the status line is read, not shown. */
 .pagination {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
   margin-top: var(--space-4);
 }
 
-.pagination__status {
+.pagination__list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
   margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pagination .btn {
+  min-width: var(--control-height);
+  padding: 0 var(--space-2);
+}
+
+.pagination .btn--ghost {
+  font-variant-numeric: tabular-nums;
+}
+
+.pagination__gap {
+  display: grid;
+  place-items: center;
+  min-width: var(--space-8);
   color: var(--text-muted);
 }
 
 /* The tabs scroll sideways when they don't fit, and a scroll area clips what is drawn outside it, so
    the row keeps 6 px of room on every side for the focus ring (--focus-ring) and pulls itself back
-   into line with negative margins. Its 1 px baseline is a flat line drawn 6 px up, under the tabs. */
+   into line with negative margins. Its 1 px baseline is a flat line drawn 6 px up, under the tabs;
+   the current tab's 3 px red border sits on it. */
 .tabs {
   --ring-room: 6px;
   display: flex;
-  gap: var(--space-1);
+  gap: var(--space-6);
   margin: calc(-1 * var(--ring-room)) calc(-1 * var(--ring-room))
     calc(var(--space-6) - var(--ring-room));
   padding: var(--ring-room);
@@ -389,8 +512,9 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: var(--control-height);
-  padding: 0 var(--space-4);
+  min-height: var(--space-12);
+  padding: 0 var(--space-1);
+  border-bottom: 3px solid transparent;
   color: var(--text-muted);
   font-weight: 600;
   text-decoration: none;
@@ -402,14 +526,8 @@
 }
 
 .tabs a[aria-current="page"] {
-  box-shadow: inset 0 -4px 0 var(--primary);
+  border-bottom-color: var(--primary);
   color: var(--text);
-}
-
-.tabs a[aria-current="page"]:focus-visible {
-  box-shadow:
-    inset 0 -4px 0 var(--primary),
-    var(--focus-ring);
 }
 
 .breadcrumbs ol {
@@ -423,6 +541,11 @@
   color: var(--text-muted);
 }
 
+.breadcrumbs li + li::before {
+  content: "/" / "";
+  margin-right: var(--space-2);
+}
+
 .empty {
   display: grid;
   justify-items: start;
@@ -434,13 +557,21 @@
   color: var(--text-muted);
 }
 
+/* Inside a card the card is the frame. */
+.card .empty {
+  padding: var(--space-4) 0;
+  border: 0;
+  border-radius: 0;
+}
+
 .empty p {
   margin: 0;
 }
 
 .empty__title {
   color: var(--text);
-  font-size: var(--text-lg);
+  font-family: var(--font-heading);
+  font-size: var(--text-md);
   font-weight: 600;
 }
 
@@ -460,8 +591,6 @@
   flex: 1 0 min(var(--term), 100%);
   max-width: 100%;
   color: var(--text-muted);
-  font-size: var(--text-sm);
-  font-weight: 600;
 }
 
 .details dd {
@@ -477,27 +606,29 @@
 
 meter {
   width: 100%;
-  height: 8px;
+  height: var(--space-2);
   border: 0;
-  border-radius: 0;
-  background: var(--surface-sunken);
+  border-radius: var(--radius-pill);
+  background: var(--track);
   appearance: none;
 }
 
 meter::-webkit-meter-bar {
-  height: 8px;
+  height: var(--space-2);
   border: 0;
-  border-radius: 0;
-  background: var(--surface-sunken);
+  border-radius: var(--radius-pill);
+  background: var(--track);
 }
 
 meter::-webkit-meter-optimum-value,
 meter::-webkit-meter-suboptimum-value,
 meter::-webkit-meter-even-less-good-value {
+  border-radius: var(--radius-pill);
   background: var(--primary);
 }
 
 meter::-moz-meter-bar {
+  border-radius: var(--radius-pill);
   background: var(--primary);
 }
 
@@ -511,7 +642,7 @@ meter::-moz-meter-bar {
   font-size: var(--text-sm);
 }
 
-:is(.card, .section) > .meter-row {
+.card > .meter-row {
   margin-bottom: var(--space-4);
 }
 
@@ -570,30 +701,21 @@ meter::-moz-meter-bar {
   color: var(--on-primary);
 }
 
+/* A plain ruled list of events, newest first: no dots (spec §12 rev 4). */
 .timeline {
   margin: 0;
   padding: 0;
-  border-left: 2px solid var(--border);
   list-style: none;
 }
 
 .timeline li {
-  position: relative;
-  padding: 0 0 var(--space-5) var(--space-5);
+  padding-block: var(--space-3);
+  border-top: 1px solid var(--track);
 }
 
-.timeline li::before {
-  content: "";
-  position: absolute;
-  top: 0.45rem;
-  left: -5px;
-  width: 8px;
-  height: 8px;
-  background: var(--border-strong);
-}
-
-.timeline li:first-child::before {
-  background: var(--primary);
+.timeline li:first-child {
+  padding-top: 0;
+  border-top: 0;
 }
 
 .timeline p {
@@ -617,7 +739,7 @@ meter::-moz-meter-bar {
 
 .list > li {
   padding-block: var(--space-3);
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--track);
 }
 
 .list > li:first-child {
@@ -659,11 +781,6 @@ meter::-moz-meter-bar {
   color: var(--text-muted);
 }
 
-.breadcrumbs li + li::before {
-  content: "›" / "";
-  margin-right: var(--space-2);
-}
-
 .bulk-bar {
   display: flex;
   flex-wrap: wrap;
@@ -672,8 +789,7 @@ meter::-moz-meter-bar {
   gap: var(--space-3);
   margin-bottom: var(--space-3);
   padding: var(--space-3) var(--space-4);
-  border-left: 5px solid var(--primary);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-lg);
   background: var(--primary-50);
 }
 
@@ -685,4 +801,59 @@ meter::-moz-meter-bar {
 
 html:not(.js) [data-bulk-all] {
   visibility: hidden;
+}
+
+/* Row links: whole-row links for task lists. No underline; on hover a tint, the title underlined and
+   the arrow darkened. The detail line is a status coloured by severity. */
+.row-links {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row-links > li + li {
+  border-top: 1px solid var(--track);
+}
+
+.row-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-inline: calc(-1 * var(--space-2));
+  padding: var(--space-3) var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  text-decoration: none;
+  transition: background-color var(--duration) var(--ease);
+}
+
+.row-link:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.row-link__text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.row-link__title {
+  font-weight: 600;
+}
+
+.row-link:hover .row-link__title {
+  text-decoration: underline;
+}
+
+.row-link .status {
+  font-size: var(--text-sm);
+}
+
+.row-link > svg {
+  color: var(--text-muted);
+}
+
+.row-link:hover > svg {
+  color: var(--text);
 }

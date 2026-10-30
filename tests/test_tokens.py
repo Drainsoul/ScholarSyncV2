@@ -64,18 +64,32 @@ TEXT_PAIRS = [
     ("nav-current", "nav-bg"),
     ("nav-current", "nav-current-bg"),
     ("on-primary", "brand"),
+    # Buttons, counts, avatars and status text on a hovered row (spec §12 rev 4 components).
+    ("secondary-hover", "secondary-50"),
+    ("text", "surface-hover"),
+    ("text-secondary", "track"),
+    ("on-accent", "accent-100"),
+    ("text-muted", "surface-hover"),
+    ("success", "surface-hover"),
+    ("warning", "surface-hover"),
+    ("danger", "surface-hover"),
+    ("info", "surface-hover"),
 ]
 # Focus rings and control shapes must reach 3:1 (WCAG 1.4.11).
-# border-control (#d0d5dd) is below 3:1 on white. Every control that uses it carries a visible
-# label or text, so 1.4.11 does not apply to the border alone; it is left out on purpose.
+# Inputs, selects, textareas, checkboxes and radios are drawn by --border-input, which must reach
+# 3:1. border-control (#d0d5dd) is below 3:1 on white: it only outlines buttons, whose text label
+# identifies them, so 1.4.11 does not apply to that border; it is left out on purpose.
 NON_TEXT_PAIRS = [
     ("focus", "surface"),
     ("focus", "bg"),
     ("focus", "primary-50"),
     ("primary", "surface"),
+    ("border-input", "surface"),
+    ("border-input", "bg"),
 ]
+# Yellow is a fill, never text on light: its names include the M3c aliases while they exist.
 DECORATIVE_AS_TEXT = re.compile(
-    r"(?<![-\w])color:\s*var\(--(accent|yellow-500|focus-halo|nav-count-bg)\)"
+    r"(?<![-\w])color:\s*var\(--(accent|yellow-500|focus-halo|nav-count-bg|gold-400|nav-marker)\)"
 )
 
 

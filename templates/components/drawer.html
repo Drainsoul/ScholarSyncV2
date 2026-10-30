@@ -1,0 +1,8 @@
+{% load ui %}{# A slide-over detail panel, opened and closed by links. Fill the body with body_template (include … with) or by extending this template's drawer_body block. #}
+<aside class="drawer" id="{{ drawer_id }}" tabindex="-1" aria-labelledby="{{ drawer_id }}-title">
+  <div class="drawer__header">
+    <h2 class="drawer__title" id="{{ drawer_id }}-title">{{ title }}</h2>
+    <a class="icon-btn" href="{{ close_url }}" aria-label="Close details">{% icon "x" %}</a>
+  </div>
+  <div class="drawer__body">{% block drawer_body %}{% if body_template %}{% include body_template %}{% endif %}{% endblock %}</div>
+</aside>

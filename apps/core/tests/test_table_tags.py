@@ -1,3 +1,4 @@
+import re
 from html import unescape
 
 from django.core.paginator import Paginator
@@ -54,6 +55,18 @@ def test_pagination_keeps_filters_and_links_neighbours():
     assert 'href="?status=active&page=3"' in unescape(html)
     assert 'id="page-prev"' in html
     assert 'id="page-next"' in html
+
+
+def test_pagination_is_numbered_with_gaps_and_a_current_page():
+    page = Paginator(range(100), 10).page(5)
+    html = unescape(render("{% pagination page %}", "/x/?page=5", page=page))
+    numbers = re.findall(r'href="\?page=(\d+)"[^>]*aria-label="Page \d+">', html)
+    assert numbers == ["1", "4", "5", "6", "10"]
+    assert html.count('<li class="pagination__gap" aria-hidden="true">…</li>') == 2
+    current = '<a class="btn btn--primary" href="?page=5" aria-current="page" aria-label="Page 5">'
+    assert current in html
+    assert html.count('aria-current="page"') == 1
+    assert '<p class="pagination__status visually-hidden">Page 5 of 10</p>' in html
 
 
 def test_pagination_is_empty_for_a_single_page():

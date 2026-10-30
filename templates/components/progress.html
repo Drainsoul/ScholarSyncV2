@@ -1,0 +1,2 @@
+{# A real <progress> (the CSP forbids inline widths). tone: primary (default), secondary or success; label names it. #}
+<progress class="progress progress--{{ tone|default:'primary' }}" max="{{ max|default:100 }}" value="{{ value }}"{% if id %} id="{{ id }}"{% endif %}{% if label %} aria-label="{{ label }}"{% endif %}>{{ value }} of {{ max|default:100 }}</progress>

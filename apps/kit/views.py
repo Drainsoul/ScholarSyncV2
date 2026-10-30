@@ -37,7 +37,7 @@ SECTIONS: list[tuple[str, str]] = [
     ("controls", "Controls"),
     ("data", "Data display"),
     ("feedback", "Feedback"),
-    ("overlays", "Dialogs and bulk actions"),
+    ("overlays", "Dialogs, drawer and bulk actions"),
     ("layouts", "Layouts"),
 ]
 
@@ -114,10 +114,37 @@ def index_context(request: HttpRequest) -> dict[str, object]:
         "clear_url": f"{reverse('kit:index')}#data",
         "crumbs": [{"label": "Scholars", "url": "#data"}, {"label": "David Shaw", "url": ""}],
         "tabs": [
-            {"label": "Overview", "url": "#data", "current": True, "count": 0},
+            {"label": "Overview", "url": "#data", "current": True, "count": 2},
             {"label": "Documents", "url": "#data", "current": False, "count": 4},
             {"label": "History", "url": "#data", "current": False, "count": 0},
         ],
+        "figures": [
+            {"label": "Active scholars", "value": "1,284"},
+            {"label": "Applications waiting", "value": "96"},
+            {"label": "Released this year", "value": "₱18,240,000.00"},
+            {"label": "At risk", "value": "23"},
+        ],
+        "attention": [
+            {
+                "title": "12 LANI applications have waited more than 7 days",
+                "detail": "Overdue: window closes 15 November",
+                "tone": "danger",
+                "url": "#data",
+            },
+            {
+                "title": "3 program reports are waiting for your review",
+                "detail": "Oldest sent 4 days ago",
+                "tone": "warning",
+                "url": "#data",
+            },
+            {
+                "title": "LANI applications open on 3 November",
+                "detail": "Starts in 4 days",
+                "tone": "info",
+                "url": "#data",
+            },
+        ],
+        "drawer_scholar": samples.scholars()[0],
     }
 
 

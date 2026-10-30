@@ -2,7 +2,7 @@
 {% block title %}{{ applicant.name }}, application{% endblock %}
 {% block content %}
 <div class="page-header">
-  <div><h1>{{ applicant.name }}</h1><p class="page-header__meta">Application APP-2026-0147 to {{ program.name }}, submitted <time datetime="2026-10-02">2 October 2026</time> <span class="tag tag--info">Under review</span></p></div>
+  <div><h1>{{ applicant.name }}</h1><p class="page-header__meta">Application APP-2026-0147 to {{ program.name }}, submitted <time datetime="2026-10-02">2 October 2026</time> {% status "info" "Under review" %}</p></div>
 </div>
 {% include "components/tabs.html" with tabs_label="Application sections" %}
 <div class="split">
@@ -24,7 +24,7 @@
           <thead><tr><th scope="col">Document</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
           <tbody>{% for doc in documents %}<tr>
             <th scope="row">{{ doc.label }}<br><a class="text-sm file-link" href="#">{% icon "download" %}{{ doc.file }}</a></th>
-            <td><span class="tag{% if doc.tone %} tag--{{ doc.tone }}{% endif %}">{{ doc.status }}</span></td>
+            <td>{% status doc.tone|default:"neutral" doc.status %}</td>
             <td>{% if doc.status == "Waiting" %}<div class="btn-row"><button type="button" class="btn btn--secondary">Approve<span class="visually-hidden"> {{ doc.label }}</span></button><button type="button" class="btn btn--ghost">Decline<span class="visually-hidden"> {{ doc.label }}</span></button></div>{% endif %}</td>
           </tr>{% endfor %}</tbody>
         </table>

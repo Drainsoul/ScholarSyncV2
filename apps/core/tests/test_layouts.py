@@ -45,7 +45,7 @@ def test_current_nav_item_is_marked(vite_build):
     html = render("layouts/student.html")
     assert '<a href="/me/" aria-current="page">' in html
     assert html.count('aria-current="page"') == 1
-    assert '<span class="tag">2</span>' in html
+    assert '<span class="count count--accent">2</span>' in html
 
 
 def test_nav_toggle_is_hidden_until_javascript_runs(vite_build):
