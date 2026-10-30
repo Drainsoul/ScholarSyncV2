@@ -160,3 +160,33 @@
 .kit-gap {
   margin-top: var(--space-6);
 }
+
+/* A sample that would stretch too wide in the kit column. */
+.kit-narrow {
+  max-width: 36rem;
+}
+
+/* The drawer sample sits in the page flow instead of fixed to the window edge. */
+.kit-frame {
+  max-width: var(--drawer-width);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.kit-frame .drawer {
+  position: static;
+  width: 100%;
+  border: 0;
+  box-shadow: none;
+}
+
+.kit-drawer-person {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.kit-drawer-person :is(h3, p) {
+  margin: 0;
+}

@@ -37,14 +37,15 @@ fieldset.field {
   color: var(--danger);
 }
 
+/* Text inputs, selects and textareas: a 1 px edge in --border-input, 3:1 on white (WCAG 1.4.11). */
 .input,
 .field :is(input:not([type="checkbox"], [type="radio"], [type="file"]), select, textarea) {
   width: 100%;
   min-height: var(--control-height);
   padding: var(--space-2) var(--space-3);
-  border: 2px solid var(--border-control);
+  border: 1px solid var(--border-input);
   border-radius: var(--radius-sm);
-  background: var(--surface);
+  background-color: var(--surface); /* not the shorthand: it would drop the select's arrow */
   color: var(--text);
   font: inherit;
 }
@@ -58,7 +59,7 @@ select.input,
 .field select {
   appearance: none;
   padding-right: var(--space-10);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234b5563' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235b6472' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-position: right var(--space-3) center;
   background-repeat: no-repeat;
   background-size: 1.25rem;
@@ -70,15 +71,64 @@ select.input,
   border-left: 4px solid var(--danger);
 }
 
+/* A 2 px danger edge: the second pixel is an inset shadow, so the text does not move. */
 .field--invalid :is(input:not([type="checkbox"], [type="radio"]), select, textarea) {
   border-color: var(--danger);
+  box-shadow: inset 0 0 0 1px var(--danger);
+}
+
+/* Checkboxes and radios are drawn here, so their edge is --border-input (3:1) in every browser. */
+input:is([type="checkbox"], [type="radio"]) {
+  display: inline-grid;
+  place-content: center;
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-xs);
+  background: var(--surface) center / 0.875rem no-repeat;
+  appearance: none;
+  cursor: pointer;
+}
+
+input[type="radio"] {
+  border-radius: var(--radius-pill);
+}
+
+input:is([type="checkbox"], [type="radio"]):checked {
+  border-color: var(--primary);
+  background-color: var(--primary);
+}
+
+input[type="checkbox"]:checked {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+}
+
+input[type="checkbox"]:indeterminate {
+  border-color: var(--primary);
+  background-color: var(--primary);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round'%3E%3Cpath d='M5 12h14'/%3E%3C/svg%3E");
+}
+
+/* The dot is the surface showing through a thick inset ring of the primary fill. */
+input[type="radio"]:checked {
+  box-shadow: inset 0 0 0 0.25rem var(--surface);
+}
+
+input[type="radio"]:checked:focus-visible {
+  box-shadow:
+    inset 0 0 0 0.25rem var(--surface),
+    var(--focus-ring);
+}
+
+input:is([type="checkbox"], [type="radio"]):disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .field :is(input[type="checkbox"], input[type="radio"]) {
-  width: 1.25rem;
-  height: 1.25rem;
-  margin: 0.125rem 0 0;
-  accent-color: var(--primary);
+  margin-top: 0.125rem;
 }
 
 .field--check {
@@ -112,16 +162,21 @@ select.input,
   font: inherit;
 }
 
+/* Drawn like a secondary button. */
 .file-input__control::file-selector-button {
   min-height: var(--control-height);
   margin-right: var(--space-3);
   padding: 0 var(--space-4);
-  border: 2px solid var(--primary);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
   background: var(--surface);
-  color: var(--primary);
-  font: 600 var(--text-sm) / 1 var(--font-body);
+  color: var(--text);
+  font: 600 var(--text-base) / 1 var(--font-body);
   cursor: pointer;
+}
+
+.file-input__control::file-selector-button:hover {
+  background: var(--surface-hover);
 }
 
 .file-input__status {
@@ -136,25 +191,6 @@ select.input,
   color: var(--success);
 }
 
-progress {
+.file-input__status progress {
   flex: 1;
-  width: 100%;
-  height: 8px;
-  border: 0;
-  border-radius: 0;
-  background: var(--surface-sunken);
-  appearance: none;
-  overflow: hidden;
-}
-
-progress::-webkit-progress-bar {
-  background: var(--surface-sunken);
-}
-
-progress::-webkit-progress-value {
-  background: var(--primary);
-}
-
-progress::-moz-progress-bar {
-  background: var(--primary);
 }

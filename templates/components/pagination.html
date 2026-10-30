@@ -1,7 +1,14 @@
-{% if page.paginator.num_pages > 1 %}
+{% load ui %}{% if page.paginator.num_pages > 1 %}
 <nav class="pagination" aria-label="Pagination">
-  {% if page.has_previous %}<a class="btn btn--secondary" id="page-prev" href="{% querystring page=page.previous_page_number %}" rel="prev">Previous</a>{% endif %}
-  <p class="pagination__status">Page {{ page.number }} of {{ page.paginator.num_pages }}</p>
-  {% if page.has_next %}<a class="btn btn--secondary" id="page-next" href="{% querystring page=page.next_page_number %}" rel="next">Next</a>{% endif %}
+  <p class="pagination__status visually-hidden">Page {{ page.number }} of {{ page.paginator.num_pages }}</p>
+  <ul class="pagination__list" role="list">
+    {% if page.has_previous %}<li><a class="btn btn--secondary" id="page-prev" href="{% querystring page=page.previous_page_number %}" rel="prev" aria-label="Previous page">{% icon "chevron-left" %}</a></li>{% endif %}
+    {% for number in numbers %}
+    {% if number is None %}<li class="pagination__gap" aria-hidden="true">…</li>
+    {% elif number == page.number %}<li><a class="btn btn--primary" href="{% querystring page=number %}" aria-current="page" aria-label="Page {{ number }}">{{ number }}</a></li>
+    {% else %}<li><a class="btn btn--ghost" href="{% querystring page=number %}" aria-label="Page {{ number }}">{{ number }}</a></li>{% endif %}
+    {% endfor %}
+    {% if page.has_next %}<li><a class="btn btn--secondary" id="page-next" href="{% querystring page=page.next_page_number %}" rel="next" aria-label="Next page">{% icon "chevron-right" %}</a></li>{% endif %}
+  </ul>
 </nav>
 {% endif %}

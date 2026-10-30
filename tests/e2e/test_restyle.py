@@ -42,9 +42,12 @@ def test_current_tab_keeps_the_focus_halo(page: Page, live_server, vite_build):
     tab.focus()
     page.keyboard.press("Shift+Tab")
     page.keyboard.press("Tab")  # keyboard focus, so :focus-visible applies
-    shadow = tab.evaluate("(el) => getComputedStyle(el).boxShadow")
-    assert "rgb(242, 183, 5)" in shadow  # yellow halo
-    assert "inset" in shadow  # and the current-tab underline
+    style = tab.evaluate(
+        "(el) => { const s = getComputedStyle(el);"
+        " return [s.boxShadow, s.borderBottomWidth, s.borderBottomColor]; }"
+    )
+    assert "rgb(242, 183, 5)" in style[0]  # yellow halo
+    assert style[1:] == ["3px", "rgb(184, 19, 42)"]  # and the current tab's red underline
 
 
 def test_short_app_page_does_not_scroll(page: Page, live_server, vite_build):

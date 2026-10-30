@@ -1,10 +1,17 @@
-{% load ui %}
+{% load ui partials %}
 <section class="kit-section" id="overlays" aria-labelledby="overlays-title">
-  <h2 id="overlays-title">Dialogs and bulk actions</h2>
+  <h2 id="overlays-title">Dialogs, drawer and bulk actions</h2>
   <div class="kit-state">
     <h3>Confirmation dialog</h3>
     <p>The button is a link to a full page, so it works without JavaScript; with htmx the same content opens in a dialog.</p>
     <a class="btn btn--primary" href="{% url 'kit:demo-dialog' %}" hx-get="{% url 'kit:demo-dialog' %}" hx-target="#app-dialog-body" hx-swap="innerHTML">Release allowances</a>
+  </div>
+  <div class="kit-state">
+    <h3>Drawer</h3>
+    <p>A slide-over detail panel, so a list keeps its place. It is server-rendered: a link opens it (<code>?scholar=…#scholar-drawer</code>) and its close link goes back to the list. From 64rem it is a 400 px panel fixed to the right edge; below that it covers the full width. Shown here in a frame instead of fixed.</p>
+    <div class="kit-frame">
+      {% include "components/drawer.html" with drawer_id="kit-drawer" title="Scholar details" close_url="#overlays" body_template="kit/sections/overlays.html#kit_drawer_body" scholar=drawer_scholar %}
+    </div>
   </div>
   <div class="kit-state">
     <h3>Row selection and bulk bar</h3>
@@ -27,7 +34,7 @@
               <td class="select"><input type="checkbox" name="ids" value="{{ row.id }}" data-bulk-item aria-label="Select {{ row.name }}"></td>
               <th scope="row">{{ row.name }}</th>
               <td>{{ row.school }}</td>
-              <td><span class="tag tag--info">Submitted</span></td>
+              <td>{% status "info" "Submitted" %}</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -36,3 +43,25 @@
     </form>
   </div>
 </section>
+{% partialdef kit_drawer_body %}
+<div class="kit-drawer-person">
+  {% avatar scholar.name 0 size="lg" %}
+  <div>
+    <h3 class="h4">{{ scholar.name }}</h3>
+    <p>{% status scholar.tone|default:"neutral" scholar.status_label %}, {{ scholar.tier }} tier</p>
+  </div>
+</div>
+<div class="btn-row">
+  <a class="btn btn--secondary" href="#overlays">{% icon "mail" %}Email</a>
+  <a class="btn btn--primary" href="#overlays">Open record</a>
+</div>
+<dl class="details">
+  <dt>School</dt><dd>{{ scholar.school }}</dd>
+  <dt>Allowance</dt><dd class="num">{{ scholar.amount|peso }} a term</dd>
+</dl>
+<div class="meter-row">
+  <label for="kit-drawer-gwa">Renewal check: GWA 88%</label>
+  {% include "components/progress.html" with id="kit-drawer-gwa" value=88 tone="secondary" %}
+  <p class="text-muted">Meets the 80% renewal mark with at least 15 units.</p>
+</div>
+{% endpartialdef %}

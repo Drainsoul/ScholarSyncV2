@@ -73,7 +73,7 @@ def test_kit_shows_controls_in_every_state(client, kit_on, vite_build):
 def test_kit_shows_data_components(client, kit_on, vite_build):
     body = client.get("/_kit/").content.decode()
     assert '<section class="kit-section" id="data"' in body
-    for marker in ('class="figure"', 'class="tag tag--', 'class="card"', 'class="tabs"',
+    for marker in ('class="figure"', 'class="status status--', 'class="card"', 'class="tabs"',
                    'aria-label="Breadcrumb"', 'class="empty"', "<meter", 'class="steps"',
                    'class="timeline"', 'aria-sort="ascending"'):  # fmt: skip
         assert marker in body, marker
@@ -226,7 +226,7 @@ def test_table_swaps_send_the_count_out_of_band(client, kit_on, vite_build):
 
 
 def test_filter_form_carries_the_current_sort(client, kit_on, vite_build):
-    form = '<form id="scholar-filters" class="filters"'
+    form = '<form id="scholar-filters" class="table-toolbar"'
     hidden = '<input type="hidden" name="sort" value="-school" form="scholar-filters">'
     assert form in client.get("/_kit/").content.decode()
     assert hidden in client.get("/_kit/?sort=-school").content.decode()

@@ -4,18 +4,22 @@
   --red-700: #b8132a;
   --red-800: #9b1022;
   --red-50: #fbe7ea;
+  --red-100: #f3b7c0;
   --blue-700: #1f4e9e;
   --blue-800: #163a78;
   --blue-50: #e4ebf6;
+  --blue-100: #b3c6e6;
   --yellow-500: #f2b705; /* decorative or on-accent surfaces only: never text on light */
   --yellow-50: #fef8e1;
   --yellow-100: #fcefc4;
   --gold-700: #8f6500;
   --green-800: #11663a;
+  --green-100: #b9dcc6;
   --green-50: #e7f3ec;
   --ink-900: #0e1b2c;
   --slate-700: #3d4654;
   --slate-500: #5b6472;
+  --slate-400: #7d8592; /* control edges: 3:1 on white and on the ground (WCAG 1.4.11) */
   --slate-300: #d0d5dd;
   --slate-200: #e4e7ec;
   --slate-150: #eef0f3;
@@ -34,7 +38,8 @@
   --surface-header: var(--slate-25);
   --track: var(--slate-150);
   --border: var(--slate-200);
-  --border-control: var(--slate-300);
+  --border-control: var(--slate-300); /* secondary-button outlines: their text identifies them */
+  --border-input: var(--slate-400); /* inputs, selects, textareas, checkboxes and radios */
   --primary: var(--red-700);
   --primary-hover: var(--red-800);
   --primary-50: var(--red-50);
@@ -51,12 +56,16 @@
   --brand: var(--red-700);
   --danger: var(--red-800);
   --danger-50: #fdecee;
+  --danger-100: var(--red-100);
   --success: var(--green-800);
   --success-50: #e7f3ec;
+  --success-100: var(--green-100);
   --warning: var(--gold-700);
   --warning-50: var(--yellow-50);
+  --warning-100: var(--yellow-100);
   --info: var(--blue-700);
   --info-50: var(--blue-50);
+  --info-100: var(--blue-100);
   --focus: var(--ink-900);
   --focus-halo: var(--yellow-500);
   /* The yellow halo outside the 3 px ink outline; components that draw their own inset marker add it. */
@@ -73,6 +82,7 @@
   --text-xs: 0.8125rem;
   --text-sm: 0.875rem;
   --text-base: 1rem;
+  --text-md: 1.125rem;
   --text-lg: 1.25rem;
   --text-xl: 1.5rem;
   --text-2xl: 1.875rem;
@@ -95,6 +105,7 @@
   --space-16: 4rem;
 
   /* Shape: rounded corners; shadows only on floating layers */
+  --radius-xs: 4px;
   --radius-sm: 8px;
   --radius-md: 10px;
   --radius-lg: 12px;
@@ -104,6 +115,7 @@
   /* Sizes and motion */
   --control-height: 2.75rem;
   --sidebar-width: 15.5rem;
+  --drawer-width: 25rem;
   --content-max: 72rem;
   --duration: 150ms;
   --ease: cubic-bezier(0.2, 0, 0, 1);

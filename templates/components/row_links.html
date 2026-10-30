@@ -1,0 +1,4 @@
+{% load ui %}{# Whole-row links for task lists: items is a list of {title, detail, tone, url}; the detail is a status line. #}
+<ul class="row-links" role="list">
+  {% for item in items %}<li><a class="row-link" href="{{ item.url }}"><span class="row-link__text"><span class="row-link__title">{{ item.title }}</span>{% status item.tone|default:"neutral" item.detail %}</span>{% icon "arrow-right" %}</a></li>{% endfor %}
+</ul>

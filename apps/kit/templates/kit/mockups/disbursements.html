@@ -40,7 +40,7 @@
       <tbody>{% for row in page %}<tr>
         <td class="select"><input type="checkbox" name="ids" value="{{ row.id }}" data-bulk-item aria-label="Select {{ row.name }}"></td>
         <th scope="row">{{ row.name }}</th><td>{{ row.tier }}</td><td class="num">{{ row.amount|peso }}</td>
-        <td><span class="tag{% if row.tone %} tag--{{ row.tone }}{% endif %}">{{ row.label }}</span></td>
+        <td>{% status row.tone|default:"neutral" row.label %}</td>
       </tr>{% endfor %}</tbody>
     </table>
   </div>

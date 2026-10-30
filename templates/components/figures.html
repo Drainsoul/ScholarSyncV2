@@ -1,0 +1,4 @@
+{# One bordered box of label + number cells: figures is a list of {label, value}. No icons or captions. #}
+<div class="figures">
+  {% for figure in figures %}{% include "components/stat_tile.html" with label=figure.label value=figure.value only %}{% endfor %}
+</div>

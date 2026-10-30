@@ -1,12 +1,13 @@
+/* Buttons (spec §12 rev 4): 44 px tall, radius 8, a 1 px border on every variant so they line up. */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
   min-height: var(--control-height);
-  padding: 0 var(--space-5);
-  border: 2px solid transparent;
-  border-radius: var(--radius-md);
+  padding: 0 var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   font: 600 var(--text-base) / 1 var(--font-body);
   text-decoration: none;
   white-space: nowrap;
@@ -17,42 +18,54 @@
 }
 
 .btn--primary {
+  border-color: var(--primary);
   background: var(--primary);
   color: var(--on-primary);
 }
 
 .btn--primary:hover {
+  border-color: var(--primary-hover);
   background: var(--primary-hover);
   color: var(--on-primary);
 }
 
+/* The control border is below 3:1, but the button's text identifies it (WCAG 1.4.11). */
 .btn--secondary {
+  border-color: var(--border-control);
   background: var(--surface);
-  border-color: var(--primary);
-  color: var(--primary);
+  color: var(--text);
 }
 
 .btn--secondary:hover {
-  background: var(--primary-50);
-  color: var(--primary);
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.btn--soft {
+  border-color: var(--secondary);
+  background: var(--secondary-50);
+  color: var(--secondary);
+}
+
+.btn--soft:hover {
+  border-color: var(--secondary-hover);
+  color: var(--secondary-hover);
 }
 
 .btn--ghost {
   background: transparent;
-  color: var(--link);
-  text-decoration: underline;
-  text-underline-offset: 0.25em;
+  color: var(--text-secondary);
 }
 
 .btn--ghost:hover {
-  color: var(--link-hover);
-  text-decoration-thickness: 3px;
+  background: var(--surface-hover);
+  color: var(--text);
 }
 
-/* Outlined so a destructive action never looks like the red primary button (spec §12). */
+/* Outlined and darker than the primary red, so a destructive action never looks like the main one. */
 .btn--danger {
-  background: var(--surface);
   border-color: var(--danger);
+  background: var(--surface);
   color: var(--danger);
 }
 
@@ -82,14 +95,14 @@
   height: var(--control-height);
   padding: 0;
   border: 0;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
 }
 
 .icon-btn:hover {
-  background: var(--surface-sunken);
+  background: var(--surface-hover);
   color: var(--text);
 }
 
