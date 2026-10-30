@@ -137,12 +137,17 @@ def test_fonts_are_self_hosted(vite_build):
     assert "//fonts." not in css
     # Status text is bold 700 (spec §12 rev 4: Source Sans 3 400/600/700), never a synthesised bold.
     faces = re.findall(r"@font-face\{[^}]*\}", css)
-    weights = {
-        re.search(r"font-weight:\s*(\d+)", face).group(1)  # type: ignore[union-attr]
-        for face in faces
-        if "Source Sans 3" in face
-    }
-    assert {"400", "600", "700"} <= weights, weights
+
+    def weights(family: str) -> set[str]:
+        return {
+            re.search(r"font-weight:\s*(\d+)", face).group(1)  # type: ignore[union-attr]
+            for face in faces
+            if family in face
+        }
+
+    assert {"400", "600", "700"} <= weights("Source Sans 3"), weights("Source Sans 3")
+    # The wordmark is Lexend 700 (spec §12 rev 4), never a synthesised bold.
+    assert {"600", "700"} <= weights("Lexend"), weights("Lexend")
 
 
 def test_status_text_is_bold_700():

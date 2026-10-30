@@ -93,3 +93,21 @@ def test_account_menu_opens_to_sign_out(page: Page, live_server, vite_build, vie
     assert (
         box and 0 <= box["y"] and box["y"] + box["height"] <= page.evaluate("innerHeight + scrollY")
     )
+
+
+@pytest.mark.parametrize("name", APP)
+def test_phone_menu_opens_under_its_toggle_and_tab_enters_it(
+    page: Page, live_server, vite_build, name
+):
+    page.set_viewport_size(PHONE)
+    page.goto(f"{live_server.url}/_kit/layouts/{name}/")
+    toggle = page.get_by_role("button", name="Menu")
+    before = toggle.bounding_box()
+    toggle.click()
+    after = toggle.bounding_box()
+    sidebar = page.locator(".sidebar").bounding_box()
+    assert before and after and sidebar
+    assert after["y"] == before["y"]  # the toggle stays put
+    assert sidebar["y"] >= after["y"] + after["height"]
+    page.keyboard.press("Tab")
+    assert page.evaluate("document.activeElement.closest('nav.sidebar') !== null")

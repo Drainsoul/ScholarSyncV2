@@ -113,6 +113,13 @@ def test_app_shell_has_a_sidebar_and_a_topbar(layout, vite_build):
     assert html.count("<header") == 1
     assert html.count('<main id="main"') == 1
     assert html.index('<div class="app">') < html.index('<nav class="sidebar"')
+    assert "{#" not in html  # a multi-line {# #} would render as a stray grid item
+    # The Menu button is the top bar's last control, right before the sidebar it opens.
+    assert html.index('<header class="topbar">') < html.index('<nav class="sidebar"')
+    assert html.index('<nav class="sidebar"') < html.index('<main id="main"')
+    bar = topbar(html)
+    toggle = bar.index("data-nav-toggle")
+    assert not re.search(r"<(a|button|input|summary)", bar[bar.index(">", toggle) :])
     nav = sidebar(html)
     items = re.findall(r"<li><a [^>]*>(.*?)</a></li>", nav, re.S)
     labels = [item for item in items if "Dashboard" in item or "Applications" in item]
