@@ -44,7 +44,7 @@ apps/
   core/            AuditEvent, permissions, layouts, health check
   <app>/           models.py services.py selectors.py views.py urls.py forms.py templates/ tests/
 templates/         base.html, layouts/ (public, auth, student, app → staff/office), components/, 4xx/500 pages
-frontend/          Vite root: src/*.ts, src/styles/*.css (builds to static/dist/, git-ignored)
+frontend/          Vite root: src/*.ts, src/styles/*.css + src/styles/components/*.css (builds to static/dist/, git-ignored)
 scripts/           one-off tools (export_legacy_model.py)
 tests/             cross-app tests (permission matrix), tests/e2e/ (Playwright)
 docs/              legacy-audit.md, superpowers/specs/, superpowers/plans/
