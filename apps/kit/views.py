@@ -251,23 +251,43 @@ def demo_signout(request: HttpRequest) -> HttpResponse:
     return redirect(f"{reverse('kit:index')}#layouts")
 
 
-MOCKUPS: dict[str, tuple[str, str, Callable[[], dict[str, object]]]] = {
+Build = Callable[[QueryDict], dict[str, object]]
+
+
+def fixed(build: Callable[[], dict[str, object]]) -> Build:
+    """A mockup whose sample data ignores the query string."""
+    return lambda params: build()
+
+
+def scholars_mockup(params: QueryDict) -> dict[str, object]:
+    """?status= picks the tab (unknown: all); ?scholar=<id> opens the drawer (bad id: none)."""
+    value = params.get("scholar", "")
+    scholar = int(value) if value.isascii() and value.isdigit() else None
+    return samples.scholars_page(params.get("status", "all"), scholar, params.get("page"))
+
+
+MOCKUPS: dict[str, tuple[str, str, Build]] = {
     "student-dashboard": (
         "Student dashboard",
         "kit/mockups/student_dashboard.html",
-        samples.student_dashboard,
+        fixed(samples.student_dashboard),
     ),
-    "apply": ("Apply to a program", "kit/mockups/apply.html", samples.apply),
+    "apply": ("Apply to a program", "kit/mockups/apply.html", fixed(samples.apply)),
     "application-review": (
         "Staff application review",
         "kit/mockups/application_review.html",
-        samples.application_review,
+        fixed(samples.application_review),
     ),
-    "disbursements": ("Disbursements", "kit/mockups/disbursements.html", samples.disbursements),
+    "scholars": ("Scholars", "kit/mockups/scholars.html", scholars_mockup),
+    "disbursements": (
+        "Disbursements",
+        "kit/mockups/disbursements.html",
+        fixed(samples.disbursements),
+    ),
     "office-dashboard": (
         "Office dashboard",
         "kit/mockups/office_dashboard.html",
-        samples.office_dashboard,
+        fixed(samples.office_dashboard),
     ),
 }
 
@@ -285,4 +305,4 @@ def mockup(request: HttpRequest, slug: str) -> HttpResponse:
     if slug not in MOCKUPS:
         raise Http404
     _, template, build = MOCKUPS[slug]
-    return render(request, template, build())
+    return render(request, template, build(request.GET))

@@ -8,6 +8,7 @@
   --blue-700: #1f4e9e;
   --blue-800: #163a78;
   --blue-50: #e4ebf6;
+  --blue-25: #f0f4fa; /* selected rows: gold status text keeps 4.5:1 on it */
   --blue-100: #b3c6e6;
   --yellow-500: #f2b705; /* decorative or on-accent surfaces only: never text on light */
   --yellow-50: #fef8e1;
@@ -36,6 +37,7 @@
   --surface: var(--white);
   --surface-hover: var(--slate-100);
   --surface-header: var(--slate-25);
+  --surface-selected: var(--blue-25);
   --track: var(--slate-150);
   --border: var(--slate-200);
   --border-control: var(--slate-300); /* secondary-button outlines: their text identifies them */

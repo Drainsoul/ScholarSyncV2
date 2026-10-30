@@ -176,3 +176,117 @@ def test_review_pending_rule_is_neutral_text(rf, kit_on, vite_build):
     assert checklist.count("status--neutral") == 1
     assert checklist.count("status--success") == 2
     assert checklist.count("status--warning") == 1
+
+
+SCHOLARS = "/_kit/mockups/scholars/"
+
+
+def scholar_rows(body: str) -> list[str]:
+    return re.findall(r"<tr[^>]*>.*?</tr>", body.split("<tbody")[1].split("</tbody>")[0], re.S)
+
+
+def test_scholars_mockup_filters_by_status_tab(client, kit_on, vite_build):
+    body = client.get(f"{SCHOLARS}?status=at_risk").content.decode()
+    rows = scholar_rows(body)
+    assert rows
+    assert all('<span class="status status--warning">At risk</span>' in row for row in rows)
+    tabs = body.split('<nav class="tabs"')[1].split("</nav>")[0]
+    current = re.findall(r'<a href="([^"]*)" aria-current="page">', tabs)
+    assert current == ["?status=at_risk"]
+    for key, count in (
+        ("all", 968),
+        ("active", 900),
+        ("at_risk", 37),
+        ("on_hold", 12),
+        ("ended", 19),
+    ):
+        assert re.search(
+            rf'href="\?status={key}"[^>]*>[^<]+<span class="count[^"]*">{count}<', tabs
+        )
+    # Each name opens the drawer and keeps the tab.
+    assert 'href="?status=at_risk&amp;scholar=3#scholar-drawer"' in body
+    assert 'class="drawer"' not in body
+
+
+def test_scholars_drawer_opens_from_the_query(client, kit_on, vite_build):
+    body = client.get(f"{SCHOLARS}?status=active&scholar=3").content.decode()
+    drawer = body.split('<aside class="drawer" id="scholar-drawer"')[1].split("</aside>")[0]
+    assert "Curtis Walker" in drawer
+    assert 'class="avatar avatar--' in drawer and "avatar--lg" in drawer
+    assert '<span class="status status--warning">At risk</span>' in drawer
+    assert "Honors tier" in drawer
+    assert 'href="?status=active' in drawer  # the close link goes back to the same tab
+    assert 'aria-label="Close details"' in drawer
+    for text in ("Email", "Open record", "Renewal check", "Allowances", "Put award on hold"):
+        assert text in drawer, text
+    assert "#circle-pause" in drawer and "btn btn--danger" in drawer
+    assert '<progress class="progress progress--secondary" max="100" value="79"' in drawer
+    assert 'class="renewal__track"' in drawer
+    assert "style=" not in drawer
+    assert drawer.count('class="status status--') == 4  # the scholar and three allowances
+
+
+def test_scholars_bad_scholar_id_has_no_drawer(client, kit_on, vite_build):
+    for query in ("?scholar=abc", "?scholar=9999", "?scholar=-1", "?scholar="):
+        response = client.get(f"{SCHOLARS}{query}")
+        assert response.status_code == 200
+        assert 'class="drawer"' not in response.content.decode()
+
+
+def test_scholars_bad_status_falls_back_to_all(client, kit_on, vite_build):
+    body = client.get(f"{SCHOLARS}?status=__class__").content.decode()
+    tabs = body.split('<nav class="tabs"')[1].split("</nav>")[0]
+    assert re.findall(r'<a href="([^"]*)" aria-current="page">', tabs) == ["?status=all"]
+    assert len(scholar_rows(body)) == len(
+        scholar_rows(client.get(f"{SCHOLARS}?status=all").content.decode())
+    )
+
+
+def test_tier_is_plain_text(client, kit_on, vite_build):
+    body = client.get(SCHOLARS).content.decode()
+    tiers = re.findall(r'<td data-label="Tier">(.*?)</td>', body, re.S)
+    assert tiers and set(tiers) <= {"Basic", "Priority", "Honors"}
+
+
+def test_scholars_page_has_the_canvas_figures_and_callout(client, kit_on, vite_build):
+    body = client.get(SCHOLARS).content.decode()
+    figures = body.split('<div class="figures">')[1].split("</section>")[0]
+    for label, value in (
+        ("Active scholars", "900"),
+        ("At risk", "37"),
+        ("On hold", "12"),
+        ("Budget used", "64%"),
+    ):
+        assert re.search(rf">{label}</p>\s*<p class=\"figure__value num\">{value}</p>", figures)
+    callout = body.split('class="callout"')[1].split("</div>")[0]
+    assert "#clock" in callout and "Renewals close 15 Nov" in callout
+    assert "37 scholars are below the 80% GWA mark this term" in callout
+    assert 'href="?status=at_risk">Review at-risk scholars</a>' in callout
+    assert "Sorted by name, A to Z" in body and "More filters" in body
+    assert 'class="pagination"' in body and 'aria-current="page" aria-label="Page 1"' in body
+
+
+def test_scholars_low_gwa_is_danger_text_with_words(client, kit_on, vite_build):
+    body = client.get(f"{SCHOLARS}?status=at_risk").content.decode()
+    cells = re.findall(r'<td class="num gwa([^"]*)" data-label="GWA">(.*?)</td>', body, re.S)
+    assert cells and all(cls == " gwa--low" for cls, _ in cells)
+    assert all("below the 80% mark" in text for _, text in cells)
+
+
+def test_scholars_sample_has_a_long_name(client, kit_on, vite_build):
+    from apps.kit import samples
+
+    rows = samples.scholars_page("all", None)["rows"]
+    assert isinstance(rows, list)
+    assert max(len(row["name"]) for row in rows) >= 40
+
+
+def test_restyled_mockups_use_cards_and_status_text(client, kit_on, vite_build):
+    money = client.get("/_kit/mockups/disbursements/").content.decode()
+    assert "<meter" not in money and 'class="filters"' not in money
+    assert 'class="table-toolbar"' in money
+    assert '<progress class="progress progress--primary" max="100" value="64"' in money
+    apply = client.get("/_kit/mockups/apply/").content.decode()
+    assert 'class="section' not in apply and 'class="steps' not in apply
+    assert '<progress class="progress progress--secondary"' in apply
+    assert '<span class="status status--success">Met</span>' in apply

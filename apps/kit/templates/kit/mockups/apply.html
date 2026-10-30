@@ -3,18 +3,19 @@
 {% block content %}
 <div class="page-header">
   <div><h1>Apply to LANI</h1><p class="page-header__meta">Applications close on 15 November 2026</p></div>
+  <div class="goal">
+    <p class="goal__figures"><span class="goal__label">Step 2 of 4</span><span>Documents</span></p>
+    <progress class="progress progress--secondary" max="4" value="2" aria-label="Application progress: step 2 of 4, documents">2 of 4</progress>
+  </div>
 </div>
-<ol class="steps" aria-label="Application progress">
-  <li class="steps__item steps__item--done"><span class="steps__marker">{% icon "check" %}</span>Profile<span class="visually-hidden"> (done)</span></li>
-  <li class="steps__item steps__item--current" aria-current="step"><span class="steps__marker">2</span>Documents</li>
-  <li class="steps__item"><span class="steps__marker">3</span>Review</li>
-  <li class="steps__item"><span class="steps__marker">4</span>Submit</li>
-</ol>
 <div class="split">
   <div class="stack">
     <section class="card" aria-labelledby="docs-title">
-      <h2 class="card__title" id="docs-title">Required documents</h2>
-      <p class="text-muted">PDF, JPG or PNG, up to 10 MB each. Only staff reviewing your application can open them.</p>
+      <div class="card__header">
+        <h2 class="card__title" id="docs-title">Required documents</h2>
+        <div class="progress-inline"><progress class="progress progress--success" max="4" value="1" aria-label="Documents uploaded">1 of 4</progress><span class="num">1 of 4 uploaded</span></div>
+      </div>
+      <p class="text-sm text-muted">PDF, JPG or PNG, up to 10 MB each. Only staff reviewing your application can open them.</p>
       {% for doc in documents %}{% include "components/file_input.html" with id=doc.id name=doc.id label=doc.label help=doc.help state=doc.state progress=doc.progress filename=doc.filename error=doc.error %}{% endfor %}
     </section>
     <section class="card" aria-labelledby="declare-title">
@@ -27,17 +28,17 @@
     </section>
   </div>
   <div class="stack">
-    <section class="section" aria-labelledby="program-title">
-      <h2 class="section__title" id="program-title">About LANI</h2>
-      <dl class="details">
+    <section class="card" aria-labelledby="program-title">
+      <h2 class="card__title" id="program-title">About LANI</h2>
+      <dl class="facts">
         <dt>For</dt><dd>College students from Taguig in any recognized school</dd>
         <dt>Allowance</dt><dd class="num">₱5,000.00 to ₱10,000.00 a term, by tier</dd>
         <dt>Closes</dt><dd>15 November 2026</dd>
       </dl>
     </section>
-    <section class="section" aria-labelledby="match-title">
-      <h2 class="section__title" id="match-title">Do you qualify?</h2>
-      <ul class="checklist">{% for rule in rules %}<li class="is-{{ rule.state }}">{% icon rule.icon %}<div><p>{{ rule.text }}</p><p class="text-sm text-muted">{{ rule.status }}</p></div></li>{% endfor %}</ul>
+    <section class="card" aria-labelledby="match-title">
+      <div class="card__header"><h2 class="card__title" id="match-title">Do you qualify?</h2><p class="text-sm text-muted num">3 of 4 rules met</p></div>
+      <ul class="checklist">{% for rule in rules %}<li class="is-{{ rule.state }}">{% icon rule.icon %}<div><p>{{ rule.text }}</p><p class="text-sm">{% if rule.state == "met" %}{% status "success" rule.status %}{% elif rule.state == "unmet" %}{% status "warning" rule.status %}{% else %}{% status "neutral" rule.status %}{% endif %}</p></div></li>{% endfor %}</ul>
     </section>
   </div>
 </div>
