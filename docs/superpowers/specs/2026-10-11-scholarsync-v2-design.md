@@ -3,6 +3,8 @@
 - **Revision:** 2 (2026-10-28): M3 design-system details (§3, §12, §13, §14, §15, §16), proposed with the M3 plan.
 - **Revision:** 3 (2026-10-28): §12 visual redesign (UI UX Pro Max: Accessible & Ethical + Swiss; Lexend + Source Sans 3;
   navy actions, red brand mark only) after Kenneth's M3 mockup review.
+- **Revision:** 4 (2026-10-30): §12 redesign on Kenneth's canvas (red primary, blue secondary, yellow accent; white
+  sidebar shell; cards; status as coloured text). Boards in `docs/design/2026-10-30-redesign/`.
 - **Status:** rev 1 approved by Kenneth on 2026-10-12. M1 plan: `docs/superpowers/plans/2026-10-12-m1-vercel-spike.md`.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -451,57 +453,65 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   Singapore. The code doesn't change, because §7 and §9 already assume no disk and no workers.
 
 ## 12. Frontend
-- **Design direction (rev 3, 2026-10-28):** Kenneth found the M3 mockups "AI-generated and ugly" and asked for a
-  redesign with the UI UX Pro Max skill (github.com/nextlevelbuilder/ui-ux-pro-max-skill, `28b3b8d`). Its
-  recommendation for a government public-service product drives this section:
-  - style **Accessible & Ethical + Minimalism & Swiss Style** (flat, high contrast, typographic hierarchy, rules
-    instead of boxes); landing pattern "Minimal & Direct"; staff screens an "Executive Dashboard";
-  - type pairing **"Corporate Trust": Lexend (headings) + Source Sans 3 (body)**;
-  - palette focus "professional navy, high contrast" (7:1 where practical);
-  - avoid: ornament, soft gradients, decorative motion, AI purple/pink.
-  - **Removed AI tells:** soft icon chips on stat tiles, icons inside every pill/button/nav item, a soft rounded
-    card around everything, a single radius on everything, red primary buttons, Poppins/Inter.
-- **Brand:**
-  - logo: the v1 graduation-cap outline plus the "ScholarSync" wordmark (Lexend 600) and the "City of Taguig" label;
-  - Taguig red is the **brand mark and danger only**; actions are navy; gold is a civic accent (the 4 px stripe at
-    the top of every page, the active-nav marker, the focus halo).
-- **Tokens** (`frontend/src/styles/tokens.css`; every text pair ≥ 4.5:1, most ≥ 7:1, checked by
-  `tests/test_tokens.py`):
-  - **ink** `#0e1b2c` (text, 17:1); **muted** `#4b5563` (7.6:1); **bg** `#f5f4f0` (warm paper); **surface**
-    `#ffffff`; **sunken** `#ecebe6`; **border** `#d6d3cb`; **control border** `#5f6368` (6:1);
-  - **primary navy** `#1a3a6b` (buttons, links, current nav; white on it 11:1), hover `#10284d`, tint `#e8eef7`;
-  - **red** `#b8132a` (brand mark, danger; 6.6:1), tint `#fbecee`; **gold** `#f0b323` (decorative: 1.9:1 on white,
-    6:1 on navy, ink on gold 9:1);
-  - **status:** success `#11663a` on `#e7f3ec`; warning `#8a4b00` on `#fbf1e2`; danger = red on its tint; info =
-    navy on its tint;
-  - **focus:** 3 px ink outline plus a 3 px gold halo outside it (the ink ring carries the contrast);
-  - **type:** Lexend 500/600 headings, Source Sans 3 400/600 body at 17 px (1.0625rem), line height 1.55, tabular
-    figures for money; scale 1.25;
-  - **shape:** radius 3 px (controls, tags) and 4 px (panels, dialogs) — never pill-shaped; no shadows except
-    floating layers (dialog, toast, menus); 4 px spacing scale.
+- **Design direction (rev 4, 2026-10-30):** Kenneth asked for a redesign on the layout of a Dribbble admin
+  dashboard ("Cark: User management platform"), with red as the main colour, blue second and yellow third, using the
+  UI UX Pro Max skill. He reviewed and edited the result on a design canvas; its boards are kept in
+  `docs/design/2026-10-30-redesign/` and are the visual reference for this section. Rev 4 replaces rev 3's
+  navy-led, unboxed look. Kenneth's rulings from the canvas review:
+  - one plain box of figures (label + number), no icons, captions or progress bars in it;
+  - status is bold coloured text, never a pill or tinted tag; tiers are plain text with no colour;
+  - no decorative coloured circles (timeline dots, icon chips); no subtitle lines that repeat the obvious;
+  - "needs attention" items are whole-row links with no underline, an arrow on the right and a hover state, and their
+    detail line is coloured by severity;
+  - review progress is a single progress bar, not step pills.
+- **Brand:** the graduation-cap logo in a red rounded square, the "ScholarSync" wordmark (Lexend 700) and the
+  "City of Taguig" label. A 4 px stripe in red (half), blue and yellow (a quarter each) tops the sidebar in the app
+  shells and the page in the public and auth layouts.
+- **Tokens** (`frontend/src/styles/tokens.css`; every text pair ≥ 4.5:1, checked by `tests/test_tokens.py`):
+  - **red (primary)** `#b8132a`: main buttons, current nav item, brand mark, current page in pagination, current
+    tab underline, budget bars; white on it 6.6:1; hover `#9b1022`; tint `#fbe7ea` (red on tint 5.6:1);
+  - **blue (secondary)** `#1f4e9e`: links, program identity, info, selected rows, progress toward a goal, the
+    soft secondary button; white on it 8.0:1; hover `#163a78`; tint `#e4ebf6`;
+  - **yellow (accent)** `#f2b705`: fills only (focus halo, nav counts, callout tints `#fef8e1`/`#fcefc4`), never text
+    on white (1.8:1); ink on yellow 9.5:1; **gold text** `#8f6500` (5.2:1 on white) for warning-tone status;
+  - **neutrals:** ink `#0e1b2c`, muted `#5b6472` (6.0:1 on white), secondary text `#3d4654`, border `#e4e7ec`,
+    control border `#d0d5dd`, ground `#f5f6f8`, table header `#fafafb`, hover `#f1f2f5`;
+  - **status text:** success `#11663a`, warning `#8f6500`, info `#1f4e9e`, danger `#9b1022`, neutral `#3d4654`;
+  - **danger** `#9b1022`, darker than the primary red; danger buttons are outlined in it, with an icon and a verb;
+  - **focus:** 3 px ink outline plus a yellow halo outside it;
+  - **type:** Lexend 600/700 headings, Source Sans 3 400/600/700 body at 16 px, line height 1.5, tabular figures for
+    money; captions and table headers 13 px;
+  - **shape:** radius 8 px (controls, buttons, nav items), 10 px (small blocks), 12 px (cards, figures box, drawer
+    edges); pills (999 px) only for counts; shadows only on floating layers (drawer, dialog, toast, menus).
   - Light theme in v2.0; tokens are role-named so a dark theme can be added later.
-- **Components** (`templates/components/` + CSS), flat and typographic:
-  - **buttons:** primary = solid navy; secondary = white with a 2 px navy border; link-style ghost; danger = white
-    with a 2 px red border and red text; 44 px tall; text only (icons only where they carry meaning: download,
-    close, menu);
-  - **fields:** label 600, hint muted, 2 px control border; an error puts a 4 px red bar beside the field group and
-    the message above the control (GOV.UK pattern); error summary at the top of the form;
-  - **panels** (was "card"): white, 1 px border, 4 px radius, title row separated by a rule; sections inside a page
-    are separated by rules, not nested boxes;
-  - **figures** (was "stat tile"): label + large Lexend number + optional note, no box, no icon, separated by vertical
-    rules in a row (stacked on phones);
-  - **tags** (was "status pill"): 3 px radius, tint background, 600 text, no icon (the text is the status);
-  - **table:** 2 px ink rule under the header, 1 px row rules, no zebra, numbers right-aligned in tabular figures;
-    sortable headers, pagination, row selection + bulk bar;
-  - **tabs:** text with a 4 px navy underline on the current tab; **breadcrumbs:** small text with `›`;
-  - **feedback:** notification banners (5 px coloured left bar, bold title) for alerts and toasts; dialog; empty
-    state (plain text + one action, no illustration).
-- **Layouts:** a 4 px civic stripe (red then gold) on top of every page.
-  - public and student: white header (logo + wordmark + "City of Taguig"), text navigation with a navy underline on
-    the current item; content max 72rem;
-  - auth: the split panel from v1, flat navy (no gradient) with one Lexend statement;
-  - staff and office: a navy top bar (logo, program switcher for staff, user, sign out) and a white left navigation
-    with text items (no icons) and a 4 px navy bar on the current item;
+- **Components** (`templates/components/` + CSS):
+  - **buttons:** 44 px tall, radius 8. Primary = solid red; secondary = white with a `#d0d5dd` border; soft = blue
+    tint with a blue border; ghost = no border, hover tint; danger = white, outlined in `#9b1022`. Icons only where
+    they carry meaning (download, add, mail, close, menu, sign out, pause);
+  - **cards:** white, 1 px border, radius 12, a title row with an optional link on the right. Page sections are
+    cards on the grey ground; a card never sits inside another card;
+  - **figures:** one bordered box of label + Lexend number cells divided by 1 px rules; cells wrap on narrow
+    screens;
+  - **status:** bold text in its tone colour (`.status--success` etc.), no background; **counts:** small pills (nav
+    counts in yellow with ink text, tab counts grey or red tint on the current tab);
+  - **avatars:** initials in a circle, tinted red, blue or yellow by position;
+  - **table:** 13 px bold muted headers on `#fafafb`, 1 px row rules, row hover, numbers right-aligned in tabular
+    figures; toolbar of search + filter selects above; numbered pagination with the current page in red;
+  - **tabs:** bold text with a 3 px red underline on the current tab and a count pill;
+  - **drawer:** a slide-over detail panel (white, left border, shadow) opened by a link, so a list keeps its place;
+    server-rendered, closed by a link;
+  - **progress:** 8 px rounded bar on `#eef0f3`;
+  - **row links:** whole-row links for task lists (no underline; hover background, underlined title, arrow);
+  - **banners:** tinted box with radius 12 and an icon for warning and danger; **feedback:** dialog, toast, empty
+    state as before.
+- **Layouts:**
+  - **app shell (staff, office, student):** a white 248 px sidebar (stripe, brand, a context block, grouped nav with
+    an icon per item and counts, an optional callout, a user card with the account menu and sign out at the bottom)
+    beside a column with a white top bar (search for staff and office, term chooser, notifications) and the page on
+    the grey ground. The context block is the program switcher for staff and "Scholarship office" for the office.
+    The current nav item has a red tint and red text;
+  - **public:** a white top bar with the brand and text navigation, the stripe on top, content max 72rem;
+  - **auth:** the split panel, now flat red with white text (Claude's call; not on the canvas), the stripe on top;
   - navigation collapses behind a toggle (`nav.ts`) below 64rem and is fully visible without JS.
 - **Icons:** `scripts/sprite.mjs` builds `static/dist/icons.svg` from the Lucide names listed in `src/icons/icons.json`
   plus our own SVGs (the logo); templates use `{% icon "name" %}`. A misspelt name fails the build.
@@ -608,6 +618,10 @@ starts, and ends with every acceptance item checked.
 - [ ] Key-screen mockups (student dashboard, apply, staff application review, disbursements, office dashboard)
   **approved by Kenneth** (gate).
 
+**M3c: Redesign (rev 4)**
+- [ ] Tokens, components, the white-sidebar app shell (staff, office, student), public and auth layouts, and every
+  kit mockup restyled to `docs/design/2026-10-30-redesign/`; a new Scholars mockup with the drawer; full gate green.
+
 **M4: Accounts, email, minimal Program**
 - [ ] Custom `User`, allauth (verification, Google, reset, rate limits, reauth), roles; signup only ever makes students.
 - [ ] Minimal `Program` + `ProgramMembership`; scoping mixins; permission-matrix test.
@@ -695,3 +709,4 @@ starts, and ends with every acceptance item checked.
 | Region `sin1` + Neon Singapore | Users are in Taguig; Vercel's default region is the US |
 | `CLAUDE.md` tracked and basic; `CLAUDE.local.md` and `STATE.md` git-ignored | Kenneth's request (2026-10-12) |
 | No AI attribution on any commit or PR | Kenneth's non-negotiable (`CLAUDE.local.md`) |
+| Redesign rev 4: red primary, blue secondary, yellow accent; Cark-style white sidebar shell (2026-10-30) | Kenneth's choice after reviewing and editing the design canvas |

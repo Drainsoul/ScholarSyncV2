@@ -2,7 +2,7 @@
 
 - **Date:** 2026-10-30
 - **Status:** approved by Kenneth on 2026-10-30. It amends the main spec
-  (`2026-10-11-scholarsync-v2-design.md`, which becomes revision 4; §12 below lists the sections).
+  (`2026-10-11-scholarsync-v2-design.md`, which becomes revision 5; §12 below lists the sections).
 - **Replaces:** Vercel as the deployment target (main spec §11 and the parts of §2, §7, §9, §14–§17 built on it).
 
 ## 1. Intent
@@ -238,7 +238,7 @@ is rewritten to match.
 - A **compose smoke** job proves the one-command run: `docker compose up` (detached), wait for health, check that the
   login page answers on the app port and shows the notice. The builder may trim it if CI time becomes a problem.
 
-## 12. Main spec changes (revision 4)
+## 12. Main spec changes (revision 5)
 
 Applied when this document is approved:
 - §1 goal 7 → "runs anywhere a container runs; one-command local run"; non-goals updated.

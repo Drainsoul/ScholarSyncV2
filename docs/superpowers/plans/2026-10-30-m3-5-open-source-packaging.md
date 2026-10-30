@@ -55,13 +55,13 @@ Mailpit, an S3-compatible server, GitHub Actions.
 
 ---
 
-### Task 1: Spec revision 4
+### Task 1: Spec revision 5
 
 **Files:**
 - Modify: `docs/superpowers/specs/2026-10-11-scholarsync-v2-design.md`
 
 - [ ] **Step 1: Apply the revision.** Make every change in the design's §12, using the design's wording:
-  - Add a `Revision: 4 (2026-10-30)` line pointing at the design doc.
+  - Add a `Revision: 5 (2026-10-30)` line pointing at the design doc.
   - Rewrite §1 goal 7 and the non-goals.
   - Make the §2 table rows provider-neutral, and change "Deliberately absent" to "an outbox plus a worker loop".
   - Reword the §7 constraints.
@@ -80,7 +80,7 @@ Mailpit, an S3-compatible server, GitHub Actions.
   - Add the decision to §19.
 - [ ] **Step 2: Verify.** Run `rg -n -i "vercel|neon|resend|R2_|cron" docs/superpowers/specs/2026-10-11-scholarsync-v2-design.md`.
   Expected: hits only in M1's historical entry, the revision line, §19's history and worked-example mentions.
-- [ ] **Step 3: Commit.** `git commit -m "docs: spec rev 4 for open-source self-hosting"`
+- [ ] **Step 3: Commit.** `git commit -m "docs: spec rev 5 for open-source self-hosting"`
 
 ### Task 2: Modes in settings
 

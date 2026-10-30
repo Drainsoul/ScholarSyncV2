@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Colour, type and components</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@500;600;700&amp;family=Source+Sans+3:wght@400;600;700&amp;display=swap">
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+a{color:#1F4E9E}a:hover{color:#163A78}
+h1,h2,h3,p{margin:0}
+button,input{font:inherit;color:inherit}
+.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:8px;font-weight:600;cursor:pointer;white-space:nowrap}
+.cap{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5B6472}
+.num{font-variant-numeric:tabular-nums}
+</style>
+</helmet>
+<div style="width: 1200px; height: 1040px; padding: 48px; background: #F5F6F8; color: #0E1B2C; font-family: 'Source Sans 3', system-ui, sans-serif; font-size: 16px; line-height: 1.5; display: flex; flex-direction: column; gap: 32px">
+
+  <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 24px">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <p class="cap">ScholarSync design tokens · proposal</p>
+      <h1 style="font-family: Lexend, sans-serif; font-size: 34px; line-height: 1.15; font-weight: 600">Red leads, blue informs, yellow flags</h1>
+    </div>
+    <div aria-hidden="true" style="display: flex; width: 220px; height: 8px; border-radius: 999px; overflow: hidden"><span style="flex: 2; background: #B8132A"></span><span style="flex: 1; background: #1F4E9E"></span><span style="flex: 1; background: #F2B705"></span></div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px">
+    <div style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 14px; overflow: hidden">
+      <div style="height: 120px; background: #B8132A; color: #FFFFFF; padding: 20px; display: flex; flex-direction: column; justify-content: space-between"><p class="cap" style="color: #FFFFFF">1 · Primary</p><p style="font-family: Lexend, sans-serif; font-size: 22px; font-weight: 600">Taguig red</p></div>
+      <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 10px">
+        <div aria-hidden="true" style="display: flex; height: 28px; border-radius: 6px; overflow: hidden"><span style="flex: 1; background: #FBE7EA"></span><span style="flex: 1; background: #F3B7C0"></span><span style="flex: 1; background: #DB4A5E"></span><span style="flex: 1; background: #B8132A"></span><span style="flex: 1; background: #9B1022"></span><span style="flex: 1; background: #6E0B18"></span></div>
+        <p class="num" style="font-weight: 700">#B8132A · hover #9B1022 · tint #FBE7EA</p>
+        <p style="font-size: 14px; color: #3D4654">Main actions, active nav, brand mark, current page, budget bars.</p>
+        <p class="num" style="font-size: 14px; color: #11663A; font-weight: 700">White on red 6.64:1 · red on tint 5.60:1</p>
+      </div>
+    </div>
+    <div style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 14px; overflow: hidden">
+      <div style="height: 120px; background: #1F4E9E; color: #FFFFFF; padding: 20px; display: flex; flex-direction: column; justify-content: space-between"><p class="cap" style="color: #FFFFFF">2 · Secondary</p><p style="font-family: Lexend, sans-serif; font-size: 22px; font-weight: 600">Civic blue</p></div>
+      <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 10px">
+        <div aria-hidden="true" style="display: flex; height: 28px; border-radius: 6px; overflow: hidden"><span style="flex: 1; background: #E4EBF6"></span><span style="flex: 1; background: #B3C6E6"></span><span style="flex: 1; background: #5B82C4"></span><span style="flex: 1; background: #1F4E9E"></span><span style="flex: 1; background: #163A78"></span><span style="flex: 1; background: #0E2650"></span></div>
+        <p class="num" style="font-weight: 700">#1F4E9E · hover #163A78 · tint #E4EBF6</p>
+        <p style="font-size: 14px; color: #3D4654">Links, program identity, info banners, selected rows, second chart series.</p>
+        <p class="num" style="font-size: 14px; color: #11663A; font-weight: 700">White on blue 7.95:1 · blue on tint 6.63:1</p>
+      </div>
+    </div>
+    <div style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 14px; overflow: hidden">
+      <div style="height: 120px; background: #F2B705; color: #0E1B2C; padding: 20px; display: flex; flex-direction: column; justify-content: space-between"><p class="cap" style="color: #0E1B2C">3 · Accent</p><p style="font-family: Lexend, sans-serif; font-size: 22px; font-weight: 600">Sun yellow</p></div>
+      <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 10px">
+        <div aria-hidden="true" style="display: flex; height: 28px; border-radius: 6px; overflow: hidden"><span style="flex: 1; background: #FEF8E1"></span><span style="flex: 1; background: #FCEFC4"></span><span style="flex: 1; background: #F8D66B"></span><span style="flex: 1; background: #F2B705"></span><span style="flex: 1; background: #8F6500"></span><span style="flex: 1; background: #6B4500"></span></div>
+        <p class="num" style="font-weight: 700">#F2B705 · status text <span style="color: #8F6500">#8F6500</span></p>
+        <p style="font-size: 14px; color: #3D4654">Bright yellow: focus halo, counts, callouts. Dark gold text: scheduled, at risk, returned.</p>
+        <p class="num" style="font-size: 14px; color: #11663A; font-weight: 700">Dark gold on white 5.21:1 · bright yellow text on white 1.82:1, never</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px">
+    <div style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+      <p class="cap">Neutrals and status</p>
+      <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px">
+        <div style="display: flex; flex-direction: column; gap: 6px"><span aria-hidden="true" style="height: 44px; border-radius: 8px; background: #0E1B2C"></span><span style="font-size: 13px"><b>Ink</b><br>#0E1B2C</span></div>
+        <div style="display: flex; flex-direction: column; gap: 6px"><span aria-hidden="true" style="height: 44px; border-radius: 8px; background: #5B6472"></span><span style="font-size: 13px"><b>Muted</b><br>#5B6472</span></div>
+        <div style="display: flex; flex-direction: column; gap: 6px"><span aria-hidden="true" style="height: 44px; border-radius: 8px; background: #E4E7EC"></span><span style="font-size: 13px"><b>Border</b><br>#E4E7EC</span></div>
+        <div style="display: flex; flex-direction: column; gap: 6px"><span aria-hidden="true" style="height: 44px; border-radius: 8px; background: #F5F6F8; border: 1px solid #E4E7EC"></span><span style="font-size: 13px"><b>Ground</b><br>#F5F6F8</span></div>
+        <div style="display: flex; flex-direction: column; gap: 6px"><span aria-hidden="true" style="height: 44px; border-radius: 8px; background: #11663A"></span><span style="font-size: 13px"><b>Success</b><br>#11663A</span></div>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px 20px; font-weight: 700">
+        <span style="color: #11663A">Active</span>
+        <span style="color: #8F6500">Scheduled</span>
+        <span style="color: #8F6500">At risk</span>
+        <span style="color: #1F4E9E">Under review</span>
+        <span style="color: #3D4654">On hold</span>
+        <span style="color: #9B1022">Ended</span>
+      </div>
+      <p style="font-size: 14px; color: #3D4654">Status is coloured bold text, no pill or background.</p>
+      <p style="font-size: 14px; color: #3D4654">Tiers are plain text (Basic, Priority, Honors) with no colour. Only status gets a coloured tag.</p>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 14px">
+      <p class="cap">Type · Lexend + Source Sans 3 (already shipped)</p>
+      <p style="font-family: Lexend, sans-serif; font-size: 30px; line-height: 1.2; font-weight: 600">Your scholarships</p>
+      <p style="font-family: Lexend, sans-serif; font-size: 20px; line-height: 1.3; font-weight: 600">Allowances this term</p>
+      <p style="font-size: 16px; color: #3D4654; max-width: 60ch">Body text is 16 px Source Sans 3 at 1.5 line height. Figures use tabular numbers so peso amounts line up: <span class="num" style="font-weight: 700; color: #0E1B2C">₱7,500.00</span>.</p>
+      <p style="font-size: 13px; color: #5B6472">Captions and table headers 13 px, muted ink 5.98:1 on white.</p>
+    </div>
+  </div>
+
+  <div style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 14px; padding: 24px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px">
+    <div style="display: flex; flex-direction: column; gap: 12px">
+      <p class="cap">Buttons</p>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px">
+        <button type="button" class="btn" style="border: 1px solid #B8132A; background: #B8132A; color: #FFFFFF">Approve</button>
+        <button type="button" class="btn" style="border: 1px solid #D0D5DD; background: #FFFFFF">Return to applicant</button>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px">
+        <button type="button" class="btn" style="border: 1px solid #1F4E9E; background: #E4EBF6; color: #1F4E9E">View program</button>
+        <button type="button" class="btn" style="border: 1px solid #9B1022; background: #FFFFFF; color: #9B1022"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>Reject</button>
+      </div>
+      <p style="font-size: 14px; color: #5B6472">Red is now the action colour, so danger stays <b>outlined</b>, darker (#9B1022), with an icon and a verb, and always confirms.</p>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 12px">
+      <p class="cap">Fields and focus</p>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="p-income" style="font-weight: 700">Family income a year</label>
+        <input id="p-income" value="₱180,000" style="min-height: 44px; padding: 0 12px; border: 1px solid #D0D5DD; border-radius: 8px; outline: 3px solid #0E1B2C; outline-offset: 2px; box-shadow: 0 0 0 6px #F2B705">
+        <p style="font-size: 14px; color: #5B6472">Focus: ink outline + yellow halo, visible on red, blue and white.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="p-gwa" style="font-weight: 700">GWA</label>
+        <p id="p-gwa-err" style="font-size: 14px; color: #9B1022; font-weight: 700">Enter a GWA between 1.00 and 5.00</p>
+        <input id="p-gwa" value="6.2" aria-describedby="p-gwa-err" aria-invalid="true" style="min-height: 44px; padding: 0 12px; border: 2px solid #9B1022; border-radius: 8px">
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 12px">
+      <p class="cap">Shape and layout</p>
+      <div style="display: flex; flex-direction: column; gap: 8px; font-size: 15px; color: #3D4654">
+        <p><b style="color: #0E1B2C">Radius</b> 8 px controls, 12 px cards, pills only for tags and counts.</p>
+        <p><b style="color: #0E1B2C">Shell</b> white 248 px sidebar, program switcher on top, renewal callout and user card at the bottom.</p>
+        <p><b style="color: #0E1B2C">Pages</b> breadcrumb, title + actions, one plain box of figures (label + number, no icons), then one tabbed table with filters.</p>
+        <p><b style="color: #0E1B2C">Detail</b> slide-over drawer, so staff keep their place in the list.</p>
+        <p><b style="color: #0E1B2C">Stripe</b> a red / blue / yellow bar tops the sidebar, a quiet nod to the flag's colours.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1200,"height":1040}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

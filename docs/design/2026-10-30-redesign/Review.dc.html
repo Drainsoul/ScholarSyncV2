@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Application review · LANI</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@500;600;700&amp;family=Source+Sans+3:wght@400;600;700&amp;display=swap">
+<style>
+body{margin:0;background:#F5F6F8}
+*{box-sizing:border-box}
+a{color:#1F4E9E}a:hover{color:#163A78}
+h1,h2,h3,p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+:focus-visible{outline:3px solid #0E1B2C;outline-offset:2px;box-shadow:0 0 0 6px #F2B705}
+.nav{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:8px;color:#3D4654;text-decoration:none;font-weight:600}
+.nav:hover{background:#F1F2F5;color:#0E1B2C}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:8px;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap;transition:filter 150ms,background-color 150ms}
+.btn:hover{filter:brightness(.93)}
+.ghost:hover{background:#F1F2F5}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+th{font-size:13px;font-weight:700;color:#5B6472;text-align:left;padding:12px 16px;border-bottom:1px solid #E4E7EC;white-space:nowrap;background:#FAFAFB}
+td{padding:12px 16px;border-bottom:1px solid #EEF0F3;vertical-align:middle}
+.num{font-variant-numeric:tabular-nums}
+.tab{display:flex;align-items:center;gap:8px;min-height:48px;padding:0 4px;color:#5B6472;font-weight:700;text-decoration:none;border-bottom:3px solid transparent}
+.tab:hover{color:#0E1B2C}
+.opt{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:10px;cursor:pointer}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; align-items: stretch; background: #F5F6F8; color: #0E1B2C; font-family: 'Source Sans 3', system-ui, sans-serif; font-size: 16px; line-height: 1.5">
+
+  <nav aria-label="Main" style="flex: 1 1 248px; background: #FFFFFF; border-right: 1px solid #E4E7EC; display: flex; flex-direction: column; gap: 20px; padding: 0 16px 20px">
+    <div aria-hidden="true" style="display: flex; height: 4px; margin: 0 -16px"><span style="flex: 2; background: #B8132A"></span><span style="flex: 1; background: #1F4E9E"></span><span style="flex: 1; background: #F2B705"></span></div>
+    <a href="#" style="display: flex; align-items: center; gap: 12px; padding: 12px 4px 0; color: #0E1B2C; text-decoration: none">
+      <span aria-hidden="true" style="width: 40px; height: 40px; border-radius: 10px; background: #B8132A; color: #FFFFFF; display: grid; place-items: center"><svg class="i" viewBox="0 0 24 24" style="width: 22px; height: 22px"><path d="M22 10 12 5 2 10l10 5 10-5Z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg></span>
+      <span style="display: flex; flex-direction: column; line-height: 1.2"><span style="font-family: Lexend, sans-serif; font-weight: 700; font-size: 17px">ScholarSync</span><span style="font-size: 13px; color: #5B6472">City of Taguig</span></span>
+    </a>
+    <button type="button" class="ghost" style="display: flex; align-items: center; gap: 10px; width: 100%; min-height: 56px; padding: 8px 12px; border: 1px solid #E4E7EC; border-radius: 10px; background: #FFFFFF; cursor: pointer; text-align: left">
+      <span aria-hidden="true" style="width: 34px; height: 34px; border-radius: 8px; background: #FCEFC4; color: #5C3D00; display: grid; place-items: center; font-family: Lexend, sans-serif; font-weight: 700; font-size: 12px">LA</span>
+      <span style="flex: 1; display: flex; flex-direction: column; line-height: 1.25"><span style="font-size: 12px; color: #5B6472">Program</span><span style="font-weight: 700">LANI</span></span>
+      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 15 5 5 5-5"></path><path d="m7 9 5-5 5 5"></path></svg>
+    </button>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <p style="padding: 0 12px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5B6472">Workspace</p>
+      <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px">
+        <li><a class="nav" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"></rect><rect x="14" y="3" width="7" height="5" rx="1"></rect><rect x="14" y="12" width="7" height="9" rx="1"></rect><rect x="3" y="16" width="7" height="5" rx="1"></rect></svg>Dashboard</a></li>
+        <li><a class="nav" href="#" aria-current="page" style="background: #FBE7EA; color: #B8132A"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M16 13H8"></path><path d="M16 17H8"></path></svg>Applications<span style="margin-left: auto; min-width: 26px; padding: 0 8px; border-radius: 999px; background: #F2B705; color: #0E1B2C; font-size: 12px; font-weight: 700; text-align: center">12</span></a></li>
+        <li><a class="nav" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>Scholars</a></li>
+        <li><a class="nav" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="2"></circle><path d="M6 12h.01M18 12h.01"></path></svg>Disbursements</a></li>
+        <li><a class="nav" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>Terms</a></li>
+        <li><a class="nav" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"></path><path d="M18 17V9M13 17V5M8 17v-3"></path></svg>Reports</a></li>
+      </ul>
+    </div>
+    <div style="flex: 1"></div>
+    <div style="display: flex; align-items: center; gap: 12px; padding: 12px 4px 0; border-top: 1px solid #E4E7EC">
+      <span aria-hidden="true" style="width: 38px; height: 38px; border-radius: 50%; background: #E4EBF6; color: #1F4E9E; display: grid; place-items: center; font-weight: 700; font-size: 14px">KK</span>
+      <span style="flex: 1; display: flex; flex-direction: column; line-height: 1.25"><span style="font-weight: 700">Krista Kelley</span><span style="font-size: 13px; color: #5B6472">Program staff</span></span>
+      <button type="button" class="ghost" aria-label="Account menu" style="width: 44px; height: 44px; border: 0; border-radius: 8px; background: none; cursor: pointer; display: grid; place-items: center"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>
+    </div>
+  </nav>
+
+  <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 12px 32px; background: #FFFFFF; border-bottom: 1px solid #E4E7EC">
+      <nav aria-label="Breadcrumb" style="flex: 1 1 280px">
+        <ol style="display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; font-size: 15px; color: #5B6472">
+          <li><a href="#">LANI</a></li><li aria-hidden="true">/</li><li><a href="#">Applications</a></li><li aria-hidden="true">/</li><li aria-current="page" class="num" style="color: #0E1B2C; font-weight: 700">APP-2026-0147</li>
+        </ol>
+      </nav>
+      <div style="display: flex; align-items: center; gap: 8px">
+        <span class="num" style="font-size: 14px; color: #5B6472">3 of 12 waiting</span>
+        <a href="#" class="btn ghost" aria-label="Previous application" style="min-width: 44px; padding: 0; border: 1px solid #E4E7EC; color: #3D4654"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a>
+        <a href="#" class="btn ghost" aria-label="Next application" style="min-width: 44px; padding: 0; border: 1px solid #E4E7EC; color: #3D4654"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></a>
+      </div>
+    </header>
+
+    <main style="padding: 24px 32px 40px; display: flex; flex-direction: column; gap: 24px">
+      <div style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 24px 24px 0; display: flex; flex-direction: column; gap: 20px">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px 20px">
+          <span aria-hidden="true" style="width: 64px; height: 64px; border-radius: 50%; background: #E4EBF6; color: #1F4E9E; display: grid; place-items: center; font-family: Lexend, sans-serif; font-weight: 700; font-size: 22px">DM</span>
+          <div style="flex: 1 1 320px; display: flex; flex-direction: column; gap: 4px">
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px"><h1 style="font-family: Lexend, sans-serif; font-size: 26px; line-height: 1.2; font-weight: 600">Daniel Montoya</h1><span style="color: #1F4E9E; font-size: 15px; font-weight: 700">Under review</span></div>
+            <p style="color: #5B6472">Application <span class="num">APP-2026-0147</span> to LANI, submitted 2 October 2026</p>
+          </div>
+          <div style="flex: 0 1 280px; display: flex; flex-direction: column; gap: 6px">
+            <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 14px"><span style="font-weight: 700">Review checks</span><span class="num" style="color: #3D4654">5 of 8 passed · <b style="color: #0E1B2C">63%</b></span></div>
+            <div role="progressbar" aria-label="Review checks passed" aria-valuenow="63" aria-valuemin="0" aria-valuemax="100" aria-valuetext="5 of 8 checks passed" style="height: 8px; border-radius: 999px; background: #EEF0F3; overflow: hidden"><div style="width: 63%; height: 100%; background: #1F4E9E"></div></div>
+          </div>
+        </div>
+        <nav aria-label="Application sections" style="display: flex; gap: 24px; border-top: 1px solid #EEF0F3; overflow-x: auto">
+          <a href="#" class="tab" aria-current="page" style="color: #0E1B2C; border-bottom-color: #B8132A">Overview</a>
+          <a href="#" class="tab">Documents<span class="num" style="padding: 0 8px; border-radius: 999px; background: #EEF0F3; color: #3D4654; font-size: 12px">4</span></a>
+          <a href="#" class="tab">Profile</a>
+          <a href="#" class="tab">History</a>
+        </nav>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+        <div style="flex: 2 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 24px">
+          <section aria-labelledby="ap-h" style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px">
+            <h2 id="ap-h" style="font-family: Lexend, sans-serif; font-size: 18px; font-weight: 600">Applicant</h2>
+            <dl style="margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px 24px">
+              <div style="display: flex; flex-direction: column"><dt style="font-size: 14px; color: #5B6472">School</dt><dd style="margin: 0; font-weight: 600">Taguig City University</dd></div>
+              <div style="display: flex; flex-direction: column"><dt style="font-size: 14px; color: #5B6472">Course and year</dt><dd style="margin: 0; font-weight: 600">BS Information Technology, 2nd year</dd></div>
+              <div style="display: flex; flex-direction: column"><dt style="font-size: 14px; color: #5B6472">GWA</dt><dd class="num" style="margin: 0; font-weight: 600">1.75 (88%)</dd></div>
+              <div style="display: flex; flex-direction: column"><dt style="font-size: 14px; color: #5B6472">Family income</dt><dd class="num" style="margin: 0; font-weight: 600">₱312,000.00 a year</dd></div>
+              <div style="display: flex; flex-direction: column"><dt style="font-size: 14px; color: #5B6472">Barangay</dt><dd style="margin: 0; font-weight: 600">Western Bicutan</dd></div>
+            </dl>
+          </section>
+
+          <section aria-labelledby="doc-h" style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; overflow: hidden">
+            <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 24px">
+              <h2 id="doc-h" style="font-family: Lexend, sans-serif; font-size: 18px; font-weight: 600">Documents</h2>
+              <div style="display: flex; align-items: center; gap: 10px"><div role="progressbar" aria-label="Documents approved" aria-valuenow="2" aria-valuemin="0" aria-valuemax="4" style="width: 120px; height: 8px; border-radius: 999px; background: #EEF0F3; overflow: hidden"><div style="width: 50%; height: 100%; background: #11663A"></div></div><span class="num" style="font-size: 14px; font-weight: 700">2 of 4 approved</span></div>
+            </div>
+            <div style="overflow-x: auto">
+              <table style="width: 100%; min-width: 620px; border-collapse: collapse; font-size: 15px">
+                <thead><tr><th>Document</th><th>Status</th><th style="text-align: right">Actions</th></tr></thead>
+                <tbody>
+                  <tr><td><div style="display: flex; align-items: center; gap: 12px"><span aria-hidden="true" style="width: 36px; height: 36px; border-radius: 8px; background: #F5F6F8; color: #3D4654; display: grid; place-items: center"><svg class="i" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path></svg></span><span style="display: flex; flex-direction: column; line-height: 1.3"><span style="font-weight: 700">Certificate of grades</span><span style="font-size: 14px; color: #5B6472">grades-2026.pdf</span></span></div></td><td style="color: #11663A; font-weight: 700">Approved</td><td style="text-align: right"><a href="#" style="font-weight: 700">Download</a></td></tr>
+                  <tr><td><div style="display: flex; align-items: center; gap: 12px"><span aria-hidden="true" style="width: 36px; height: 36px; border-radius: 8px; background: #F5F6F8; color: #3D4654; display: grid; place-items: center"><svg class="i" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path></svg></span><span style="display: flex; flex-direction: column; line-height: 1.3"><span style="font-weight: 700">Proof of residency</span><span style="font-size: 14px; color: #5B6472">voters-certificate.pdf</span></span></div></td><td style="color: #11663A; font-weight: 700">Approved</td><td style="text-align: right"><a href="#" style="font-weight: 700">Download</a></td></tr>
+                  <tr style="background: #FAFBFE"><td><div style="display: flex; align-items: center; gap: 12px"><span aria-hidden="true" style="width: 36px; height: 36px; border-radius: 8px; background: #E4EBF6; color: #1F4E9E; display: grid; place-items: center"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"></path></svg></span><span style="display: flex; flex-direction: column; line-height: 1.3"><span style="font-weight: 700">Certificate of enrollment</span><span style="font-size: 14px; color: #5B6472">enrollment.jpg</span></span></div></td><td style="color: #1F4E9E; font-weight: 700">Waiting</td><td style="text-align: right"><div style="display: inline-flex; gap: 8px"><a href="#" class="btn" style="min-height: 38px; padding: 0 12px; border: 1px solid #D0D5DD; color: #0E1B2C">Download</a><button type="button" class="btn" style="min-height: 38px; padding: 0 12px; border: 1px solid #B8132A; background: #B8132A; color: #FFFFFF">Approve</button><button type="button" class="btn" style="min-height: 38px; padding: 0 12px; border: 1px solid #9B1022; background: #FFFFFF; color: #9B1022">Decline</button></div></td></tr>
+                  <tr><td><div style="display: flex; align-items: center; gap: 12px"><span aria-hidden="true" style="width: 36px; height: 36px; border-radius: 8px; background: #FDECEE; color: #9B1022; display: grid; place-items: center"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"></path></svg></span><span style="display: flex; flex-direction: column; line-height: 1.3"><span style="font-weight: 700">Valid ID</span><span style="font-size: 14px; color: #5B6472">school-id.jpg · photo is blurred</span></span></div></td><td style="color: #9B1022; font-weight: 700">Declined</td><td style="text-align: right"><a href="#" style="font-weight: 700">Download</a></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section aria-labelledby="el-h" style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 20px 24px; display: flex; flex-direction: column; gap: 14px">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px"><h2 id="el-h" style="font-family: Lexend, sans-serif; font-size: 18px; font-weight: 600">Eligibility</h2><span class="num" style="font-size: 14px; font-weight: 700; color: #3D4654">3 of 4 rules met</span></div>
+            <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column">
+              <li style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #EEF0F3"><span aria-hidden="true" style="width: 28px; height: 28px; flex: none; border-radius: 50%; background: #E7F3EC; color: #11663A; display: grid; place-items: center"><svg class="i" viewBox="0 0 24 24" style="width: 16px; height: 16px"><path d="M20 6 9 17l-5-5"></path></svg></span><span style="flex: 1">Taguig resident for at least 3 years</span><span style="font-size: 14px; font-weight: 700; color: #11663A">Met</span></li>
+              <li style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #EEF0F3"><span aria-hidden="true" style="width: 28px; height: 28px; flex: none; border-radius: 50%; background: #E7F3EC; color: #11663A; display: grid; place-items: center"><svg class="i" viewBox="0 0 24 24" style="width: 16px; height: 16px"><path d="M20 6 9 17l-5-5"></path></svg></span><span style="flex: 1">Family income up to ₱400,000.00 a year</span><span class="num" style="font-size: 14px; font-weight: 700; color: #11663A">Met (₱312,000.00)</span></li>
+              <li style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #EEF0F3"><span aria-hidden="true" style="width: 28px; height: 28px; flex: none; border-radius: 50%; background: #E7F3EC; color: #11663A; display: grid; place-items: center"><svg class="i" viewBox="0 0 24 24" style="width: 16px; height: 16px"><path d="M20 6 9 17l-5-5"></path></svg></span><span style="flex: 1">GWA of 85% or better</span><span class="num" style="font-size: 14px; font-weight: 700; color: #11663A">Met (88%)</span></li>
+              <li style="display: flex; align-items: center; gap: 12px; padding: 10px 0"><span aria-hidden="true" style="width: 28px; height: 28px; flex: none; border-radius: 50%; background: #FCEFC4; color: #6B4500; display: grid; place-items: center"><svg class="i" viewBox="0 0 24 24" style="width: 16px; height: 16px"><path d="M12 8v4M12 16h.01"></path></svg></span><span style="flex: 1">No other city scholarship this term</span><span style="font-size: 14px; font-weight: 700; color: #8F6500">Not met</span></li>
+            </ul>
+            <div style="display: flex; gap: 12px; padding: 14px 16px; border-radius: 10px; background: #E4EBF6; color: #0E1B2C">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="color: #1F4E9E; margin-top: 2px"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4M12 8h.01"></path></svg>
+              <p><b>Legacy model suggests: Priority tier.</b> Advisory only. The rules above decide eligibility.</p>
+            </div>
+          </section>
+        </div>
+
+        <div style="flex: 1 1 320px; display: flex; flex-direction: column; gap: 24px">
+          <section aria-labelledby="dec-h" style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px">
+            <h2 id="dec-h" style="font-family: Lexend, sans-serif; font-size: 18px; font-weight: 600">Decision</h2>
+            <fieldset style="border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px">
+              <legend class="sr">Choose a decision</legend>
+              <sc-for list="{{options}}" as="o" hint-placeholder-count="3">
+                <label class="opt" style="border: 2px solid {{o.border}}; background: {{o.bg}}">
+                  <input type="radio" name="decision" checked="{{o.checked}}" onChange="{{o.pick}}" style="width: 20px; height: 20px; margin: 2px 0 0; accent-color: #B8132A">
+                  <span style="display: flex; flex-direction: column"><span style="font-weight: 700">{{o.label}}</span><span style="font-size: 14px; color: #5B6472">{{o.hint}}</span></span>
+                </label>
+              </sc-for>
+            </fieldset>
+            <div style="display: flex; flex-direction: column; gap: 6px">
+              <label for="dec-note" style="font-weight: 700">Note to the applicant</label>
+              <p id="dec-note-hint" style="font-size: 14px; color: #5B6472">They see this in their notifications and email.</p>
+              <textarea id="dec-note" aria-describedby="dec-note-hint" rows="3" style="padding: 10px 12px; border: 1px solid #D0D5DD; border-radius: 8px; resize: vertical">Please upload a clearer photo of your school ID.</textarea>
+            </div>
+            <button type="button" class="btn" style="width: 100%; border: 1px solid {{submitBorder}}; background: {{submitBg}}; color: {{submitFg}}">{{submitLabel}}</button>
+          </section>
+
+          <section aria-labelledby="hist-h" style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 20px 24px; display: flex; flex-direction: column; gap: 14px">
+            <h2 id="hist-h" style="font-family: Lexend, sans-serif; font-size: 18px; font-weight: 600">History</h2>
+            <ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column">
+              <li style="display: flex; gap: 12px; padding-bottom: 16px"><span style="display: flex; flex-direction: column"><span>Krista Kelley declined Valid ID</span><span style="font-size: 14px; color: #5B6472">Today, 10:05 AM</span></span></li>
+              <li style="display: flex; gap: 12px; padding-bottom: 16px"><span style="display: flex; flex-direction: column"><span>Krista Kelley approved 2 documents</span><span style="font-size: 14px; color: #5B6472">Today, 9:58 AM</span></span></li>
+              <li style="display: flex; gap: 12px"><span style="display: flex; flex-direction: column"><span>Daniel Montoya submitted the application</span><span style="font-size: 14px; color: #5B6472">2 Oct, 8:14 PM</span></span></li>
+            </ol>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1200}}'>
+class Component extends DCLogic {
+  state = { decision: 'return' };
+
+  renderVals() {
+    const defs = [
+      ['approve', 'Approve', 'All documents approved and rules met.', 'Approve application'],
+      ['return', 'Return to applicant', 'Ask for a fix. The application keeps its place.', 'Return to applicant'],
+      ['reject', 'Reject', 'Ends this application. The applicant is told why.', 'Reject application'],
+    ];
+    const current = this.state.decision;
+    const options = defs.map(([id, label, hint]) => {
+      const on = current === id;
+      return {
+        label, hint,
+        checked: on,
+        border: on ? (id === 'reject' ? '#9B1022' : '#B8132A') : '#E4E7EC',
+        bg: on ? (id === 'reject' ? '#FDECEE' : '#FBE7EA') : '#FFFFFF',
+        pick: () => this.setState({ decision: id }),
+      };
+    });
+    const isReject = current === 'reject';
+    return {
+      options,
+      submitLabel: defs.find((d) => d[0] === current)[3],
+      submitBg: isReject ? '#FFFFFF' : '#B8132A',
+      submitFg: isReject ? '#9B1022' : '#FFFFFF',
+      submitBorder: isReject ? '#9B1022' : '#B8132A',
+    };
+  }
+}
+</script>
+</body>
+</html>
