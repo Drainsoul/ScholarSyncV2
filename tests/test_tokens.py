@@ -64,6 +64,9 @@ TEXT_PAIRS = [
     ("nav-current", "nav-bg"),
     ("nav-current", "nav-current-bg"),
     ("on-primary", "brand"),
+    # The office context block in the sidebar: label and name on the red tint.
+    ("text", "primary-50"),
+    ("text-secondary", "primary-50"),
     # Buttons, counts, avatars and status text on a hovered row (spec §12 rev 4 components).
     ("secondary-hover", "secondary-50"),
     ("text", "surface-hover"),

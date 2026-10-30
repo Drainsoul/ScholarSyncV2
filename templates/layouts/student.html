@@ -1,21 +1,2 @@
-{% extends "base.html" %}{% load ui %}
-{% block body %}
-<div class="civic-stripe" aria-hidden="true"></div>
-<header class="topbar">
-  <div class="container topbar__inner">
-    <a class="brand" href="{{ home_url|default:'/' }}">{% icon "logo" %}<span class="brand__name">ScholarSync</span><span class="brand__city">City of Taguig</span></a>
-    <button type="button" class="icon-btn nav-toggle" data-nav-toggle aria-controls="student-nav" aria-expanded="false" aria-label="Menu" hidden>{% icon "menu" %}</button>
-    <div id="student-nav" class="topnav">
-      <nav aria-label="Main">{% include "components/nav_list.html" with list_class="topnav__list" %}</nav>
-      <div class="topnav__account">
-        {% if notifications_url %}<a class="icon-btn" href="{{ notifications_url }}" aria-label="Notifications{% if notifications_count %}, {{ notifications_count }} unread{% endif %}">{% icon "bell" %}{% if notifications_count %}<span class="badge" aria-hidden="true">{{ notifications_count }}</span>{% endif %}</a>{% endif %}
-        {% if viewer %}<span class="topnav__viewer">{{ viewer.name }}</span>{% endif %}
-        {% if logout_url %}<form method="post" action="{{ logout_url }}">{% csrf_token %}<button type="submit" class="btn btn--ghost">{% icon "log-out" %}Sign out</button></form>{% endif %}
-      </div>
-    </div>
-  </div>
-</header>
-<main id="main" tabindex="-1" class="container page">
-  {% block content %}{% endblock %}
-</main>
-{% endblock %}
+{% extends "layouts/app.html" %}
+{% block topbar_search %}{% endblock %}

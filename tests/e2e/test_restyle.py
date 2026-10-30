@@ -13,19 +13,19 @@ def test_money_uses_tabular_figures(page: Page, live_server, vite_build):
         assert "tabular-nums" in value, selector
 
 
-def test_focus_is_visible_on_the_navy_top_bar(page: Page, live_server, vite_build):
+def test_focus_is_visible_on_the_current_nav_item(page: Page, live_server, vite_build):
     page.set_viewport_size({"width": 1280, "height": 800})
     page.goto(f"{live_server.url}/_kit/layouts/staff/")
-    page.keyboard.press("Tab")  # skip link
-    page.keyboard.press("Tab")  # brand link in the top bar
-    focused = page.evaluate(
-        "() => { const s = getComputedStyle(document.activeElement);"
-        " return [document.activeElement.closest('.appbar') !== null,"
-        " s.outlineStyle, s.boxShadow]; }"
+    current = page.locator('.sidebar a[aria-current="page"]')
+    for _ in range(20):  # Tab from the top of the page until the current nav item has focus
+        page.keyboard.press("Tab")
+        if current.evaluate("(el) => el === document.activeElement"):
+            break
+    style = current.evaluate(
+        "(el) => { const s = getComputedStyle(el); return [s.outlineStyle, s.boxShadow]; }"
     )
-    assert focused[0] is True
-    assert focused[1] != "none"
-    assert focused[2] != "none"
+    assert style[0] != "none"
+    assert "rgb(242, 183, 5)" in style[1]  # yellow halo
 
 
 def test_file_input_error_has_the_field_error_bar(page: Page, live_server, vite_build):

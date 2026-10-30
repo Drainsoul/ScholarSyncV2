@@ -1,5 +1,5 @@
 <section class="kit-section" id="layouts" aria-labelledby="layouts-title">
   <h2 id="layouts-title">Layouts</h2>
-  <p>Each layout with sample navigation. Staff and office share the app bar and side nav shell; staff adds the program switcher.</p>
+  <p>Each layout with sample navigation. Student, staff and office share the white sidebar shell; staff adds the program switcher and office the Scholarship office block.</p>
   <ul>{% for name in layout_names %}<li><a href="{% url 'kit:layout' name %}">{{ name|capfirst }} layout</a></li>{% endfor %}</ul>
 </section>

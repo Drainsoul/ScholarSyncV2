@@ -82,44 +82,45 @@ class NavItem(TypedDict):
     url: str
     current: bool
     count: int
+    icon: str
 
 
-PUBLIC_NAV = [("Programs", 0), ("Help", 0)]
+PUBLIC_NAV = [("Programs", "", 0), ("Help", "", 0)]
 STUDENT_NAV = [
-    ("Dashboard", 0),
-    ("Profile", 0),
-    ("Find programs", 0),
-    ("Applications", 1),
-    ("Scholarships", 0),
+    ("Home", "house", 0),
+    ("Find programs", "search", 0),
+    ("Applications", "file-text", 1),
+    ("Allowances", "banknote", 0),
+    ("Profile", "user", 0),
 ]
 STAFF_NAV = [
-    ("Dashboard", 0),
-    ("Applications", 14),
-    ("Scholars", 0),
-    ("Terms", 0),
-    ("Disbursements", 0),
-    ("Budget", 0),
-    ("Reports", 0),
-    ("Tasks", 3),
-    ("Settings", 0),
+    ("Dashboard", "layout-dashboard", 0),
+    ("Applications", "file-text", 14),
+    ("Scholars", "users", 0),
+    ("Disbursements", "banknote", 0),
+    ("Terms", "calendar", 0),
+    ("Reports", "chart-column", 0),
+    ("Tasks", "list-checks", 3),
 ]
 OFFICE_NAV = [
-    ("Overview", 0),
-    ("Programs", 0),
-    ("Staff", 0),
-    ("Scholars", 0),
-    ("Reports", 3),
-    ("Analytics", 0),
-    ("Audit log", 0),
-    ("Schools", 0),
-    ("Terms", 0),
+    ("Overview", "layout-dashboard", 0),
+    ("Programs", "clipboard-check", 0),
+    ("Staff", "user", 0),
+    ("Scholars", "users", 0),
+    ("Schools", "building-2", 0),
+    ("Terms", "calendar", 0),
+    ("Reports", "file-text", 3),
+    ("Analytics", "chart-column", 0),
+    ("Audit log", "shield", 0),
 ]
+HELP_NAV = [("Help and guides", "circle-help", 0)]
+STAFF_SUPPORT_NAV = [("Settings", "sliders-horizontal", 0), *HELP_NAV]
 
 
-def nav(items: list[tuple[str, int]], current: str) -> list[NavItem]:
+def nav(items: list[tuple[str, str, int]], current: str) -> list[NavItem]:
     return [
-        {"label": label, "url": "#", "current": label == current, "count": count}
-        for label, count in items
+        {"label": label, "url": "#", "current": label == current, "count": count, "icon": icon}
+        for label, icon, count in items
     ]
 
 
@@ -133,7 +134,9 @@ def chrome(area: str, current: str = "") -> dict[str, object]:
     if area == "student":
         return {
             **signed_in,
-            "nav_items": nav(STUDENT_NAV, current or "Dashboard"),
+            "nav_heading": "Scholarships",
+            "nav_items": nav(STUDENT_NAV, current or "Home"),
+            "nav_secondary": nav(HELP_NAV, current),
             "viewer": {"name": "Carolyn Hawkins", "first_name": "Carolyn", "role": "Student"},
             "notifications_url": "#",
             "notifications_count": 2,
@@ -142,25 +145,38 @@ def chrome(area: str, current: str = "") -> dict[str, object]:
         return {
             **signed_in,
             "nav_items": nav(STAFF_NAV, current or "Dashboard"),
+            "nav_secondary": nav(STAFF_SUPPORT_NAV, current),
             "viewer": {"name": "Krista Kelley", "role": "Program staff"},
             "program": {"name": "TCU CEAA"},
             "programs": [
                 {"name": "TCU CEAA", "url": "#", "current": True},
                 {"name": "LANI", "url": "#", "current": False},
             ],
+            "search_url": "#",
+            "terms": [
+                {"name": "1st sem 2026–2027", "url": "#", "current": True},
+                {"name": "2nd sem 2025–2026", "url": "#", "current": False},
+                {"name": "1st sem 2025–2026", "url": "#", "current": False},
+            ],
+            "notifications_url": "#",
+            "notifications_count": 3,
         }
     if area == "office":
         return {
             **signed_in,
+            "nav_heading": "City-wide",
             "nav_items": nav(OFFICE_NAV, current or "Overview"),
             "viewer": {"name": "Jessica Tate", "role": "Scholarship office"},
+            "search_url": "#",
+            "notifications_url": "#",
+            "notifications_count": 2,
         }
     raise ValueError(f"unknown area {area!r}")
 
 
 def student_dashboard() -> dict[str, object]:
     return {
-        **chrome("student", "Dashboard"),
+        **chrome("student", "Home"),
         "award": {"program": "TCU CEAA", "tier": "Priority", "amount": Decimal("7500.00")},
         "applications": [
             {
