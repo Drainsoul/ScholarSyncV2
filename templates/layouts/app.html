@@ -1,6 +1,30 @@
 {% extends "base.html" %}{% load ui %}
 {% block body %}
 <div class="app">
+  {% comment %}The top bar comes first so the Menu button sits right before the sidebar it opens (focus
+  order on phones); from 64rem CSS grid areas put the sidebar in the left column.{% endcomment %}
+  <header class="topbar">
+    <div class="topbar__row">
+      <a class="brand topbar__brand" href="{{ home_url|default:'/' }}"><span class="brand__mark">{% icon "logo" %}</span><span class="brand__name">ScholarSync</span><span class="brand__city">City of Taguig</span></a>
+      {% block topbar_search %}{% if search_url %}
+      <form class="topbar__search" role="search" action="{{ search_url }}" method="get">
+        <label class="visually-hidden" for="app-search">Search ScholarSync</label>
+        {% icon "search" %}<input class="input" id="app-search" type="search" name="q" placeholder="{% block search_placeholder %}Search ScholarSync{% endblock %}">
+      </form>
+      {% endif %}{% endblock %}
+      <div class="topbar__end">
+        {% block topbar_extra %}{% endblock %}
+        {% if terms %}
+        <details class="switcher switcher--end">
+          <summary>{% icon "calendar" %}{% for term in terms %}{% if term.current %}<span><span class="visually-hidden">Term: </span>{{ term.name }}</span>{% endif %}{% endfor %}{% icon "chevron-down" %}</summary>
+          <ul role="list">{% for term in terms %}<li><a href="{{ term.url }}"{% if term.current %} aria-current="true"{% endif %}>{{ term.name }}</a></li>{% endfor %}</ul>
+        </details>
+        {% endif %}
+        {% if notifications_url %}<a class="icon-btn topbar__bell" href="{{ notifications_url }}" aria-label="Notifications{% if notifications_count %}, {{ notifications_count }} unread{% endif %}">{% icon "bell" %}{% if notifications_count %}<span class="topbar__dot" aria-hidden="true"></span>{% endif %}</a>{% endif %}
+        <button type="button" class="icon-btn nav-toggle" data-nav-toggle aria-controls="app-nav" aria-expanded="false" aria-label="Menu" hidden>{% icon "menu" %}</button>
+      </div>
+    </div>
+  </header>
   <nav class="sidebar" id="app-nav" aria-label="Main">
     <div class="civic-stripe" aria-hidden="true"></div>
     <a class="brand" href="{{ home_url|default:'/' }}"><span class="brand__mark">{% icon "logo" %}</span><span class="brand__name">ScholarSync</span><span class="brand__city">City of Taguig</span></a>
@@ -32,33 +56,9 @@
     </div>
     {% endif %}
   </nav>
-  <div class="app__main">
-    <header class="topbar">
-      <div class="topbar__row">
-        <button type="button" class="icon-btn nav-toggle" data-nav-toggle aria-controls="app-nav" aria-expanded="false" aria-label="Menu" hidden>{% icon "menu" %}</button>
-        <a class="brand topbar__brand" href="{{ home_url|default:'/' }}"><span class="brand__mark">{% icon "logo" %}</span><span class="brand__name">ScholarSync</span><span class="brand__city">City of Taguig</span></a>
-        {% block topbar_search %}{% if search_url %}
-        <form class="topbar__search" role="search" action="{{ search_url }}" method="get">
-          <label class="visually-hidden" for="app-search">Search ScholarSync</label>
-          {% icon "search" %}<input class="input" id="app-search" type="search" name="q" placeholder="{% block search_placeholder %}Search ScholarSync{% endblock %}">
-        </form>
-        {% endif %}{% endblock %}
-        <div class="topbar__end">
-          {% block topbar_extra %}{% endblock %}
-          {% if terms %}
-          <details class="switcher switcher--end">
-            <summary>{% icon "calendar" %}{% for term in terms %}{% if term.current %}<span><span class="visually-hidden">Term: </span>{{ term.name }}</span>{% endif %}{% endfor %}{% icon "chevron-down" %}</summary>
-            <ul role="list">{% for term in terms %}<li><a href="{{ term.url }}"{% if term.current %} aria-current="true"{% endif %}>{{ term.name }}</a></li>{% endfor %}</ul>
-          </details>
-          {% endif %}
-          {% if notifications_url %}<a class="icon-btn topbar__bell" href="{{ notifications_url }}" aria-label="Notifications{% if notifications_count %}, {{ notifications_count }} unread{% endif %}">{% icon "bell" %}{% if notifications_count %}<span class="topbar__dot" aria-hidden="true"></span>{% endif %}</a>{% endif %}
-        </div>
-      </div>
-    </header>
-    <main id="main" tabindex="-1" class="page">
-      {% block breadcrumbs %}{% if crumbs %}{% include "components/breadcrumbs.html" %}{% endif %}{% endblock %}
-      {% block content %}{% endblock %}
-    </main>
-  </div>
+  <main id="main" tabindex="-1" class="page">
+    {% block breadcrumbs %}{% if crumbs %}{% include "components/breadcrumbs.html" %}{% endif %}{% endblock %}
+    {% block content %}{% endblock %}
+  </main>
 </div>
 {% endblock %}

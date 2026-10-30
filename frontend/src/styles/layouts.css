@@ -22,7 +22,7 @@
   color: var(--text);
   font-family: var(--font-heading);
   font-size: var(--text-lg);
-  font-weight: 600;
+  font-weight: 700;
   text-decoration: none;
 }
 
@@ -217,18 +217,41 @@
   }
 }
 
-/* App shell: staff, office and student (spec §12 rev 4). A white sidebar beside a column with the
-   top bar and the page. From 64rem the sidebar is 248 px and stays in view; below it the sidebar is
-   collapsible (nav.ts) and opens above the content at full width. */
+/* App shell: staff, office and student (spec §12 rev 4). The DOM order is top bar, sidebar, page,
+   so the Menu button comes right before the sidebar it opens. From 64rem grid areas put the 248 px
+   sidebar in the left column at full height, with the top bar and the page beside it. Below 64rem
+   the shell is one column and the sidebar is collapsible (nav.ts): it opens at full width under the
+   top bar, above the page. */
+.app {
+  display: grid;
+  grid-template-areas:
+    "topbar"
+    "sidebar"
+    "main";
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.app > .topbar {
+  grid-area: topbar;
+}
+
+.app > main {
+  grid-area: main;
+}
+
 @media (min-width: 64rem) {
   .app {
-    display: grid;
+    grid-template-areas:
+      "sidebar topbar"
+      "sidebar main";
+    grid-template-rows: auto 1fr;
     grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
     min-height: 100vh;
   }
 }
 
 .sidebar {
+  grid-area: sidebar;
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
@@ -488,37 +511,39 @@
   width: 100%;
 }
 
-/* Main column: the top bar (above), then the page on the grey ground */
-.app__main {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.app__main > .page {
+/* The page on the grey ground */
+.app > .page {
   width: 100%;
   max-width: var(--content-max);
   padding: var(--space-6) var(--space-4) var(--space-10);
 }
 
 @media (min-width: 64rem) {
-  .app__main > .page {
+  .app > .page {
     padding-inline: var(--space-8);
   }
 }
 
-/* Phones: the sidebar (with its stripe and brand) is collapsed, so the top bar carries the stripe
-   and the brand until the menu opens. Without JS the sidebar stays open and the bar needs neither. */
+/* Phones: the top bar carries the stripe and the brand, and the sidebar drops its own (with or
+   without JS), so they show once, at the top. From 64rem the sidebar has them. */
 .topbar__brand {
   display: none;
 }
 
 @media (max-width: 63.99rem) {
-  .app:has(> .sidebar.is-collapsible:not(.is-open)) .topbar__brand {
+  .topbar__brand {
     display: inline-grid;
   }
 
-  .app:has(> .sidebar.is-collapsible:not(.is-open)) .topbar::before {
+  .sidebar > :is(.civic-stripe, .brand) {
+    display: none;
+  }
+
+  .sidebar {
+    padding-top: var(--space-4);
+  }
+
+  .app > .topbar::before {
     content: "";
     display: block;
     height: var(--space-1);
@@ -528,12 +553,6 @@
       var(--secondary) 50% 75%,
       var(--accent) 75% 100%
     );
-  }
-
-  .topbar__search {
-    order: 1;
-    flex-basis: 100%;
-    max-width: none;
   }
 }
 
