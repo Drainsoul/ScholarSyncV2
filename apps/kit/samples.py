@@ -198,7 +198,7 @@ def student_dashboard() -> dict[str, object]:
                 "term": "1st semester, 2026–2027",
                 "amount": Decimal("7500.00"),
                 "label": "Scheduled",
-                "tone": "info",
+                "tone": "warning",
             },
             {
                 "term": "2nd semester, 2025–2026",
@@ -504,7 +504,7 @@ def _drawer(row: dict[str, object]) -> dict[str, object]:
                 "when": "Release on 14 Nov",
                 "amount": amount,
                 "label": "Scheduled",
-                "tone": "info",
+                "tone": "warning",
             },
             {
                 "term": "2nd sem 2025–2026",

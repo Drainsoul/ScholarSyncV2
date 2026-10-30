@@ -224,6 +224,7 @@ def test_scholars_drawer_opens_from_the_query(client, kit_on, vite_build):
     assert 'class="renewal__track"' in drawer
     assert "style=" not in drawer
     assert drawer.count('class="status status--') == 4  # the scholar and three allowances
+    assert '<span class="status status--warning">Scheduled</span>' in drawer  # gold (Ruling 9)
 
 
 def test_scholars_bad_scholar_id_has_no_drawer(client, kit_on, vite_build):
@@ -290,3 +291,8 @@ def test_restyled_mockups_use_cards_and_status_text(client, kit_on, vite_build):
     assert 'class="section' not in apply and 'class="steps' not in apply
     assert '<progress class="progress progress--secondary"' in apply
     assert '<span class="status status--success">Met</span>' in apply
+
+
+def test_student_scheduled_allowance_is_gold_warning_text(student):
+    assert '<span class="status status--warning">Scheduled</span>' in student
+    assert 'status--info">Scheduled' not in student
