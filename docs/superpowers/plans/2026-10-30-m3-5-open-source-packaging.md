@@ -26,7 +26,8 @@ Mailpit, an S3-compatible server, GitHub Actions.
 - Every task: TDD where code is involved, one Conventional Commit per task, staging only that task's files.
 - **No AI attribution anywhere**: no `Co-Authored-By`, no "Generated with", no 🤖, in commits or PR text. Repeat this in
   every subagent prompt that commits.
-- Never push, never force-push, never rewrite history, except Task 10 step 4 after Kenneth's explicit go-ahead.
+- Never push, never force-push, never rewrite history, except Task 11 step 4 after Kenneth's explicit go-ahead.
+- Never claim ScholarSync is an official City of Taguig service, in any page, doc or commit.
 - After each task, update the local, git-ignored `STATE.md` (timestamp, next action, inventory, changelog line).
   Never stage it.
 - Explore mode serves only `localhost` and `127.0.0.1`; every compose port is published on `127.0.0.1`.
@@ -72,6 +73,8 @@ Mailpit, an S3-compatible server, GitHub Actions.
   - In §16: mark M1 historical; add an "M3.5 Open-source packaging" checklist (this plan's tasks); add the demo
     accounts and login notice to M4; add "extend the demo loader" to M5–M11; rewrite M12's production items as the
     hosting checklist.
+  - Add design §15's pages: `/about/`, `/cookies/` and `/contact/` in §5, the footer disclaimer, and the two operator
+    settings in §14. Move the privacy, terms and help pages from M12 into M3.5.
   - Replace the Vercel rows in §17.
   - Close §18 Q12 and Q13 as obsolete.
   - Add the decision to §19.
@@ -144,7 +147,7 @@ Mailpit, an S3-compatible server, GitHub Actions.
   Docker build runs on linux-x64 too, so update its docstring to say so)
 - Create: `tests/test_no_vercel.py`
 - Modify: `pyproject.toml` (drop `[tool.vercel]` and `[tool.vercel.scripts]`), `.gitignore` (drop `.vercel/`; keep
-  `.env.spike` until Task 10 removes the spike file), `apps/core/logging.py`, `apps/kit/views.py`,
+  `.env.spike` until Task 11 removes the spike file), `apps/core/logging.py`, `apps/kit/views.py`,
   `apps/kit/tests/test_kit.py`, `conftest.py`, `.github/workflows/ci.yml` (Vercel comments only; the jobs change in
   Task 7)
 
@@ -405,9 +408,77 @@ Mailpit, an S3-compatible server, GitHub Actions.
   `check --deploy` is clean. Fix every guide step that didn't work as written. Remove the clone.
 - [ ] **Step 6: Commit.** `git commit -m "docs: add quick start, setup and hosting guides"`
 
-### Task 9 (optional): GitHub Codespaces
+### Task 9: Public information pages and the disclaimer
 
-Build this only if Tasks 1–8 are done. Stop and report to Kenneth if it needs more than the two changes below.
+Design §15. These pages lower legal risk but are not legal advice; Task 11 step 3 asks Kenneth to get them reviewed.
+
+**Files:**
+- Create:
+  - `apps/core/pages.py` (views for the six pages);
+  - `templates/core/pages/{about,privacy,terms,cookies,help,contact}.html`;
+  - `templates/components/site_footer.html`;
+  - `SECURITY.md`;
+  - `apps/core/tests/test_pages.py`.
+- Modify:
+  - `apps/core/urls.py`, `config/settings.py`, `config/test_settings.py`;
+  - `templates/layouts/{public,auth,student,app}.html`;
+  - `.env.example`, `README.md`, `docs/HOSTING.md`, `compose.production.yaml` (only if it lists variables).
+
+**Interfaces:**
+- **URL names:** `core:about`, `core:privacy`, `core:terms`, `core:cookies`, `core:help` and `core:contact`, at
+  `/about/`, `/privacy/`, `/terms/`, `/cookies/`, `/help/` and `/contact/`. Each view is `@require_safe` and renders
+  its template in the public layout.
+- **Settings:**
+  - `SITE_OPERATOR_NAME: str` and `PRIVACY_CONTACT_EMAIL: str`, required (`env.str` with no default) in
+    production. In explore and developer modes they default to `"This local copy"` and `""`.
+  - `PRIVACY_NOTICE_VERSION = "2026-10-30"`, a constant that M4's `ConsentRecord.notice_version` uses and that
+    the privacy page shows as "Last updated".
+  - `config/test_settings.py` sets both new variables with `os.environ.setdefault` before importing, because tests
+    run in production mode.
+- **The footer component** is used by all four layouts: links to the six pages, then the disclaimer copy, exactly
+  `Independent portfolio project. Not affiliated with or endorsed by the City of Taguig. All sample people and data are fictional.`
+- **The explore notice** (privacy page, explore mode only), exactly:
+  `This copy runs on your computer. Anything you enter stays in its database, and emails go to the local inbox, not to real people.`
+
+- [ ] **Step 1: Write the failing tests** in `apps/core/tests/test_pages.py` and `config/tests/test_settings.py`:
+  - `test_every_information_page_renders` (parametrised over the six URL names): status 200, exactly one `<h1>`, and
+    the footer disclaimer present.
+  - `test_every_layout_has_the_footer_and_no_affiliation_claim`: render one page per layout, using the kit layout demo
+    at `/_kit/layouts/<name>/` with `KIT_ENABLED`. Assert that each has the disclaimer and all six links, and that none
+    contains `"ScholarSync is the scholarship platform of the City of Taguig"`.
+  - `test_privacy_page_names_the_operator_and_contact(settings)`: with `SITE_OPERATOR_NAME="Example Org"` and
+    `PRIVACY_CONTACT_EMAIL="dpo@example.org"`, both strings appear on `/privacy/` and `/contact/`, and
+    `"National Privacy Commission"` appears on `/privacy/`.
+  - `test_explore_notice_only_in_explore_mode(settings)`: the notice is absent by default, and present with
+    `settings.EXPLORE = True`.
+  - `test_cookie_notice_lists_every_cookie_the_app_sets(client)`: GET a page that sets the CSRF cookie (any form page,
+    for example a kit form, with the kit on). Collect the response's cookie names plus `settings.SESSION_COOKIE_NAME`.
+    Assert each name appears on `/cookies/`.
+  - `test_production_requires_the_operator_settings` (subprocess, as in Task 2): in production with
+    `SITE_OPERATOR_NAME` unset → nonzero exit, and the name appears in stderr. Repeat for `PRIVACY_CONTACT_EMAIL`.
+  - `test_no_personal_email_in_repo`: tracked files outside `docs/` contain no email address except `@example.`
+    addresses, `@scholarsync.test` and the `noreply@` and `no-reply@` placeholders.
+- [ ] **Step 2: Run them.** `python -m uv run pytest apps/core/tests/test_pages.py config/tests -q`. Expected: FAIL.
+- [ ] **Step 3: Implement.**
+  - Write the settings, views, URLs and footer component, and include the footer in the four layouts.
+  - Write the six pages' copy to the design §15 table, in plain English, using the components the pages already use.
+  - The privacy page cites RA 10173 and lists the rights. Its retention section says how long records are kept "as
+    set by the operator of this copy" and asks self-hosters to state their period.
+- [ ] **Step 4: Write the repo files.**
+  - `SECURITY.md`: report privately through GitHub's private vulnerability reporting, not public issues.
+  - The README: the disclaimer under the title, plus links to the pages.
+  - `.env.example`: entries for both settings.
+  - `docs/HOSTING.md`: the required step from design §15.
+- [ ] **Step 5: Verify.**
+  - `python -m uv run pytest -n auto` and the e2e suite: both PASS.
+  - The pages pass the existing e2e accessibility and CSP checks; add the six URLs to whatever page list those checks
+    walk.
+  - `docker compose up -d --build`: `/privacy/` shows the explore notice.
+- [ ] **Step 6: Commit.** `git commit -m "feat: add privacy, terms, cookies, FAQ, about and contact pages"`
+
+### Task 10 (optional): GitHub Codespaces
+
+Build this only if Tasks 1–9 are done. Stop and report to Kenneth if it needs more than the two changes below.
 
 **Files:**
 - Create: `.devcontainer/devcontainer.json`
@@ -426,7 +497,7 @@ Build this only if Tasks 1–8 are done. Stop and report to Kenneth if it needs 
   pending in `STATE.md`.
 - [ ] **Step 5: Commit.** `git commit -m "feat: open ScholarSync in GitHub Codespaces"`
 
-### Task 10: Publication
+### Task 11: Publication
 
 This task works through checkpoints with Kenneth. Every outward-facing or history-changing step waits for his explicit
 go-ahead at that moment.
@@ -440,7 +511,8 @@ go-ahead at that moment.
   - every other plan and spec, `CLAUDE.md` and `README.md`.
 
   List each finding with the file, line and a suggested change.
-- [ ] **Step 3: Report to Kenneth** with the scan result and the content findings. Apply the content changes he
+- [ ] **Step 3: Report to Kenneth** with the scan result and the content findings. Remind him to have a qualified
+  person review `/privacy/`, `/terms/` and the disclaimer before the flip. Claude's drafts are not legal advice. Apply the content changes he
   approves as one commit: `docs: prepare documents for publication`.
 - [ ] **Step 4: Only if the scan found a secret, and Kenneth says go:**
   1. Kenneth rotates the secret first.

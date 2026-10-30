@@ -277,7 +277,8 @@ Applied when this document is approved:
    `User` model and login page exist.
 3. **M5 onward:** each milestone extends the sample-data loader for its own screens.
 
-The red/blue/yellow redesign proposal is independent of this work and doesn't block it.
+The red/blue/yellow redesign proposal is independent of this work and doesn't block it. *(Kenneth, 2026-10-30: the
+redesign is implemented first.)*
 
 ## 14. Risks and notes
 
@@ -291,7 +292,48 @@ The red/blue/yellow redesign proposal is independent of this work and doesn't bl
 | Visitor's first build is slow or fails behind a proxy | README sets expectations; SETUP covers it |
 | Demo folder forgotten in production | Demo inactive in production mode, plus the failing deploy check |
 
-## 15. Left to the builder
+## 15. Public information pages (amendment, Kenneth, 2026-10-30)
+
+**Why:** the repo goes public, and anyone can host it. The pages make three things clear: it isn't an official City
+service, what happens to people's data, and who is responsible for a hosted copy. These lower legal risk; they are not
+legal advice. Kenneth should have a qualified person read the privacy policy and the disclaimer before publication
+(§13).
+
+**Pages** (public layout; these URLs extend main spec §5, which already lists `/help/`, `/privacy/` and `/terms/`):
+
+| URL | Page | Contents |
+|---|---|---|
+| `/about/` | About | What ScholarSync is; that it is Kenneth's independent portfolio project, open source under MIT (link to the repo); the not-affiliated disclaimer; how to try it (test accounts, explore copy) |
+| `/privacy/` | Privacy policy | Written to RA 10173 (Data Privacy Act): who the controller is (the operator of this copy); what is collected (account, profile, family income, education, uploaded documents); purposes; legal basis; who can see it (staff of the program applied to, the scholarship office); storage and security; retention; data-subject rights (access, correction, erasure, objection, portability, complaint to the National Privacy Commission); how to exercise them (the privacy contact); a version and "last updated" date that the M4 `ConsentRecord.notice_version` refers to |
+| `/terms/` | Terms of use | Acceptable use; applicants are responsible for accurate information; applying guarantees no award; account security; the service is provided as is; changes to the terms; a "last updated" date |
+| `/cookies/` | Cookie notice | Essential cookies only: one table row per cookie the app sets (the session and CSRF cookies, with name, purpose and lifetime from settings); no analytics or advertising cookies, so no consent banner; a note that anyone adding analytics must add consent first |
+| `/help/` | FAQ | For visitors: is this official, how do I try each role, where does my data go on the explore copy. For students: who can apply, which documents, how to track status and allowances. Answers are generic and editable |
+| `/contact/` | Contact | For this hosted copy: the operator name and privacy contact email. For the project: GitHub Issues for bugs and `SECURITY.md` for vulnerabilities. No contact form (main spec M11 keeps its support form) |
+
+**Footer** on every layout (public, auth, student, app): links to all six pages, plus the one-line disclaimer
+"Independent portfolio project. Not affiliated with or endorsed by the City of Taguig. All sample people and data are
+fictional." It replaces today's public footer line ("ScholarSync is the scholarship platform of the City of
+Taguig."), which claims an affiliation that doesn't exist. The "City of Taguig" label in the brand block stays (§3),
+and the disclaimer qualifies it.
+
+**Who the operator is** *(Claude's call)*. Two settings, shown on the privacy, terms and contact pages:
+`SITE_OPERATOR_NAME` and `PRIVACY_CONTACT_EMAIL`. In production both are required: startup fails without them, as
+with every other required variable. In explore and developer modes they default to "This local copy" and no email,
+and the privacy page then says the data stays on the visitor's computer. Kenneth's own email never appears in the repo;
+the project is contacted through GitHub. The rest of the policy text is template text that self-hosters may edit
+(fork and edit, like the branding).
+
+**Explore copy notice:** in explore mode the privacy page opens with "This copy runs on your computer. Anything you
+enter stays in its database, and emails go to the local inbox, not to real people."
+
+**Repository files:** `SECURITY.md` (report vulnerabilities privately through GitHub's private vulnerability
+reporting; please don't open public issues); the README gets the disclaimer under its title; `LICENSE` (MIT, as is,
+no warranty) is unchanged.
+
+**Hosting guide:** gains a required step: set `SITE_OPERATOR_NAME` and `PRIVACY_CONTACT_EMAIL`, then read and adapt
+the privacy policy, terms and FAQ to your organisation, your retention period and your law, before going live.
+
+## 16. Left to the builder
 - Service names, image choices and the storage container product.
 - Exact test-account emails and the shared password (must pass the validators).
 - The hook mechanism that lets the login page show the notice without importing the demo app.
