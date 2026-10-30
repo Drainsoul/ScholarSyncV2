@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Your scholarships</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@500;600;700&amp;family=Source+Sans+3:wght@400;600;700&amp;display=swap">
+<style>
+body{margin:0;background:#F5F6F8}
+*{box-sizing:border-box}
+a{color:#1F4E9E}a:hover{color:#163A78}
+h1,h2,h3,p{margin:0}
+button,input{font:inherit;color:inherit}
+.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+:focus-visible{outline:3px solid #0E1B2C;outline-offset:2px;box-shadow:0 0 0 6px #F2B705}
+.nav{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:8px;color:#3D4654;text-decoration:none;font-weight:600}
+.nav:hover{background:#F1F2F5;color:#0E1B2C}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:8px;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap;transition:filter 150ms,background-color 150ms}
+.btn:hover{filter:brightness(.93)}
+.ghost:hover{background:#F1F2F5}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+th{font-size:13px;font-weight:700;color:#5B6472;text-align:left;padding:12px 16px;border-bottom:1px solid #E4E7EC;white-space:nowrap;background:#FAFAFB}
+td{padding:14px 16px;border-bottom:1px solid #EEF0F3;vertical-align:middle}
+.num{font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; align-items: stretch; background: #F5F6F8; color: #0E1B2C; font-family: 'Source Sans 3', system-ui, sans-serif; font-size: 16px; line-height: 1.5">
+
+  <nav aria-label="Main" style="flex: 1 1 248px; background: #FFFFFF; border-right: 1px solid #E4E7EC; display: flex; flex-direction: column; gap: 20px; padding: 0 16px 20px">
+    <div aria-hidden="true" style="display: flex; height: 4px; margin: 0 -16px"><span style="flex: 2; background: #B8132A"></span><span style="flex: 1; background: #1F4E9E"></span><span style="flex: 1; background: #F2B705"></span></div>
+    <a href="#" style="display: flex; align-items: center; gap: 12px; padding: 12px 4px 0; color: #0E1B2C; text-decoration: none">
+      <span aria-hidden="true" style="width: 40px; height: 40px; border-radius: 10px; background: #B8132A; color: #FFFFFF; display: grid; place-items: center"><svg class="i" viewBox="0 0 24 24" style="width: 22px; height: 22px"><path d="M22 10 12 5 2 10l10 5 10-5Z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg></span>
+      <span style="display: flex; flex-direction: column; line-height: 1.2"><span style="font-family: Lexend, sans-serif; font-weight: 700; font-size: 17px">ScholarSync</span><span style="font-size: 13px; color: #5B6472">City of Taguig</span></span>
+    </a>
+    <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px">
+      <li><a class="nav" href="#" aria-current="page" style="background: #FBE7EA; color: #B8132A"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1Z"></path></svg>Home</a></li>
+      <li><a class="nav" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>Find programs</a></li>
+      <li><a class="nav" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M16 13H8"></path><path d="M16 17H8"></path></svg>Applications<span style="margin-left: auto; min-width: 26px; padding: 0 8px; border-radius: 999px; background: #F2B705; color: #0E1B2C; font-size: 12px; font-weight: 700; text-align: center">1</span></a></li>
+      <li><a class="nav" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="2"></circle><path d="M6 12h.01M18 12h.01"></path></svg>Allowances</a></li>
+      <li><a class="nav" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>Profile</a></li>
+    </ul>
+    <div style="flex: 1"></div>
+    <a class="nav" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><path d="M12 17h.01"></path></svg>Help and guides</a>
+    <div style="display: flex; align-items: center; gap: 12px; padding: 12px 4px 0; border-top: 1px solid #E4E7EC">
+      <span aria-hidden="true" style="width: 38px; height: 38px; border-radius: 50%; background: #FBE7EA; color: #B8132A; display: grid; place-items: center; font-weight: 700; font-size: 14px">CH</span>
+      <span style="flex: 1; display: flex; flex-direction: column; line-height: 1.25"><span style="font-weight: 700">Carolyn Hawkins</span><span style="font-size: 13px; color: #5B6472">Student</span></span>
+      <button type="button" class="ghost" aria-label="Account menu" style="width: 44px; height: 44px; border: 0; border-radius: 8px; background: none; cursor: pointer; display: grid; place-items: center"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>
+    </div>
+  </nav>
+
+  <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; padding: 12px 32px; background: #FFFFFF; border-bottom: 1px solid #E4E7EC">
+      <button type="button" class="ghost" aria-label="Notifications, 2 unread" style="position: relative; width: 44px; height: 44px; border: 1px solid #E4E7EC; border-radius: 10px; background: #FFFFFF; cursor: pointer; display: grid; place-items: center"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg><span aria-hidden="true" style="position: absolute; top: 8px; right: 9px; width: 10px; height: 10px; border-radius: 50%; background: #B8132A; border: 2px solid #FFFFFF"></span></button>
+    </header>
+
+    <main style="width: 100%; max-width: 1120px; padding: 28px 32px 40px; display: flex; flex-direction: column; gap: 24px">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <h1 style="font-family: Lexend, sans-serif; font-size: 30px; line-height: 1.2; font-weight: 600">Your scholarships</h1>
+        <p style="color: #5B6472">Carolyn Hawkins · 1st semester, school year 2026–2027</p>
+      </div>
+
+      <div style="display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 12px; background: #FEF8E1; border: 1px solid #F8D66B">
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="color: #6B4500; margin-top: 2px"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4M12 17h.01"></path></svg>
+        <p style="flex: 1">LANI returned your application: upload a clearer certificate of grades.</p>
+        <a href="#" class="btn" style="min-height: 40px; background: #0E1B2C; color: #FFFFFF">Fix application</a>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: stretch">
+        <section aria-labelledby="award-h" style="flex: 2 1 460px; border-radius: 16px; background: #B8132A; color: #FFFFFF; padding: 28px; display: flex; flex-direction: column; gap: 24px; position: relative; overflow: hidden">
+          <span aria-hidden="true" style="position: absolute; right: -60px; top: -60px; width: 220px; height: 220px; border-radius: 50%; border: 28px solid rgba(255, 255, 255, 0.08)"></span>
+          <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+            <div style="display: flex; flex-direction: column; gap: 2px"><p style="font-size: 14px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase">Scholarship</p><h2 id="award-h" style="font-family: Lexend, sans-serif; font-size: 26px; font-weight: 600">TCU CEAA</h2></div>
+            <span style="color: #FFFFFF; font-size: 16px; font-weight: 700">Active</span>
+          </div>
+          <dl style="margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px">
+            <div style="display: flex; flex-direction: column"><dt style="font-size: 14px">Tier</dt><dd style="margin: 0; font-family: Lexend, sans-serif; font-size: 20px; font-weight: 600">Priority</dd></div>
+            <div style="display: flex; flex-direction: column"><dt style="font-size: 14px">Allowance per term</dt><dd class="num" style="margin: 0; font-family: Lexend, sans-serif; font-size: 20px; font-weight: 600">₱7,500.00</dd></div>
+            <div style="display: flex; flex-direction: column"><dt style="font-size: 14px">Next release</dt><dd style="margin: 0; color: #F2B705; font-family: Lexend, sans-serif; font-size: 20px; font-weight: 700">14 Nov 2026</dd></div>
+          </dl>
+          <div style="display: flex; gap: 12px; align-items: center; padding: 14px 16px; border-radius: 12px; background: rgba(255, 255, 255, 0.12)">
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>
+            <p><b>To renew:</b> keep a GWA of 80% or better with at least 15 units.</p>
+          </div>
+        </section>
+
+        <section aria-labelledby="prof-h" style="flex: 1 1 280px; background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 14px">
+          <h2 id="prof-h" style="font-family: Lexend, sans-serif; font-size: 18px; font-weight: 600">Your profile</h2>
+          <div style="display: flex; align-items: baseline; gap: 8px"><span class="num" style="font-family: Lexend, sans-serif; font-size: 34px; font-weight: 600">85%</span><span style="color: #5B6472">complete</span></div>
+          <div role="progressbar" aria-label="Profile complete" aria-valuenow="85" aria-valuemin="0" aria-valuemax="100" style="height: 10px; border-radius: 999px; background: #EEF0F3; overflow: hidden"><div style="width: 85%; height: 100%; background: #1F4E9E"></div></div>
+          <p style="color: #3D4654">Add your family's yearly income so programs can check if you qualify.</p>
+          <div style="flex: 1"></div>
+          <a href="#" class="btn" style="border: 1px solid #1F4E9E; background: #E4EBF6; color: #1F4E9E">Complete your profile</a>
+        </section>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+        <section aria-labelledby="apps-h" style="flex: 1 1 380px; min-width: 0; background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; overflow: hidden">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px"><h2 id="apps-h" style="font-family: Lexend, sans-serif; font-size: 18px; font-weight: 600">Applications</h2><a href="#" style="font-weight: 700">Find programs</a></div>
+          <table style="width: 100%; border-collapse: collapse; font-size: 15px">
+            <thead><tr><th>Program</th><th>Submitted</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td style="font-weight: 700">TCU CEAA</td><td style="color: #3D4654">12 Jun 2026</td><td style="color: #11663A; font-weight: 700">Approved</td></tr>
+              <tr><td style="font-weight: 700">LANI</td><td style="color: #3D4654">2 Oct 2026</td><td style="color: #8F6500; font-weight: 700">Returned</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section aria-labelledby="allow-h" style="flex: 1 1 380px; min-width: 0; background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; overflow: hidden">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px"><h2 id="allow-h" style="font-family: Lexend, sans-serif; font-size: 18px; font-weight: 600">Allowances</h2><a href="#" style="font-weight: 700">See all</a></div>
+          <table style="width: 100%; border-collapse: collapse; font-size: 15px">
+            <thead><tr><th>Term</th><th style="text-align: right">Amount</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td>1st sem, 2026–2027</td><td class="num" style="text-align: right">₱7,500.00</td><td style="color: #8F6500; font-weight: 700">Scheduled</td></tr>
+              <tr><td>2nd sem, 2025–2026</td><td class="num" style="text-align: right">₱7,500.00</td><td style="color: #11663A; font-weight: 700">Released</td></tr>
+              <tr><td>1st sem, 2025–2026</td><td class="num" style="text-align: right">₱5,000.00</td><td style="color: #11663A; font-weight: 700">Released</td></tr>
+            </tbody>
+          </table>
+        </section>
+      </div>
+
+      <section aria-labelledby="note-h" style="background: #FFFFFF; border: 1px solid #E4E7EC; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+        <h2 id="note-h" style="font-family: Lexend, sans-serif; font-size: 18px; font-weight: 600">Notifications</h2>
+        <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column">
+          <li style="display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid #EEF0F3"><span style="flex: 1">LANI returned your application: upload a clearer certificate of grades.</span><span style="font-size: 14px; color: #5B6472">20 Oct</span></li>
+          <li style="display: flex; gap: 12px; padding: 10px 0"><span style="flex: 1">Your 1st semester allowance is scheduled for 14 November.</span><span style="font-size: 14px; color: #5B6472">15 Oct</span></li>
+        </ul>
+      </section>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1080}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
