@@ -54,7 +54,7 @@
     </section>
     <section class="card" aria-labelledby="eligibility-title">
       <div class="card__header"><h2 class="card__title" id="eligibility-title">Eligibility</h2><p class="text-sm text-muted num">3 of 4 rules met</p></div>
-      <ul class="checklist">{% for rule in rules %}<li class="is-{{ rule.state }}">{% icon rule.icon %}<div><p>{{ rule.text }}</p><p class="text-sm">{% if rule.state == "unmet" %}{% status "warning" rule.status %}{% else %}{% status "success" rule.status %}{% endif %}</p></div></li>{% endfor %}</ul>
+      <ul class="checklist">{% for rule in rules %}<li class="is-{{ rule.state }}">{% icon rule.icon %}<div><p>{{ rule.text }}</p><p class="text-sm">{% if rule.state == "met" %}{% status "success" rule.status %}{% elif rule.state == "unmet" %}{% status "warning" rule.status %}{% else %}{% status "neutral" rule.status %}{% endif %}</p></div></li>{% endfor %}</ul>
       <div class="banner" role="note"><div><p class="banner__title">Legacy model suggests: Priority tier</p><p>Advisory only. The rules above decide eligibility.</p></div></div>
     </section>
   </div>
@@ -67,6 +67,7 @@
         <label class="choice"><input type="radio" name="decision" value="return" checked><span><span class="choice__label">Return to applicant</span><span class="choice__hint">Ask for a fix. The application keeps its place.</span></span></label>
         <label class="choice"><input type="radio" name="decision" value="reject"><span><span class="choice__label">Reject</span><span class="choice__hint">Ends this application. The applicant is told why.</span></span></label>
       </fieldset>
+      {% field decision_form.tier %}
       {% field decision_form.note %}
       <button class="btn btn--primary" type="submit">Submit decision</button>
     </section>

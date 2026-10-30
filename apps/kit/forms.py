@@ -44,6 +44,16 @@ class ApplyForm(forms.Form):
 
 
 class DecisionForm(forms.Form):
+    tier = forms.ChoiceField(
+        label="Benefit tier",
+        choices=[
+            ("basic", "Basic, ₱5,000.00 a term"),
+            ("priority", "Priority, ₱7,500.00 a term"),
+            ("honors", "Honors, ₱10,000.00 a term"),
+        ],
+        initial="priority",
+        help_text="Confirm the tier if you approve.",
+    )
     note = forms.CharField(
         label="Note to the applicant",
         widget=forms.Textarea(attrs={"rows": 3}),
