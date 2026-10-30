@@ -93,3 +93,20 @@ def test_checked_radio_stays_visible_in_forced_colours(page: Page, live_server, 
     assert radio.evaluate("(el) => getComputedStyle(el).appearance") == "auto"
     checkbox = page.locator('.field input[type="checkbox"]').first
     assert checkbox.evaluate("(el) => getComputedStyle(el).appearance") == "auto"
+
+
+def test_focus_is_visible_on_the_red_auth_panel(page: Page, live_server, vite_build):
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(f"{live_server.url}/_kit/layouts/auth/")
+    brand = page.locator(".auth__panel .brand")
+    for _ in range(5):  # Tab from the top of the page until the panel's brand link has focus
+        page.keyboard.press("Tab")
+        if brand.evaluate("(el) => el === document.activeElement"):
+            break
+    style = brand.evaluate(
+        "(el) => { const s = getComputedStyle(el);"
+        " return [s.outlineStyle, s.outlineColor, s.boxShadow]; }"
+    )
+    assert style[0] != "none"
+    assert style[1] == "rgb(14, 27, 44)"  # ink outline
+    assert "rgb(242, 183, 5)" in style[2]  # yellow halo

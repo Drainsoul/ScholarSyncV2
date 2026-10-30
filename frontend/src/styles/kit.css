@@ -18,10 +18,6 @@
   text-decoration: underline;
 }
 
-.kit-header :focus-visible {
-  outline-color: var(--nav-marker);
-}
-
 .kit-toc ul {
   display: flex;
   flex-wrap: wrap;
