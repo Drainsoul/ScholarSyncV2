@@ -150,3 +150,29 @@ def test_student_dashboard_keeps_its_banner_and_notifications(student):
     assert "Fix application</a>" in student
     assert 'class="progress progress--secondary" max="100" value="85"' in student
     assert "<meter" not in student
+
+
+def test_review_decision_card_confirms_the_tier(review):
+    decision = review.split('id="decision-title"')[1].split("</section>")[0]
+    select = re.search(r'<select name="tier".*?</select>', decision, re.S)
+    assert select
+    for tier in ("basic", "priority", "honors"):
+        assert f'value="{tier}"' in select.group(0)
+    assert 'value="priority" selected' in select.group(0)
+    assert decision.index('name="decision"') < decision.index('name="tier"')
+    assert decision.index('name="tier"') < decision.index('name="note"')
+
+
+def test_review_pending_rule_is_neutral_text(rf, kit_on, vite_build):
+    from django.template.loader import render_to_string
+
+    from apps.kit import samples
+
+    context = samples.application_review()
+    context["rules"][0]["state"] = "pending"  # type: ignore[index]
+    request = rf.get("/_kit/mockups/application-review/")
+    body = render_to_string("kit/mockups/application_review.html", context, request=request)
+    checklist = body.split('<ul class="checklist">')[1].split("</ul>")[0]
+    assert checklist.count("status--neutral") == 1
+    assert checklist.count("status--success") == 2
+    assert checklist.count("status--warning") == 1
