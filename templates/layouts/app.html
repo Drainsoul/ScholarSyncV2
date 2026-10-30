@@ -1,22 +1,64 @@
 {% extends "base.html" %}{% load ui %}
 {% block body %}
-<div class="civic-stripe" aria-hidden="true"></div>
-<header class="appbar">
-  <div class="appbar__inner">
-    <a class="brand" href="{{ home_url|default:'/' }}">{% icon "logo" %}<span class="brand__name">ScholarSync</span><span class="brand__city">City of Taguig</span></a>
-    <button type="button" class="icon-btn nav-toggle" data-nav-toggle aria-controls="app-nav" aria-expanded="false" aria-label="Menu" hidden>{% icon "menu" %}</button>
-    {% block appbar_context %}{% endblock %}
-    <div class="appbar__account">
-      {% if viewer %}<p class="appbar__viewer">{{ viewer.name }}<span>{{ viewer.role }}</span></p>{% endif %}
-      {% if logout_url %}<form method="post" action="{{ logout_url }}">{% csrf_token %}<button type="submit" class="btn btn--ghost appbar__signout">{% icon "log-out" %}Sign out</button></form>{% endif %}
+<div class="app">
+  <nav class="sidebar" id="app-nav" aria-label="Main">
+    <div class="civic-stripe" aria-hidden="true"></div>
+    <a class="brand" href="{{ home_url|default:'/' }}"><span class="brand__mark">{% icon "logo" %}</span><span class="brand__name">ScholarSync</span><span class="brand__city">City of Taguig</span></a>
+    {% block sidebar_context %}{% endblock %}
+    <div class="sidebar__group">
+      <p class="sidebar__heading" id="nav-heading-main">{% firstof nav_heading "Workspace" %}</p>
+      {% include "components/nav_list.html" with items=nav_items list_class="sidebar__list" labelled_by="nav-heading-main" %}
     </div>
+    {% if nav_secondary %}
+    <div class="sidebar__group">
+      <p class="sidebar__heading" id="nav-heading-support">Support</p>
+      {% include "components/nav_list.html" with items=nav_secondary list_class="sidebar__list" labelled_by="nav-heading-support" %}
+    </div>
+    {% endif %}
+    <div class="sidebar__spacer"></div>
+    {% block sidebar_callout %}{% endblock %}
+    {% if viewer %}
+    <div class="sidebar__user">
+      {% if logout_url %}
+      <details class="account-menu">
+        <summary>{% avatar viewer.name 1 %}<span class="sidebar__viewer"><span class="sidebar__name">{{ viewer.name }}</span><span class="sidebar__role">{{ viewer.role }}</span></span>{% icon "ellipsis-vertical" %}<span class="visually-hidden">Account menu</span></summary>
+        <div class="account-menu__panel">
+          <form method="post" action="{{ logout_url }}">{% csrf_token %}<button type="submit" class="btn btn--ghost">{% icon "log-out" %}Sign out</button></form>
+        </div>
+      </details>
+      {% else %}
+      <p class="sidebar__account">{% avatar viewer.name 1 %}<span class="sidebar__viewer"><span class="sidebar__name">{{ viewer.name }}</span><span class="sidebar__role">{{ viewer.role }}</span></span></p>
+      {% endif %}
+    </div>
+    {% endif %}
+  </nav>
+  <div class="app__main">
+    <header class="topbar">
+      <div class="topbar__row">
+        <button type="button" class="icon-btn nav-toggle" data-nav-toggle aria-controls="app-nav" aria-expanded="false" aria-label="Menu" hidden>{% icon "menu" %}</button>
+        <a class="brand topbar__brand" href="{{ home_url|default:'/' }}"><span class="brand__mark">{% icon "logo" %}</span><span class="brand__name">ScholarSync</span><span class="brand__city">City of Taguig</span></a>
+        {% block topbar_search %}{% if search_url %}
+        <form class="topbar__search" role="search" action="{{ search_url }}" method="get">
+          <label class="visually-hidden" for="app-search">Search ScholarSync</label>
+          {% icon "search" %}<input class="input" id="app-search" type="search" name="q" placeholder="{% block search_placeholder %}Search ScholarSync{% endblock %}">
+        </form>
+        {% endif %}{% endblock %}
+        <div class="topbar__end">
+          {% block topbar_extra %}{% endblock %}
+          {% if terms %}
+          <details class="switcher switcher--end">
+            <summary>{% icon "calendar" %}{% for term in terms %}{% if term.current %}<span><span class="visually-hidden">Term: </span>{{ term.name }}</span>{% endif %}{% endfor %}{% icon "chevron-down" %}</summary>
+            <ul role="list">{% for term in terms %}<li><a href="{{ term.url }}"{% if term.current %} aria-current="true"{% endif %}>{{ term.name }}</a></li>{% endfor %}</ul>
+          </details>
+          {% endif %}
+          {% if notifications_url %}<a class="icon-btn topbar__bell" href="{{ notifications_url }}" aria-label="Notifications{% if notifications_count %}, {{ notifications_count }} unread{% endif %}">{% icon "bell" %}{% if notifications_count %}<span class="topbar__dot" aria-hidden="true"></span>{% endif %}</a>{% endif %}
+        </div>
+      </div>
+    </header>
+    <main id="main" tabindex="-1" class="page">
+      {% block breadcrumbs %}{% if crumbs %}{% include "components/breadcrumbs.html" %}{% endif %}{% endblock %}
+      {% block content %}{% endblock %}
+    </main>
   </div>
-</header>
-<div class="shell">
-  <nav class="sidenav" id="app-nav" aria-label="Main">{% include "components/nav_list.html" with list_class="sidenav__list" %}</nav>
-  <main id="main" tabindex="-1" class="shell__main page">
-    {% block breadcrumbs %}{% if crumbs %}{% include "components/breadcrumbs.html" %}{% endif %}{% endblock %}
-    {% block content %}{% endblock %}
-  </main>
 </div>
 {% endblock %}

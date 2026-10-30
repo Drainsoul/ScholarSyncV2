@@ -1,2 +1,5 @@
-{% extends "layouts/app.html" %}
-{% block appbar_context %}<p class="appbar__area">Scholarship office</p>{% endblock %}
+{% extends "layouts/app.html" %}{% load ui %}
+{% block sidebar_context %}
+<p class="sidebar__context"><span class="sidebar__context-mark">{% icon "building-2" %}</span><span class="sidebar__context-text"><span class="sidebar__context-label">Signed in to</span><span class="sidebar__context-value">Scholarship office</span></span></p>
+{% endblock %}
+{% block search_placeholder %}Search programs, staff, schools{% endblock %}
