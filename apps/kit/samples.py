@@ -424,6 +424,144 @@ def disbursements() -> dict[str, object]:
     }
 
 
+# Scholars page (canvas: Main.dc.html). Per scholar id: course and year, barangay, scholar since
+# and GWA (%).
+_SCHOLAR_DETAILS: dict[int, tuple[str, str, str, int]] = {
+    1: ("BS Accountancy, 3rd year", "Ususan", "2024", 88),
+    2: ("BS Civil Engineering, 4th year", "Fort Bonifacio", "2023", 91),
+    3: ("BS Nursing, 2nd year", "Hagonoy", "2025", 79),
+    4: ("BS Electrical Engineering, 1st year", "Signal Village", "2026", 85),
+    5: ("BA Communication, 3rd year", "Tuktukan", "2024", 84),
+    6: ("BS Social Work, 2nd year", "Bagumbayan", "2025", 87),
+    7: ("BS Psychology, 4th year", "Napindan", "2022", 74),
+    8: ("BS Computer Science, 2nd year", "Upper Bicutan", "2025", 93),
+    9: ("BS Information Technology, 2nd year", "Western Bicutan", "2025", 78),
+    10: ("BS Architecture, 3rd year", "Pinagsama", "2024", 86),
+    11: ("BS Education, 1st year", "Tipas", "2026", 90),
+    12: ("BS Biology, 3rd year", "Lower Bicutan", "2024", 83),
+    13: ("BS Industrial Engineering, 2nd year", "North Signal Village", "2025", 89),
+}
+# A long Faker name (first, first, last, last-last), so layouts are checked against one.
+LONG_NAME = "Kimberly Catherine Pena Gilbert-Middleton"
+SCHOLAR_TABS = [
+    ("all", "All", 968),
+    ("active", "Active", 900),
+    ("at_risk", "At risk", 37),
+    ("on_hold", "On hold", 12),
+    ("ended", "Ended", 19),
+]
+RENEWAL_MARK = 80
+
+
+def _scholar_rows() -> list[dict[str, object]]:
+    """scholars() plus one long name, with the fields the Scholars page shows, sorted by name."""
+    base: list[Scholar] = [
+        *scholars(),
+        {
+            "id": 13,
+            "name": LONG_NAME,
+            "school": SCHOOLS[0],
+            "tier": "Priority",
+            "amount": Decimal("7500.00"),
+            "status": "active",
+            "status_label": STATUSES["active"]["label"],
+            "tone": STATUSES["active"]["tone"],
+        },
+    ]
+    rows: list[dict[str, object]] = []
+    for row in base:
+        course, barangay, since, gwa = _SCHOLAR_DETAILS[row["id"]]
+        words = row["name"].split()
+        rows.append(
+            {
+                **row,
+                "tone": row["tone"] or "neutral",
+                "email": f"{words[0][0]}.{words[-1]}@example.com".lower(),
+                "course": course,
+                "barangay": barangay,
+                "since": since,
+                "gwa": gwa,
+                "gwa_low": gwa < RENEWAL_MARK,
+                "avatar_index": row["id"] - 1,
+            }
+        )
+    return sorted(rows, key=lambda row: str(row["name"]))
+
+
+def _drawer(row: dict[str, object]) -> dict[str, object]:
+    amount = row["amount"]
+    note = (
+        f"Below the {RENEWAL_MARK}% renewal mark. Staff are asked to check in before 15 Nov."
+        if row["gwa_low"]
+        else f"Meets the {RENEWAL_MARK}% renewal mark with at least 15 units."
+    )
+    return {
+        **row,
+        "gwa_note": note,
+        "allowances": [
+            {
+                "term": "1st sem 2026–2027",
+                "when": "Release on 14 Nov",
+                "amount": amount,
+                "label": "Scheduled",
+                "tone": "info",
+            },
+            {
+                "term": "2nd sem 2025–2026",
+                "when": "Released 3 Apr",
+                "amount": amount,
+                "label": "Released",
+                "tone": "success",
+            },
+            {
+                "term": "1st sem 2025–2026",
+                "when": "Released 7 Nov",
+                "amount": amount,
+                "label": "Released",
+                "tone": "success",
+            },
+        ],
+    }
+
+
+def scholars_page(status: str, scholar: int | None, page: str | None = None) -> dict[str, object]:
+    """The Scholars list for one status tab (unknown: all), with the drawer for a known id."""
+    counts = {key: count for key, _, count in SCHOLAR_TABS}
+    if status not in counts:
+        status = "all"
+    everyone = _scholar_rows()
+    rows = everyone if status == "all" else [row for row in everyone if row["status"] == status]
+    rows = rows[:10]
+    selected = next((row for row in everyone if row["id"] == scholar), None)
+    return {
+        **chrome("staff", "Scholars"),
+        "crumbs": [{"label": "TCU CEAA", "url": "#"}, {"label": "Scholars", "url": ""}],
+        "status": status,
+        "figures": [
+            {"label": "Active scholars", "value": "900"},
+            {"label": "At risk", "value": "37"},
+            {"label": "On hold", "value": "12"},
+            {"label": "Budget used", "value": "64%"},
+        ],
+        "tabs": [
+            {"label": label, "url": f"?status={key}", "current": key == status, "count": count}
+            for key, label, count in SCHOLAR_TABS
+        ],
+        "schools": SCHOOLS,
+        "tiers": [tier for tier, _ in TIERS],
+        "rows": rows,
+        "shown": len(rows),
+        "total": counts[status],
+        # The sample has one page of rows; the pager shows the real page count (10 a page).
+        "page": Paginator(range(counts[status]), 10).get_page(page),
+        "selected_id": scholar if selected else None,
+        # Closing goes back to the same tab, at the scholar's row.
+        "drawer": {**_drawer(selected), "close_url": f"?status={status}#scholar-{scholar}"}
+        if selected
+        else None,
+    }
+
+
 def _month_bars(counts: list[tuple[str, int]], peak: int) -> list[dict[str, object]]:
     """Chart months: bar height is the share of the peak, in the 5 % steps the CSS maps."""
     return [

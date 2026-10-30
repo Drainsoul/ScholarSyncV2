@@ -1,0 +1,102 @@
+{% extends "layouts/staff.html" %}{% load ui partials %}
+{% block title %}Scholars{% endblock %}
+{% block sidebar_callout %}
+<div class="callout">
+  <p class="callout__title">{% icon "clock" %}Renewals close 15 Nov</p>
+  <p class="callout__text">37 scholars are below the 80% GWA mark this term.</p>
+  <a class="callout__link" href="?status=at_risk">Review at-risk scholars</a>
+</div>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Scholars</h1><p class="page-header__meta">Everyone with an active or recent {{ program.name }} award, 1st semester 2026–2027.</p></div>
+  <div class="btn-row">
+    <a class="btn btn--secondary" href="#">{% icon "download" %}Export CSV</a>
+    <a class="btn btn--primary" href="#">{% icon "plus" %}Generate disbursements</a>
+  </div>
+</div>
+{% include "components/figures.html" %}
+<section class="card list-card" aria-labelledby="list-heading">
+  <h2 class="visually-hidden" id="list-heading">Scholar list</h2>
+  {% include "components/tabs.html" with tabs_label="Scholar status" %}
+  <form class="table-toolbar" method="get" action="" role="search" aria-label="Filter scholars">
+    <input type="hidden" name="status" value="{{ status }}">
+    <div class="table-toolbar__search">
+      <label class="visually-hidden" for="scholar-q">Search by name or email</label>
+      {% icon "search" %}<input class="input" type="search" id="scholar-q" name="q" placeholder="Search by name or email">
+    </div>
+    <label class="visually-hidden" for="scholar-school">School</label>
+    <select class="input" id="scholar-school" name="school"><option value="">All schools</option>{% for school in schools %}<option>{{ school }}</option>{% endfor %}</select>
+    <label class="visually-hidden" for="scholar-tier">Tier</label>
+    <select class="input" id="scholar-tier" name="tier"><option value="">All tiers</option>{% for tier in tiers %}<option>{{ tier }}</option>{% endfor %}</select>
+    <button type="button" class="btn btn--secondary">{% icon "filter" %}More filters</button>
+    <p class="table-toolbar__meta">Sorted by name, A to Z</p>
+  </form>
+  <form method="post" action="" data-bulk>
+    {% csrf_token %}
+    <div class="table-wrap" role="region" aria-labelledby="list-heading" tabindex="0">
+      <table class="table table--stack">
+        <thead><tr>
+          <th scope="col" class="select"><input type="checkbox" data-bulk-all aria-label="Select all scholars on this page"></th>
+          <th scope="col">Scholar</th><th scope="col">School</th><th scope="col">Tier</th>
+          <th scope="col" class="num">Allowance</th><th scope="col" class="num">GWA</th><th scope="col">Status</th>
+          <th scope="col" class="row-menu"><span class="visually-hidden">Actions</span></th>
+        </tr></thead>
+        <tbody>{% for row in rows %}<tr id="scholar-{{ row.id }}"{% if row.id == selected_id %} class="is-selected" aria-current="true"{% endif %}>
+          <td class="select"><input type="checkbox" name="ids" value="{{ row.id }}" data-bulk-item aria-label="Select {{ row.name }}"></td>
+          <th scope="row"><span class="identity">{% avatar row.name row.avatar_index %}<span class="identity__text"><a class="identity__name" href="?status={{ status }}&amp;scholar={{ row.id }}#scholar-drawer">{{ row.name }}</a><span class="text-sm text-muted">{{ row.email }}</span></span></span></th>
+          <td data-label="School">{{ row.school }}</td>
+          <td data-label="Tier">{{ row.tier }}</td>
+          <td class="num" data-label="Allowance">{{ row.amount|peso }}</td>
+          <td class="num gwa{% if row.gwa_low %} gwa--low{% endif %}" data-label="GWA">{{ row.gwa }}%{% if row.gwa_low %}<span class="visually-hidden">, below the 80% mark</span>{% endif %}</td>
+          <td data-label="Status">{% status row.tone row.status_label %}</td>
+          <td class="row-menu"><button type="button" class="icon-btn" aria-label="More actions for {{ row.name }}">{% icon "ellipsis" %}</button></td>
+        </tr>{% endfor %}</tbody>
+      </table>
+    </div>
+  </form>
+  <div class="list-card__foot">
+    <p class="table-count num">Showing 1–{{ shown }} of {{ total }}</p>
+    {% pagination page %}
+  </div>
+</section>
+{% if drawer %}{% include "components/drawer.html" with drawer_id="scholar-drawer" title="Scholar details" close_url=drawer.close_url body_template="kit/mockups/scholars.html#drawer_body" scholar=drawer %}{% endif %}
+{% endblock %}
+
+{% partialdef drawer_body %}
+<div class="person">
+  {% avatar scholar.name scholar.avatar_index "lg" %}
+  <div class="person__text">
+    <h3 class="person__name">{{ scholar.name }}</h3>
+    <p class="person__email">{{ scholar.email }}</p>
+    <p class="person__meta">{% status scholar.tone scholar.status_label %} <span>({{ scholar.tier }} tier)</span></p>
+  </div>
+</div>
+<div class="btn-row btn-row--fill">
+  <a class="btn btn--secondary" href="mailto:{{ scholar.email }}">{% icon "mail" %}Email</a>
+  <a class="btn btn--primary" href="#">Open record</a>
+</div>
+<dl class="facts">
+  <dt>School</dt><dd>{{ scholar.school }}</dd>
+  <dt>Course and year</dt><dd>{{ scholar.course }}</dd>
+  <dt>Barangay</dt><dd>{{ scholar.barangay }}</dd>
+  <dt>Allowance</dt><dd class="num">{{ scholar.amount|peso }} a term</dd>
+  <dt>Scholar since</dt><dd>{{ scholar.since }}</dd>
+</dl>
+<div class="renewal">
+  <div class="renewal__head">
+    <p class="renewal__title">Renewal check</p>
+    <p class="renewal__gwa num{% if scholar.gwa_low %} renewal__gwa--low{% endif %}">GWA {{ scholar.gwa }}%</p>
+  </div>
+  {# The 80% renewal mark is the track's ::after (the CSP forbids inline positions). #}
+  <div class="renewal__track">{% include "components/progress.html" with value=scholar.gwa tone="secondary" label="GWA against the 80% renewal mark" %}</div>
+  <p class="renewal__note">{{ scholar.gwa_note }}</p>
+</div>
+<section class="drawer-section" aria-labelledby="scholar-allowances">
+  <h3 class="drawer-section__title" id="scholar-allowances">Allowances</h3>
+  <ul class="allowance-list" role="list">{% for item in scholar.allowances %}
+    <li class="allowance-list__item"><span class="allowance-list__term"><span class="allowance-list__name">{{ item.term }}</span><span class="text-sm text-muted">{{ item.when }}</span></span><span class="allowance-list__value"><span class="num">{{ item.amount|peso }}</span>{% status item.tone item.label %}</span></li>{% endfor %}
+  </ul>
+</section>
+<button type="button" class="btn btn--danger">{% icon "circle-pause" %}Put award on hold</button>
+{% endpartialdef %}

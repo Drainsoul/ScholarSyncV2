@@ -250,6 +250,8 @@ progress::-moz-progress-bar {
 
 .table-toolbar .input {
   width: auto;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .table-toolbar__search {
@@ -1281,4 +1283,300 @@ html:not(.js) [data-bulk-all] {
 
 .split + .card {
   margin-top: var(--space-6);
+}
+
+/* A list card (Scholars, Disbursements): status tabs on its top edge, the toolbar, the table to the
+   card's edges, then a foot with the count and the pager. */
+.list-card {
+  padding-bottom: 0;
+}
+
+.list-card:has(> .tabs) {
+  padding-top: 0;
+}
+
+/* Like the review header's tabs, they wrap on a phone instead of scrolling out of the card. */
+.list-card > .tabs {
+  flex-wrap: wrap;
+  gap: 0 var(--space-5);
+  margin: 0 calc(-1 * var(--panel-pad)) calc(var(--space-4) - var(--ring-room));
+  padding-inline: var(--panel-pad);
+  background:
+    linear-gradient(var(--border), var(--border)) left 0 bottom var(--ring-room) / 100% 1px
+    no-repeat;
+}
+
+.list-card__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-inline: calc(-1 * var(--panel-pad));
+  padding: var(--space-3) var(--panel-pad);
+  border-top: 1px solid var(--track);
+}
+
+.list-card__foot > *,
+.list-card__foot .pagination {
+  margin: 0;
+}
+
+/* A person's name in a table: ink and bold, underlined on hover; long names and emails wrap. */
+.identity .identity__name {
+  color: var(--text);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.identity .identity__name:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.identity__text > * {
+  overflow-wrap: anywhere;
+}
+
+.table .gwa {
+  font-weight: 600;
+}
+
+/* Below the renewal mark: danger text, with the words in the cell for screen readers. */
+.table .gwa--low {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.table .row-menu {
+  width: var(--space-16);
+  padding-block: var(--space-1);
+}
+
+/* The row whose details are open in the drawer: a blue tint and a blue edge. */
+.table tbody tr.is-selected {
+  background: var(--surface-selected);
+}
+
+.table tbody tr.is-selected > :first-child {
+  box-shadow: inset 3px 0 0 var(--secondary);
+}
+
+/* On a phone a stacked row keeps its checkbox and row menu on the row header's line; the empty
+   ::after breaks the line, so the other cells wrap under it. */
+@media (max-width: 40rem) {
+  .table--stack tr:has(> .select) {
+    column-gap: var(--space-3);
+  }
+
+  .table--stack .select {
+    order: 1;
+    width: auto;
+    align-self: center;
+  }
+
+  .table--stack .select ~ th {
+    order: 2;
+    flex: 1 1 0;
+    min-width: 0;
+    align-self: center;
+  }
+
+  .table--stack .row-menu {
+    order: 3;
+    width: auto;
+    align-self: center;
+  }
+
+  .table--stack tr:has(> .select)::after {
+    content: "";
+    order: 4;
+    flex-basis: 100%;
+    margin-top: calc(-1 * var(--space-2));
+  }
+
+  .table--stack .select ~ td:not(.row-menu) {
+    order: 5;
+  }
+}
+
+/* Drawer contents: the person, their facts, the renewal check and their allowances. */
+.person {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.person__text {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.person__text > * {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.person__name {
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  line-height: var(--leading-tight);
+}
+
+.person__email {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.person__meta {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.btn-row--fill > .btn {
+  flex: 1 1 0;
+}
+
+/* Term and value side by side, the terms as wide as the longest one. */
+.facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+
+.facts dt {
+  color: var(--text-muted);
+}
+
+.facts dd {
+  margin: 0;
+}
+
+.renewal {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.renewal p {
+  margin: 0;
+}
+
+.renewal__head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-weight: 700;
+}
+
+.renewal__gwa--low {
+  color: var(--danger);
+}
+
+/* The renewal mark: an ink line at 80% of the track, drawn here because the CSP forbids inline
+   positions. The note under the bar says it in words. */
+.renewal__track {
+  position: relative;
+  display: flex;
+}
+
+.renewal__track::after {
+  content: "";
+  position: absolute;
+  top: calc(-1 * var(--space-1));
+  bottom: calc(-1 * var(--space-1));
+  left: 80%;
+  width: 2px;
+  background: var(--text);
+}
+
+@media (forced-colors: active) {
+  .renewal__track::after {
+    background: CanvasText;
+  }
+}
+
+.renewal__note {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.drawer-section__title {
+  margin: 0 0 var(--space-1);
+  font-family: var(--font-heading);
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+.allowance-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.allowance-list__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--track);
+}
+
+.allowance-list__item:last-child {
+  border-bottom: 0;
+}
+
+.allowance-list__term {
+  display: grid;
+}
+
+.allowance-list__name {
+  font-weight: 600;
+}
+
+.allowance-list__value {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  white-space: nowrap;
+}
+
+.allowance-list .status {
+  font-size: var(--text-sm);
+}
+
+/* A goal's progress in a page header (apply: step 2 of 4). */
+.goal {
+  display: grid;
+  flex: 0 1 17.5rem;
+  gap: var(--space-2);
+}
+
+.goal__figures {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.goal__label {
+  font-weight: 700;
+}
+
+.budget-used {
+  font-family: var(--font-heading);
+  font-size: var(--text-xl);
+  font-weight: 600;
+}
+
+.card__note {
+  margin: 0;
 }

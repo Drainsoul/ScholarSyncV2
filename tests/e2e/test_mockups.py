@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 import pytest
-from playwright.sync_api import Page, ViewportSize, expect
+from playwright.sync_api import Browser, Page, ViewportSize, expect
 
 from apps.kit.views import MOCKUPS
 
@@ -13,7 +13,7 @@ VIEWPORTS: dict[str, ViewportSize] = {
     "laptop": {"width": 1280, "height": 800},
     "desktop": {"width": 1440, "height": 900},
 }
-STAT_SLUGS = ["office-dashboard", "disbursements"]
+STAT_SLUGS = ["office-dashboard", "disbursements", "scholars"]
 # Each figure value whose text runs past its figure (bounding boxes, so visible overflow counts).
 OVERFLOWING_STATS = """() => [...document.querySelectorAll(".figure__value")]
   .filter((value) => {
@@ -134,3 +134,47 @@ def test_no_transition_runs_on_load(page: Page, live_server, vite_build, slug):
     page.goto(f"{live_server.url}/_kit/mockups/{slug}/")
     page.wait_for_timeout(400)
     assert page.evaluate("window.__transitions") == []
+
+
+def test_drawer_works_without_javascript(browser: Browser, live_server, vite_build):
+    context = browser.new_context(java_script_enabled=False, viewport=VIEWPORTS["desktop"])
+    page = context.new_page()
+    page.goto(f"{live_server.url}/_kit/mockups/scholars/?status=at_risk")
+    expect(page.locator(".drawer")).to_have_count(0)
+    page.get_by_role("link", name="Curtis Walker").click()
+    drawer = page.locator("#scholar-drawer")
+    expect(drawer).to_be_visible()
+    expect(drawer.get_by_role("heading", name="Curtis Walker")).to_be_visible()
+    assert "status=at_risk" in page.url
+    box = drawer.bounding_box()
+    assert box and round(box["width"]) == 400 and round(box["x"] + box["width"]) == 1440
+    drawer.get_by_role("link", name="Close details").click()
+    expect(page.locator(".drawer")).to_have_count(0)
+    assert "status=at_risk" in page.url and "scholar=" not in page.url
+    context.close()
+
+
+def test_drawer_is_full_width_on_a_phone(page: Page, live_server, vite_build, console_errors):
+    page.set_viewport_size(VIEWPORTS["phone"])
+    page.goto(f"{live_server.url}/_kit/mockups/scholars/?scholar=13#scholar-drawer")
+    drawer = page.locator("#scholar-drawer")
+    expect(drawer).to_be_visible()
+    width = drawer.evaluate("(el) => el.getBoundingClientRect().width")
+    assert width == page.evaluate("window.innerWidth") == 375
+    assert page.evaluate("document.documentElement.scrollWidth") <= 375
+    assert console_errors == []
+
+
+def test_renewal_marker_sits_at_80_percent(page: Page, live_server, vite_build):
+    page.set_viewport_size(VIEWPORTS["desktop"])
+    page.goto(f"{live_server.url}/_kit/mockups/scholars/?scholar=3#scholar-drawer")
+    left = page.locator(".renewal__track").evaluate(
+        """(el) => {
+          const marker = getComputedStyle(el, "::after");
+          return [parseFloat(marker.left) / el.getBoundingClientRect().width, marker.width];
+        }"""
+    )
+    assert abs(left[0] - 0.8) < 0.01
+    assert left[1] == "2px"
+    gwa = page.locator(".renewal__gwa").evaluate("(el) => getComputedStyle(el).color")
+    assert gwa == "rgb(155, 16, 34)"  # danger: Curtis Walker is below 80

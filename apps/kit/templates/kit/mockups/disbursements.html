@@ -3,47 +3,67 @@
 {% block content %}
 <div class="page-header">
   <div><h1>Disbursements</h1><p class="page-header__meta">{{ program.name }}, 1st semester 2026–2027</p></div>
-  <button type="button" class="btn btn--secondary">Generate disbursements</button>
+  <div class="btn-row">
+    <a class="btn btn--secondary" href="#">{% icon "download" %}Export CSV</a>
+    <a class="btn btn--primary" href="#">{% icon "plus" %}Generate disbursements</a>
+  </div>
 </div>
 {% include "components/tabs.html" with tabs_label="Money sections" %}
 <div class="figures">
-  {% include "components/stat_tile.html" with label="Budget for 2026" value=budget.total|peso hint="January to December" %}
+  {% include "components/stat_tile.html" with label="Budget for 2026" value=budget.total|peso %}
   {% include "components/stat_tile.html" with label="Released" value=budget.released|peso %}
   {% include "components/stat_tile.html" with label="Approved, not yet released" value=budget.committed|peso %}
   {% include "components/stat_tile.html" with label="Available" value=budget.available|peso %}
 </div>
-<div class="meter-row">
-  <label for="budget-used">Budget used</label>
-  <meter id="budget-used" min="0" max="100" low="70" high="90" optimum="0" value="{{ budget.used_percent }}">{{ budget.used_percent }}%</meter>
-  <p class="num">{{ budget.used_percent }}% of {{ budget.total|peso }}, counting approved disbursements</p>
-</div>
-<form class="filters" method="get" action="" role="search" aria-label="Filter disbursements">
-  <div class="field"><label class="field__label" for="d-q">Scholar</label><input class="input" type="search" id="d-q" name="q"></div>
-  <div class="field"><label class="field__label" for="d-status">Status</label><select class="input" id="d-status" name="status"><option>Any status</option><option>Prepared</option><option>Approved</option><option>Released</option></select></div>
-  <div class="field"><label class="field__label" for="d-tier">Tier</label><select class="input" id="d-tier" name="tier"><option>Any tier</option><option>Basic</option><option>Priority</option><option>Honors</option></select></div>
-  <button class="btn btn--secondary" type="submit">Apply filters</button>
-</form>
-<form method="post" action="" data-bulk>
-  {% csrf_token %}
-  <div class="bulk-bar" data-bulk-bar>
-    <p class="bulk-bar__count" data-bulk-count aria-live="polite">Select disbursements, then choose an action.</p>
-    <div class="btn-row">
-      <button class="btn btn--primary" type="button">Approve selected</button>
-      <button class="btn btn--secondary" type="button">Release selected</button>
+<div class="stack">
+<section class="card" aria-labelledby="budget-title">
+  <div class="card__header">
+    <h2 class="card__title" id="budget-title">Budget used</h2>
+    <p class="budget-used num">{{ budget.used_percent }}%</p>
+  </div>
+  {% include "components/progress.html" with value=budget.used_percent tone="primary" label="Budget used" %}
+  <p class="card__note text-sm text-muted num">{{ budget.used_percent }}% of {{ budget.total|peso }}, counting approved disbursements.</p>
+</section>
+<section class="card list-card" aria-labelledby="list-heading">
+  <h2 class="visually-hidden" id="list-heading">Disbursement list</h2>
+  <form class="table-toolbar" method="get" action="" role="search" aria-label="Filter disbursements">
+    <div class="table-toolbar__search">
+      <label class="visually-hidden" for="d-q">Search by scholar</label>
+      {% icon "search" %}<input class="input" type="search" id="d-q" name="q" placeholder="Search by scholar">
     </div>
+    <label class="visually-hidden" for="d-status">Status</label>
+    <select class="input" id="d-status" name="status"><option value="">All statuses</option><option>Prepared</option><option>Approved</option><option>Released</option></select>
+    <label class="visually-hidden" for="d-tier">Tier</label>
+    <select class="input" id="d-tier" name="tier"><option value="">All tiers</option><option>Basic</option><option>Priority</option><option>Honors</option></select>
+    <button class="btn btn--secondary" type="submit">Apply filters</button>
+  </form>
+  <form method="post" action="" data-bulk>
+    {% csrf_token %}
+    <div class="bulk-bar" data-bulk-bar>
+      <p class="bulk-bar__count" data-bulk-count aria-live="polite">Select disbursements, then choose an action.</p>
+      <div class="btn-row">
+        <button class="btn btn--primary" type="button">Approve selected</button>
+        <button class="btn btn--secondary" type="button">Release selected</button>
+      </div>
+    </div>
+    <p class="table-count">Releasing needs a program head and asks for your password again.</p>
+    <div class="table-wrap" role="region" aria-labelledby="list-heading" tabindex="0">
+      <table class="table table--stack">
+        <thead><tr><th scope="col" class="select"><input type="checkbox" data-bulk-all aria-label="Select all disbursements"></th><th scope="col">Scholar</th><th scope="col">Tier</th><th scope="col" class="num">Amount</th><th scope="col">Status</th></tr></thead>
+        <tbody>{% for row in page %}<tr>
+          <td class="select"><input type="checkbox" name="ids" value="{{ row.id }}" data-bulk-item aria-label="Select {{ row.name }}"></td>
+          <th scope="row"><span class="identity">{% avatar row.name row.id|add:"-1" %}<a class="identity__name" href="#">{{ row.name }}</a></span></th>
+          <td data-label="Tier">{{ row.tier }}</td>
+          <td class="num" data-label="Amount">{{ row.amount|peso }}</td>
+          <td data-label="Status">{% status row.tone|default:"neutral" row.label %}</td>
+        </tr>{% endfor %}</tbody>
+      </table>
+    </div>
+  </form>
+  <div class="list-card__foot">
+    <p class="table-count num">Showing {{ page.start_index }}–{{ page.end_index }} of {{ total }}</p>
+    {% pagination page %}
   </div>
-  <p class="table-count">{{ total }} disbursements. Releasing needs a program head and asks for your password again.</p>
-  <div class="table-wrap" role="region" aria-labelledby="disbursements-caption" tabindex="0">
-    <table class="table">
-      <caption id="disbursements-caption" class="visually-hidden">Disbursements</caption>
-      <thead><tr><th scope="col" class="select"><input type="checkbox" data-bulk-all aria-label="Select all disbursements"></th><th scope="col">Scholar</th><th scope="col">Tier</th><th scope="col" class="num">Amount</th><th scope="col">Status</th></tr></thead>
-      <tbody>{% for row in page %}<tr>
-        <td class="select"><input type="checkbox" name="ids" value="{{ row.id }}" data-bulk-item aria-label="Select {{ row.name }}"></td>
-        <th scope="row">{{ row.name }}</th><td>{{ row.tier }}</td><td class="num">{{ row.amount|peso }}</td>
-        <td>{% status row.tone|default:"neutral" row.label %}</td>
-      </tr>{% endfor %}</tbody>
-    </table>
-  </div>
-</form>
-{% pagination page %}
+</section>
+</div>
 {% endblock %}

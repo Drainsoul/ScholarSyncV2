@@ -77,6 +77,17 @@ TEXT_PAIRS = [
     ("warning", "surface-hover"),
     ("danger", "surface-hover"),
     ("info", "surface-hover"),
+    # The sidebar callout on the yellow tint.
+    ("text", "accent-100"),
+    ("text-secondary", "accent-100"),
+    # A selected table row (the scholar open in the drawer).
+    ("text", "surface-selected"),
+    ("text-secondary", "surface-selected"),
+    ("text-muted", "surface-selected"),
+    ("success", "surface-selected"),
+    ("warning", "surface-selected"),
+    ("danger", "surface-selected"),
+    ("info", "surface-selected"),
 ]
 # Focus rings and control shapes must reach 3:1 (WCAG 1.4.11).
 # Inputs, selects, textareas, checkboxes and radios are drawn by --border-input, which must reach
@@ -89,6 +100,9 @@ NON_TEXT_PAIRS = [
     ("primary", "surface"),
     ("border-input", "surface"),
     ("border-input", "bg"),
+    ("border-input", "surface-selected"),
+    ("secondary", "surface-selected"),
+    ("text", "track"),  # the 80% renewal marker over the progress track
 ]
 # Yellow is a fill, never text on light.
 DECORATIVE_AS_TEXT = re.compile(
