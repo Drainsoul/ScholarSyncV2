@@ -43,7 +43,7 @@ def test_current_tab_keeps_the_focus_halo(page: Page, live_server, vite_build):
     page.keyboard.press("Shift+Tab")
     page.keyboard.press("Tab")  # keyboard focus, so :focus-visible applies
     shadow = tab.evaluate("(el) => getComputedStyle(el).boxShadow")
-    assert "rgb(240, 179, 35)" in shadow  # gold halo
+    assert "rgb(242, 183, 5)" in shadow  # yellow halo
     assert "inset" in shadow  # and the current-tab underline
 
 

@@ -1,73 +1,85 @@
-/* Design tokens (spec §12 rev 3). tests/test_tokens.py checks every pair the components use. */
+/* Design tokens (spec §12 rev 4). tests/test_tokens.py checks every pair the components use. */
 :root {
   /* Palette */
-  --ink-900: #0e1b2c;
-  --ink-600: #4b5563;
-  --stone-50: #f5f4f0;
-  --stone-100: #ecebe6;
-  --stone-300: #d6d3cb;
-  --stone-600: #5f6368;
-  --white: #ffffff;
-  --navy-700: #1a3a6b;
-  --navy-800: #10284d;
-  --navy-50: #e8eef7;
-  --navy-muted: #c9d4e6;
-  --red-700: #b8132a; /* Taguig red: brand mark and danger only */
-  --red-50: #fbecee;
-  --gold-400: #f0b323; /* decorative only: civic stripe, nav marker, focus halo */
+  --red-700: #b8132a;
+  --red-800: #9b1022;
+  --red-50: #fbe7ea;
+  --blue-700: #1f4e9e;
+  --blue-800: #163a78;
+  --blue-50: #e4ebf6;
+  --yellow-500: #f2b705; /* decorative or on-accent surfaces only: never text on light */
+  --yellow-50: #fef8e1;
+  --yellow-100: #fcefc4;
+  --gold-700: #8f6500;
   --green-800: #11663a;
   --green-50: #e7f3ec;
-  --amber-800: #8a4b00;
-  --amber-50: #fbf1e2;
+  --ink-900: #0e1b2c;
+  --slate-700: #3d4654;
+  --slate-500: #5b6472;
+  --slate-300: #d0d5dd;
+  --slate-200: #e4e7ec;
+  --slate-150: #eef0f3;
+  --slate-100: #f1f2f5;
+  --slate-50: #f5f6f8;
+  --slate-25: #fafafb;
+  --white: #ffffff;
 
   /* Roles */
   --text: var(--ink-900);
-  --text-muted: var(--ink-600);
-  --text-inverse: var(--white);
-  --bg: var(--stone-50);
+  --text-secondary: var(--slate-700);
+  --text-muted: var(--slate-500);
+  --bg: var(--slate-50);
   --surface: var(--white);
-  --surface-sunken: var(--stone-100);
-  --border: var(--stone-300);
-  --border-strong: var(--ink-900);
-  --border-control: var(--stone-600);
-  --primary: var(--navy-700);
-  --primary-hover: var(--navy-800);
-  --primary-50: var(--navy-50);
+  --surface-hover: var(--slate-100);
+  --surface-header: var(--slate-25);
+  --track: var(--slate-150);
+  --border: var(--slate-200);
+  --border-control: var(--slate-300);
+  --primary: var(--red-700);
+  --primary-hover: var(--red-800);
+  --primary-50: var(--red-50);
   --on-primary: var(--white);
-  --link: var(--navy-700);
-  --link-hover: var(--navy-800);
+  --secondary: var(--blue-700);
+  --secondary-hover: var(--blue-800);
+  --secondary-50: var(--blue-50);
+  --link: var(--blue-700);
+  --link-hover: var(--blue-800);
+  --accent: var(--yellow-500);
+  --accent-50: var(--yellow-50);
+  --accent-100: var(--yellow-100);
+  --on-accent: var(--ink-900);
   --brand: var(--red-700);
-  --danger: var(--red-700);
-  --danger-50: var(--red-50);
+  --danger: var(--red-800);
+  --danger-50: #fdecee;
   --success: var(--green-800);
-  --success-50: var(--green-50);
-  --warning: var(--amber-800);
-  --warning-50: var(--amber-50);
-  --info: var(--navy-700);
-  --info-50: var(--navy-50);
-  --accent: var(--gold-400);
+  --success-50: #e7f3ec;
+  --warning: var(--gold-700);
+  --warning-50: var(--yellow-50);
+  --info: var(--blue-700);
+  --info-50: var(--blue-50);
   --focus: var(--ink-900);
-  --focus-halo: var(--gold-400);
-  /* The gold halo outside the 3 px ink outline; components that draw their own inset marker add it. */
+  --focus-halo: var(--yellow-500);
+  /* The yellow halo outside the 3 px ink outline; components that draw their own inset marker add it. */
   --focus-ring: 0 0 0 6px var(--focus-halo);
-  --nav-bg: var(--navy-700);
-  --nav-bg-hover: var(--navy-800);
-  --nav-text: var(--white);
-  --nav-text-muted: var(--navy-muted);
-  --nav-marker: var(--gold-400);
+  --nav-bg: var(--white);
+  --nav-text: var(--slate-700);
+  --nav-current: var(--primary);
+  --nav-current-bg: var(--primary-50);
+  --nav-count-bg: var(--accent);
 
-  /* Type: 17 px body, 1.25 scale */
+  /* Type: 16 px body, 13 px captions */
   --font-heading: "Lexend", system-ui, sans-serif;
   --font-body: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --text-sm: 0.9375rem;
-  --text-base: 1.0625rem;
+  --text-xs: 0.8125rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
   --text-lg: 1.25rem;
   --text-xl: 1.5rem;
   --text-2xl: 1.875rem;
-  --text-3xl: 2.25rem;
+  --text-3xl: 1.75rem;
   --text-4xl: 2.875rem;
   --leading-tight: 1.2;
-  --leading-body: 1.55;
+  --leading-body: 1.5;
   --measure: 68ch;
 
   /* Space: 4 px steps */
@@ -82,16 +94,39 @@
   --space-12: 3rem;
   --space-16: 4rem;
 
-  /* Shape: small radii, never pills; shadows only on floating layers */
-  --radius-sm: 3px;
-  --radius-md: 3px;
-  --radius-lg: 4px;
+  /* Shape: rounded corners; shadows only on floating layers */
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
   --shadow-float: 0 12px 32px -8px rgb(14 27 44 / 0.3);
 
   /* Sizes and motion */
   --control-height: 2.75rem;
-  --sidebar-width: 15rem;
+  --sidebar-width: 15.5rem;
   --content-max: 72rem;
   --duration: 150ms;
   --ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* M3c migration aliases: removed in Task 4 */
+:root {
+  --navy-700: var(--blue-700);
+  --navy-800: var(--blue-800);
+  --navy-50: var(--blue-50);
+  --navy-muted: var(--slate-300);
+  --gold-400: var(--yellow-500);
+  --stone-50: var(--slate-50);
+  --stone-100: var(--slate-100);
+  --stone-300: var(--slate-300);
+  --stone-600: var(--slate-500);
+  --amber-800: var(--gold-700);
+  --amber-50: var(--yellow-50);
+  --ink-600: var(--slate-700);
+  --text-inverse: var(--white);
+  --surface-sunken: var(--surface-hover);
+  --border-strong: var(--ink-900);
+  --nav-bg-hover: var(--surface-hover);
+  --nav-text-muted: var(--text-muted);
+  --nav-marker: var(--accent);
 }

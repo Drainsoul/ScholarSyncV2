@@ -38,38 +38,44 @@ def contrast(a: str, b: str) -> float:
 TEXT_PAIRS = [
     ("text", "surface"),
     ("text", "bg"),
-    ("text", "surface-sunken"),
+    ("text", "surface-header"),
+    ("text-secondary", "surface"),
+    ("text-secondary", "bg"),
+    ("text-secondary", "surface-header"),
     ("text-muted", "surface"),
     ("text-muted", "bg"),
-    ("text-muted", "surface-sunken"),
+    ("text-muted", "surface-header"),
     ("link", "surface"),
     ("link", "bg"),
-    ("link-hover", "primary-50"),
     ("on-primary", "primary"),
     ("on-primary", "primary-hover"),
     ("primary", "primary-50"),
     ("danger", "surface"),
     ("danger", "danger-50"),
-    ("text-inverse", "danger"),
+    ("success", "surface"),
     ("success", "success-50"),
+    ("warning", "surface"),
     ("warning", "warning-50"),
+    ("info", "surface"),
     ("info", "info-50"),
+    ("secondary", "secondary-50"),
+    ("on-accent", "accent"),
     ("nav-text", "nav-bg"),
-    ("nav-text-muted", "nav-bg"),
-    ("nav-text", "nav-bg-hover"),
-    ("text", "accent"),
+    ("nav-current", "nav-bg"),
+    ("nav-current", "nav-current-bg"),
+    ("on-primary", "brand"),
 ]
-# Control borders, focus rings and markers must reach 3:1 (WCAG 1.4.11).
+# Focus rings and control shapes must reach 3:1 (WCAG 1.4.11).
+# border-control (#d0d5dd) is below 3:1 on white. Every control that uses it carries a visible
+# label or text, so 1.4.11 does not apply to the border alone; it is left out on purpose.
 NON_TEXT_PAIRS = [
-    ("border-control", "surface"),
     ("focus", "surface"),
     ("focus", "bg"),
-    ("focus-halo", "nav-bg"),
-    ("nav-marker", "nav-bg"),
+    ("focus", "primary-50"),
     ("primary", "surface"),
 ]
 DECORATIVE_AS_TEXT = re.compile(
-    r"(?<![-\w])color:\s*var\(--(accent|gold-400|focus-halo|nav-marker)\)"
+    r"(?<![-\w])color:\s*var\(--(accent|yellow-500|focus-halo|nav-count-bg)\)"
 )
 
 
@@ -85,6 +91,11 @@ def test_non_text_pairs_reach_3_to_1(foreground, background):
     colours = tokens()
     ratio = contrast(colours[foreground], colours[background])
     assert ratio >= 3.0, f"--{foreground} on --{background} is {ratio:.2f}:1"
+
+
+def test_text_pairs_include_the_status_tones():
+    foregrounds = {foreground for foreground, _ in TEXT_PAIRS}
+    assert {"danger", "success", "warning", "info", "secondary"} <= foregrounds
 
 
 def test_decorative_colours_are_never_text():

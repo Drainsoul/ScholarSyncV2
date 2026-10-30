@@ -74,72 +74,76 @@
   background: var(--ink-900);
 }
 
-.kit-swatch--ink-600 {
-  background: var(--ink-600);
+.kit-swatch--slate-700 {
+  background: var(--slate-700);
 }
 
-.kit-swatch--stone-50 {
-  background: var(--stone-50);
+.kit-swatch--slate-500 {
+  background: var(--slate-500);
 }
 
-.kit-swatch--stone-100 {
-  background: var(--stone-100);
+.kit-swatch--slate-300 {
+  background: var(--slate-300);
 }
 
-.kit-swatch--stone-300 {
-  background: var(--stone-300);
+.kit-swatch--slate-200 {
+  background: var(--slate-200);
 }
 
-.kit-swatch--stone-600 {
-  background: var(--stone-600);
+.kit-swatch--slate-100 {
+  background: var(--slate-100);
+}
+
+.kit-swatch--slate-50 {
+  background: var(--slate-50);
 }
 
 .kit-swatch--white {
   background: var(--white);
 }
 
-.kit-swatch--navy-700 {
-  background: var(--navy-700);
-}
-
-.kit-swatch--navy-800 {
-  background: var(--navy-800);
-}
-
-.kit-swatch--navy-50 {
-  background: var(--navy-50);
-}
-
-.kit-swatch--navy-muted {
-  background: var(--navy-muted);
-}
-
 .kit-swatch--red-700 {
   background: var(--red-700);
+}
+
+.kit-swatch--red-800 {
+  background: var(--red-800);
 }
 
 .kit-swatch--red-50 {
   background: var(--red-50);
 }
 
-.kit-swatch--gold-400 {
-  background: var(--gold-400);
+.kit-swatch--blue-700 {
+  background: var(--blue-700);
+}
+
+.kit-swatch--blue-800 {
+  background: var(--blue-800);
+}
+
+.kit-swatch--blue-50 {
+  background: var(--blue-50);
+}
+
+.kit-swatch--yellow-500 {
+  background: var(--yellow-500);
+}
+
+.kit-swatch--yellow-100 {
+  background: var(--yellow-100);
+}
+
+.kit-swatch--yellow-50 {
+  background: var(--yellow-50);
+}
+
+.kit-swatch--gold-700 {
+  background: var(--gold-700);
 }
 
 .kit-swatch--green-800 {
   background: var(--green-800);
-}
-
-.kit-swatch--green-50 {
-  background: var(--green-50);
-}
-
-.kit-swatch--amber-800 {
-  background: var(--amber-800);
-}
-
-.kit-swatch--amber-50 {
-  background: var(--amber-50);
 }
 
 .kit-state > .meter-row {
