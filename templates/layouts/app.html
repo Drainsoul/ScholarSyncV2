@@ -31,21 +31,21 @@
     {% block sidebar_context %}{% endblock %}
     <div class="sidebar__group">
       <p class="sidebar__heading" id="nav-heading-main">{% firstof nav_heading "Workspace" %}</p>
-      {% include "components/nav_list.html" with items=nav_items list_class="sidebar__list" labelled_by="nav-heading-main" %}
+      {% include "components/nav_list.html" with nav_list_items=nav_items list_class="sidebar__list" labelled_by="nav-heading-main" %}
     </div>
     {% if nav_secondary %}
     <div class="sidebar__group">
       <p class="sidebar__heading" id="nav-heading-support">Support</p>
-      {% include "components/nav_list.html" with items=nav_secondary list_class="sidebar__list" labelled_by="nav-heading-support" %}
+      {% include "components/nav_list.html" with nav_list_items=nav_secondary list_class="sidebar__list" labelled_by="nav-heading-support" %}
     </div>
     {% endif %}
     <div class="sidebar__spacer"></div>
     {% block sidebar_callout %}{% endblock %}
-    {% if viewer %}
+    {% if viewer or logout_url %}
     <div class="sidebar__user">
       {% if logout_url %}
       <details class="account-menu">
-        <summary>{% avatar viewer.name 1 %}<span class="sidebar__viewer"><span class="sidebar__name">{{ viewer.name }}</span><span class="sidebar__role">{{ viewer.role }}</span></span>{% icon "ellipsis-vertical" %}<span class="visually-hidden">Account menu</span></summary>
+        <summary>{% if viewer %}{% avatar viewer.name 1 %}<span class="sidebar__viewer"><span class="sidebar__name">{{ viewer.name }}</span><span class="sidebar__role">{{ viewer.role }}</span></span>{% else %}<span class="sidebar__viewer"><span class="sidebar__name">Account</span></span>{% endif %}{% icon "ellipsis-vertical" %}<span class="visually-hidden">Account menu</span></summary>
         <div class="account-menu__panel">
           <form method="post" action="{{ logout_url }}">{% csrf_token %}<button type="submit" class="btn btn--ghost">{% icon "log-out" %}Sign out</button></form>
         </div>

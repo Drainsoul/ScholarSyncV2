@@ -195,12 +195,12 @@
 }
 
 .topnav__list a[aria-current="page"] {
-  box-shadow: inset 0 -4px 0 var(--primary);
+  box-shadow: inset 0 -3px 0 var(--primary);
 }
 
 .topnav__list a[aria-current="page"]:focus-visible {
   box-shadow:
-    inset 0 -4px 0 var(--primary),
+    inset 0 -3px 0 var(--primary),
     var(--focus-ring);
 }
 
@@ -649,21 +649,19 @@
   font-weight: 600;
 }
 
-/* Auth: split panel */
-.auth__panel .brand {
-  color: var(--nav-text);
-}
-
+/* Auth: split panel. The panel is flat red; all its text is white, and the logo square inverts. */
 .auth__panel .brand {
   align-self: flex-start;
-}
-
-.auth__panel .brand .icon {
-  color: var(--nav-text);
+  color: var(--on-primary);
 }
 
 .auth__panel .brand__city {
-  color: var(--nav-text-muted);
+  color: var(--on-primary);
+}
+
+.auth__panel .brand__mark {
+  background: var(--on-primary);
+  color: var(--primary);
 }
 
 .auth {
@@ -683,8 +681,8 @@
   flex-direction: column;
   gap: var(--space-6);
   padding: var(--space-6);
-  background: var(--nav-bg);
-  color: var(--nav-text);
+  background: var(--primary);
+  color: var(--on-primary);
 }
 
 @media (min-width: 56rem) {
@@ -697,7 +695,7 @@
 .auth__tagline {
   max-width: 16ch;
   margin: 0 0 var(--space-4);
-  color: var(--nav-text);
+  color: var(--on-primary);
   font-family: var(--font-heading);
   font-size: var(--text-3xl);
   font-weight: 600;
@@ -707,7 +705,7 @@
 .auth__note {
   max-width: 40ch;
   margin: 0;
-  color: var(--nav-text-muted);
+  color: var(--on-primary);
 }
 
 .auth__main {

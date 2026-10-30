@@ -90,9 +90,9 @@ NON_TEXT_PAIRS = [
     ("border-input", "surface"),
     ("border-input", "bg"),
 ]
-# Yellow is a fill, never text on light: its names include the M3c aliases while they exist.
+# Yellow is a fill, never text on light.
 DECORATIVE_AS_TEXT = re.compile(
-    r"(?<![-\w])color:\s*var\(--(accent|yellow-500|focus-halo|nav-count-bg|gold-400|nav-marker)\)"
+    r"(?<![-\w])color:\s*var\(--(accent|yellow-500|focus-halo|nav-count-bg)\)"
 )
 
 
@@ -166,3 +166,30 @@ def test_drawn_checkboxes_and_radios_fall_back_in_forced_colours():
         r'input:is\(\[type="checkbox"\], \[type="radio"\]\) \{[^}]*appearance: auto;',
         block.group(1),
     )
+
+
+REMOVED_NAMES = {
+    "navy-700", "navy-800", "navy-50", "navy-muted", "gold-400", "stone-50", "stone-100",
+    "stone-300", "stone-600", "amber-800", "amber-50", "ink-600", "text-inverse",
+    "surface-sunken", "border-strong", "nav-bg-hover", "nav-text-muted", "nav-marker",
+}  # fmt: skip
+
+
+def test_every_var_reference_resolves_to_a_token():
+    # Tokens, plus component-local custom properties (such as --panel-pad) declared in any file.
+    defined = {
+        name
+        for path in STYLES.rglob("*.css")
+        for name, _ in DECLARATION.findall(path.read_text(encoding="utf-8"))
+    }
+    dangling = []
+    for path in STYLES.rglob("*.css"):
+        text = path.read_text(encoding="utf-8")
+        for name in re.findall(r"var\(--([a-z0-9-]+)", text):
+            if name not in defined:
+                dangling.append(f"{path.name}: --{name}")
+    assert dangling == []
+
+
+def test_migration_aliases_are_gone():
+    assert REMOVED_NAMES.isdisjoint(tokens())

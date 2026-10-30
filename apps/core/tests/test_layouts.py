@@ -1,9 +1,11 @@
 import re
+from pathlib import Path
 
 import pytest
 from django.template.loader import render_to_string
 from django.test import RequestFactory
 
+STYLES = Path(__file__).resolve().parents[3] / "frontend" / "src" / "styles"
 NAV = [
     {"label": "Dashboard", "url": "/me/", "current": True, "count": 0, "icon": "house"},
     {
@@ -210,3 +212,33 @@ def test_account_menu_holds_sign_out(vite_build):
 
 def test_sidebar_callout_block_is_empty_by_default(vite_build):
     assert "sidebar__callout" not in render("layouts/staff.html")
+
+
+def test_sign_out_shows_with_a_logout_url_even_without_a_viewer(vite_build):
+    html = render("layouts/staff.html", viewer=None, logout_url="/accounts/logout/")
+    assert '<form method="post" action="/accounts/logout/">' in html
+    assert "csrfmiddlewaretoken" in html
+    assert "Sign out" in html
+
+
+def test_a_context_items_variable_does_not_change_the_nav(vite_build):
+    stray = [{"label": "Stray", "url": "/stray/", "current": False, "count": 0, "icon": ""}]
+    for layout in ("layouts/public.html", "layouts/staff.html"):
+        assert "Stray" not in render(layout, items=stray)
+        assert "Stray" not in render(layout, items=stray, nav_secondary=[])
+
+
+def _css_rules(selector_start: str) -> str:
+    css = (STYLES / "layouts.css").read_text(encoding="utf-8")
+    return "".join(
+        m.group(0) for m in re.finditer(rf"{re.escape(selector_start)}[^{{]*\{{[^}}]*\}}", css)
+    )
+
+
+def test_auth_panel_uses_on_primary_text():
+    rules = _css_rules(".auth__panel") + _css_rules(".auth__tagline") + _css_rules(".auth__note")
+    assert "var(--on-primary)" in rules
+    assert "var(--text-muted)" not in rules
+    assert "var(--nav-" not in rules
+    assert re.search(r"\.auth__panel \{[^}]*background: var\(--primary\)", rules)
+    assert "var(--on-primary)" in _css_rules(".auth__panel .brand__mark")
