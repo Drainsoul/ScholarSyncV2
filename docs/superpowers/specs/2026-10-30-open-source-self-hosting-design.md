@@ -1,7 +1,7 @@
 # ScholarSync V2: open source, one-command run, self-hosting
 
 - **Date:** 2026-10-30
-- **Status:** draft for Kenneth's review. Once approved, it amends the main spec
+- **Status:** approved by Kenneth on 2026-10-30. It amends the main spec
   (`2026-10-11-scholarsync-v2-design.md`, which becomes revision 4; §12 below lists the sections).
 - **Replaces:** Vercel as the deployment target (main spec §11 and the parts of §2, §7, §9, §14–§17 built on it).
 
