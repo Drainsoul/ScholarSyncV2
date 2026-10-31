@@ -106,3 +106,18 @@ def test_no_personal_email_in_repo():
             if not allowed.search(address):
                 offenders.append(f"{name}: {address}")
     assert offenders == []
+
+
+LOCAL_STATEMENT = "you are the only person who can see its data"
+
+
+def test_local_copy_statement_is_gated_on_the_mode(client, settings, vite_build):
+    settings.SITE_OPERATOR_NAME = "Barangay Scholars Office"
+    settings.PRIVACY_CONTACT_EMAIL = "dpo@scholarsync.test"
+    for url in ("/privacy/", "/contact/", "/help/"):
+        assert LOCAL_STATEMENT not in client.get(url).content.decode()
+    settings.PRIVACY_CONTACT_EMAIL = ""  # even a blank contact is not a reason to claim it is local
+    assert LOCAL_STATEMENT not in client.get("/privacy/").content.decode()
+    settings.EXPLORE = True
+    settings.PRIVACY_CONTACT_EMAIL = ""
+    assert LOCAL_STATEMENT in client.get("/privacy/").content.decode()

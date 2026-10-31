@@ -11,7 +11,7 @@ os.environ["DJANGO_DEBUG"] = "false"
 # Tests run in production mode, which refuses the .env.example placeholder key a dev .env holds.
 os.environ["DJANGO_SECRET_KEY"] = "pytest-only-secret-key-" + "x" * 40
 # Production mode requires the operator details (the privacy, terms and contact pages show them).
-os.environ.setdefault("SITE_OPERATOR_NAME", "Example Org")
-os.environ.setdefault("PRIVACY_CONTACT_EMAIL", "privacy@example.org")
+os.environ.setdefault("SITE_OPERATOR_NAME", "ScholarSync CI")
+os.environ.setdefault("PRIVACY_CONTACT_EMAIL", "privacy@scholarsync.test")
 
 from config.settings import *  # noqa: E402, F403
