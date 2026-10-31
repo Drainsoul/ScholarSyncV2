@@ -61,6 +61,14 @@ APP_PORT=8080 docker compose up
 Use the same value every time you run compose in that folder, because the storage rules depend on `APP_PORT`. A
 `.env` file in the repository root with `APP_PORT=8080` works too for compose's own port settings.
 
+### GitHub Codespaces
+The "Open in GitHub Codespaces" badge in the README starts the same `docker compose up` stack in a codespace
+(`.devcontainer/devcontainer.json`). Open the forwarded "ScholarSync" port 8000 once the build finishes. Explore mode
+adds that one forwarded address to its allowed hosts, and nothing else.
+
+Known limitation: file storage is advertised at `localhost:9000`, which a codespace browser cannot reach. Uploads
+arrive in a later milestone, so nothing uses it yet.
+
 ### Stopping and resetting
 - Stop and keep your data: `Ctrl+C`, or `docker compose down`.
 - Start again: `docker compose up`.

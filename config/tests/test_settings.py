@@ -70,6 +70,9 @@ _MODE_VARS = {
     "DJANGO_ALLOWED_HOSTS",
     "DJANGO_CSRF_TRUSTED_ORIGINS",
     "DJANGO_SECRET_KEY",
+    "CODESPACE_NAME",
+    "GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN",
+    "APP_PORT",
     "SITE_OPERATOR_NAME",
     "PRIVACY_CONTACT_EMAIL",
 }
@@ -138,6 +141,65 @@ def test_explore_mode_refuses_other_hosts(tmp_path):
     )
     assert result.returncode != 0
     assert "SCHOLARSYNC_EXPLORE" in result.stderr
+
+
+_CODESPACE = {
+    "CODESPACE_NAME": "demo",
+    "GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN": "app.github.dev",
+}
+
+
+def test_explore_allows_the_codespaces_forwarded_host(tmp_path):
+    values = settings_values(
+        tmp_path,
+        ["ALLOWED_HOSTS", "CSRF_TRUSTED_ORIGINS"],
+        SCHOLARSYNC_EXPLORE="true",
+        **_CODESPACE,
+    )
+    assert values["ALLOWED_HOSTS"][-1] == "demo-8000.app.github.dev"
+    assert values["ALLOWED_HOSTS"][:2] == ["localhost", "127.0.0.1"]
+    assert "https://demo-8000.app.github.dev" in values["CSRF_TRUSTED_ORIGINS"]
+
+
+def test_codespaces_forwarded_host_follows_app_port(tmp_path):
+    values = settings_values(
+        tmp_path, ["ALLOWED_HOSTS"], SCHOLARSYNC_EXPLORE="true", APP_PORT="8010", **_CODESPACE
+    )
+    assert values["ALLOWED_HOSTS"][-1] == "demo-8010.app.github.dev"
+
+
+def test_codespaces_variables_are_ignored_outside_explore(tmp_path):
+    values = settings_values(
+        tmp_path,
+        ["ALLOWED_HOSTS", "CSRF_TRUSTED_ORIGINS"],
+        DJANGO_ALLOWED_HOSTS="scholarsync.example",
+        **_CODESPACE,
+    )
+    assert values["ALLOWED_HOSTS"] == ["scholarsync.example"]
+    assert values["CSRF_TRUSTED_ORIGINS"] == []
+
+
+def test_explore_ignores_empty_codespaces_variables(tmp_path):
+    values = settings_values(
+        tmp_path,
+        ["ALLOWED_HOSTS", "CSRF_TRUSTED_ORIGINS"],
+        SCHOLARSYNC_EXPLORE="true",
+        CODESPACE_NAME="",
+        GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN="",
+    )
+    assert values["ALLOWED_HOSTS"] == ["localhost", "127.0.0.1"]
+    assert values["CSRF_TRUSTED_ORIGINS"] == []
+
+
+def test_codespaces_does_not_widen_the_explore_refusal(tmp_path):
+    result = _run_settings(
+        tmp_path,
+        ["ALLOWED_HOSTS"],
+        SCHOLARSYNC_EXPLORE="true",
+        DJANGO_ALLOWED_HOSTS="demo-8000.app.github.dev",
+        **_CODESPACE,
+    )
+    assert result.returncode != 0
 
 
 def test_production_is_the_default_and_https_only(tmp_path):

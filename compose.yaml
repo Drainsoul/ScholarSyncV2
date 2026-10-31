@@ -22,6 +22,9 @@ x-web-environment: &web-environment
   # Used only for the ready message in the console.
   APP_PORT: ${APP_PORT:-8000}
   MAIL_PORT: ${MAIL_PORT:-8025}
+  # Set only inside GitHub Codespaces; empty everywhere else (docs/SETUP.md).
+  CODESPACE_NAME: ${CODESPACE_NAME:-}
+  GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN: ${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-}
 
 services:
   db:

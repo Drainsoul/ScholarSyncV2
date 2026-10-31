@@ -35,6 +35,14 @@ else:
     ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", [])
 CSRF_TRUSTED_ORIGINS: list[str] = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", [])
 
+# GitHub Codespaces (explore only): its proxy forwards https://<name>-<port>.<domain> to the app.
+_codespace_name = env.str("CODESPACE_NAME", "")
+_codespace_domain = env.str("GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN", "")
+if EXPLORE and _codespace_name and _codespace_domain:
+    _codespace_host = f"{_codespace_name}-{env.int('APP_PORT', 8000)}.{_codespace_domain}"
+    ALLOWED_HOSTS.append(_codespace_host)
+    CSRF_TRUSTED_ORIGINS.append(f"https://{_codespace_host}")
+
 if PRODUCTION and SECRET_KEY.startswith("explore-only-"):
     raise ImproperlyConfigured(
         "DJANGO_SECRET_KEY is the public explore key. "
