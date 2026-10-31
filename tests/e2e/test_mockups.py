@@ -178,3 +178,62 @@ def test_renewal_marker_sits_at_80_percent(page: Page, live_server, vite_build):
     assert left[1] == "2px"
     gwa = page.locator(".renewal__gwa").evaluate("(el) => getComputedStyle(el).color")
     assert gwa == "rgb(155, 16, 34)"  # danger: Curtis Walker is below 80
+
+
+# Every focusable element that is visible and intersects the drawer's box.
+UNDER_THE_DRAWER = """() => {
+  const box = document.querySelector("#scholar-drawer").getBoundingClientRect();
+  const focusable = "a[href], button, input, select, textarea, summary, " +
+    "[tabindex]:not([tabindex='-1'])";
+  return [...document.querySelectorAll(focusable)]
+    .filter((el) => !el.closest("#scholar-drawer") && el.getClientRects().length)
+    .filter((el) => {
+      const r = el.getBoundingClientRect();
+      return r.width && r.height && r.left < box.right && r.right > box.left
+        && r.top < box.bottom && r.bottom > box.top;
+    })
+    .map((el) => el.outerHTML.slice(0, 80));
+}"""
+
+
+def test_open_drawer_covers_no_focusable_control(page: Page, live_server, vite_build):
+    page.set_viewport_size(VIEWPORTS["desktop"])
+    page.goto(f"{live_server.url}/_kit/mockups/scholars/?scholar=4#scholar-drawer")
+    expect(page.locator("#scholar-drawer")).to_be_visible()
+    assert page.evaluate(UNDER_THE_DRAWER) == []
+    assert page.evaluate("document.documentElement.scrollWidth") <= 1440
+
+
+def test_phone_drawer_has_no_focus_halo(page: Page, live_server, vite_build):
+    page.set_viewport_size(VIEWPORTS["phone"])
+    page.goto(f"{live_server.url}/_kit/mockups/scholars/?scholar=4#scholar-drawer")
+    page.locator("#scholar-drawer").focus()
+    shadow = page.locator("#scholar-drawer").evaluate("(el) => getComputedStyle(el).boxShadow")
+    assert shadow == "none"
+
+
+def test_forced_colors_keep_the_current_nav_tab_and_chart(page: Page, live_server, vite_build):
+    page.emulate_media(forced_colors="active")
+    page.set_viewport_size(VIEWPORTS["desktop"])
+    page.goto(f"{live_server.url}/_kit/mockups/scholars/")
+    outline = "(el) => getComputedStyle(el).outlineStyle + getComputedStyle(el).outlineWidth"
+    current = page.locator('.sidebar__list a[aria-current="page"]').first.evaluate(outline)
+    other = page.locator(".sidebar__list a:not([aria-current])").first.evaluate(outline)
+    assert current != other
+    border = "(el) => getComputedStyle(el).borderBottomColor"
+    assert page.locator('.tabs a[aria-current="page"]').evaluate(border) != page.locator(
+        ".tabs a:not([aria-current])"
+    ).first.evaluate(border)
+    page.goto(f"{live_server.url}/_kit/mockups/office-dashboard/")
+    bars = page.locator(".bar-chart__bar")
+    background = "(el) => getComputedStyle(el).backgroundColor"
+    canvas = page.evaluate("getComputedStyle(document.body).backgroundColor")
+    assert bars.first.evaluate(background) != canvas
+    assert bars.first.evaluate(background) != bars.last.evaluate(background)
+
+
+def test_account_menu_is_above_the_fold_at_1440_by_900(page: Page, live_server, vite_build):
+    page.set_viewport_size(VIEWPORTS["desktop"])
+    page.goto(f"{live_server.url}/_kit/mockups/scholars/")
+    box = page.locator(".account-menu > summary").bounding_box()
+    assert box and box["y"] >= 0 and box["y"] + box["height"] <= 900

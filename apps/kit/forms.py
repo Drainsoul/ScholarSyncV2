@@ -1,5 +1,7 @@
 """Sample forms for the design kit (no real data)."""
 
+from typing import Any
+
 from django import forms
 
 SCHOOLS = [
@@ -44,6 +46,16 @@ class ApplyForm(forms.Form):
 
 
 class DecisionForm(forms.Form):
+    decision = forms.ChoiceField(
+        label="Choose a decision",
+        widget=forms.RadioSelect,
+        choices=[
+            ("approve", "Approve"),
+            ("return", "Return to applicant"),
+            ("reject", "Reject"),
+        ],
+        initial="return",
+    )
     tier = forms.ChoiceField(
         label="Benefit tier",
         choices=[
@@ -52,6 +64,7 @@ class DecisionForm(forms.Form):
             ("honors", "Honors, ₱10,000.00 a term"),
         ],
         initial="priority",
+        required=False,
         help_text="Confirm the tier if you approve.",
     )
     note = forms.CharField(
@@ -60,3 +73,9 @@ class DecisionForm(forms.Form):
         required=False,
         help_text="They see this in their notifications and email. Required to return or reject.",
     )
+
+    def clean(self) -> dict[str, Any]:
+        cleaned = super().clean() or {}
+        if cleaned.get("decision") == "approve" and not cleaned.get("tier"):
+            self.add_error("tier", "Confirm the benefit tier to approve.")
+        return cleaned

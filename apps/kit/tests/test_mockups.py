@@ -117,7 +117,7 @@ def test_review_decision_is_a_radio_group(review):
     assert decision.count('type="radio"') == 3
     for label in ("Approve", "Return to applicant", "Reject"):
         assert label in decision
-    assert decision.count('type="radio" name="decision"') == 3
+    assert decision.count('name="decision"') == 3
     assert decision.count(" checked") == 1
     assert 'class="btn btn--primary" type="submit">Submit decision' in decision
     assert "btn--danger" not in decision
@@ -260,7 +260,7 @@ def test_scholars_page_has_the_canvas_figures_and_callout(client, kit_on, vite_b
     ):
         assert re.search(rf">{label}</p>\s*<p class=\"figure__value num\">{value}</p>", figures)
     callout = body.split('class="callout"')[1].split("</div>")[0]
-    assert "#clock" in callout and "Renewals close 15 Nov" in callout
+    assert "#clock" in callout and "Renewals close 15&nbsp;Nov" in callout
     assert "37 scholars are below the 80% GWA mark this term" in callout
     assert 'href="?status=at_risk">Review at-risk scholars</a>' in callout
     assert "Sorted by name, A to Z" in body and "More filters" in body
@@ -296,3 +296,50 @@ def test_restyled_mockups_use_cards_and_status_text(client, kit_on, vite_build):
 def test_student_scheduled_allowance_is_gold_warning_text(student):
     assert '<span class="status status--warning">Scheduled</span>' in student
     assert 'status--info">Scheduled' not in student
+
+
+def test_review_decision_controls_sit_in_a_real_form(review):
+    decision = review.split('id="decision-title"')[1].split("</section>")[0]
+    form = re.search(r'<form method="post" action="#">(.*?)</form>', decision, re.S)
+    assert form
+    assert "csrfmiddlewaretoken" in form.group(1)
+    assert 'type="submit">Submit decision' in form.group(1)
+    assert 'name="decision"' in form.group(1) and 'name="tier"' in form.group(1)
+    tier_label = re.search(r'<label[^>]*for="id_tier">(.*?)</label>', decision, re.S)
+    assert tier_label and "(required)" not in tier_label.group(1)
+    assert "Confirm the tier if you approve." in decision
+
+
+def test_review_counts_come_from_the_samples(review):
+    from apps.kit import samples
+
+    context = samples.application_review()
+    assert context["rules_met"] == 3 and context["rules_total"] == 4
+    assert context["documents_approved"] == 2 and context["documents_total"] == 4
+    assert "3 of 4 rules met" in review and "2 of 4 approved" in review
+    assert "3 of 12 waiting" in review
+    assert review.count("grades-2026.pdf") == 1
+    waiting = review.split("Certificate of enrollment")[1].split("</tr>")[0]
+    assert "Download" not in waiting
+
+
+def test_scholars_tables_are_named_by_their_card_heading(client, kit_on, vite_build):
+    for slug in ("scholars", "disbursements"):
+        body = client.get(f"/_kit/mockups/{slug}/").content.decode()
+        assert '<table class="table table--stack" aria-labelledby="list-heading">' in body
+        assert 'id="list-heading"' in body
+
+
+def test_scholars_callout_title_keeps_nov_with_its_day(client, kit_on, vite_build):
+    body = client.get(SCHOLARS).content.decode()
+    assert "close 15&nbsp;Nov" in body
+
+
+def test_scholars_pager_drops_the_open_scholar_and_close_keeps_the_list(client, kit_on, vite_build):
+    body = client.get(f"{SCHOLARS}?status=all&page=2&scholar=3").content.decode()
+    pager = body.split('class="pagination"')[1].split("</nav>")[0]
+    assert "scholar=" not in pager
+    assert "page=1" in pager
+    close = re.search(r'<a class="icon-btn" href="([^"]*)" aria-label="Close details"', body)
+    assert close and close.group(1).startswith("?status=all&amp;page=2#scholar-3")
+    assert 'href="?status=all&amp;page=2&amp;scholar=' in body

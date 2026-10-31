@@ -5,7 +5,7 @@ placeholders until Kenneth confirms them (spec §18, open questions 2–5).
 """
 
 from decimal import Decimal
-from typing import TypedDict
+from typing import Any, TypedDict
 
 from django.core.paginator import Paginator
 from django.urls import reverse
@@ -289,7 +289,7 @@ def apply() -> dict[str, object]:
 
 def application_review() -> dict[str, object]:
     # A LANI application from a TCU CEAA scholar, so the "no other city scholarship" rule is unmet.
-    return {
+    context: dict[str, Any] = {
         **chrome("staff", "Applications"),
         "program": {"name": "LANI"},
         "programs": [
@@ -385,7 +385,16 @@ def application_review() -> dict[str, object]:
             },
         ],
         "decision_form": DecisionForm(),
+        # Place in the review queue (the pager in the top bar).
+        "queue": {"position": 3, "total": 12},
     }
+    documents = context["documents"]
+    rules = context["rules"]
+    context["documents_approved"] = sum(1 for doc in documents if doc["status"] == "Approved")
+    context["documents_total"] = len(documents)
+    context["rules_met"] = sum(1 for rule in rules if rule["state"] == "met")
+    context["rules_total"] = len(rules)
+    return context
 
 
 def disbursements() -> dict[str, object]:
@@ -533,6 +542,8 @@ def scholars_page(status: str, scholar: int | None, page: str | None = None) -> 
     rows = everyone if status == "all" else [row for row in everyone if row["status"] == status]
     rows = rows[:10]
     selected = next((row for row in everyone if row["id"] == scholar), None)
+    page_obj = Paginator(range(counts[status]), 10).get_page(page)
+    list_query = f"status={status}" + (f"&page={page_obj.number}" if page_obj.number > 1 else "")
     return {
         **chrome("staff", "Scholars"),
         "crumbs": [{"label": "TCU CEAA", "url": "#"}, {"label": "Scholars", "url": ""}],
@@ -553,10 +564,11 @@ def scholars_page(status: str, scholar: int | None, page: str | None = None) -> 
         "shown": len(rows),
         "total": counts[status],
         # The sample has one page of rows; the pager shows the real page count (10 a page).
-        "page": Paginator(range(counts[status]), 10).get_page(page),
+        "page": page_obj,
         "selected_id": scholar if selected else None,
-        # Closing goes back to the same tab, at the scholar's row.
-        "drawer": {**_drawer(selected), "close_url": f"?status={status}#scholar-{scholar}"}
+        # Opening and closing keep the tab and the page; closing lands on the scholar's row.
+        "list_query": list_query,
+        "drawer": {**_drawer(selected), "close_url": f"?{list_query}#scholar-{scholar}"}
         if selected
         else None,
     }

@@ -48,7 +48,7 @@
     </div>
     <p class="table-count">Releasing needs a program head and asks for your password again.</p>
     <div class="table-wrap" role="region" aria-labelledby="list-heading" tabindex="0">
-      <table class="table table--stack">
+      <table class="table table--stack" aria-labelledby="list-heading">
         <thead><tr><th scope="col" class="select"><input type="checkbox" data-bulk-all aria-label="Select all disbursements"></th><th scope="col">Scholar</th><th scope="col">Tier</th><th scope="col" class="num">Amount</th><th scope="col">Status</th></tr></thead>
         <tbody>{% for row in page %}<tr>
           <td class="select"><input type="checkbox" name="ids" value="{{ row.id }}" data-bulk-item aria-label="Select {{ row.name }}"></td>
