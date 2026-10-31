@@ -59,6 +59,7 @@
   <main id="main" tabindex="-1" class="page">
     {% block breadcrumbs %}{% if crumbs %}{% include "components/breadcrumbs.html" %}{% endif %}{% endblock %}
     {% block content %}{% endblock %}
+    {% include "components/site_footer.html" with footer_class="footer--in-app" %}
   </main>
 </div>
 {% endblock %}

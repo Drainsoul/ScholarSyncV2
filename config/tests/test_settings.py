@@ -9,7 +9,9 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 
 
-@pytest.mark.parametrize("missing", ["DJANGO_SECRET_KEY", "DATABASE_URL"])
+@pytest.mark.parametrize(
+    "missing", ["DJANGO_SECRET_KEY", "DATABASE_URL", "SITE_OPERATOR_NAME", "PRIVACY_CONTACT_EMAIL"]
+)
 def test_settings_refuse_to_load_without_required_vars(missing, tmp_path):
     env = {
         key: value
@@ -19,6 +21,8 @@ def test_settings_refuse_to_load_without_required_vars(missing, tmp_path):
     env.update(
         {
             "DJANGO_SECRET_KEY": "x" * 50,
+            "SITE_OPERATOR_NAME": "Example Org",
+            "PRIVACY_CONTACT_EMAIL": "privacy@example.org",
             "DATABASE_URL": "postgres://u:p@localhost:5433/db",
             "DJANGO_ENV_FILE": str(tmp_path / "absent.env"),
         }
@@ -41,6 +45,8 @@ def test_debug_defaults_to_off_when_unset(tmp_path):
     env.update(
         {
             "DJANGO_SECRET_KEY": "x" * 50,
+            "SITE_OPERATOR_NAME": "Example Org",
+            "PRIVACY_CONTACT_EMAIL": "privacy@example.org",
             "DATABASE_URL": "postgres://u:p@localhost:5433/db",
             "DJANGO_ENV_FILE": str(tmp_path / "absent.env"),
         }
@@ -63,19 +69,25 @@ _MODE_VARS = {
     "DJANGO_ALLOWED_HOSTS",
     "DJANGO_CSRF_TRUSTED_ORIGINS",
     "DJANGO_SECRET_KEY",
+    "SITE_OPERATOR_NAME",
+    "PRIVACY_CONTACT_EMAIL",
 }
 
 
-def _run_settings(tmp_path, names, **extra):
+def _run_settings(tmp_path, names, _unset=(), **extra):
     env = {key: value for key, value in os.environ.items() if key not in _MODE_VARS}
     env.update(
         {
             "DJANGO_SECRET_KEY": "x" * 50,
+            "SITE_OPERATOR_NAME": "Example Org",
+            "PRIVACY_CONTACT_EMAIL": "privacy@example.org",
             "DATABASE_URL": "postgres://u:p@localhost:5433/db",
             "DJANGO_ENV_FILE": str(tmp_path / "absent.env"),
             **extra,
         }
     )
+    for name in _unset:
+        env.pop(name, None)
     code = (
         "import json, config.settings as s; "
         f"print(json.dumps({{n: getattr(s, n) for n in {list(names)!r}}}))"
@@ -219,3 +231,15 @@ def test_production_refuses_the_env_example_placeholder_key(tmp_path):
         tmp_path, ["SECRET_KEY"], DJANGO_SECRET_KEY="local-dev-only-x", DJANGO_DEBUG="true"
     )
     assert ok.returncode == 0, ok.stderr
+
+
+def test_operator_settings_default_outside_production(tmp_path):
+    values = settings_values(
+        tmp_path,
+        ["SITE_OPERATOR_NAME", "PRIVACY_CONTACT_EMAIL", "PRIVACY_NOTICE_VERSION"],
+        SCHOLARSYNC_EXPLORE="true",
+        _unset=["SITE_OPERATOR_NAME", "PRIVACY_CONTACT_EMAIL"],
+    )
+    assert values["SITE_OPERATOR_NAME"] == "This local copy"
+    assert values["PRIVACY_CONTACT_EMAIL"] == ""
+    assert values["PRIVACY_NOTICE_VERSION"] == "2026-10-30"

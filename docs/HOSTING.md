@@ -22,8 +22,8 @@ inactive in production mode anyway, but the deploy check (step 7) fails while th
 ```
 cp .env.example .env
 ```
-Edit `.env`. Set at least the values below. The app refuses to start without the secret key, the database URL and (in
-production) the allowed hosts. It starts without `EMAIL_URL` and the `S3_*` values, but then email goes to the
+Edit `.env`. Set at least the values below. The app refuses to start without the secret key, the database URL, the operator name and privacy
+contact, and (in production) the allowed hosts. It starts without `EMAIL_URL` and the `S3_*` values, but then email goes to the
 container log and file uploads do not work, so set them before real use.
 
 At least:
@@ -34,6 +34,8 @@ At least:
 | `DJANGO_SECRET_KEY` | your own random key: `python -c "import secrets; print(secrets.token_urlsafe(64))"` or `openssl rand -base64 48` |
 | `DJANGO_ALLOWED_HOSTS` | your host name, for example `scholarships.example.org` (the first entry is also used by the container health check) |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | `https://` plus the same host name |
+| `SITE_OPERATOR_NAME` | your organisation's name, shown on the privacy, terms and contact pages (required) |
+| `PRIVACY_CONTACT_EMAIL` | an address you read, where people send privacy requests (required) |
 | `DATABASE_URL` | your PostgreSQL URL (step 4) |
 | `EMAIL_URL`, `DEFAULT_FROM_EMAIL` | your SMTP server and a From address it allows (step 4) |
 | `S3_ENDPOINT_URL`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_ADDRESSING_STYLE` | your storage (step 4) |
@@ -43,11 +45,21 @@ Also delete or replace the development-only values at the top of the file. The a
 the secret key still starts with `local-dev-only-` or `explore-only-`, or if `DJANGO_KIT` is on. Production always redirects HTTP to HTTPS, so your proxy must send
 `X-Forwarded-Proto: https` (step 5).
 
-Never commit `.env`. It is git-ignored. Operator details (`SITE_OPERATOR_NAME`, `PRIVACY_CONTACT_EMAIL`) and the
-privacy, terms and contact pages are added in a later step of this milestone; this guide will say how to set them.
+Never commit `.env`. It is git-ignored. Read and adapt the public pages before you go live: see step 2a.
 
 The compose file forces production mode (`DJANGO_DEBUG=false`, `SCHOLARSYNC_EXPLORE=false`, `DJANGO_KIT=false`), so a
 copied `.env.example` cannot switch debug, explore mode or the kit on.
+
+## 2a. Name the operator and adapt the public pages (required)
+ScholarSync is an independent portfolio project, not an official service of the City of Taguig, and you are the
+operator of your copy. Before going live:
+1. Set `SITE_OPERATOR_NAME` and `PRIVACY_CONTACT_EMAIL` in `.env`. The app will not start in production without them.
+   The privacy, terms and contact pages show them.
+2. Read the privacy policy, terms of use and FAQ (`templates/core/pages/privacy.html`, `terms.html`, `help.html`,
+   and `cookies.html`, `about.html`, `contact.html`). Adapt them to your organisation, your retention period (the
+   privacy page asks you to state it) and your law. They are template text, not legal advice: have a qualified person
+   read them.
+3. If you add analytics or any optional cookie, ask visitors for consent first and update the cookie notice.
 
 ## 3. Rebrand (optional)
 The "City of Taguig" label and the logo are fixed in the code, so a copy for another organisation is a small edit:

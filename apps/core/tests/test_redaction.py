@@ -113,7 +113,7 @@ def test_redact_drops_postgres_context_lines():
 
 
 def test_redact_fails_closed_on_addresses_with_odd_endings():
-    for address in ("juan@gmail.com2026", "juan@example.com-foo", "juan@localhost"):
+    for address in ("juan@example.com2026", "juan@example.com-foo", "juan@localhost"):
         assert redact(f"user {address} x") == "user [email] x", address
 
 
