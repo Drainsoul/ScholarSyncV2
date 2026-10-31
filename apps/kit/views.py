@@ -61,7 +61,7 @@ def kit_only(view: View) -> View:
 
 
 def icon_names() -> list[str]:
-    """Symbol ids in the built sprite (Vercel ships no frontend/src); [] if it is missing."""
+    """Symbol ids in the built sprite (a deploy may ship no frontend/src); [] if it is missing."""
     sprite = finders.find("dist/icons.svg")
     if not isinstance(sprite, str):
         return []

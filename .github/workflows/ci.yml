@@ -53,7 +53,7 @@ jobs:
         env:
           DJANGO_DEBUG: "false"
           DJANGO_SECRET_KEY: ci-deploy-check-only-0123456789abcdefghijklmnopqrstuvwxyzABCD
-          # On Vercel the hosts come from VERCEL_URL & co.; here a production-like stand-in.
+          # A production-like stand-in host.
           DJANGO_ALLOWED_HOSTS: scholarsync.example
         run: uv run python manage.py check --deploy --fail-level WARNING
       - run: uv run pytest -n auto

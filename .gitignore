@@ -227,6 +227,5 @@ CLAUDE.local.md
 static/dist/
 staticfiles/
 frontend/node_modules/
-.vercel/
 .env.local
 .env.spike

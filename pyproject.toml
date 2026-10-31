@@ -27,12 +27,6 @@ dev = [
     "pytest-playwright>=0.10",
 ]
 
-[tool.vercel]
-entrypoint = "config.wsgi:application"
-
-[tool.vercel.scripts]
-build = "python build.py"
-
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.test_settings"
 python_files = ["test_*.py"]

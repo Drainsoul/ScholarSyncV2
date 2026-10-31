@@ -11,7 +11,7 @@ SPRITE = ROOT / "static" / "dist" / "icons.svg"
 
 
 class HttpsClient(Client):
-    """Test client that always uses HTTPS, as every real request does behind Vercel."""
+    """Test client that always uses HTTPS, as every real request does behind a TLS proxy."""
 
     def generic(self, *args, **kwargs):
         kwargs["secure"] = True
