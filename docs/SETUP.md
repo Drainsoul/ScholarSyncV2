@@ -20,7 +20,7 @@ What starts:
 | Service | What it is | Address |
 |---|---|---|
 | `web` | the app | <http://localhost:8000> |
-| `worker` | sends queued email and cleans up old rows every 5 minutes | none |
+| `worker` | deletes expired sessions every 5 minutes (email retry arrives with M4) | none |
 | `db` | PostgreSQL 17 | `127.0.0.1:5433` |
 | `storage` | S3-compatible file storage (RustFS) | `127.0.0.1:9000` |
 | `storage-init` | creates the bucket, its CORS rule and the `pending/` expiry, then exits | none |

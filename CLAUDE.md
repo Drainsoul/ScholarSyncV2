@@ -23,7 +23,8 @@ Programs (TCU CEAA, LANI, and future ones) are **data**, not code.
 - **Run and host:** open source, nobody hosts an official copy. Docker only: `docker compose up` runs explore mode
   (web, worker, db, storage, mail) on localhost; `compose.production.yaml` runs web and worker for self-hosters with
   their own PostgreSQL, S3-compatible storage and SMTP, behind HTTPS. Files go straight to storage with presigned URLs;
-  email goes through an outbox, and the worker loop retries and cleans up.
+  email goes through an outbox (arrives with M4). The worker loop runs `cleanup` (expired sessions today) and
+  will retry failed email.
 - **Modes:** developer (`DJANGO_DEBUG=true`), explore (`SCHOLARSYNC_EXPLORE=true`, set by `compose.yaml`) and
   production (neither; the fail-closed default). The demo (`apps/demo/`) is active only outside production.
 
