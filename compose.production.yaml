@@ -1,0 +1,33 @@
+# Self-hosting: the app and the worker. PostgreSQL, S3-compatible storage and SMTP are yours:
+# point DATABASE_URL, S3_* and EMAIL_URL at them in .env (copy .env.example; see docs/HOSTING.md).
+# Put a TLS reverse proxy in front of APP_PORT. Production mode refuses plain HTTP and the explore key.
+#
+#   docker compose -f compose.production.yaml up -d --build
+
+x-healthcheck: &healthcheck
+  test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=4)"]
+  interval: 15s
+  timeout: 5s
+  retries: 10
+  start_period: 30s
+
+services:
+  web:
+    build: .
+    image: scholarsync:production
+    env_file: .env
+    # Published on all interfaces for a proxy on another host. For a proxy on this machine,
+    # use "127.0.0.1:${APP_PORT:-8000}:8000" so only the proxy can reach it.
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    restart: unless-stopped
+    healthcheck: *healthcheck
+
+  worker:
+    image: scholarsync:production
+    command: ["python", "manage.py", "run_worker"]
+    env_file: .env
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
