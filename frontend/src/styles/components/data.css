@@ -1265,6 +1265,12 @@ html:not(.js) [data-bulk-all] {
   overflow-wrap: anywhere;
 }
 
+/* In a narrowed table (drawer open) the name column keeps room, so the table scrolls instead of
+   wrapping a name letter by letter. */
+.table .identity__text {
+  min-width: 10rem;
+}
+
 .table .gwa {
   font-weight: 600;
 }
