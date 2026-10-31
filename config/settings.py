@@ -41,6 +41,12 @@ if PRODUCTION and SECRET_KEY.startswith("explore-only-"):
         "Set your own secret key for production (docs/HOSTING.md)."
     )
 
+if PRODUCTION and SECRET_KEY.startswith("local-dev-only-"):
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY is the .env.example placeholder. "
+        "Generate your own secret key for production (docs/HOSTING.md)."
+    )
+
 # Design kit (spec §12): /_kit/ answers 404 unless enabled, and is never allowed in production.
 KIT_ENABLED = env.bool("DJANGO_KIT", DEBUG or EXPLORE)
 if KIT_ENABLED and PRODUCTION:

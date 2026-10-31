@@ -3,13 +3,17 @@
 # Started as `sh /app/docker/entrypoint.sh`, so no executable bit is needed (Windows checkouts).
 set -eu
 
-# Migrations may need a direct connection when DATABASE_URL goes through a pooler.
-DATABASE_URL="${DATABASE_URL_UNPOOLED:-$DATABASE_URL}" python manage.py prepare
+# Only the web container prepares the database; the worker sets SKIP_PREPARE=1 so two containers
+# never migrate or load the demo at the same time.
+if [ "${SKIP_PREPARE:-0}" != "1" ]; then
+  # Migrations may need a direct connection when DATABASE_URL goes through a pooler.
+  DATABASE_URL="${DATABASE_URL_UNPOOLED:-$DATABASE_URL}" python manage.py prepare
 
-case "${SCHOLARSYNC_EXPLORE:-false}" in
-  true | True | TRUE | 1 | yes | on)
-    echo "ScholarSync is running: http://localhost:${APP_PORT:-8000}  (test accounts: see README.md; email inbox: http://localhost:${MAIL_PORT:-8025})"
-    ;;
-esac
+  case "${SCHOLARSYNC_EXPLORE:-false}" in
+    true | True | TRUE | 1 | yes | on)
+      echo "ScholarSync is running: http://localhost:${APP_PORT:-8000}  (test accounts: see README.md; email inbox: http://localhost:${MAIL_PORT:-8025})"
+      ;;
+  esac
+fi
 
 exec "$@"

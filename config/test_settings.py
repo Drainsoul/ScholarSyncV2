@@ -8,5 +8,7 @@ is already set). The test client speaks HTTPS (see conftest.py) to match.
 import os
 
 os.environ["DJANGO_DEBUG"] = "false"
+# Tests run in production mode, which refuses the .env.example placeholder key a dev .env holds.
+os.environ["DJANGO_SECRET_KEY"] = "pytest-only-secret-key-" + "x" * 40
 
 from config.settings import *  # noqa: E402, F403
