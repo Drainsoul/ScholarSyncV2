@@ -5,6 +5,9 @@
   navy actions, red brand mark only) after Kenneth's M3 mockup review.
 - **Revision:** 4 (2026-10-30): §12 redesign on Kenneth's canvas (red primary, blue secondary, yellow accent; white
   sidebar shell; cards; status as coloured text). Boards in `docs/design/2026-10-30-redesign/`.
+- **Revision:** 5 (2026-10-30): open source and self-hosting. Vercel is no longer the deployment target; the app runs
+  from one `docker compose up` and on any container host with any provider (§1, §2, §5, §7, §9, §11, §14-§19, new
+  M3.5). Design: `docs/superpowers/specs/2026-10-30-open-source-self-hosting-design.md`.
 - **Status:** rev 1 approved by Kenneth on 2026-10-12. M1 plan: `docs/superpowers/plans/2026-10-12-m1-vercel-spike.md`.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -27,7 +30,8 @@
    authorized staff, and every change is audited.
 5. **Keeps history:** applications, terms, documents and disbursements are never deleted by normal workflows.
 6. **Maintainable:** typed Python, thin views, services and selectors, real tests against Postgres, CI on every push.
-7. **Runs on Vercel within its limits** (§11), with a documented fallback host.
+7. **Runs anywhere a container runs, with a one-command local run** (§11): any PostgreSQL, any S3-compatible storage,
+   any email service. Open source (MIT); nobody hosts an official copy.
 
 **Non-goals (v2.0)**
 - Migrating v1 data: this is a fresh start with seed data.
@@ -35,33 +39,36 @@
   out).
 - Real-time features (WebSockets), dark theme, multi-language UI (English only; Filipino later).
 - Retraining the legacy model.
+- Kenneth hosting a public demo or production instance; a packaged desktop app; one-click deploy buttons for specific
+  hosts; documenting a hosting path without Docker; branding through settings (rebranding is fork-and-edit); a
+  published container image or release pipeline.
 
 ## 2. Stack
 Versions are pinned to the latest stable release when M2 scaffolds the project, then recorded in `STATE.md`.
 
 | Layer | Choice | Notes |
 |---|---|---|
-| Language/runtime | Python 3.13, managed by **uv** (`uv.lock`) | Vercel supports 3.12–3.14 |
+| Language/runtime | Python 3.13, managed by **uv** (`uv.lock`) | The Docker image pins the same version |
 | Framework | **Django 5.2 LTS** | Supported until April 2028 |
-| Settings | One `config/settings.py` reading the environment with **environs[django]** | `.env` locally, Vercel env vars in deployments |
-| Database | **PostgreSQL 17** on **Neon** (Vercel Marketplace, Singapore), **psycopg 3** | Pooled URL at runtime, unpooled for migrations |
+| Settings | One `config/settings.py` reading the environment with **environs[django]** | `.env` for developers and self-hosters, compose defaults for the explore run |
+| Database | **PostgreSQL 17** (any provider), **psycopg 3** | `DATABASE_URL`; an optional unpooled URL for migrations behind a transaction pooler |
 | Auth | **django-allauth** (account + Google provider), **argon2-cffi** | Email login, mandatory verification, rate limits, reauthentication |
 | Templates | Django templates + **django-htmx** + **django-template-partials** | `{% partialdef %}` for HTMX fragments |
 | Front-end build | **Vite** + strict **TypeScript** + **Biome**, **django-vite** | Same tooling as PersonalWebsite |
 | Charts / icons / fonts | **Chart.js** (lazy chunk), **Lucide** SVG sprite, **Fontsource** Lexend + Source Sans 3 (self-hosted) | No runtime CDNs |
-| Files | **Cloudflare R2** via **django-storages** (S3 backend, boto3), **Pillow**, **filetype** | Private bucket, presigned URLs |
+| Files | Any S3-compatible store via **django-storages** (S3 backend, boto3), **Pillow**, **filetype** | Private bucket, presigned URLs |
 | Import/export | stdlib `csv`, **openpyxl** | Row-by-row Django Forms with a preview |
-| Email | **django-anymail** (Resend) + an `EmailOutbox` table | HTTP API, batch sends |
+| Email | Any SMTP server (one URL-style setting) + an `EmailOutbox` table | Provider APIs via django-anymail only if they cost nothing extra |
 | Security headers | **django-csp** | Report-only from M2, enforced at launch |
-| Observability | **sentry-sdk** with explicit `data_collection` opt-outs (user info, cookies, bodies, query params, DB data, frame variables off; header allowlist) + `before_send` scrubbing, JSON logs to stdout | Hobby keeps runtime logs for 1 hour |
+| Observability | **sentry-sdk** with explicit `data_collection` opt-outs (user info, cookies, bodies, query params, DB data, frame variables off; header allowlist) + `before_send` scrubbing, JSON logs to stdout | |
 | Lint/type | **ruff** (lint + format), **mypy** + **django-stubs** | |
 | Tests | **pytest**, pytest-django, pytest-xdist, factory_boy, Faker (`en_PH`), time-machine, coverage, **pytest-playwright** | Real Postgres in tests |
-| Local services | `compose.yaml`: Postgres 17, MinIO (S3-compatible) | |
-| Host | **Vercel**: Python runtime, Fluid compute, region `sin1`, Cron | Fallback: Docker on Fly.io or Render (Singapore) |
+| Local services | `compose.yaml`: web, Postgres 17, an S3-compatible store, Mailpit, a worker | `docker compose up` runs the explore copy (§11) |
+| Host | Any host that runs a container (`Dockerfile`, gunicorn) | Self-hosters build the image from source; none is published (§11) |
 | CI | GitHub Actions | §15 |
 
 **Deliberately absent:**
-- background workers, Celery and Redis (we use an outbox plus cron);
+- background workers, Celery and Redis (we use an outbox plus a worker loop);
 - a state-machine library (we use an explicit transition map plus database constraints);
 - numpy, pandas and scikit-learn at runtime;
 - jQuery, Tailwind and any UI framework.
@@ -81,8 +88,8 @@ apps/
   reports/         Report, ReportFile
   workspace/       Task, Notification, EmailOutbox
   office/          super-admin views (no models of its own)
-  kit/             design kit and key-screen mockups at /_kit/ (no models; off unless DJANGO_KIT)
-  core/            AuditEvent, permissions, mixins, layouts, health, cron auth, errors
+  kit/             design kit and key-screen mockups at /_kit/ (no models; off unless DJANGO_KIT; refused in production mode)
+  core/            AuditEvent, permissions, mixins, layouts, health, errors, public information pages
 templates/         base.html, layouts/{public,auth,student,staff,office}.html, partials/, components/, emails/
 frontend/          src/{main,nav,dialog,toast,upload,charts,bulk}.ts, src/styles/{fonts,tokens,base,layouts}.css,
                    src/styles/components/*.css, src/icons/ (sprite list + own icons), scripts/sprite.mjs
@@ -175,7 +182,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 
 ### 4.4 files
 - **`StoredFile`:**
-  - fields: `key` (R2 object key), `status` ∈ {pending, ready, rejected}, `original_name`, `declared_type`,
+  - fields: `key` (object-store key), `status` ∈ {pending, ready, rejected}, `original_name`, `declared_type`,
     `sniffed_type`, `size`, `sha256`, `uploaded_by`, `purpose` ∈ {document, photo, report, export};
   - flow: §7.
 
@@ -266,7 +273,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 ## 5. URL map
 | Area | URL | Who |
 |---|---|---|
-| Public | `/`, `/programs/`, `/programs/<slug>/`, `/help/`, `/privacy/`, `/terms/` | anyone |
+| Public | `/`, `/programs/`, `/programs/<slug>/`, `/about/`, `/help/`, `/privacy/`, `/terms/`, `/cookies/`, `/contact/` (the six information pages; footer disclaimer in §11) | anyone |
 | Health | `/healthz` (database ping, no details) | anyone |
 | Accounts | `/accounts/…` (allauth: signup, login, logout POST, email confirm, password reset, Google), `/accounts/claim/<token>/` | anyone |
 | Student | `/me/` (dashboard), `/me/profile/` (+ `personal/`, `family/`, `education/`, `photo/`) | student |
@@ -279,7 +286,6 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 | Staff | `reports/`, `tasks/`, `settings/` (tiers, documents, rules, window) | staff; `settings/` is head only |
 | Office | `/office/` (dashboard), `programs/`, `staff/`, `scholars/`, `reports/`, `analytics/`, `audit/`, `schools/`, `terms/` | super admin |
 | Files | `POST /files/uploads/` (intent), `POST /files/uploads/<id>/confirm/`, `GET /files/<id>/` (authorize → 302) | owner or authorized staff |
-| Cron | `/_cron/send-outbox/`, `/_cron/cleanup/` | `Authorization: Bearer $CRON_SECRET` |
 | Django admin | `/_admin/` | technical superuser only |
 
 ## 6. Authorization
@@ -310,14 +316,15 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 
 ## 7. Files
 - **Constraints:**
-  - Vercel caps request and response bodies at 4.5 MB, and functions have no persistent disk.
-  - Files therefore never pass through Django; they go straight to a private R2 bucket.
+  - The app is stateless: no persistent local disk, and large bodies stay out of it.
+  - Files therefore never pass through Django; they go straight to a private bucket on any S3-compatible service. The
+    design works on every host.
 - **Upload flow:**
   1. **Intent:** the browser calls `POST /files/uploads/` with purpose, name, declared type and size. The service checks
      the purpose's allowlist (PDF, JPEG, PNG; never SVG or HTML) and its size limit. It then creates a
      `StoredFile(status=pending)` and returns a presigned PUT for `pending/<uuid>` that signs `ContentType` and
      `ContentLength`.
-  2. **Upload:** `upload.ts` PUTs the file straight to R2, with a progress bar.
+  2. **Upload:** `upload.ts` PUTs the file straight to the bucket, with a progress bar.
   3. **Confirm:** the browser calls `POST /files/uploads/<id>/confirm/`. The server issues a HEAD (checking the size) and
      a ranged GET of the first 4 KB to sniff the type with `filetype`. On a mismatch the file is `rejected`.
      - Photos are re-encoded with Pillow to strip EXIF.
@@ -328,8 +335,12 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   (`file.viewed`), and 302s to a presigned GET valid for 5 minutes with
   `ResponseContentDisposition=attachment; filename=…` and the sniffed `ResponseContentType`. Files are never served
   inline from the app origin.
-- **Exports:** a CSV/XLSX export over 4.5 MB is written to R2 under `exports/`, and the browser is redirected to it.
-- **Bucket:** private; CORS allows PUT and GET from the app's origins only; encryption at rest is R2's default.
+- **Exports:** large CSV/XLSX exports are written to the bucket under `exports/` and the browser is redirected to them
+  (the size threshold is the builder's call).
+- **Bucket:** private; CORS allows PUT and GET from the app's origins only; encryption at rest is the provider's.
+- **Public endpoint:** presigned URLs must point at an address the browser can reach. An optional public endpoint
+  setting covers the case where the app reaches storage by an internal name (inside compose); CSP `connect-src` and
+  `img-src` include the storage origin from settings.
 
 ## 8. Matching
 - **Eligibility, deterministic** (`matching.eligibility.evaluate(profile, program, academic)`):
@@ -355,21 +366,20 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   ("Suggested by the legacy model; advisory"). The student applies only to eligible programs and requests a tier; staff
   confirm the tier on approval. The result is saved in `Application.match_snapshot` at submit time.
 
-## 9. Email, notifications, cron
+## 9. Email, notifications, background jobs
 - **Sending email:**
   - `workspace.services.notify(user, kind, …)` creates a `Notification` and, when emailed, an `EmailOutbox` row.
-  - `transaction.on_commit` tries the send through anymail (Resend) with a 5-second timeout. On failure the row is
+  - `transaction.on_commit` tries the send through the configured SMTP transport with a 5-second timeout. On failure the row is
     `failed`, with `last_error` set.
-  - Batch actions (bulk approvals, disbursements) send one anymail batch call with `merge_data`.
+  - Batch actions (bulk approvals, disbursements) send one batched call over the same transport.
 - **Templates:** `templates/emails/<kind>.{html,txt}`, autoescaped.
   - v1 messages to port: application received, application decided, allowance approved/released, password reset (from
     allauth).
   - New: invite/claim, document declined, application returned.
-- **Cron** (`vercel.json` crons; Hobby allows once per day, ±1 hour, production only):
-  - `/_cron/send-outbox/` retries `failed` rows, up to 5 attempts;
-  - `/_cron/cleanup/` runs `clearsessions`, deletes expired invites, and purges `sent` outbox rows older than 90 days.
-- **Scope:** both cron endpoints are idempotent and require `CRON_SECRET`. Anything more frequent needs Vercel Pro or the
-  fallback host.
+- **Background jobs:** two management commands, run on a loop by the `worker` service (or from any cron or scheduler):
+  - `send_outbox` retries `failed` rows, up to 5 attempts;
+  - `cleanup` runs `clearsessions`, deletes expired invites, and purges `sent` outbox rows older than 90 days.
+- **Scope:** both commands are idempotent. There are no HTTP cron endpoints and no `CRON_SECRET`.
 
 ## 10. Security and privacy
 - **Authentication:**
@@ -389,7 +399,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - `nosniff`, `Referrer-Policy: same-origin`, `Cross-Origin-Opener-Policy: same-origin`, a strict `Permissions-Policy`.
 - **CSP:**
   - `default-src 'self'`; `script-src 'self'`; `style-src 'self'`;
-  - `img-src 'self' data: <r2-origin>`; `connect-src 'self' <r2-origin> <sentry-ingest>`;
+  - `img-src 'self' data: <storage-origin>`; `connect-src 'self' <storage-origin> <sentry-ingest>`;
   - `frame-ancestors 'none'`; `form-action 'self'`;
   - htmx config (a `<meta name="htmx-config">`): `allowEval: false`, `allowScriptTags: false`,
     `includeIndicatorStyles: false`, `selfRequestsOnly: true`, and `historyCacheSize: 0` so page snapshots holding
@@ -405,52 +415,48 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - collect only what eligibility needs;
   - program-scoped access, with an audit of every document view;
   - a private bucket;
-  - previews never hold production data (§11);
   - a retention period (open question);
   - "download my data" and account-deletion requests, handled by the office in v2.0.
 
-## 11. Vercel deployment
-- **Detection:** Vercel's zero-config Django support detects `manage.py` and runs `WSGI_APPLICATION`. One function
-  serves every route.
-- **Region:** `"regions": ["sin1"]`, next to Neon `aws-ap-southeast-1`.
-- **Limits that shape the design:**
-  - request/response bodies ≤ 4.5 MB (handled in §7);
-  - function bundle ≤ 500 MB (we stay small: no numpy, pandas or sklearn; boto3 is imported lazily);
-  - duration ≤ 300 s on Hobby;
-  - no persistent disk;
-  - Hobby is for non-commercial use only (open question).
-- **Static files:**
-  - The build runs `npm --prefix frontend ci && npm --prefix frontend run build` (Vite → `static/dist/` +
-    `manifest.json`).
-  - Vercel then runs `collectstatic` (`STATIC_ROOT` set; WhiteNoise `CompressedManifestStaticFilesStorage`) and serves
-    `/static/` from the CDN.
-  - The Vite manifest is also added to the function bundle (`includeFiles`), so django-vite can resolve it at runtime.
-  - **M1 proves this order.**
-- **Database settings:**
-  - `DATABASE_URL` is Neon's pooled (PgBouncer, transaction mode) URL.
-  - `CONN_MAX_AGE=0`, `CONN_HEALTH_CHECKS=True`, `DISABLE_SERVER_SIDE_CURSORS=True`.
-  - No session-level features: no advisory locks, no `LISTEN`, no Django connection pool.
-- **Migrations:**
-  - run in the build: `migrate --noinput` and `createcachetable`, against `DATABASE_URL_UNPOOLED`;
-  - Instant Rollback does **not** undo migrations, so every migration is expand/contract: add nullable → backfill →
-    enforce → remove in a later deploy.
-- **Previews:**
-  - The Neon integration gives each preview deployment its own branch, forked from a **`preview-base` branch seeded with
-    Faker data, never from production**.
-  - Deployment Protection is on.
-  - Google sign-in works only on the production domain and a fixed staging alias, which are the registered redirect
-    URIs.
-- **Proxy settings:**
-  - `SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")`;
-  - `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` built from `VERCEL_URL`, `VERCEL_BRANCH_URL`,
-    `VERCEL_PROJECT_PRODUCTION_URL` and the custom domain;
-  - allauth reads the client IP from the forwarded header, with a trusted-proxy count, so rate limits key on the real
-    client.
-- **Production gating:** production deploys only after CI passes. Either Vercel deployment checks are gated on the CI
-  workflow, or a CI job runs `vercel build` then `vercel deploy --prebuilt --prod`. M1 picks one. Kenneth pushes; nothing
-  deploys on its own.
-- **Fallback:** if M1 fails a must-pass check, the same app ships as a Docker image (gunicorn) on Fly.io or Render in
-  Singapore. The code doesn't change, because §7 and §9 already assume no disk and no workers.
+## 11. Running and hosting
+Summary of `docs/superpowers/specs/2026-10-30-open-source-self-hosting-design.md` §4-§8, which is the detail.
+- **Intent:** the repository is public (MIT). Explorers run one command and click through sample data; self-hosters use
+  their own `.env` and providers. Nobody hosts an official copy.
+- **One command:** `docker compose up` from the repository root. Services: `web` (gunicorn, built from the
+  `Dockerfile`, Vite bundle built inside the image) on `http://localhost:8000`, `db` (Postgres 17), `storage`
+  (S3-compatible), `mail` (Mailpit inbox on `http://localhost:8025`) and `worker` (§9). No `.env` is needed. First run
+  migrates, creates the cache table and bucket, and loads the demo only if the database has no users. Host ports are
+  overridable (`APP_PORT`, `MAIL_PORT`, `DB_PORT`, `STORAGE_PORT`). `docker compose down -v` resets.
+- **Modes:**
+
+| Mode | Selected by | Debug | HTTPS-only | Demo | Kit `/_kit/` |
+|---|---|---|---|---|---|
+| Developer | `DJANGO_DEBUG=true` | on | off | active | on by default |
+| Explore | `SCHOLARSYNC_EXPLORE=true` (set by compose) | off | off | active | on |
+| Production | neither (fail-closed default) | off | on | inactive | refused |
+
+  - Explore mode is for the visitor's own machine: ports bind to `127.0.0.1`, and settings refuse explore mode with any
+    host other than `localhost`/`127.0.0.1`.
+  - Startup fails fast on a missing required variable in production mode.
+- **Demo:** everything demo-only (test accounts, sample data, login-page notice) lives in `apps/demo/`. Deleting that
+  folder removes it with no other edit; the app reaches it only through an optional hook, never by import. It is
+  inactive in production mode even if present, and `check --deploy` fails while the folder exists. Programs
+  (`seed_programs`) are not demo material.
+- **Providers:** any PostgreSQL 17 (`DATABASE_URL`), any S3-compatible storage, any SMTP server, Google sign-in when
+  keys are set, Sentry when a DSN is set.
+- **Proxy settings:** `SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")`; hosts and CSRF origins come from
+  `DJANGO_ALLOWED_HOSTS` and `DJANGO_CSRF_TRUSTED_ORIGINS`; allauth reads the client IP from the forwarded header with
+  a trusted-proxy count.
+- **Migrations:** expand/contract only; the entrypoint runs `migrate` against the unpooled URL when set.
+- **Guides:** `README.md` (quick start, test accounts), `docs/SETUP.md` (local run, developer workflow) and
+  `docs/HOSTING.md` (self-hosting checklist, M12). `compose.production.yaml` (web and worker only) is the hosting
+  example.
+- **Public information pages:** `/about/`, `/privacy/` (RA 10173), `/terms/`, `/cookies/`, `/help/`, `/contact/`, linked
+  from a footer on every layout with the line "Independent portfolio project. Not affiliated with or endorsed by the
+  City of Taguig. All sample people and data are fictional." They are template text, not legal advice. In production,
+  `SITE_OPERATOR_NAME` and `PRIVACY_CONTACT_EMAIL` are required and shown on them. `SECURITY.md` covers vulnerability
+  reports.
+- **History:** the M1 spike tested Vercel, Neon, R2 and Resend. Vercel is no longer a target; see §19.
 
 ## 12. Frontend
 - **Design direction (rev 4, 2026-10-30):** Kenneth asked for a redesign on the layout of a Dribbble admin
@@ -517,7 +523,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   plus our own SVGs (the logo); templates use `{% icon "name" %}`. A misspelt name fails the build.
 - **Design kit:** `/_kit/` (every component in every state) and `/_kit/mockups/` (key screens with Faker sample data)
   live in `apps/kit`. They answer 404 unless `DJANGO_KIT` is on (default: `DJANGO_DEBUG`), settings refuse to load
-  with the kit on when `VERCEL_ENV=production`, and kit responses carry `X-Robots-Tag: noindex`.
+  with the kit on in production mode, and kit responses carry `X-Robots-Tag: noindex`.
 - **HTMX patterns:**
   - filters use `hx-get` + `hx-push-url` and swap a `{% partialdef table %}`;
   - forms use `hx-post`: re-render the form partial on error, `HX-Redirect` or `HX-Trigger` on success;
@@ -559,16 +565,22 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 - **Coverage:** at least 90% on `services`, `selectors` and `matching`; at least 80% overall.
 
 ## 14. Settings and environment variables (names only)
-- **Core:** `DJANGO_DEBUG`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `SITE_URL`.
-- **Database:** `DATABASE_URL`, `DATABASE_URL_UNPOOLED`.
-- **Files:** `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_ENDPOINT_URL`.
-- **Email:** `RESEND_API_KEY`, `DEFAULT_FROM_EMAIL`.
-- **Google sign-in:** `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
-- **Ops:** `SENTRY_DSN`, `CRON_SECRET`, `CSP_REPORT_ONLY`, `DJANGO_KIT` (design kit; defaults to `DJANGO_DEBUG`).
-- **Set by Vercel:** `VERCEL_ENV`, `VERCEL_URL`, `VERCEL_BRANCH_URL`, `VERCEL_PROJECT_PRODUCTION_URL`.
+- **Mode:** `SCHOLARSYNC_EXPLORE` (set by compose only), `DJANGO_DEBUG`.
+- **Core:** `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`, `SITE_URL`.
+- **Database:** `DATABASE_URL`, `DATABASE_URL_UNPOOLED` (optional).
+- **Files (S3-compatible):** `S3_ENDPOINT_URL`, `S3_PUBLIC_ENDPOINT_URL` (optional), `S3_REGION`, `S3_BUCKET`,
+  `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_ADDRESSING_STYLE`.
+- **Email:** `EMAIL_URL` (SMTP, URL-style), `DEFAULT_FROM_EMAIL`.
+- **Google sign-in (optional):** `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
+- **Operator (required in production):** `SITE_OPERATOR_NAME`, `PRIVACY_CONTACT_EMAIL`. In explore and developer modes
+  they default to "This local copy" and no email.
+- **Ops:** `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE`, `CSP_REPORT_ONLY`, `DJANGO_KIT` (design kit; defaults
+  to `DJANGO_DEBUG`).
+- **Compose only:** `APP_PORT`, `MAIL_PORT`, `DB_PORT`, `STORAGE_PORT`.
 - **Rules:**
-  - `.env.example` documents every variable, with no values.
-  - Startup fails fast on a missing required variable outside `DEBUG`. No insecure fallbacks, ever: v1's
+  - `.env.example` documents every variable (what it is, whether production needs it, format, where to get it), with
+    safe placeholders and no secrets.
+  - Startup fails fast on a missing required variable in production mode. No insecure fallbacks, ever: v1's
     `SECRET_KEY` default is the lesson.
 
 ## 15. CI/CD
@@ -581,7 +593,11 @@ GitHub Actions on push and pull request, with read-only permissions, concurrency
   - `pip-audit`.
 - **frontend:** `npm ci`, `tsc --noEmit`, `biome check`, `vite build`, budget.
 - **e2e** (from M3): build, install Chromium, `pytest -m e2e --ds=config.e2e_settings --browser chromium`.
-- **deploy:** see §11, "Production gating".
+- **hosting-path** (from M3.5): delete `apps/demo/`, then run the test suite and `manage.py check --deploy` in
+  production mode, proving the hosting guide.
+- **compose smoke** (from M3.5): `docker compose up` detached, wait for health, check that the login page answers on
+  the app port and shows the notice.
+- There is no deploy job: self-hosters build the image from source.
 
 ## 16. Milestones
 Each milestone gets its own implementation plan in `docs/superpowers/plans/` (TDD, one commit per task) before work
@@ -592,7 +608,7 @@ starts, and ends with every acceptance item checked.
   local.
 - [ ] Spec approved by Kenneth.
 
-**M1: Vercel go/no-go spike** (throwaway branch `spike/vercel`; results go into `STATE.md` → Spike results)
+**M1: Vercel go/no-go spike** (historical, superseded by revision 5; throwaway branch `spike/vercel`, kept local; results are in `STATE.md` → Spike results)
 - [ ] Minimal Django + Vite page deployed to a Vercel preview in `sin1`; static files served from the CDN; the
   django-vite manifest resolves at runtime.
 - [ ] Build runs Vite → collectstatic → `migrate` + `createcachetable` on the unpooled URL; the runtime uses the pooled
@@ -609,7 +625,7 @@ starts, and ends with every acceptance item checked.
   report-only.
 - [ ] `compose.yaml` (Postgres, MinIO), `.env.example`, `.gitattributes` (`eol=lf`).
 - [ ] ruff, mypy, pytest (+ xdist, factory_boy); Vite + TS + Biome + django-vite; base layout.
-- [ ] CI green; `vercel.json` (region, function config, crons).
+- [ ] CI green; `vercel.json` (region, function config, crons; removed in M3.5).
 
 **M3: Design system**
 - [ ] Tokens, fonts, icons, components and layouts (§12); `/_kit` page shows every component in every state
@@ -622,58 +638,94 @@ starts, and ends with every acceptance item checked.
 - [ ] Tokens, components, the white-sidebar app shell (staff, office, student), public and auth layouts, and every
   kit mockup restyled to `docs/design/2026-10-30-redesign/`; a new Scholars mockup with the drawer; full gate green.
 
+**M3.5: Open-source packaging** (plan: `docs/superpowers/plans/2026-10-30-m3-5-open-source-packaging.md`; before M4)
+- [ ] Task 1: this spec revision (rev 5).
+- [ ] Task 2: modes in settings (developer, explore, production); the kit refused in production mode.
+- [ ] Task 3: Vercel removed (`vercel.json`, `build.py`, host detection, `VERCEL_ENV` checks).
+- [ ] Task 4: the `apps/demo/` skeleton, its optional hook and the failing deploy check.
+- [ ] Task 5: runtime commands (`send_outbox`, `cleanup`, worker loop, entrypoint).
+- [ ] Task 6: provider-neutral settings, `.env.example`, `Dockerfile`, `compose.yaml`, `compose.production.yaml`.
+- [ ] Task 7: CI jobs (hosting-path, compose smoke).
+- [ ] Task 8: README, `docs/SETUP.md`, `docs/HOSTING.md`; `CLAUDE.md` updated.
+- [ ] Task 9: `/about/`, `/privacy/`, `/terms/`, `/cookies/`, `/help/`, `/contact/`, the footer disclaimer, the two
+  operator settings, `SECURITY.md`.
+- [ ] Task 10 (optional): GitHub Codespaces.
+- [ ] Task 11: publication (history scan, document review, Vercel/Neon/R2 teardown, repository made public).
+- [ ] `docker compose up` shows the existing pages; deleting `apps/demo/` leaves the full suite and `check --deploy`
+  green.
+
 **M4: Accounts, email, minimal Program**
 - [ ] Custom `User`, allauth (verification, Google, reset, rate limits, reauth), roles; signup only ever makes students.
 - [ ] Minimal `Program` + `ProgramMembership`; scoping mixins; permission-matrix test.
-- [ ] `EmailOutbox` + anymail + send-outbox cron; privacy notice + `ConsentRecord`.
-- [ ] `seed_programs`, `create_office_admin`, `seed_demo`; first Playwright flow.
+- [ ] `EmailOutbox` + SMTP transport + `send_outbox` command (email proven through Mailpit in the compose smoke);
+  privacy notice (page from M3.5) + `ConsentRecord`.
+- [ ] `seed_programs`, `create_office_admin`; first Playwright flow.
+- [ ] Demo: one test account per role (student, program staff, program head, scholarship office), the login-page
+  notice with one-click filling, and the first sample data, all in `apps/demo/`.
 
 **M5: Files**
 - [ ] `StoredFile` intent → PUT → confirm → final; allowlists; sniffing; EXIF strip; attachment downloads with audit;
-  `upload.ts`; MinIO locally, R2 in deployments.
+  `upload.ts`; the compose storage container locally, any S3-compatible service in deployments. A presigned
+  upload/download round trip joins the compose smoke test.
 
 **M6: Reference data + student profile**
 - [ ] Full `Program` config, `BenefitTier` (effective-from), `RequiredDocument`, `School`, `AcademicTerm`.
 - [ ] Profile sections, photo, completion tracker; staff-created profiles + invite/claim.
+- [ ] Extend the demo loader for this milestone's screens.
 
 **M7: Matching + student applications**
 - [ ] Eligibility engine; exported legacy model + parity test; `/me/match/`.
 - [ ] Apply flow (documents, submit, withdraw, returned → resubmit); status page; emails.
+- [ ] Extend the demo loader for this milestone's screens.
 
 **M8: Application review**
 - [ ] Staff queue (filters, sorting, pagination), review screen, document approve/decline, return, approve → `Award` +
   first `ScholarTerm`, reject, bulk, on-behalf applications.
+- [ ] Extend the demo loader for this milestone's screens.
 
 **M9: Scholars, terms and renewals**
 - [ ] Scholar list and detail, edit, status changes, `ScholarTerm` history, merit by rule + confirmation, at-risk
   selector.
 - [ ] Renewal applications, term rollover + graduation, CSV/XLSX import with preview, CSV/XLSX export.
+- [ ] Extend the demo loader for this milestone's screens.
 
 **M10: Money**
 - [ ] Schedules (publish); disbursement generation from tiers; approve/reject/release/revert (reauth); batch; budget,
   spent, committed, utilization; student distribution view; emails.
+- [ ] Extend the demo loader for this milestone's screens.
 
 **M11: Dashboards + office**
 - [ ] Staff dashboards (stats, trends, at-risk, tasks); office: programs CRUD, staff + memberships, schools, terms,
   cross-program scholars, reports review, analytics (trends, success rate, approval time, top feeder school), audit
   viewer; notifications center; support form.
+- [ ] Extend the demo loader for this milestone's screens.
 
-**M12: Hardening + launch**
-- [ ] Security review (OWASP ASVS L2 checklist), CSP enforced, headers, `check --deploy` clean.
-- [ ] WCAG 2.2 AA audit; query budgets; Playwright suite green; help, FAQ, privacy and terms pages.
-- [ ] Production: Vercel project, Neon production + `preview-base`, R2 bucket + lifecycle + CORS, Resend domain, Google
-  OAuth client, Sentry, domain.
-- [ ] Backups (Neon point-in-time restore) and a runbook (deploy, rollback, restore, rotate secrets).
+**M12: Hardening + hosting guide**
+- [ ] Security review (OWASP ASVS L2 checklist), CSP enforced, headers, `check --deploy` clean in production mode.
+- [ ] WCAG 2.2 AA audit; query budgets; Playwright suite green; the information pages (M3.5) reviewed against the
+  finished product.
+- [ ] Hosting checklist in `docs/HOSTING.md`, walked through once on a clean machine:
+  - delete `apps/demo/`; copy `.env.example` to `.env` and fill it in;
+  - set `SITE_OPERATOR_NAME` and `PRIVACY_CONTACT_EMAIL`; read and adapt the privacy policy, terms and FAQ;
+  - provision PostgreSQL, a private S3-compatible bucket (CORS for the site's origin, a 1-day lifecycle rule on
+    `pending/`) and email; optionally a Google OAuth client and Sentry;
+  - build and run the image behind HTTPS; run the worker or schedule `send_outbox` and `cleanup`;
+  - create the first scholarship-office account, then `seed_programs` or create programs in the office screens;
+  - run `manage.py check --deploy`.
+- [ ] Backups (database dumps or the provider's point-in-time restore) and a short runbook (deploy, roll back, restore,
+  rotate secrets) in the hosting guide.
 
 ## 17. Risks
 | Risk | Mitigation |
 |---|---|
-| Vercel's build order (Vite → collectstatic → migrate) or Django support doesn't behave as documented | M1 spike before any feature work; fallback to Docker on Fly.io/Render |
-| Real PII leaks into preview databases | Previews branch from a seeded `preview-base`, never production; Deployment Protection |
-| A bad migration can't be rolled back with Instant Rollback | Expand/contract migrations only; Neon point-in-time restore |
-| 4.5 MB body limit | Direct-to-R2 uploads and exports (§7) |
-| Hobby limits: non-commercial use, daily cron, 1-hour logs | Pro plan for a City deployment (open question); Sentry for errors; outbox retries |
-| Rate limits key on the proxy IP | Trusted forwarded-header configuration, verified in M1 |
+| A secret in git history or a document not meant for the public becomes visible when the repo opens | Scan the full history and review every tracked document before publishing (M3.5 Task 11); rotate, then rewrite history if needed |
+| A forgotten `apps/demo/` (published test passwords) in a real deployment | Demo inactive in production mode, and `check --deploy` fails while the folder exists |
+| Explore mode exposed beyond the visitor's machine | Ports bound to `127.0.0.1`; settings refuse explore mode with any other host |
+| A bad migration can't be rolled back | Expand/contract migrations only; database backups |
+| Large bodies reach the app | Direct-to-bucket uploads and exports (§7) |
+| Presigned URLs signed for an internal hostname fail in the browser | A public storage endpoint setting; round trip covered by the compose smoke from M5 |
+| Rate limits key on the proxy IP | Trusted forwarded-header configuration with a proxy count (§11) |
+| The S3-compatible container's image or licence changes | Code speaks only the S3 API; swapping the image is a compose change |
 | The legacy model is a toy trained on unknown data | Advisory only, clearly labelled; rules decide; retire or retrain when real data exists |
 | Business rules are still unclear (amounts, LANI tier criteria, at-risk) | Rules are data, editable by heads; open questions tracked in `STATE.md` |
 
@@ -689,24 +741,26 @@ starts, and ends with every acceptance item checked.
 9. Budget figures; confirm the City fiscal year (January–December) as the budget period.
 10. RA 10173 retention period for documents and closed records.
 11. Can staff create student accounts, or only profiles that students claim?
-12. Vercel plan: Hobby is non-commercial only; a real City deployment needs Pro.
-13. Domain: reuse `scholarsync.site`? Which sender domain for email?
+12. ~~Vercel plan~~ Obsolete (revision 5): nobody hosts an official copy.
+13. ~~Domain and sender domain~~ Obsolete (revision 5): each self-hoster chooses their own.
 14. Is v1 still used by the City, and is there a cut-over date?
 
-## 19. Decisions (2026-10-11 → 2026-10-12)
+## 19. Decisions (2026-10-11 → 2026-10-30)
 | Decision | Why |
 |---|---|
 | Rewrite in a new private repo (`ScholarSyncV2`); legacy stays a read-only reference | v1's structure can't be fixed incrementally |
 | Django 5.2 LTS | Kenneth's choice; auth, ORM, migrations, CSRF and forms built in; LTS until April 2028 |
 | Fresh start with seed data | Kenneth's choice; no v1 data migration |
 | Django templates + HTMX + a little TypeScript | Kenneth's choice; replaces 30 global-JS files with server-rendered partials |
-| Host on Vercel | Kenneth's choice; designed around its limits, with an M1 spike and a fallback |
+| Host on Vercel (superseded 2026-10-30 by the open-source decision below) | Kenneth's choice; designed around its limits, with an M1 spike and a fallback |
 | Rules decide eligibility; the legacy model only advises | Kenneth's choice; auditable decisions for a public benefit |
 | Programs are data | Removes the 67–99% CEAA/LANI duplication; new programs need no code |
 | `ScholarTerm` per award per term; applications kept after approval | v1 overwrote term data and deleted applications, losing history |
-| Cloudflare R2 for files (S3 API via django-storages) | Private, presigned, works with Vercel's django-storages support; swappable |
-| Outbox + daily cron instead of background workers | Vercel has no long-running workers; retries without new infrastructure |
-| Region `sin1` + Neon Singapore | Users are in Taguig; Vercel's default region is the US |
+| S3-compatible storage for files (R2 was the first choice) | Private, presigned, swappable; any provider works since revision 5 |
+| Outbox + a small worker loop instead of Celery (was daily cron on Vercel) | Retries without a broker or new infrastructure |
+| Region `sin1` + Neon Singapore (historical, M1 spike only) | Users are in Taguig; no longer a target |
 | `CLAUDE.md` tracked and basic; `CLAUDE.local.md` and `STATE.md` git-ignored | Kenneth's request (2026-10-12) |
 | No AI attribution on any commit or PR | Kenneth's non-negotiable (`CLAUDE.local.md`) |
 | Redesign rev 4: red primary, blue secondary, yellow accent; Cark-style white sidebar shell (2026-10-30) | Kenneth's choice after reviewing and editing the design canvas |
+| Open source, one-command run, provider-neutral self-hosting; Vercel dropped (2026-10-30, revision 5) | Kenneth's portfolio project: nobody hosts an official copy, visitors run it on localhost with test accounts, self-hosters bring their own providers. Design: `docs/superpowers/specs/2026-10-30-open-source-self-hosting-design.md` |
+| Public information pages and a not-affiliated footer disclaimer (2026-10-30) | The repo is public and anyone can host it; the pages say it isn't an official City service, what happens to data, and who is responsible |
