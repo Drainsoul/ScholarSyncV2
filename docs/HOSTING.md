@@ -22,12 +22,16 @@ inactive in production mode anyway, but the deploy check (step 7) fails while th
 ```
 cp .env.example .env
 ```
-Edit `.env`. Anything marked "Required" in the file must be set. At least:
+Edit `.env`. Set at least the values below. The app refuses to start without the secret key, the database URL and (in
+production) the allowed hosts. It starts without `EMAIL_URL` and the `S3_*` values, but then email goes to the
+container log and file uploads do not work, so set them before real use.
+
+At least:
 
 | Variable | Set it to |
 |---|---|
 | `DJANGO_DEBUG` | `false` |
-| `DJANGO_SECRET_KEY` | your own random key: `python -c "import secrets; print(secrets.token_urlsafe(64))"` |
+| `DJANGO_SECRET_KEY` | your own random key: `python -c "import secrets; print(secrets.token_urlsafe(64))"` or `openssl rand -base64 48` |
 | `DJANGO_ALLOWED_HOSTS` | your host name, for example `scholarships.example.org` (the first entry is also used by the container health check) |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | `https://` plus the same host name |
 | `DATABASE_URL` | your PostgreSQL URL (step 4) |
@@ -36,8 +40,8 @@ Edit `.env`. Anything marked "Required" in the file must be set. At least:
 | `CSP_REPORT_ONLY` | leave `true` at first; set `false` once pages load with no violation reports |
 
 Also delete or replace the development-only values at the top of the file. The app refuses to start in production if
-the secret key still starts with `local-dev-only-` or `explore-only-`, or if `DJANGO_KIT` is on. Leave `DJANGO_SECURE_SSL_REDIRECT` commented out (it defaults to on); a blank
-value stops the app from starting.
+the secret key still starts with `local-dev-only-` or `explore-only-`, or if `DJANGO_KIT` is on. Leave `DJANGO_SECURE_SSL_REDIRECT` commented out (it defaults to on); a blank value
+stops the app from starting.
 
 Never commit `.env`. It is git-ignored. Operator details (`SITE_OPERATOR_NAME`, `PRIVACY_CONTACT_EMAIL`) and the
 privacy, terms and contact pages are added in a later step of this milestone; this guide will say how to set them.
