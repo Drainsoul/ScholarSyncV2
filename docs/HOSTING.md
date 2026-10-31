@@ -40,8 +40,8 @@ At least:
 | `CSP_REPORT_ONLY` | leave `true` at first; set `false` once pages load with no violation reports |
 
 Also delete or replace the development-only values at the top of the file. The app refuses to start in production if
-the secret key still starts with `local-dev-only-` or `explore-only-`, or if `DJANGO_KIT` is on. Leave `DJANGO_SECURE_SSL_REDIRECT` commented out (it defaults to on); a blank value
-stops the app from starting.
+the secret key still starts with `local-dev-only-` or `explore-only-`, or if `DJANGO_KIT` is on. Production always redirects HTTP to HTTPS, so your proxy must send
+`X-Forwarded-Proto: https` (step 5).
 
 Never commit `.env`. It is git-ignored. Operator details (`SITE_OPERATOR_NAME`, `PRIVACY_CONTACT_EMAIL`) and the
 privacy, terms and contact pages are added in a later step of this milestone; this guide will say how to set them.

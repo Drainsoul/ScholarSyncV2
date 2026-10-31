@@ -176,7 +176,7 @@ DJANGO_VITE = {
 from csp.constants import NONE, SELF  # noqa: E402
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-SECURE_SSL_REDIRECT = env.bool("DJANGO_SECURE_SSL_REDIRECT", PRODUCTION)
+SECURE_SSL_REDIRECT = PRODUCTION
 SECURE_HSTS_SECONDS = 31_536_000 if PRODUCTION else 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = PRODUCTION
 # Preload is a one-way commitment for the whole domain; decide at launch (spec §10, M12).
