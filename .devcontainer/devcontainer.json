@@ -1,0 +1,13 @@
+{
+  "name": "ScholarSync",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:1": {}
+  },
+  "postStartCommand": "docker compose up -d --build",
+  "forwardPorts": [8000, 8025],
+  "portsAttributes": {
+    "8000": { "label": "ScholarSync", "onAutoForward": "openBrowser" },
+    "8025": { "label": "Email inbox" }
+  }
+}

@@ -8,6 +8,8 @@ scholarship office oversees every program, staff account and report.
 > Independent portfolio project. Not affiliated with or endorsed by the City of Taguig. All sample people and data
 > are fictional.
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/Drainsoul/ScholarSyncV2)
+
 **Status:** M3.5 (open-source packaging) is in progress. You can run the app and browse the home page and the design
 kit. Sign-in, the test accounts and the first real features arrive in M4; the roadmap is in the
 [design spec](docs/superpowers/specs/2026-10-11-scholarsync-v2-design.md).
@@ -33,6 +35,9 @@ from your computer. Later runs start in seconds and keep your data.
 
 **Stop:** press `Ctrl+C`, or run `docker compose down` from another terminal. Your data stays.
 **Reset everything:** `docker compose down -v` deletes the database and stored files.
+
+**No install:** the badge above opens the same stack in a GitHub Codespace (see
+[SETUP](docs/SETUP.md#github-codespaces)).
 
 Port 8000 taken? See [changing ports](docs/SETUP.md#changing-ports).
 
