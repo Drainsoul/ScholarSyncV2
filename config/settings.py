@@ -6,8 +6,6 @@ from pathlib import Path
 from django.core.exceptions import ImproperlyConfigured
 from environs import Env
 
-from config.hosts import vercel_hosts
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = Env()
@@ -17,14 +15,33 @@ env.read_env(os.environ.get("DJANGO_ENV_FILE", str(BASE_DIR / ".env")), recurse=
 DEBUG = env.bool("DJANGO_DEBUG", False)
 SECRET_KEY = env.str("DJANGO_SECRET_KEY")  # required: no fallback, ever
 
-_vercel_hosts = vercel_hosts(os.environ)
-ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", []) + _vercel_hosts
-CSRF_TRUSTED_ORIGINS = [f"https://{host}" for host in _vercel_hosts]
+
+# Modes (open-source spec §6): developer = DEBUG, explore = localhost-only HTTP, else production.
+EXPLORE = env.bool("SCHOLARSYNC_EXPLORE", False)
+PRODUCTION = not DEBUG and not EXPLORE
+EXPLORE_HOSTS = ["localhost", "127.0.0.1"]
+
+if EXPLORE:
+    if set(env.list("DJANGO_ALLOWED_HOSTS", [])) - set(EXPLORE_HOSTS):
+        raise ImproperlyConfigured(
+            "SCHOLARSYNC_EXPLORE only serves localhost and 127.0.0.1. "
+            "To host ScholarSync, follow docs/HOSTING.md."
+        )
+    ALLOWED_HOSTS = list(EXPLORE_HOSTS)
+else:
+    ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", [])
+CSRF_TRUSTED_ORIGINS: list[str] = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", [])
+
+if PRODUCTION and SECRET_KEY.startswith("explore-only-"):
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY is the public explore key. "
+        "Set your own secret key for production (docs/HOSTING.md)."
+    )
 
 # Design kit (spec §12): /_kit/ answers 404 unless enabled, and is never allowed in production.
-KIT_ENABLED = env.bool("DJANGO_KIT", DEBUG)
-if KIT_ENABLED and os.environ.get("VERCEL_ENV") == "production":
-    raise ImproperlyConfigured("DJANGO_KIT must be off in production (VERCEL_ENV=production).")
+KIT_ENABLED = env.bool("DJANGO_KIT", DEBUG or EXPLORE)
+if KIT_ENABLED and PRODUCTION:
+    raise ImproperlyConfigured("DJANGO_KIT must be off in production. It is for local use only.")
 
 INSTALLED_APPS = [
     "django.contrib.auth",
@@ -126,9 +143,9 @@ DJANGO_VITE = {
 from csp.constants import NONE, SELF  # noqa: E402
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-SECURE_SSL_REDIRECT = env.bool("DJANGO_SECURE_SSL_REDIRECT", not DEBUG)
-SECURE_HSTS_SECONDS = 0 if DEBUG else 31_536_000
-SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+SECURE_SSL_REDIRECT = env.bool("DJANGO_SECURE_SSL_REDIRECT", PRODUCTION)
+SECURE_HSTS_SECONDS = 31_536_000 if PRODUCTION else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = PRODUCTION
 # Preload is a one-way commitment for the whole domain; decide at launch (spec §10, M12).
 SECURE_HSTS_PRELOAD = False
 SILENCED_SYSTEM_CHECKS = ["security.W021"]
@@ -136,11 +153,11 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"
 SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
 X_FRAME_OPTIONS = "DENY"
-SESSION_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SECURE = PRODUCTION
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_AGE = 12 * 60 * 60
-CSRF_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = PRODUCTION
 
 PERMISSIONS_POLICY = (
     "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), "
@@ -182,6 +199,6 @@ if SENTRY_DSN:
 
     init_sentry(
         dsn=SENTRY_DSN,
-        environment=env.str("SENTRY_ENVIRONMENT", os.environ.get("VERCEL_ENV", "local")),
-        release=os.environ.get("VERCEL_GIT_COMMIT_SHA") or None,
+        environment=env.str("SENTRY_ENVIRONMENT", "production" if PRODUCTION else "local"),
+        release=env.str("SENTRY_RELEASE", "") or None,
     )

@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 import sys
@@ -55,12 +56,19 @@ def test_debug_defaults_to_off_when_unset(tmp_path):
     assert result.stdout.strip() == "False"
 
 
-def _kit_env(tmp_path, **extra):
-    env = {
-        key: value
-        for key, value in os.environ.items()
-        if key not in {"DJANGO_DEBUG", "DJANGO_KIT", "VERCEL_ENV"}
-    }
+_MODE_VARS = {
+    "DJANGO_DEBUG",
+    "DJANGO_KIT",
+    "SCHOLARSYNC_EXPLORE",
+    "DJANGO_ALLOWED_HOSTS",
+    "DJANGO_CSRF_TRUSTED_ORIGINS",
+    "DJANGO_SECURE_SSL_REDIRECT",
+    "DJANGO_SECRET_KEY",
+}
+
+
+def _run_settings(tmp_path, names, **extra):
+    env = {key: value for key, value in os.environ.items() if key not in _MODE_VARS}
     env.update(
         {
             "DJANGO_SECRET_KEY": "x" * 50,
@@ -69,12 +77,12 @@ def _kit_env(tmp_path, **extra):
             **extra,
         }
     )
-    return env
-
-
-def _kit_enabled(env):
+    code = (
+        "import json, config.settings as s; "
+        f"print(json.dumps({{n: getattr(s, n) for n in {list(names)!r}}}))"
+    )
     return subprocess.run(  # noqa: S603
-        [sys.executable, "-c", "import config.settings as s; print(s.KIT_ENABLED)"],
+        [sys.executable, "-c", code],
         cwd=ROOT,
         env=env,
         capture_output=True,
@@ -83,13 +91,83 @@ def _kit_enabled(env):
     )
 
 
+def settings_values(tmp_path, names, **env):
+    result = _run_settings(tmp_path, names, **env)
+    assert result.returncode == 0, result.stderr
+    return json.loads(result.stdout)
+
+
+def test_explore_mode_is_http_and_localhost_only(tmp_path):
+    names = [
+        "ALLOWED_HOSTS",
+        "SECURE_SSL_REDIRECT",
+        "SECURE_HSTS_SECONDS",
+        "SESSION_COOKIE_SECURE",
+        "CSRF_COOKIE_SECURE",
+        "KIT_ENABLED",
+        "PRODUCTION",
+    ]
+    values = settings_values(tmp_path, names, SCHOLARSYNC_EXPLORE="true")
+    assert values["ALLOWED_HOSTS"] == ["localhost", "127.0.0.1"]
+    assert values["SECURE_SSL_REDIRECT"] is False
+    assert values["SECURE_HSTS_SECONDS"] == 0
+    assert values["SESSION_COOKIE_SECURE"] is False
+    assert values["CSRF_COOKIE_SECURE"] is False
+    assert values["KIT_ENABLED"] is True
+    assert values["PRODUCTION"] is False
+
+
+def test_explore_mode_refuses_other_hosts(tmp_path):
+    result = _run_settings(
+        tmp_path,
+        ["ALLOWED_HOSTS"],
+        SCHOLARSYNC_EXPLORE="true",
+        DJANGO_ALLOWED_HOSTS="scholarsync.example",
+    )
+    assert result.returncode != 0
+    assert "SCHOLARSYNC_EXPLORE" in result.stderr
+
+
+def test_production_is_the_default_and_https_only(tmp_path):
+    names = ["PRODUCTION", "SECURE_SSL_REDIRECT", "SECURE_HSTS_SECONDS", "SESSION_COOKIE_SECURE"]
+    values = settings_values(tmp_path, names)
+    assert values["PRODUCTION"] is True
+    assert values["SECURE_SSL_REDIRECT"] is True
+    assert values["SECURE_HSTS_SECONDS"] == 31_536_000
+    assert values["SESSION_COOKIE_SECURE"] is True
+
+
 def test_kit_refuses_to_load_in_production(tmp_path):
-    result = _kit_enabled(_kit_env(tmp_path, DJANGO_KIT="true", VERCEL_ENV="production"))
+    result = _run_settings(tmp_path, ["KIT_ENABLED"], DJANGO_KIT="true")
     assert result.returncode != 0
     assert "DJANGO_KIT" in result.stderr
 
 
-def test_kit_is_off_by_default_and_allowed_on_previews(tmp_path):
-    assert _kit_enabled(_kit_env(tmp_path)).stdout.strip() == "False"
-    preview = _kit_enabled(_kit_env(tmp_path, DJANGO_KIT="true", VERCEL_ENV="preview"))
-    assert preview.stdout.strip() == "True"
+def test_kit_is_off_by_default_in_production(tmp_path):
+    assert settings_values(tmp_path, ["KIT_ENABLED"])["KIT_ENABLED"] is False
+
+
+@pytest.mark.parametrize("mode", [{"SCHOLARSYNC_EXPLORE": "true"}, {"DJANGO_DEBUG": "true"}])
+def test_kit_allowed_in_explore_and_developer_modes(tmp_path, mode):
+    values = settings_values(tmp_path, ["KIT_ENABLED"], DJANGO_KIT="true", **mode)
+    assert values["KIT_ENABLED"] is True
+
+
+def test_production_refuses_the_explore_secret_key(tmp_path):
+    key = "explore-only-" + "x" * 40
+    result = _run_settings(tmp_path, ["SECRET_KEY"], DJANGO_SECRET_KEY=key)
+    assert result.returncode != 0
+    assert "explore" in result.stderr
+    explore = _run_settings(
+        tmp_path, ["SECRET_KEY"], DJANGO_SECRET_KEY=key, SCHOLARSYNC_EXPLORE="true"
+    )
+    assert explore.returncode == 0, explore.stderr
+
+
+def test_csrf_trusted_origins_from_env(tmp_path):
+    values = settings_values(
+        tmp_path,
+        ["CSRF_TRUSTED_ORIGINS"],
+        DJANGO_CSRF_TRUSTED_ORIGINS="https://a.example,https://b.example",
+    )
+    assert values["CSRF_TRUSTED_ORIGINS"] == ["https://a.example", "https://b.example"]
