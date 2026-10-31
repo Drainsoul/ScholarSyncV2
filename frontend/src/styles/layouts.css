@@ -134,10 +134,67 @@
 }
 
 .footer {
-  padding-block: var(--space-8);
+  padding: var(--space-8) var(--space-4);
   border-top: 1px solid var(--border);
   color: var(--text-muted);
   font-size: var(--text-sm);
+}
+
+.footer__inner {
+  display: grid;
+  gap: var(--space-3);
+  max-width: var(--content-max);
+  margin-inline: auto;
+}
+
+.footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.footer__disclaimer {
+  margin: 0;
+}
+
+/* Inside the app shell's main column, under the page content. */
+.footer--in-app {
+  margin-top: var(--space-10);
+  padding-inline: 0;
+}
+
+/* Information pages: privacy, terms, cookies, FAQ, about, contact */
+.info {
+  display: grid;
+  gap: var(--space-4);
+  max-width: var(--measure);
+}
+
+.info h1,
+.info h2,
+.info p,
+.info ul {
+  margin: 0;
+}
+
+.info h2 {
+  margin-top: var(--space-4);
+  font-size: var(--text-xl);
+}
+
+.info ul {
+  padding-left: var(--space-6);
+}
+
+.info li + li {
+  margin-top: var(--space-2);
+}
+
+.info .table-wrap {
+  max-width: none;
 }
 
 /* Collapsible navigation (nav.ts) */

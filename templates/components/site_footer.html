@@ -1,0 +1,17 @@
+{% comment %}The footer on every layout: the six information pages and the not-affiliated disclaimer.
+Pass `footer_class` to add a modifier (the app shell uses footer--in-app).{% endcomment %}
+<footer class="footer{% if footer_class %} {{ footer_class }}{% endif %}">
+  <div class="footer__inner">
+    <nav aria-label="About this site">
+      <ul class="footer__links" role="list">
+        <li><a href="{% url 'core:about' %}">About</a></li>
+        <li><a href="{% url 'core:privacy' %}">Privacy</a></li>
+        <li><a href="{% url 'core:terms' %}">Terms</a></li>
+        <li><a href="{% url 'core:cookies' %}">Cookies</a></li>
+        <li><a href="{% url 'core:help' %}">Help</a></li>
+        <li><a href="{% url 'core:contact' %}">Contact</a></li>
+      </ul>
+    </nav>
+    <p class="footer__disclaimer">Independent portfolio project. Not affiliated with or endorsed by the City of Taguig. All sample people and data are fictional.</p>
+  </div>
+</footer>

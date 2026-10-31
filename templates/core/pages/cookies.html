@@ -1,0 +1,19 @@
+{% extends "layouts/public.html" %}
+{% block title %}Cookie notice{% endblock %}
+{% block content %}
+<article class="info">
+  <h1>Cookie notice</h1>
+  <p>This site uses essential cookies only. They are needed for it to work, so there is no cookie banner and nothing to accept. It does not use analytics or advertising cookies.</p>
+  <div class="table-wrap" role="region" aria-label="Cookies this site sets" tabindex="0">
+    <table class="table table--stack">
+      <thead><tr><th scope="col">Cookie</th><th scope="col">Purpose</th><th scope="col">How long it lasts</th></tr></thead>
+      <tbody>{% for cookie in cookies %}<tr>
+        <th scope="row"><code>{{ cookie.name }}</code></th>
+        <td>{{ cookie.purpose }}</td>
+        <td>{{ cookie.lifetime }}</td>
+      </tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  <p>Anyone who adds analytics, advertising or other optional cookies to a copy of this site must first ask visitors for their consent, and must update this notice and the <a href="{% url 'core:privacy' %}">privacy policy</a>.</p>
+</article>
+{% endblock %}

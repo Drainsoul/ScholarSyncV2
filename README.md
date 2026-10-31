@@ -36,6 +36,9 @@ from your computer. Later runs start in seconds and keep your data.
 
 Port 8000 taken? See [changing ports](docs/SETUP.md#changing-ports).
 
+Public pages: [about](/about/), [privacy](/privacy/), [terms](/terms/), [cookies](/cookies/), [FAQ](/help/) and
+[contact](/contact/) (on a running copy). To report a security problem, see [SECURITY.md](SECURITY.md).
+
 ## Test accounts
 | Role | Account | What it shows |
 |---|---|---|

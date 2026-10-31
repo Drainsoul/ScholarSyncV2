@@ -1,0 +1,34 @@
+{% extends "layouts/public.html" %}
+{% block title %}Terms of use{% endblock %}
+{% block content %}
+<article class="info">
+  <h1>Terms of use</h1>
+  <p class="text-muted">Last updated {{ notice_version }}.</p>
+  <p>These terms apply to your use of this copy of ScholarSync, run by <strong>{{ operator_name }}</strong>. ScholarSync is an independent portfolio project and is not an official service of the City of Taguig. The text is a template: whoever runs a copy should review it and adapt it.</p>
+
+  <h2>Using the service</h2>
+  <ul>
+    <li>Use ScholarSync only for its purpose: applying for and managing scholarships.</li>
+    <li>Do not try to break into the service, overload it, or reach data that is not yours.</li>
+    <li>Do not upload files that are unlawful, harmful or not yours to share.</li>
+  </ul>
+
+  <h2>Your information</h2>
+  <p>You are responsible for giving accurate and complete information and genuine documents. False information can lead to an application being refused or an award being withdrawn.</p>
+
+  <h2>Applying is not a guarantee</h2>
+  <p>Submitting an application, or being shown as eligible, does not guarantee a scholarship. Awards are decided by the program, under its own rules.</p>
+
+  <h2>Your account</h2>
+  <p>Keep your password private and tell the operator if you think someone else has used your account. You are responsible for what happens under your account.</p>
+
+  <h2>No warranty</h2>
+  <p>The service is provided as is, without warranty of any kind. The operator does not promise that it will always be available or free of errors, and is not responsible for losses that come from using it, to the extent the law allows.</p>
+
+  <h2>Changes</h2>
+  <p>These terms may change. The date above shows the latest update. If you keep using the service after a change, you accept the new terms.</p>
+
+  <h2>Questions</h2>
+  <p>See the <a href="{% url 'core:contact' %}">contact page</a>.</p>
+</article>
+{% endblock %}

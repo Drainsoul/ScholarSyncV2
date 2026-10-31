@@ -25,7 +25,7 @@ COPY . .
 COPY --from=frontend /build/static/dist ./static/dist
 
 # collectstatic needs settings to import; these values exist only for this build step.
-RUN DJANGO_SECRET_KEY=build-only-not-a-secret \
+RUN DJANGO_SECRET_KEY=build-only-not-a-secret     SITE_OPERATOR_NAME=build-only     PRIVACY_CONTACT_EMAIL=build-only@example.org \
     DATABASE_URL=postgres://build:build@localhost:5432/build \
     DJANGO_ENV_FILE=/nonexistent \
     python manage.py collectstatic --noinput

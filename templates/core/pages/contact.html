@@ -1,0 +1,16 @@
+{% extends "layouts/public.html" %}
+{% block title %}Contact{% endblock %}
+{% block content %}
+<article class="info">
+  <h1>Contact</h1>
+  <h2>This copy of ScholarSync</h2>
+  <p>This copy is run by <strong>{{ operator_name }}</strong>.</p>
+  <p>{% if contact_email %}For questions about your data or to use your privacy rights, write to <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>.{% else %}This copy runs on your computer, so there is no privacy contact.{% endif %}</p>
+  <h2>The ScholarSync project</h2>
+  <ul>
+    <li>For bugs and ideas, open an issue on <a href="{{ repo_url }}/issues">GitHub Issues</a>.</li>
+    <li>For a security vulnerability, do not open a public issue. Follow the steps in <a href="{{ repo_url }}/blob/main/SECURITY.md">SECURITY.md</a> to report it privately.</li>
+  </ul>
+  <p>The project cannot answer questions about a particular copy's data. Ask that copy's operator.</p>
+</article>
+{% endblock %}

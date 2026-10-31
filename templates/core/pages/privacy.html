@@ -1,0 +1,67 @@
+{% extends "layouts/public.html" %}
+{% block title %}Privacy policy{% endblock %}
+{% block content %}
+<article class="info">
+  <h1>Privacy policy</h1>
+  <p class="text-muted">Version {{ notice_version }}. Last updated {{ notice_version }}.</p>
+  {% if explore %}
+  <div class="banner" role="note"><div><p>This copy runs on your computer. Anything you enter stays in its database, and emails go to the local inbox, not to real people.</p></div></div>
+  {% endif %}
+  <p>This policy explains how personal data is handled in this copy of ScholarSync. It follows Republic Act No. 10173, the Data Privacy Act of 2012 (RA 10173), of the Philippines. It is template text: whoever runs a copy should review it and adapt it to their organisation and their law.</p>
+
+  <h2>Who is responsible</h2>
+  <p>The operator of this copy is the personal information controller: <strong>{{ operator_name }}</strong>.{% if contact_email %} You can reach the operator about your data at <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>.{% else %} This copy has no privacy contact because it runs on your computer, and you are the only person who can see its data.{% endif %} ScholarSync is an independent portfolio project and is not run by the City of Taguig.</p>
+
+  <h2>What is collected</h2>
+  <ul>
+    <li>Your account: name, email address and a password (stored only as a hash).</li>
+    <li>Your profile: contact details, date of birth, address and school.</li>
+    <li>Family details, including family income, when a program asks for them.</li>
+    <li>Your education records, such as grades and enrolment.</li>
+    <li>The documents you upload and the applications you submit.</li>
+    <li>Records of what happens to your application, and basic technical logs.</li>
+  </ul>
+
+  <h2>Why it is collected</h2>
+  <p>To create your account, to check which programs you may qualify for, to review your applications, to run scholarships and allowance payments, to send you notices about your applications, and to keep the service secure. It is not sold, and it is not used for advertising.</p>
+
+  <h2>Legal basis</h2>
+  <p>You give the information yourself and agree to its use when you apply. The operator may also process it where needed to run a scholarship program you applied to, or to meet a legal duty. The operator of a copy should confirm the exact basis for its own case.</p>
+
+  <h2>Who can see it</h2>
+  <ul>
+    <li>You can see your own data.</li>
+    <li>Staff of a program can see the applications made to that program, and nothing from other programs.</li>
+    <li>The scholarship office can see all programs.</li>
+    <li>The operator's hosting, storage and email providers handle data on the operator's behalf.</li>
+  </ul>
+
+  <h2>Storage and security</h2>
+  <p>Data is kept in a PostgreSQL database and uploaded documents in private file storage. Connections use HTTPS. Documents are never served openly: they are downloaded through short-lived links. Staff only reach the programs they are assigned to. No system is perfectly secure, and the operator should tell you promptly if a breach affects you.</p>
+
+  <h2>How long it is kept</h2>
+  <p>Records are kept as set by the operator of this copy. Self-hosters: state your retention period here before going live. When a record is no longer needed, it should be deleted or made anonymous.</p>
+
+  <h2>Your rights</h2>
+  <p>Under the Data Privacy Act you may:</p>
+  <ul>
+    <li>be informed about how your data is used;</li>
+    <li>access your data;</li>
+    <li>correct it when it is wrong;</li>
+    <li>ask for it to be erased or blocked;</li>
+    <li>object to its use;</li>
+    <li>receive a copy in a common format (data portability);</li>
+    <li>claim compensation for damage from misuse of your data;</li>
+    <li>complain to the National Privacy Commission at <a href="https://privacy.gov.ph">privacy.gov.ph</a>.</li>
+  </ul>
+
+  <h2>How to use your rights</h2>
+  <p>{% if contact_email %}Write to <a href="mailto:{{ contact_email }}">{{ contact_email }}</a> and say what you need. The operator should answer within a reasonable time.{% else %}Because this copy runs on your computer, you can view and change its data yourself. Delete everything with <code>docker compose down -v</code>.{% endif %}</p>
+
+  <h2>Cookies</h2>
+  <p>This site uses only the cookies it needs to work. See the <a href="{% url 'core:cookies' %}">cookie notice</a>.</p>
+
+  <h2>Changes</h2>
+  <p>When this notice changes, the version above changes and the new text is shown here.</p>
+</article>
+{% endblock %}

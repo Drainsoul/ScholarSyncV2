@@ -47,6 +47,20 @@ if PRODUCTION and SECRET_KEY.startswith("local-dev-only-"):
         "Generate your own secret key for production (docs/HOSTING.md)."
     )
 
+# Who runs this copy (open-source spec section 15). Required in production: the privacy, terms and
+# contact pages name the operator, and a host must decide who that is. Explore and developer
+# copies run on the visitor's own computer.
+SITE_OPERATOR_NAME = (
+    env.str("SITE_OPERATOR_NAME")
+    if PRODUCTION
+    else env.str("SITE_OPERATOR_NAME", "This local copy")
+)
+PRIVACY_CONTACT_EMAIL = (
+    env.str("PRIVACY_CONTACT_EMAIL") if PRODUCTION else env.str("PRIVACY_CONTACT_EMAIL", "")
+)
+# The privacy notice version. M4's ConsentRecord.notice_version stores it; bump it on changes.
+PRIVACY_NOTICE_VERSION = "2026-10-30"
+
 # Design kit (spec §12): /_kit/ answers 404 unless enabled, and is never allowed in production.
 KIT_ENABLED = env.bool("DJANGO_KIT", DEBUG or EXPLORE)
 if KIT_ENABLED and PRODUCTION:

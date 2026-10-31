@@ -1,0 +1,18 @@
+{% extends "layouts/public.html" %}
+{% block title %}About{% endblock %}
+{% block content %}
+<article class="info">
+  <h1>About ScholarSync</h1>
+  <p>ScholarSync is a scholarship platform. Students build a profile, see which programs they may qualify for, apply with their documents and follow their allowances. Program staff review applications and manage scholars. A scholarship office oversees every program.</p>
+  <h2>An independent project</h2>
+  <p>ScholarSync is an independent portfolio project by Kenneth. It is not an official service of the City of Taguig, and it is not affiliated with or endorsed by the City. The "City of Taguig" label in the page header is part of the sample design. All sample people and data are fictional.</p>
+  <h2>Open source</h2>
+  <p>The code is open source under the MIT license, and anyone may run their own copy. The person or organisation that runs a copy is responsible for the data in it. This copy is run by {{ operator_name }}. The source code is on <a href="{{ repo_url }}">GitHub</a>.</p>
+  <h2>Try it</h2>
+  <ul>
+    <li>Run your own copy on your computer with <code>docker compose up</code>. The README explains how.</li>
+    <li>A copy started that way comes with fictional test accounts for a student, a program staff member and a scholarship office administrator.</li>
+    <li>Read the <a href="{% url 'core:help' %}">FAQ</a> for the common questions.</li>
+  </ul>
+</article>
+{% endblock %}

@@ -25,7 +25,7 @@ def _mask_emails(text: str) -> str:
     """Replace every `something@something` run with "[email]". Fails closed.
 
     Anything with at least one local character before the "@" and one domain character after it
-    is masked whole, so odd endings ("x@gmail.com2026"), local hosts and non-ASCII names never slip
+    is masked whole, so odd endings ("a@example.com1"), local hosts and non-ASCII names never slip
     through a stricter validity check. Over-masking a log line is the accepted cost.
 
     A hand-written scan instead of a regex: left/right expansion stops at the previous match or
@@ -43,7 +43,7 @@ def _mask_emails(text: str) -> str:
         while end < len(text) and _is_domain(text[end]):
             end += 1
         while end > at + 1 and text[end - 1] in _DOMAIN_PUNCTUATION:
-            end -= 1  # sentence punctuation after an address ("… juan@x.com.") stays outside
+            end -= 1  # sentence punctuation after an address ("… juan@example.com.") stays outside
         if start < at and end > at + 1:
             pieces.append(text[last:start])
             pieces.append("[email]")

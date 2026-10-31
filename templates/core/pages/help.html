@@ -1,0 +1,30 @@
+{% extends "layouts/public.html" %}
+{% block title %}Help and FAQ{% endblock %}
+{% block content %}
+<article class="info">
+  <h1>Help and frequently asked questions</h1>
+  <p>The answers are general and may be edited by whoever runs a copy.</p>
+
+  <h2>About this site</h2>
+  <h3>Is this an official City of Taguig service?</h3>
+  <p>No. ScholarSync is an independent portfolio project. It is not affiliated with or endorsed by the City of Taguig, and all sample people and data are fictional.</p>
+  <h3>How do I try each role?</h3>
+  <p>Run a copy on your computer with <code>docker compose up</code>. It includes fictional test accounts for a student, program staff and the scholarship office. The README lists them.</p>
+  <h3>Where does my data go on a copy that runs on my computer?</h3>
+  <p>Nowhere else. It stays in the database on your computer, and emails go to a local inbox, not to real people.</p>
+  <h3>Who looks after the data on a hosted copy?</h3>
+  <p>The operator of that copy. See the <a href="{% url 'core:privacy' %}">privacy policy</a>.</p>
+
+  <h2>For students</h2>
+  <h3>Who can apply?</h3>
+  <p>Each program sets its own rules, such as residency, school and grades. Build your profile first, and ScholarSync shows the programs you may qualify for.</p>
+  <h3>Which documents do I need?</h3>
+  <p>Each program lists the documents it requires. You upload them with your application.</p>
+  <h3>How do I follow my application?</h3>
+  <p>Sign in and open your applications. The status shows where each one stands, and you get a notice when it changes.</p>
+  <h3>How do I track my allowance?</h3>
+  <p>If you are awarded a scholarship, your allowances are shown term by term, with their payment status.</p>
+  <h3>Does applying guarantee an award?</h3>
+  <p>No. The program decides, under its own rules.</p>
+</article>
+{% endblock %}
