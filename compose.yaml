@@ -8,7 +8,8 @@ x-web-environment: &web-environment
   SCHOLARSYNC_EXPLORE: "true"
   CSP_REPORT_ONLY: "false"
   # Public on purpose: explore mode is localhost-only and production refuses this prefix.
-  DJANGO_SECRET_KEY: "explore-only-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  # Codespaces must not use it: the devcontainer sets a random EXPLORE_SECRET_KEY per codespace.
+  DJANGO_SECRET_KEY: "${EXPLORE_SECRET_KEY:-explore-only-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}"
   DATABASE_URL: postgres://scholarsync:scholarsync@db:5432/scholarsync
   EMAIL_URL: smtp://mail:1025
   S3_ENDPOINT_URL: http://storage:9000

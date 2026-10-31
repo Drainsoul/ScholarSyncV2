@@ -18,3 +18,4 @@ staticfiles
 .vscode
 tests/e2e
 docs
+.devcontainer/explore.env

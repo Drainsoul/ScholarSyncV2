@@ -191,6 +191,40 @@ def test_explore_ignores_empty_codespaces_variables(tmp_path):
     assert values["CSRF_TRUSTED_ORIGINS"] == []
 
 
+def test_codespaces_refuses_the_public_explore_key(tmp_path):
+    result = _run_settings(
+        tmp_path,
+        ["SECRET_KEY"],
+        SCHOLARSYNC_EXPLORE="true",
+        DJANGO_SECRET_KEY="explore-only-" + "x" * 40,
+        **_CODESPACE,
+    )
+    assert result.returncode != 0
+    assert "devcontainer" in result.stderr
+    assert "docs/SETUP.md" in result.stderr
+
+
+def test_codespaces_accepts_a_generated_key(tmp_path):
+    values = settings_values(
+        tmp_path,
+        ["SECRET_KEY"],
+        SCHOLARSYNC_EXPLORE="true",
+        DJANGO_SECRET_KEY="codespace-" + "a" * 64,
+        **_CODESPACE,
+    )
+    assert values["SECRET_KEY"].startswith("codespace-")
+
+
+def test_explore_key_still_works_on_localhost(tmp_path):
+    values = settings_values(
+        tmp_path,
+        ["SECRET_KEY"],
+        SCHOLARSYNC_EXPLORE="true",
+        DJANGO_SECRET_KEY="explore-only-" + "x" * 40,
+    )
+    assert values["SECRET_KEY"].startswith("explore-only-")
+
+
 def test_codespaces_does_not_widen_the_explore_refusal(tmp_path):
     result = _run_settings(
         tmp_path,
