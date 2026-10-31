@@ -49,18 +49,89 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run mypy .
       - run: uv run python manage.py makemigrations --check --dry-run
-      - name: Deploy checks (production-like settings)
-        env:
-          DJANGO_DEBUG: "false"
-          DJANGO_SECRET_KEY: ci-deploy-check-only-0123456789abcdefghijklmnopqrstuvwxyzABCD
-          # A production-like stand-in host.
-          DJANGO_ALLOWED_HOSTS: scholarsync.example
-        run: uv run python manage.py check --deploy --fail-level WARNING
       - run: uv run pytest -n auto
       - name: Dependency audit
         run: |
           uv export --no-dev --no-hashes --format requirements-txt -o requirements-audit.txt
           uvx pip-audit==2.10.1 -r requirements-audit.txt --strict
+
+  hosting-path:
+    # The app as a host runs it: production settings and no demo app.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: scholarsync
+          POSTGRES_PASSWORD: scholarsync
+          POSTGRES_DB: scholarsync
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U scholarsync -d scholarsync"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DJANGO_DEBUG: "false"
+      DJANGO_SECRET_KEY: ci-deploy-check-only-0123456789abcdefghijklmnopqrstuvwxyzABCD
+      # A production-like stand-in host.
+      DJANGO_ALLOWED_HOSTS: scholarsync.example
+      DATABASE_URL: postgres://scholarsync:scholarsync@localhost:5432/scholarsync
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0  # no floating major tag is published; pin the full version
+        with:
+          enable-cache: true
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: uv sync --locked
+      - run: npm --prefix frontend ci
+      - run: npm --prefix frontend run build
+      - name: Remove the demo app (a host deletes it)
+        run: rm -rf apps/demo
+      - name: Deploy checks
+        run: uv run python manage.py check --deploy --fail-level WARNING
+      - run: uv run pytest -n auto
+
+  compose-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      COMPOSE_PROJECT_NAME: ss-smoke
+      APP_PORT: "8123"
+    steps:
+      - uses: actions/checkout@v7
+      - name: Start the explore stack
+        run: docker compose up -d --build
+      - name: Wait for the app to be healthy
+        run: |
+          for _ in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:8123/healthz; then exit 0; fi
+            sleep 2
+          done
+          echo "healthz did not come up within 180 s" >&2
+          exit 1
+      - name: Check the pages
+        run: |
+          curl -fsS -o /dev/null http://127.0.0.1:8123/
+          curl -fsS -o /dev/null http://127.0.0.1:8123/_kit/
+          curl -fsS -o /dev/null http://127.0.0.1:8025/
+      - name: Check the published port
+        run: |
+          port="$(docker compose port web 8000)"
+          test "$port" = "127.0.0.1:8123" || { echo "unexpected port mapping: $port" >&2; exit 1; }
+      - name: Validate the production compose file
+        run: |
+          cp .env.example .env
+          docker compose -f compose.production.yaml config -q
+      - name: Dump logs
+        if: failure()
+        run: docker compose logs --no-color
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
 
   frontend:
     runs-on: ubuntu-latest
