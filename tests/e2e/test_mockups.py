@@ -180,7 +180,8 @@ def test_renewal_marker_sits_at_80_percent(page: Page, live_server, vite_build):
     assert gwa == "rgb(155, 16, 34)"  # danger: Curtis Walker is below 80
 
 
-# Every focusable element that is visible and intersects the drawer's box.
+# Every focusable element that is visible and intersects the drawer's box. A control scrolled out of
+# its table card's view is clipped by the card (focusing it scrolls it in), so it does not count.
 UNDER_THE_DRAWER = """() => {
   const box = document.querySelector("#scholar-drawer").getBoundingClientRect();
   const focusable = "a[href], button, input, select, textarea, summary, " +
@@ -189,6 +190,8 @@ UNDER_THE_DRAWER = """() => {
     .filter((el) => !el.closest("#scholar-drawer") && el.getClientRects().length)
     .filter((el) => {
       const r = el.getBoundingClientRect();
+      const wrap = el.closest(".table-wrap");
+      if (wrap && r.right > wrap.getBoundingClientRect().right) return false;
       return r.width && r.height && r.left < box.right && r.right > box.left
         && r.top < box.bottom && r.bottom > box.top;
     })
