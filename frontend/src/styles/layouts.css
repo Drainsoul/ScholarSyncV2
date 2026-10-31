@@ -265,8 +265,8 @@
   grid-area: sidebar;
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
-  padding: 0 var(--space-4) var(--space-5);
+  gap: var(--space-4);
+  padding: 0 var(--space-4) var(--space-4);
   border-bottom: 1px solid var(--border);
   background: var(--nav-bg);
 }
@@ -336,6 +336,13 @@
 .sidebar__list a[aria-current="page"] {
   background: var(--nav-current-bg);
   color: var(--nav-current);
+}
+
+@media (forced-colors: active) {
+  .sidebar__list a[aria-current="page"] {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
 }
 
 .sidebar__list .count {
@@ -772,4 +779,11 @@
   max-width: 28rem;
   margin-inline: auto;
   padding: var(--space-8) var(--space-6);
+}
+
+/* A short screen (1440 x 900 and below): the callout goes, so the user card stays above the fold. */
+@media (min-width: 64rem) and (max-height: 56rem) {
+  .sidebar .callout {
+    display: none;
+  }
 }

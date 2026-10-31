@@ -221,19 +221,6 @@ progress::-moz-progress-bar {
   color: var(--success);
 }
 
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
-}
-
-.filters .field {
-  flex: 1 1 12rem;
-  margin: 0;
-}
-
 /* Above a table: search, filter selects and buttons on one wrapping row (labels are visually
    hidden; each control names itself). */
 .table-toolbar {
@@ -341,11 +328,6 @@ progress::-moz-progress-bar {
 
 .table .select {
   width: 3rem;
-}
-
-/* A cell holding a relative-volume meter gets room for the bar. */
-.table .bar {
-  width: 40%;
 }
 
 /* A table in a card runs to the card's edges, so a table that scrolls on a phone is clipped by the
@@ -646,61 +628,6 @@ meter::-moz-meter-bar {
 
 .card > .meter-row {
   margin-bottom: var(--space-4);
-}
-
-.figures + .meter-row {
-  margin-bottom: var(--space-6);
-}
-
-.steps {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3) var(--space-6);
-  margin: 0 0 var(--space-6);
-  padding: 0;
-  list-style: none;
-}
-
-.steps__item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  color: var(--text-muted);
-}
-
-.steps__marker {
-  display: grid;
-  place-items: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border: 2px solid var(--border-control);
-  border-radius: var(--radius-sm);
-  font-size: var(--text-sm);
-}
-
-.steps .steps__marker .icon {
-  width: 1rem;
-  height: 1rem;
-}
-
-.steps__item--done {
-  color: var(--text);
-}
-
-.steps__item--done .steps__marker {
-  border-color: var(--primary);
-  color: var(--primary);
-}
-
-.steps__item--current {
-  color: var(--text);
-  font-weight: 600;
-}
-
-.steps__item--current .steps__marker {
-  border-color: var(--primary);
-  background: var(--primary);
-  color: var(--on-primary);
 }
 
 /* A plain ruled list of events, newest first: no dots (spec §12 rev 4). */
@@ -1358,8 +1285,10 @@ html:not(.js) [data-bulk-all] {
   background: var(--surface-selected);
 }
 
-.table tbody tr.is-selected > :first-child {
-  box-shadow: inset 3px 0 0 var(--secondary);
+@media (min-width: 40.01rem) {
+  .table tbody tr.is-selected > :first-child {
+    box-shadow: inset 3px 0 0 var(--secondary);
+  }
 }
 
 /* On a phone a stacked row keeps its checkbox and row menu on the row header's line; the empty
@@ -1579,4 +1508,25 @@ html:not(.js) [data-bulk-all] {
 
 .card__note {
   margin: 0;
+}
+
+/* Windows High Contrast: backgrounds are dropped, so the current tab and chart bars need system
+   colours (the current nav item is under App shell in layouts.css). */
+@media (forced-colors: active) {
+  .tabs a {
+    border-bottom-color: Canvas;
+  }
+
+  .tabs a[aria-current="page"] {
+    border-bottom-color: Highlight;
+  }
+
+  .bar-chart__bar {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+
+  .bar-chart__month--current .bar-chart__bar {
+    background: Highlight;
+  }
 }

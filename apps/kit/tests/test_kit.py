@@ -74,9 +74,12 @@ def test_kit_shows_data_components(client, kit_on, vite_build):
     body = client.get("/_kit/").content.decode()
     assert '<section class="kit-section" id="data"' in body
     for marker in ('class="figure"', 'class="status status--', 'class="card"', 'class="tabs"',
-                   'aria-label="Breadcrumb"', 'class="empty"', "<meter", 'class="steps"',
+                   'aria-label="Breadcrumb"', 'class="empty"', "<meter",
                    'class="timeline"', 'aria-sort="ascending"'):  # fmt: skip
         assert marker in body, marker
+    assert (
+        "steps" not in body.split('id="data"')[1].split("</section>")[0]
+    )  # step pills are ruled out
 
 
 def test_kit_table_filters_sorts_and_survives_bad_input(client, kit_on, vite_build):

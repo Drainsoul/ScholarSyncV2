@@ -2,7 +2,7 @@
 {% block title %}Scholars{% endblock %}
 {% block sidebar_callout %}
 <div class="callout">
-  <p class="callout__title">{% icon "clock" %}Renewals close 15 Nov</p>
+  <p class="callout__title">{% icon "clock" %}Renewals close 15&nbsp;Nov</p>
   <p class="callout__text">37 scholars are below the 80% GWA mark this term.</p>
   <a class="callout__link" href="?status=at_risk">Review at-risk scholars</a>
 </div>
@@ -35,7 +35,7 @@
   <form method="post" action="" data-bulk>
     {% csrf_token %}
     <div class="table-wrap" role="region" aria-labelledby="list-heading" tabindex="0">
-      <table class="table table--stack">
+      <table class="table table--stack" aria-labelledby="list-heading">
         <thead><tr>
           <th scope="col" class="select"><input type="checkbox" data-bulk-all aria-label="Select all scholars on this page"></th>
           <th scope="col">Scholar</th><th scope="col">School</th><th scope="col">Tier</th>
@@ -44,7 +44,7 @@
         </tr></thead>
         <tbody>{% for row in rows %}<tr id="scholar-{{ row.id }}"{% if row.id == selected_id %} class="is-selected" aria-current="true"{% endif %}>
           <td class="select"><input type="checkbox" name="ids" value="{{ row.id }}" data-bulk-item aria-label="Select {{ row.name }}"></td>
-          <th scope="row"><span class="identity">{% avatar row.name row.avatar_index %}<span class="identity__text"><a class="identity__name" href="?status={{ status }}&amp;scholar={{ row.id }}#scholar-drawer">{{ row.name }}</a><span class="text-sm text-muted">{{ row.email }}</span></span></span></th>
+          <th scope="row"><span class="identity">{% avatar row.name row.avatar_index %}<span class="identity__text"><a class="identity__name" href="?{{ list_query }}&amp;scholar={{ row.id }}#scholar-drawer">{{ row.name }}</a><span class="text-sm text-muted">{{ row.email }}</span></span></span></th>
           <td data-label="School">{{ row.school }}</td>
           <td data-label="Tier">{{ row.tier }}</td>
           <td class="num" data-label="Allowance">{{ row.amount|peso }}</td>
