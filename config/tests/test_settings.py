@@ -210,3 +210,13 @@ def test_email_url_configures_smtp(tmp_path):
     assert values["EMAIL_BACKEND"] == "django.core.mail.backends.smtp.EmailBackend"
     assert values["EMAIL_HOST"] == "mail"
     assert values["EMAIL_PORT"] == 1025
+
+
+def test_production_refuses_the_env_example_placeholder_key(tmp_path):
+    result = _run_settings(tmp_path, ["SECRET_KEY"], DJANGO_SECRET_KEY="local-dev-only-change-me-1")
+    assert result.returncode != 0
+    assert "docs/HOSTING.md" in result.stderr
+    ok = _run_settings(
+        tmp_path, ["SECRET_KEY"], DJANGO_SECRET_KEY="local-dev-only-x", DJANGO_DEBUG="true"
+    )
+    assert ok.returncode == 0, ok.stderr
