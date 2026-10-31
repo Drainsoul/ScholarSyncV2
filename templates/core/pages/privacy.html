@@ -10,7 +10,7 @@
   <p>This policy explains how personal data is handled in this copy of ScholarSync. It follows Republic Act No. 10173, the Data Privacy Act of 2012 (RA 10173), of the Philippines. It is template text: whoever runs a copy should review it and adapt it to their organisation and their law.</p>
 
   <h2>Who is responsible</h2>
-  <p>The operator of this copy is the personal information controller: <strong>{{ operator_name }}</strong>.{% if contact_email %} You can reach the operator about your data at <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>.{% else %} This copy has no privacy contact because it runs on your computer, and you are the only person who can see its data.{% endif %} ScholarSync is an independent portfolio project and is not run by the City of Taguig.</p>
+  <p>The operator of this copy is the personal information controller: <strong>{{ operator_name }}</strong>.{% if not local_copy %} You can reach the operator about your data at <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>.{% else %} This copy has no privacy contact because it runs on your computer, and you are the only person who can see its data.{% endif %} ScholarSync is an independent portfolio project and is not run by the City of Taguig.</p>
 
   <h2>What is collected</h2>
   <ul>
@@ -56,7 +56,7 @@
   </ul>
 
   <h2>How to use your rights</h2>
-  <p>{% if contact_email %}Write to <a href="mailto:{{ contact_email }}">{{ contact_email }}</a> and say what you need. The operator should answer within a reasonable time.{% else %}Because this copy runs on your computer, you can view and change its data yourself. Delete everything with <code>docker compose down -v</code>.{% endif %}</p>
+  <p>{% if not local_copy %}Write to <a href="mailto:{{ contact_email }}">{{ contact_email }}</a> and say what you need. The operator should answer within a reasonable time.{% else %}Because this copy runs on your computer, you can view and change its data yourself. Delete everything with <code>docker compose down -v</code>.{% endif %}</p>
 
   <h2>Cookies</h2>
   <p>This site uses only the cookies it needs to work. See the <a href="{% url 'core:cookies' %}">cookie notice</a>.</p>

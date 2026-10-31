@@ -58,6 +58,24 @@ SITE_OPERATOR_NAME = (
 PRIVACY_CONTACT_EMAIL = (
     env.str("PRIVACY_CONTACT_EMAIL") if PRODUCTION else env.str("PRIVACY_CONTACT_EMAIL", "")
 )
+_PLACEHOLDER_HELP = "Set it to your real value in .env (docs/HOSTING.md)."
+if PRODUCTION:
+    if not SITE_OPERATOR_NAME.strip() or "change-me" in SITE_OPERATOR_NAME.lower():
+        raise ImproperlyConfigured(
+            f"SITE_OPERATOR_NAME is blank or a placeholder. {_PLACEHOLDER_HELP}"
+        )
+    _email = PRIVACY_CONTACT_EMAIL.strip().lower()
+    _domain = _email.rpartition("@")[2]
+    if (
+        not _email
+        or "change-me" in _email
+        or "@" not in _email
+        or any(part == "example" for part in _domain.split("."))
+        or _domain in {"example.com", "example.org", "example.net"}
+    ):
+        raise ImproperlyConfigured(
+            f"PRIVACY_CONTACT_EMAIL is blank or a placeholder. {_PLACEHOLDER_HELP}"
+        )
 # The privacy notice version. M4's ConsentRecord.notice_version stores it; bump it on changes.
 PRIVACY_NOTICE_VERSION = "2026-10-30"
 

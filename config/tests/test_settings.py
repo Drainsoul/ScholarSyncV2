@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -21,8 +22,8 @@ def test_settings_refuse_to_load_without_required_vars(missing, tmp_path):
     env.update(
         {
             "DJANGO_SECRET_KEY": "x" * 50,
-            "SITE_OPERATOR_NAME": "Example Org",
-            "PRIVACY_CONTACT_EMAIL": "privacy@example.org",
+            "SITE_OPERATOR_NAME": "ScholarSync Test",
+            "PRIVACY_CONTACT_EMAIL": "privacy@scholarsync.test",
             "DATABASE_URL": "postgres://u:p@localhost:5433/db",
             "DJANGO_ENV_FILE": str(tmp_path / "absent.env"),
         }
@@ -45,8 +46,8 @@ def test_debug_defaults_to_off_when_unset(tmp_path):
     env.update(
         {
             "DJANGO_SECRET_KEY": "x" * 50,
-            "SITE_OPERATOR_NAME": "Example Org",
-            "PRIVACY_CONTACT_EMAIL": "privacy@example.org",
+            "SITE_OPERATOR_NAME": "ScholarSync Test",
+            "PRIVACY_CONTACT_EMAIL": "privacy@scholarsync.test",
             "DATABASE_URL": "postgres://u:p@localhost:5433/db",
             "DJANGO_ENV_FILE": str(tmp_path / "absent.env"),
         }
@@ -79,8 +80,8 @@ def _run_settings(tmp_path, names, _unset=(), **extra):
     env.update(
         {
             "DJANGO_SECRET_KEY": "x" * 50,
-            "SITE_OPERATOR_NAME": "Example Org",
-            "PRIVACY_CONTACT_EMAIL": "privacy@example.org",
+            "SITE_OPERATOR_NAME": "ScholarSync Test",
+            "PRIVACY_CONTACT_EMAIL": "privacy@scholarsync.test",
             "DATABASE_URL": "postgres://u:p@localhost:5433/db",
             "DJANGO_ENV_FILE": str(tmp_path / "absent.env"),
             **extra,
@@ -243,3 +244,43 @@ def test_operator_settings_default_outside_production(tmp_path):
     assert values["SITE_OPERATOR_NAME"] == "This local copy"
     assert values["PRIVACY_CONTACT_EMAIL"] == ""
     assert values["PRIVACY_NOTICE_VERSION"] == "2026-10-30"
+
+
+@pytest.mark.parametrize(
+    ("name", "value"),
+    [
+        ("SITE_OPERATOR_NAME", ""),
+        ("SITE_OPERATOR_NAME", "   "),
+        ("SITE_OPERATOR_NAME", "Example Organisation CHANGE-ME"),
+        ("PRIVACY_CONTACT_EMAIL", ""),
+        ("PRIVACY_CONTACT_EMAIL", "change-me@scholarsync.test"),
+        ("PRIVACY_CONTACT_EMAIL", "privacy@example.org"),
+        ("PRIVACY_CONTACT_EMAIL", "privacy@example.com"),
+        ("PRIVACY_CONTACT_EMAIL", "privacy@mail.example.net"),
+        ("PRIVACY_CONTACT_EMAIL", "privacy@example.ph"),
+    ],
+)
+def test_production_refuses_placeholder_operator_settings(tmp_path, name, value):
+    result = _run_settings(tmp_path, [name], **{name: value})
+    assert result.returncode != 0
+    assert name in result.stderr
+    assert "docs/HOSTING.md" in result.stderr
+
+
+def test_production_accepts_real_operator_settings(tmp_path):
+    values = settings_values(
+        tmp_path,
+        ["SITE_OPERATOR_NAME", "PRIVACY_CONTACT_EMAIL"],
+        SITE_OPERATOR_NAME="Barangay Scholars Office",
+        PRIVACY_CONTACT_EMAIL="dpo@scholarsync.test",
+    )
+    assert values["PRIVACY_CONTACT_EMAIL"] == "dpo@scholarsync.test"
+
+
+def test_env_example_placeholders_fail_the_production_guard(tmp_path):
+    example = (ROOT / ".env.example").read_text(encoding="utf-8")
+    pairs = dict(
+        re.findall(r"^(SITE_OPERATOR_NAME|PRIVACY_CONTACT_EMAIL)=(.*)$", example, re.MULTILINE)
+    )
+    for name, value in pairs.items():
+        assert _run_settings(tmp_path, [name], **{name: value}).returncode != 0, name

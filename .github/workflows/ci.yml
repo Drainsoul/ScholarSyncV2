@@ -31,8 +31,8 @@ jobs:
       DJANGO_SECRET_KEY: ci-only-not-a-secret-0123456789abcdefghijklmnopqrstuvwxyz
       DATABASE_URL: postgres://scholarsync:scholarsync@localhost:5432/scholarsync
       DJANGO_DEBUG: "true"
-      SITE_OPERATOR_NAME: CI Example Org
-      PRIVACY_CONTACT_EMAIL: privacy@example.org
+      SITE_OPERATOR_NAME: ScholarSync CI
+      PRIVACY_CONTACT_EMAIL: privacy@scholarsync.test
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.3.0  # no floating major tag is published; pin the full version
@@ -77,8 +77,8 @@ jobs:
       DJANGO_SECRET_KEY: ci-deploy-check-only-0123456789abcdefghijklmnopqrstuvwxyzABCD
       # A production-like stand-in host.
       DJANGO_ALLOWED_HOSTS: scholarsync.example
-      SITE_OPERATOR_NAME: CI Example Org
-      PRIVACY_CONTACT_EMAIL: privacy@example.org
+      SITE_OPERATOR_NAME: ScholarSync CI
+      PRIVACY_CONTACT_EMAIL: privacy@scholarsync.test
       DATABASE_URL: postgres://scholarsync:scholarsync@localhost:5432/scholarsync
     steps:
       - uses: actions/checkout@v7

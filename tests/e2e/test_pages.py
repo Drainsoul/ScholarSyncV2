@@ -1,10 +1,10 @@
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page, ViewportSize, expect
 
 pytestmark = pytest.mark.e2e
 
-PHONE = {"width": 375, "height": 812}
-DESKTOP = {"width": 1280, "height": 800}
+PHONE: ViewportSize = {"width": 375, "height": 812}
+DESKTOP: ViewportSize = {"width": 1280, "height": 800}
 PAGES = ["about", "privacy", "terms", "cookies", "help", "contact"]
 
 
