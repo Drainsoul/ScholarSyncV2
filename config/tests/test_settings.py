@@ -181,3 +181,32 @@ def test_demo_detection_needs_the_apps_module(tmp_path):
     assert demo_installed(tmp_path) is False  # leftover folder only
     (tmp_path / "apps" / "demo" / "apps.py").write_text("", encoding="utf-8")
     assert demo_installed(tmp_path) is True
+
+
+def test_csp_allows_the_storage_origin(tmp_path):
+    values = settings_values(
+        tmp_path,
+        ["CONTENT_SECURITY_POLICY_REPORT_ONLY"],
+        S3_PUBLIC_ENDPOINT_URL="http://localhost:9000/",
+    )
+    directives = values["CONTENT_SECURITY_POLICY_REPORT_ONLY"]["DIRECTIVES"]
+    assert "http://localhost:9000" in directives["img-src"]
+    assert "http://localhost:9000" in directives["connect-src"]
+
+
+def test_storage_origin_is_absent_from_csp_when_unset(tmp_path):
+    values = settings_values(tmp_path, ["CONTENT_SECURITY_POLICY_REPORT_ONLY", "S3_STORAGE"])
+    directives = values["CONTENT_SECURITY_POLICY_REPORT_ONLY"]["DIRECTIVES"]
+    assert directives["connect-src"] == ["'self'"]
+    assert values["S3_STORAGE"]["addressing_style"] == "path"
+
+
+def test_email_url_configures_smtp(tmp_path):
+    values = settings_values(
+        tmp_path,
+        ["EMAIL_BACKEND", "EMAIL_HOST", "EMAIL_PORT"],
+        EMAIL_URL="smtp://mail:1025",
+    )
+    assert values["EMAIL_BACKEND"] == "django.core.mail.backends.smtp.EmailBackend"
+    assert values["EMAIL_HOST"] == "mail"
+    assert values["EMAIL_PORT"] == 1025

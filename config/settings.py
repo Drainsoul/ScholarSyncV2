@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from django.core.exceptions import ImproperlyConfigured
 from environs import Env
@@ -102,6 +103,24 @@ DATABASES = {
 }
 DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
 
+# Email: one URL (smtp://user:pass@host:587, smtp+tls://..., console://) -----------------------
+if not os.environ.get("EMAIL_URL"):
+    os.environ.pop("EMAIL_URL", None)  # a blank line in .env means "use the console backend"
+globals().update(env.dj_email_url("EMAIL_URL", "console://"))
+DEFAULT_FROM_EMAIL = env.str("DEFAULT_FROM_EMAIL", "ScholarSync <no-reply@localhost>")
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
+
+# File storage: any S3-compatible service (consumed by apps/files in M5) -------------------------
+S3_STORAGE: dict[str, str] = {
+    "endpoint_url": env.str("S3_ENDPOINT_URL", ""),
+    "public_endpoint_url": env.str("S3_PUBLIC_ENDPOINT_URL", ""),
+    "region": env.str("S3_REGION", ""),
+    "bucket": env.str("S3_BUCKET", ""),
+    "access_key_id": env.str("S3_ACCESS_KEY_ID", ""),
+    "secret_access_key": env.str("S3_SECRET_ACCESS_KEY", ""),
+    "addressing_style": env.str("S3_ADDRESSING_STYLE", "path"),
+}
+
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.db.DatabaseCache",
@@ -172,13 +191,24 @@ PERMISSIONS_POLICY = (
     "microphone=(), payment=(), usb=()"
 )
 
+
+def _origin(url: str) -> str:
+    """scheme://host[:port] of a URL, or "" when it has none."""
+    parts = urlsplit(url)
+    return f"{parts.scheme}://{parts.netloc}" if parts.scheme and parts.netloc else ""
+
+
+# Browsers talk to the storage origin directly (presigned PUT and GET).
+_STORAGE_ORIGIN = _origin(S3_STORAGE["public_endpoint_url"] or S3_STORAGE["endpoint_url"])
+_STORAGE_SOURCES = [_STORAGE_ORIGIN] if _STORAGE_ORIGIN else []
+
 _CSP_DIRECTIVES = {
     "default-src": [SELF],
     "script-src": [SELF],
     "style-src": [SELF],
-    "img-src": [SELF, "data:"],
+    "img-src": [SELF, "data:", *_STORAGE_SOURCES],
     "font-src": [SELF],
-    "connect-src": [SELF],
+    "connect-src": [SELF, *_STORAGE_SOURCES],
     "frame-ancestors": [NONE],
     "form-action": [SELF],
     "base-uri": [SELF],

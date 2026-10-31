@@ -1,12 +1,37 @@
+# `docker compose up` runs ScholarSync in explore mode: the app, its own PostgreSQL,
+# S3-compatible storage and a Mailpit inbox. No .env file is needed.
+# Explore mode serves only localhost, and every port below is published on 127.0.0.1 only.
+# The developer workflow (CLAUDE.md) uses just the database: `docker compose up -d db`.
+# To host ScholarSync for real, use compose.production.yaml (docs/HOSTING.md).
+
+x-web-environment: &web-environment
+  SCHOLARSYNC_EXPLORE: "true"
+  CSP_REPORT_ONLY: "false"
+  # Public on purpose: explore mode is localhost-only and production refuses this prefix.
+  DJANGO_SECRET_KEY: "explore-only-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  DATABASE_URL: postgres://scholarsync:scholarsync@db:5432/scholarsync
+  EMAIL_URL: smtp://mail:1025
+  S3_ENDPOINT_URL: http://storage:9000
+  # The browser needs an address it can reach, because uploads go straight to storage.
+  S3_PUBLIC_ENDPOINT_URL: http://localhost:${STORAGE_PORT:-9000}
+  S3_REGION: us-east-1
+  S3_BUCKET: scholarsync
+  S3_ACCESS_KEY_ID: scholarsync
+  S3_SECRET_ACCESS_KEY: scholarsync-explore-secret
+  S3_ADDRESSING_STYLE: path
+  # Used only for the ready message in the console.
+  APP_PORT: ${APP_PORT:-8000}
+  MAIL_PORT: ${MAIL_PORT:-8025}
+
 services:
   db:
-    image: postgres:17
+    image: postgres:17.11
     environment:
       POSTGRES_USER: scholarsync
       POSTGRES_PASSWORD: scholarsync
       POSTGRES_DB: scholarsync
     ports:
-      - "5433:5432"
+      - "127.0.0.1:${DB_PORT:-5433}:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
@@ -15,5 +40,79 @@ services:
       timeout: 5s
       retries: 10
 
+  # RustFS (Apache-2.0, S3 API). MinIO's community images are no longer published.
+  storage:
+    image: rustfs/rustfs:1.0.4
+    environment:
+      RUSTFS_ACCESS_KEY: scholarsync
+      RUSTFS_SECRET_KEY: scholarsync-explore-secret
+    ports:
+      - "127.0.0.1:${STORAGE_PORT:-9000}:9000"
+    volumes:
+      - storage-data:/data
+
+  # One-shot and idempotent: bucket, CORS for the browser uploads, 1-day expiry on pending/.
+  # RustFS accepts bucket lifecycle rules (checked). If you swap in a server that does not, delete
+  # the last s3api line: abandoned pending/ uploads then stay until you remove them.
+  storage-init:
+    image: amazon/aws-cli:2.39.3
+    depends_on:
+      - storage
+    restart: "no"
+    environment:
+      AWS_ACCESS_KEY_ID: scholarsync
+      AWS_SECRET_ACCESS_KEY: scholarsync-explore-secret
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_EC2_METADATA_DISABLED: "true"
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        set -eu
+        S3="aws --endpoint-url http://storage:9000"
+        n=0
+        until $$S3 s3api list-buckets >/dev/null 2>&1; do
+          n=$$((n + 1))
+          [ "$$n" -lt 60 ] || { echo "storage did not come up" >&2; exit 1; }
+          sleep 2
+        done
+        $$S3 s3api head-bucket --bucket scholarsync 2>/dev/null || $$S3 s3api create-bucket --bucket scholarsync
+        $$S3 s3api put-bucket-cors --bucket scholarsync --cors-configuration '{"CORSRules":[{"AllowedOrigins":["http://localhost:${APP_PORT:-8000}","http://127.0.0.1:${APP_PORT:-8000}"],"AllowedMethods":["GET","PUT","HEAD"],"AllowedHeaders":["*"],"ExposeHeaders":["ETag"],"MaxAgeSeconds":3600}]}'
+        $$S3 s3api put-bucket-lifecycle-configuration --bucket scholarsync --lifecycle-configuration '{"Rules":[{"ID":"expire-pending","Status":"Enabled","Filter":{"Prefix":"pending/"},"Expiration":{"Days":1}}]}'
+        echo "storage ready"
+
+  mail:
+    image: axllent/mailpit:v1.32.0
+    ports:
+      - "127.0.0.1:${MAIL_PORT:-8025}:8025"
+
+  web:
+    build: .
+    image: scholarsync:local
+    environment: *web-environment
+    ports:
+      - "127.0.0.1:${APP_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      storage-init:
+        condition: service_completed_successfully
+      mail:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=4)"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 30s
+
+  worker:
+    image: scholarsync:local
+    command: ["python", "manage.py", "run_worker"]
+    environment: *web-environment
+    depends_on:
+      web:
+        condition: service_healthy
+
 volumes:
   db-data:
+  storage-data:
