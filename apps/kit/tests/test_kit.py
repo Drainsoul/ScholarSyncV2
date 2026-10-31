@@ -45,7 +45,7 @@ def test_icon_names_come_from_the_built_sprite(vite_build):
 
 
 def test_kit_index_renders_when_the_sprite_is_missing(client, kit_on, vite_build, monkeypatch):
-    """Vercel ships no frontend/src and a preview may lack the sprite: the kit still renders."""
+    """A deploy may ship no frontend/src and may lack the sprite: the kit still renders."""
     monkeypatch.setattr(finders, "find", lambda *args, **kwargs: None)
     assert icon_names() == []
     assert client.get("/_kit/").status_code == 200

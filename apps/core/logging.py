@@ -11,7 +11,7 @@ type ExcInfo = (
 
 
 class JsonFormatter(logging.Formatter):
-    """One JSON object per line for Vercel's log viewer.
+    """One JSON object per line for any log collector reading stdout.
 
     Messages and tracebacks pass through `redact()`, but never put names, emails or document
     contents into log arguments or `extra` in the first place.
