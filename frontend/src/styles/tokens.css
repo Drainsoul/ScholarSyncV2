@@ -16,7 +16,6 @@
   --gold-700: #8f6500;
   --green-800: #11663a;
   --green-100: #b9dcc6;
-  --green-50: #e7f3ec;
   --ink-900: #0e1b2c;
   --slate-700: #3d4654;
   --slate-500: #5b6472;
@@ -86,9 +85,9 @@
   --text-base: 1rem;
   --text-md: 1.125rem;
   --text-lg: 1.25rem;
-  --text-xl: 1.5rem;
-  --text-2xl: 1.875rem;
-  --text-3xl: 1.75rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.625rem;
+  --text-3xl: 1.875rem;
   --text-4xl: 2.875rem;
   --leading-tight: 1.2;
   --leading-body: 1.5;

@@ -185,10 +185,28 @@ html:not(.js) .toast__close {
     border-left: 1px solid var(--border);
     box-shadow: var(--shadow-float);
   }
+
+  /* Reserve the panel's width beside it, so no control or link sits under the panel (WCAG 2.4.11). */
+  .app:has(.drawer) > .topbar {
+    margin-right: var(--drawer-width);
+  }
+
+  .app:has(.drawer) > .page {
+    padding-right: calc(var(--drawer-width) + var(--space-8));
+  }
 }
 
-.drawer:focus {
+/* The panel takes focus when it opens: no halo (it would draw under a full-screen panel); from
+   64rem the panel has its own float shadow. */
+.drawer:is(:focus, :focus-visible) {
   outline: none;
+  box-shadow: none;
+}
+
+@media (min-width: 64rem) {
+  .drawer:is(:focus, :focus-visible) {
+    box-shadow: var(--shadow-float);
+  }
 }
 
 .drawer__header {

@@ -218,3 +218,18 @@ def test_every_var_reference_resolves_to_a_token():
 
 def test_migration_aliases_are_gone():
     assert REMOVED_NAMES.isdisjoint(tokens())
+
+
+def test_heading_sizes_step_down_from_h1_to_h4():
+    base = (STYLES / "base.css").read_text(encoding="utf-8")
+    sizes = tokens()
+    scale = []
+    for tag in ("h1", "h2", "h3", "h4"):
+        rule = re.search(rf"{tag},\s*\.{tag} \{{\s*font-size: var\(--([a-z0-9-]+)\)", base)
+        assert rule, tag
+        scale.append(float(sizes[rule.group(1)].removesuffix("rem")))
+    assert scale == sorted(scale, reverse=True) and len(set(scale)) == 4
+
+
+def test_no_unused_green_50_token():
+    assert "green-50" not in (STYLES / "tokens.css").read_text(encoding="utf-8")
