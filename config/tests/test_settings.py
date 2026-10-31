@@ -171,3 +171,13 @@ def test_csrf_trusted_origins_from_env(tmp_path):
         DJANGO_CSRF_TRUSTED_ORIGINS="https://a.example,https://b.example",
     )
     assert values["CSRF_TRUSTED_ORIGINS"] == ["https://a.example", "https://b.example"]
+
+
+def test_demo_detection_needs_the_apps_module(tmp_path):
+    from config.demo import demo_installed
+
+    assert demo_installed(tmp_path) is False
+    (tmp_path / "apps" / "demo" / "__pycache__").mkdir(parents=True)
+    assert demo_installed(tmp_path) is False  # leftover folder only
+    (tmp_path / "apps" / "demo" / "apps.py").write_text("", encoding="utf-8")
+    assert demo_installed(tmp_path) is True

@@ -1,11 +1,12 @@
 """ScholarSync settings: one module, configured only through environment variables (spec §14)."""
 
-import importlib.util
 import os
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
 from environs import Env
+
+from config.demo import demo_installed
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -58,7 +59,7 @@ INSTALLED_APPS = [
 ]
 
 # The demo lives in one deletable folder (spec 2026-10-30 section 5). Absent folder, no demo.
-DEMO_INSTALLED = importlib.util.find_spec("apps.demo") is not None
+DEMO_INSTALLED = demo_installed(BASE_DIR)
 if DEMO_INSTALLED:
     INSTALLED_APPS.append("apps.demo")
 DEMO_ACTIVE = DEMO_INSTALLED and not PRODUCTION
