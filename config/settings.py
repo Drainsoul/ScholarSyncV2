@@ -1,5 +1,6 @@
 """ScholarSync settings: one module, configured only through environment variables (spec §14)."""
 
+import importlib.util
 import os
 from pathlib import Path
 
@@ -55,6 +56,12 @@ INSTALLED_APPS = [
     "apps.core",
     "apps.kit",
 ]
+
+# The demo lives in one deletable folder (spec 2026-10-30 section 5). Absent folder, no demo.
+DEMO_INSTALLED = importlib.util.find_spec("apps.demo") is not None
+if DEMO_INSTALLED:
+    INSTALLED_APPS.append("apps.demo")
+DEMO_ACTIVE = DEMO_INSTALLED and not PRODUCTION
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
