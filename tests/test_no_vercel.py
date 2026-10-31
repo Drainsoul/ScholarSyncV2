@@ -24,3 +24,10 @@ def test_no_old_host_references_in_code():
         if path.is_file() and WORD in path.read_text(encoding="utf-8").lower():
             offenders.append(name)
     assert not offenders, offenders
+
+
+def test_spike_leftovers_stay_git_ignored():
+    """Until the M1 spike teardown (M3.5 Task 11), its local files must not be committable."""
+    lines = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
+    assert "." + WORD + "/" in lines
+    assert ".env.spike" in lines

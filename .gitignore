@@ -228,4 +228,6 @@ static/dist/
 staticfiles/
 frontend/node_modules/
 .env.local
+# M1 spike leftovers: remove with the spike teardown (M3.5 Task 11)
+.vercel/
 .env.spike
