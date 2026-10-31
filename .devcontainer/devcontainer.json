@@ -4,10 +4,12 @@
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:1": {}
   },
-  "postStartCommand": "docker compose up -d --build",
+  "postCreateCommand": "sh .devcontainer/explore-key.sh",
+  "postStartCommand": "sh .devcontainer/explore-key.sh && docker compose --env-file .devcontainer/explore.env up -d --build",
   "forwardPorts": [8000, 8025],
   "portsAttributes": {
-    "8000": { "label": "ScholarSync", "onAutoForward": "openBrowser" },
-    "8025": { "label": "Email inbox" }
-  }
+    "8000": { "label": "ScholarSync", "onAutoForward": "openBrowser", "visibility": "private" },
+    "8025": { "label": "Email inbox", "visibility": "private" }
+  },
+  "otherPortsAttributes": { "onAutoForward": "ignore" }
 }

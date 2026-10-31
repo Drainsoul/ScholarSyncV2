@@ -66,6 +66,16 @@ The "Open in GitHub Codespaces" badge in the README starts the same `docker comp
 (`.devcontainer/devcontainer.json`). Open the forwarded "ScholarSync" port 8000 once the build finishes. Explore mode
 adds that one forwarded address to its allowed hosts, and nothing else.
 
+Each codespace gets its own secret key: the devcontainer writes a random `EXPLORE_SECRET_KEY` to the git-ignored
+`.devcontainer/explore.env` on first start and passes it to compose every time (`docker compose --env-file
+.devcontainer/explore.env up -d --build`). Explore mode refuses the public `explore-only-` key inside a codespace. To
+start the stack by hand in a codespace, use that same command.
+
+**Never make the ports public.** Ports 8000 and 8025 are forwarded as private (only you, signed in to GitHub, can open
+them), and the database and storage ports are not forwarded at all. Keep it that way: the explore copy has published
+demo accounts (from M4) and a known database password, so anyone who could reach a public port could sign in as them.
+The per-codespace key protects sessions only.
+
 Known limitation: file storage is advertised at `localhost:9000`, which a codespace browser cannot reach. Uploads
 arrive in a later milestone, so nothing uses it yet.
 

@@ -77,3 +77,24 @@ def test_production_compose_forces_a_safe_mode():
         assert line in forced.group(1)
     for service in ("web", "worker"):
         assert "*forced" in _service_block("compose.production.yaml", service)
+
+
+def test_explore_compose_takes_a_per_codespace_key():
+    block = (ROOT / "compose.yaml").read_text(encoding="utf-8")
+    assert 'DJANGO_SECRET_KEY: "${EXPLORE_SECRET_KEY:-explore-only-' in block
+
+
+def test_devcontainer_generates_a_key_and_keeps_ports_private():
+    import json
+
+    config = json.loads((ROOT / ".devcontainer" / "devcontainer.json").read_text(encoding="utf-8"))
+    assert "explore-key.sh" in config["postCreateCommand"]
+    start = config["postStartCommand"]
+    assert start.index("explore-key.sh") < start.index("docker compose")
+    assert "--env-file .devcontainer/explore.env" in start
+    for port in ("8000", "8025"):
+        assert config["portsAttributes"][port]["visibility"] == "private"
+    assert config["otherPortsAttributes"] == {"onAutoForward": "ignore"}
+    assert b"\r" not in (ROOT / ".devcontainer" / "explore-key.sh").read_bytes()
+    ignored = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
+    assert ".devcontainer/explore.env" in ignored

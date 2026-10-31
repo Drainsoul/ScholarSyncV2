@@ -42,6 +42,13 @@ if EXPLORE and _codespace_name and _codespace_domain:
     _codespace_host = f"{_codespace_name}-{env.int('APP_PORT', 8000)}.{_codespace_domain}"
     ALLOWED_HOSTS.append(_codespace_host)
     CSRF_TRUSTED_ORIGINS.append(f"https://{_codespace_host}")
+    # A codespace is reachable over the internet (signed in to GitHub), so the public key would
+    # let anyone who can open the forwarded port forge sessions.
+    if SECRET_KEY.startswith("explore-only-"):
+        raise ImproperlyConfigured(
+            "DJANGO_SECRET_KEY is the public explore key, which a codespace must not use. "
+            "The devcontainer generates a key for each codespace; see docs/SETUP.md."
+        )
 
 if PRODUCTION and SECRET_KEY.startswith("explore-only-"):
     raise ImproperlyConfigured(

@@ -231,3 +231,6 @@ frontend/node_modules/
 # M1 spike leftovers: remove with the spike teardown (M3.5 Task 11)
 .vercel/
 .env.spike
+
+# Per-codespace secret key written by .devcontainer/explore-key.sh
+.devcontainer/explore.env
