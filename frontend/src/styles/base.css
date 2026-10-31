@@ -152,8 +152,9 @@ code {
   box-shadow: var(--focus-ring);
 }
 
-main:focus {
+main:is(:focus, :focus-visible) {
   outline: none;
+  box-shadow: none;
 }
 
 .icon {
