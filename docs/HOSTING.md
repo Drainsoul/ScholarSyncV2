@@ -126,8 +126,9 @@ scholarships.example.org {
     reverse_proxy 127.0.0.1:8000
 }
 ```
-By default `compose.production.yaml` publishes the port on all interfaces. If the proxy runs on the same machine, edit
-the `ports` line to `"127.0.0.1:${APP_PORT:-8000}:8000"` so only the proxy can reach the app.
+`compose.production.yaml` publishes the port on `127.0.0.1` only, so only a proxy on the same machine can reach the app.
+If the proxy runs on another host, edit the `ports` line of `web` to `"${APP_PORT:-8000}:8000"` (all interfaces) or
+`"PRIVATE_IP:${APP_PORT:-8000}:8000"` (one private interface), and firewall the port so only the proxy can connect.
 
 To update later: `git pull`, then run the same `up -d --build` command.
 
