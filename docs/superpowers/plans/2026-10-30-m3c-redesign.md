@@ -1,8 +1,5 @@
 # M3c Redesign Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or
-> superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Restyle the whole front end to spec §12 revision 4 so that the design kit and every mockup match Kenneth's
 canvas: red primary, blue secondary, yellow accent, a white sidebar shell, cards, one figures box, and status as
 coloured text.
@@ -40,9 +37,8 @@ CSP forbids them).
   - no step pills;
   - no icons in the figures box.
 - Sample data stays Faker-only (`apps/kit/samples.py`), never real people.
-- One Conventional Commit per task, staging only that task's files. **No AI attribution** in commits (no
-  `Co-Authored-By`, no "Generated with"). Repeat this in every subagent prompt.
-- Never push. After each task, update the local, git-ignored `STATE.md` and never stage it.
+- One Conventional Commit per task, staging only that task's files. 
+- Never push.
 - Python edits from scripts use `encoding="utf-8"` and `newline="\n"`.
 - The full gate after each task: `python -m uv run pytest -n auto`, the e2e suite, `ruff check .`,
   `ruff format --check .`, `mypy .`, and `npm --prefix frontend run typecheck|check|build|budget`. The budget is
@@ -528,4 +524,4 @@ Reference: `docs/design/2026-10-30-redesign/Main.dc.html`.
 - [ ] **Step 3: Search for leftovers.** Run `rg -n "navy|#1a3a6b|#f0b323|class=\"tag|appbar|sidenav" frontend templates apps`.
   Expected: no hits, except in tests that assert absence.
 - [ ] **Step 4: Update `CLAUDE.md`** only if the file structure changed (for example a new `components.css`), and
-  update `STATE.md` (M3c done, screenshots path, the mockup gate awaiting Kenneth).
+  note that M3c is done and the mockup gate awaits Kenneth.

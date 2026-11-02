@@ -1,10 +1,7 @@
 # M1 Vercel Go/No-Go Spike Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or
-> superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Prove or reject Vercel as ScholarSync V2's host. A throwaway Django + Vite probe app is deployed to Vercel and
-exercises everything the spec relies on. The answer goes into `STATE.md` → Spike results as a go or no-go.
+exercises everything the spec relies on. The answer is recorded as a go or no-go.
 
 **Architecture:** One small Django project (`config/` + a `probe` app) on the throwaway branch `spike/vercel`. It has:
 - a page rendered with django-vite assets;
@@ -13,7 +10,7 @@ exercises everything the spec relies on. The answer goes into `STATE.md` → Spi
 - an R2 presigned upload/confirm/download flow.
 
 Tasks 1–5 are built and tested locally: Postgres in Docker, moto as the S3 stand-in, the console email backend. Task 6
-is Kenneth creating the external accounts. Task 7 deploys and measures.
+is creating the external accounts. Task 7 deploys and measures.
 
 **Tech Stack:**
 - Python 3.13 (uv 0.13), Django 5.2.18, environs 15.2 (+ dj-database-url), psycopg 3.3;
@@ -27,7 +24,7 @@ is Kenneth creating the external accounts. Task 7 deploys and measures.
 
 ## Global Constraints
 - Python `>=3.13,<3.14`; Django `>=5.2.18,<5.3` (5.2 LTS).
-- Vercel region `sin1`; Neon Singapore (`aws-ap-southeast-1`).
+- Vercel region `sin1`; a Neon database in Singapore.
 - Database at runtime: `CONN_MAX_AGE=0`, `CONN_HEALTH_CHECKS=True`, `DISABLE_SERVER_SIDE_CURSORS=True`.
 - Migrations and `createcachetable` run in the build against `DATABASE_URL_UNPOOLED` (falling back to `DATABASE_URL`
   when it's unset).
@@ -40,12 +37,11 @@ is Kenneth creating the external accounts. Task 7 deploys and measures.
   configured secret means **deny**, never allow.
 - **Secrets:**
   - never commit secrets; `.env.example` has placeholders only;
-  - Kenneth enters real keys himself (Vercel dashboard or `vercel env add`);
-  - Claude never handles or prints them.
+  - the maintainer enters real keys himself (Vercel dashboard or `vercel env add`) and never prints them.
 - **Git:**
   - this plan is committed to `main`; all spike code is committed to `spike/vercel` only;
   - nothing is pushed to GitHub;
-  - Conventional Commits, **no AI attribution trailers** (`CLAUDE.local.md`).
+  - Conventional Commits.
 - Windows: run uv as `python -m uv …` (uv isn't on PATH) and use PowerShell 5.1 syntax (no `&&`; use `;` or separate
   commands).
 
@@ -176,9 +172,9 @@ def test_vercel_hosts_collects_set_values_in_order():
     environ = {
         "VERCEL_URL": "spike-abc.vercel.app",
         "VERCEL_BRANCH_URL": "",
-        "VERCEL_PROJECT_PRODUCTION_URL": "scholarsync-spike.vercel.app",
+        "VERCEL_PROJECT_PRODUCTION_URL": "<spike-project>.vercel.app",
     }
-    assert vercel_hosts(environ) == ["spike-abc.vercel.app", "scholarsync-spike.vercel.app"]
+    assert vercel_hosts(environ) == ["spike-abc.vercel.app", "<spike-project>.vercel.app"]
 
 
 def test_vercel_hosts_empty_outside_vercel():
@@ -1671,28 +1667,26 @@ git commit -m "feat(spike): add R2 presigned upload, confirm and download probe"
 
 ---
 
-### Task 6: External accounts (Kenneth)
+### Task 6: External accounts
 
-No code. Claude can't create accounts or handle these secrets. Kenneth does each step and tells Claude when it's done;
-Claude then records it in `STATE.md` → External accounts.
+No code. The maintainer creates the accounts and handles the secrets himself, and notes each step when it's done.
 
 - [ ] **Step 1: Vercel CLI and login.** In PowerShell: `npm install -g vercel@63.1.2`, then `vercel login`
   (interactive). Check: `vercel whoami` prints your username.
 - [ ] **Step 2: Link a throwaway project.** In the repo, on `spike/vercel`: `vercel link`. Choose your personal scope,
-  "Link to existing project? No", project name `scholarsync-spike`, and leave the code directory as `./`. Don't connect
+  "Link to existing project? No", a throwaway project name, and leave the code directory as `./`. Don't connect
   the GitHub repo: deploys come from the CLI, so nothing gets pushed.
 - [ ] **Step 3: Neon.**
-  1. In the Vercel dashboard → `scholarsync-spike` → Storage → Create → Neon. Pick region **Singapore
-     (aws-ap-southeast-1)**, connect it to Production and Preview, and turn on "Create database branch for deployment"
+  1. In the Vercel dashboard → the spike project → Storage → Create → Neon. Pick the Singapore region, connect it to Production and Preview, and turn on "Create database branch for deployment"
      for Preview.
-  2. In the Neon console, create a branch `preview-base` from `main`. If the integration lets you choose the parent for
+  2. In the Neon console, create a branch `preview-base` from the main branch. If the integration lets you choose the parent for
      preview branches, set it to `preview-base`. If it doesn't, note that: it's a spike finding.
   3. Confirm that Vercel shows the env vars `DATABASE_URL` and `DATABASE_URL_UNPOOLED`.
 - [ ] **Step 4: Cloudflare R2.**
-  1. Create the bucket `scholarsync-spike` with location hint Asia-Pacific.
+  1. Create a throwaway bucket with location hint Asia-Pacific.
   2. Under Settings, set the CORS policy:
      ```json
-     [{"AllowedOrigins": ["https://scholarsync-spike.vercel.app", "https://*.vercel.app"],
+     [{"AllowedOrigins": ["https://<spike-project>.vercel.app", "https://*.vercel.app"],
        "AllowedMethods": ["PUT", "GET", "HEAD"], "AllowedHeaders": ["content-type"], "MaxAgeSeconds": 3600}]
      ```
   3. Add a lifecycle rule: prefix `pending/`, delete objects after 1 day.
@@ -1709,7 +1703,7 @@ Claude then records it in `STATE.md` → External accounts.
   | `SPIKE_TOKEN` | a second `token_urlsafe(32)` value |
   | `CRON_SECRET` | a third `token_urlsafe(32)` value |
   | `R2_ENDPOINT_URL`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | from step 4 |
-  | `R2_BUCKET` | `scholarsync-spike` |
+  | `R2_BUCKET` | the bucket from step 4 |
   | `R2_REGION` | `auto` |
   | `EMAIL_BACKEND` | `anymail.backends.resend.EmailBackend` |
   | `RESEND_API_KEY` | from step 5 |
@@ -1723,9 +1717,8 @@ Claude then records it in `STATE.md` → External accounts.
 
 ### Task 7: Deploy, measure, decide
 
-Kenneth runs the commands that use his tokens, or allows Claude to run them with the tokens in his shell's environment
-variables (`$env:SPIKE_TOKEN`, `$env:CRON_SECRET`). Claude never prints those values. Results go into `STATE.md` →
-Spike results as a table: check | result | evidence.
+The maintainer runs the commands that use his tokens, with the tokens in his shell's environment variables
+(`$env:SPIKE_TOKEN`, `$env:CRON_SECRET`); those values are never printed. Results are recorded as a table: check | result | evidence.
 
 - [ ] **Step 1: Deploy a preview, then production.**
   `vercel deploy` (preview URL printed), then `vercel deploy --prod`.
@@ -1739,20 +1732,20 @@ Spike results as a table: check | result | evidence.
   Pass: migrations applied, and the manifest present.
 - [ ] **Step 3: Assets.**
   ```powershell
-  curl.exe -s https://scholarsync-spike.vercel.app/ | Select-String "/static/dist/assets/"
-  curl.exe -sI https://scholarsync-spike.vercel.app/static/dist/assets/<main-file-from-previous-output>
+  curl.exe -s https://<spike-project>.vercel.app/ | Select-String "/static/dist/assets/"
+  curl.exe -sI https://<spike-project>.vercel.app/static/dist/assets/<main-file-from-previous-output>
   ```
   Pass: the page links hashed assets, and the asset returns 200 from the CDN (`x-vercel-cache` header present).
   Opening the page in a browser shows "JavaScript bundle loaded."
 - [ ] **Step 4: Runtime, region and database.**
   ```powershell
-  curl.exe -s -H "Authorization: Bearer $env:SPIKE_TOKEN" https://scholarsync-spike.vercel.app/probe/runtime/
+  curl.exe -s -H "Authorization: Bearer $env:SPIKE_TOKEN" https://<spike-project>.vercel.app/probe/runtime/
   ```
   Pass: `vercel_region` is `sin1`, and `db_host` contains `-pooler`. Repeat against the preview URL: a different
   `db_host`/branch means Neon preview branching works.
 - [ ] **Step 5: Cold start.** Leave the deployment idle for 15 minutes, then:
   ```powershell
-  curl.exe -s -o NUL -w "%{time_total}`n" -H "Authorization: Bearer $env:SPIKE_TOKEN" https://scholarsync-spike.vercel.app/probe/runtime/
+  curl.exe -s -o NUL -w "%{time_total}`n" -H "Authorization: Bearer $env:SPIKE_TOKEN" https://<spike-project>.vercel.app/probe/runtime/
   ```
   Run it three times. Record the first (cold) and the next two (warm), plus `uptime_s`/`request_no` from the JSON to
   confirm a new instance. Pass: cold ≤ 3 s, warm ≤ 300 ms.
@@ -1761,23 +1754,23 @@ Spike results as a table: check | result | evidence.
   2. Set `ALLAUTH_TRUSTED_CLIENT_IP_HEADER` to that header, then run `vercel deploy --prod` again.
   3. Pass: `allauth_client_ip` equals your public IP.
 - [ ] **Step 7: Files.**
-  1. Open `https://scholarsync-spike.vercel.app/probe/upload/`, enter the token, and upload a real PDF. Pass: "Stored
+  1. Open `https://<spike-project>.vercel.app/probe/upload/`, enter the token, and upload a real PDF. Pass: "Stored
      as files/….pdf" and download check 0/302.
   2. Rename a `.txt` file to `.pdf` and upload it. Pass: "The file's contents don't match…".
   3. Wrong-size check: request an intent for size 100, then PUT 50 bytes.
      ```powershell
-     $i = curl.exe -s -X POST -H "Authorization: Bearer $env:SPIKE_TOKEN" -H "Content-Type: application/json" -d '{\"content_type\":\"application/pdf\",\"size\":100}' https://scholarsync-spike.vercel.app/probe/files/intent/ | ConvertFrom-Json
+     $i = curl.exe -s -X POST -H "Authorization: Bearer $env:SPIKE_TOKEN" -H "Content-Type: application/json" -d '{\"content_type\":\"application/pdf\",\"size\":100}' https://<spike-project>.vercel.app/probe/files/intent/ | ConvertFrom-Json
      [IO.File]::WriteAllBytes("$env:TEMP\half.bin", [byte[]]::new(50))
      curl.exe -s -o NUL -w "%{http_code}`n" -X PUT -H "Content-Type: application/pdf" --data-binary "@$env:TEMP\half.bin" $i.url
      ```
      Pass: 403 (signature mismatch). R2 must enforce the signed length.
 - [ ] **Step 8: Email.**
   ```powershell
-  curl.exe -s -X POST -H "Authorization: Bearer $env:SPIKE_TOKEN" -d "to=<your Resend signup email>" https://scholarsync-spike.vercel.app/probe/email/
+  curl.exe -s -X POST -H "Authorization: Bearer $env:SPIKE_TOKEN" -d "to=<your Resend signup email>" https://<spike-project>.vercel.app/probe/email/
   ```
   Pass: `{"sent": 1, "message_id": "…"}`, and the email arrives.
 - [ ] **Step 9: Cron.**
-  - `curl.exe -s -H "Authorization: Bearer $env:CRON_SECRET" https://scholarsync-spike.vercel.app/_cron/ping/` returns
+  - `curl.exe -s -H "Authorization: Bearer $env:CRON_SECRET" https://<spike-project>.vercel.app/_cron/ping/` returns
     `{"ok": true}`, and the same call with a wrong token returns 403.
   - The next day, `/probe/runtime/` shows a `last_cron` near 01:00 UTC, set by Vercel's scheduled call. Record it when
     seen.
@@ -1791,7 +1784,7 @@ Spike results as a table: check | result | evidence.
   - **No-go** on any must-pass failure that can't be fixed with configuration. In that case, choose the fallback host
     (Docker on Fly.io or Render, Singapore).
 
-  Update `STATE.md`: Spike results, gates, decisions log, changelog.
+  Record the results and the decision.
 - [ ] **Step 12: Tidy up.** Keep the `spike/vercel` branch for reference (don't merge it into `main`). Optionally delete
-  the `scholarsync-spike` Vercel project, Neon database, R2 bucket and keys once the results are recorded, then revoke
+  the spike's Vercel project, Neon database, R2 bucket and keys once the results are recorded, then revoke
   the R2 token and Resend key.

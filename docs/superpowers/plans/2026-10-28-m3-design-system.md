@@ -1,8 +1,5 @@
 # M3 Design System Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or
-> superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Build ScholarSync's design system on `main`:
 - tokens, self-hosted fonts and an icon sprite;
 - server-rendered components and the five layouts;
@@ -76,9 +73,7 @@
   it doesn't, regenerate the lockfile as in M2.
 - **Git:**
   - one commit per task on `main`; Conventional Commits, imperative, subject ≤ 72 characters;
-  - **no AI attribution** of any kind (no `Co-Authored-By`, no "Generated with");
   - stage only the task's files; never push.
-- **STATE.md** (git-ignored): update after every task (timestamp +08:00, next action, inventory, changelog line).
 
 ## Review Focus
 1. **Personal data cached in the browser:** htmx's history cache stores whole-page snapshots in `localStorage`. On a
@@ -5781,15 +5776,14 @@ git commit -m "feat: add key-screen mockups for the M3 approval gate"
   - `pytest -n auto`, then the e2e command;
   - the front-end typecheck, check, build and budget.
 
-  Record the test counts and the budget figure in `STATE.md`.
+  Record the test counts and the budget figure.
 - [ ] **Whole-branch review:** dispatch a fresh reviewer over `07ac387..HEAD`, with this plan, spec §10/§12 and the
-  Review Focus list. Fix Critical and Important findings test-first (one `fix:` commit each); log Minor ones in
-  `STATE.md` → Known issues.
+  Review Focus list. Fix Critical and Important findings test-first (one `fix:` commit each); log Minor ones as known issues.
 - [ ] **Screenshots for Kenneth:** run the mockup e2e test with `MOCKUP_SCREENSHOTS` set to the session scratchpad.
   That gives phone and desktop PNGs of all five screens.
 - [ ] **The gate:**
   - ask Kenneth to review `/_kit/mockups/` (`python -m uv run python manage.py runserver` with `DJANGO_KIT=true`;
     the screenshots are attached);
   - feedback becomes `fix:`/`feat:` commits in Task 9's files (or the component CSS), re-verified by the same tests;
-  - when Kenneth approves, tick "Key-screen mockups approved" in `STATE.md` → Gates and mark M3 done.
+  - when Kenneth approves, mark the key-screen mockups approved and M3 done.
 - [ ] **Push:** only when Kenneth asks. The new `e2e` CI job runs for the first time on that push.

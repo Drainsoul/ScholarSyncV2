@@ -64,7 +64,7 @@ in one command and a few minutes, without reading more than the README's quick s
 ## 4. The one-command run (explore mode)
 
 **The command:** `docker compose up` from the repository root. Prerequisites: Git and Docker Desktop (or Docker Engine
-with the Compose plugin). Nothing else is installed on the visitor's machine. *(Claude's call: Docker over a
+with the Compose plugin). Nothing else is installed on the visitor's machine. *(Design choice: Docker over a
 `start.bat`/`start.sh` that installs Python, Node and PostgreSQL, because those scripts are where "easy" setups break,
 and the same container doubles as the self-hosting artifact.)*
 
@@ -91,7 +91,7 @@ everything.
 - The console prints the URL and points at the test accounts when the app is ready.
 - Signing up a new account works: the verification email lands in Mailpit.
 
-**Optional extra (Claude's suggestion, not decided by Kenneth):** a GitHub Codespaces configuration and an "Open in
+**Optional extra (a suggestion, not decided by Kenneth):** a GitHub Codespaces configuration and an "Open in
 Codespaces" button in the README, running the same compose setup with nothing installed. Build last, drop if it fights
 the design.
 
@@ -123,7 +123,7 @@ use a reserved test domain (for example `@scholarsync.test`); the builder picks 
 
 The accounts are pre-verified, so logging in never needs email.
 
-**Programs are not demo material** *(Claude's call)*. The TCU CEAA and LANI program definitions (tiers, rules,
+**Programs are not demo material** *(design choice)*. The TCU CEAA and LANI program definitions (tiers, rules,
 required documents), the school list and the terms come from the non-demo `seed_programs` command that main spec §16
 already puts in M4, in `apps/programs/`. It is never run automatically in production. After deleting `apps/demo/`, a
 self-hoster starts with an empty system and either runs `seed_programs` for the Taguig starter programs or creates
@@ -145,7 +145,7 @@ loader for its own screens.
 **When the demo is active:** only when `apps/demo/` exists **and** the app runs in explore or developer mode (§6). In
 production mode it is inactive even if the folder is still there: no notice, and the loader refuses to run. On top of
 that, `manage.py check --deploy` fails with a clear message ("delete apps/demo before deploying") while the folder
-exists, so the hosting guide's own check catches a forgotten deletion. *(Claude's call, from Kenneth's anti-goal.)*
+exists, so the hosting guide's own check catches a forgotten deletion. *(Design choice, from Kenneth's anti-goal.)*
 
 ## 6. Modes
 
@@ -155,7 +155,7 @@ exists, so the hosting guide's own check catches a forgotten deletion. *(Claude'
 | Explore | set by `compose.yaml` (for example `SCHOLARSYNC_EXPLORE=true`) | off | off (plain `http://localhost`) | active | on |
 | Production | neither | off | on | inactive | refused |
 
-- **Explore mode is for the visitor's own machine only** *(Claude's call, from the anti-goal)*. Compose publishes every
+- **Explore mode is for the visitor's own machine only** *(design choice, from the anti-goal)*. Compose publishes every
   port on `127.0.0.1`, and in explore mode `ALLOWED_HOSTS`, the CSRF origins and the public storage endpoint are fixed
   to `localhost`/`127.0.0.1`; settings refuse explore mode with any other host. Reaching it from another device or a
   remote VM is unsupported; anyone who wants that follows the hosting guide. The optional Codespaces setup, if built,
@@ -199,7 +199,7 @@ Removed or rewritten:
 - `VERCEL_ENV` checks (kit guard, Sentry environment/release), log wording in `apps/core/logging.py`;
 - the CI comment and any Vercel-only steps.
 
-The spike branch `spike/vercel` stays local and historical; `STATE.md` keeps its results as history.
+The spike branch `spike/vercel` stays local and historical; its results are kept as history in the M1 plan.
 
 ## 9. `.env.example`
 
@@ -223,7 +223,7 @@ is rewritten to match.
   `pending/`) and email; build and run the image behind HTTPS (the host's TLS or a reverse proxy); run the worker or
   schedule the commands; create the first scholarship-office account; run `manage.py check --deploy`; back up the
   database. Examples stay generic, with at most one or two worked provider examples clearly marked as examples.
-  *(Claude's call)* Self-hosters build the image from source (`docker build`); no image is published to a registry and
+  *(design choice)* Self-hosters build the image from source (`docker build`); no image is published to a registry and
   there is no release pipeline. The repo ships one production compose example (for example `compose.production.yaml`:
   web and worker only, with database, storage and email external, reading `.env`), which the guide uses and CI at
   least validates (`docker compose config`).
@@ -260,7 +260,7 @@ Applied when this document is approved:
    email; `.env.example`; README, SETUP, HOSTING; the hosting-path and compose-smoke CI jobs; the empty `apps/demo/`
    skeleton with its hook and deploy check. The explore run works and shows the existing pages (the kit and mockups)
    even before accounts exist.
-   *(Claude's call on scope)* M3.5 stands up the storage and mail containers, creates the bucket with its CORS rule and
+   *(Design choice on scope)* M3.5 stands up the storage and mail containers, creates the bucket with its CORS rule and
    `pending/` lifecycle rule, and adds the settings and `.env.example` entries. It does **not** add the S3 or email
    libraries or prove a presigned round trip: there is nothing to upload or send yet. Those become acceptance items
    of M4 (email through Mailpit in the compose smoke test) and M5 (a presigned upload/download round trip in the
@@ -272,7 +272,7 @@ Applied when this document is approved:
    3. If a secret is found: show Kenneth the finding, rotate it, then rewrite history to remove it (allowed, §3) and
       force-push `main`. Branches never pushed (`spike/vercel`) stay local.
    4. Tear down the M1 spike's Vercel project, Neon database and R2 bucket, after Kenneth confirms.
-   5. Kenneth flips the repository to public himself, or Claude does it on his explicit go-ahead at that moment.
+   5. Kenneth flips the repository to public himself, or the builder does it on his explicit go-ahead at that moment.
 2. **M4 (accounts, email, minimal program):** test accounts, the login notice and the first sample data, now that the
    `User` model and login page exist.
 3. **M5 onward:** each milestone extends the sample-data loader for its own screens.
@@ -316,7 +316,7 @@ fictional." It replaces today's public footer line ("ScholarSync is the scholars
 Taguig."), which claims an affiliation that doesn't exist. The "City of Taguig" label in the brand block stays (§3),
 and the disclaimer qualifies it.
 
-**Who the operator is** *(Claude's call)*. Two settings, shown on the privacy, terms and contact pages:
+**Who the operator is** *(design choice)*. Two settings, shown on the privacy, terms and contact pages:
 `SITE_OPERATOR_NAME` and `PRIVACY_CONTACT_EMAIL`. In production both are required: startup fails without them, as
 with every other required variable. In explore and developer modes they default to "This local copy" and no email,
 and the privacy page then says the data stays on the visitor's computer. Kenneth's own email never appears in the repo;

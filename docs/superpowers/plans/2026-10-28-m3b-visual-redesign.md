@@ -1,8 +1,5 @@
 # M3b Visual Redesign Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or
-> superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Restyle the M3 design system so it stops reading as AI-generated. The new look is flat, typographic and
 civic, following UI UX Pro Max's government recommendation.
 
@@ -21,11 +18,11 @@ civic, following UI UX Pro Max's government recommendation.
 5.3.1, replacing Inter and Poppins.
 
 **Spec:** `docs/superpowers/specs/2026-10-11-scholarsync-v2-design.md` **rev 3 §12** (the design authority: exact colours,
-type, shape, component and layout rules). The design source is the UI UX Pro Max skill (cloned read-only at
-`<scratchpad>/uupm/repo`, commit `28b3b8d`). Its search tool is:
+type, shape, component and layout rules). The design source is the UI UX Pro Max skill (cloned read-only,
+commit `28b3b8d`). Its search tool is:
 
 ```
-python "<scratchpad>/uupm/repo/.claude/skills/ui-ux-pro-max/scripts/search.py" "<query>" --domain <ux|style|typography|color>
+python "<design-reference-repo>/scripts/search.py" "<query>" --domain <ux|style|typography|color>
 ```
 
 It is stdlib-only and safe to run. Use it for focused UX questions (e.g. `"error summary validation" --domain ux`). Its
@@ -37,7 +34,7 @@ exact values, the rules and the tests; the implementer writes the CSS and must c
 ## Global Constraints
 - Everything in the M3 plan's Global Constraints still binds: CSP (no inline script/style, no `hx-on`), the htmx config,
   no-JS behaviour, 44 px targets, the WCAG 2.2 AA rules, Decimal `peso`, Windows shells, build before pytest, one commit
-  per task, **no AI attribution**, never push.
+  per task, never push.
 - **Spec §12 rev 3 values, verbatim:**
   - **Colours:**
     - ink `#0e1b2c`, muted `#4b5563`, bg `#f5f4f0`, surface `#ffffff`, sunken `#ecebe6`, border `#d6d3cb`, control

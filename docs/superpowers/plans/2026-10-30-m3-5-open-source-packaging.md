@@ -1,8 +1,5 @@
 # M3.5 Open-Source Packaging Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or
-> superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Anyone can clone ScholarSync and run it with `docker compose up`, self-hosters get a provider-neutral
 `.env.example` and guides, Vercel is gone, the demo lives in one deletable folder, and the repository is ready to
 publish.
@@ -24,12 +21,8 @@ Mailpit, an S3-compatible server, GitHub Actions.
 
 - Commands run from the repo root in PowerShell 5.1 (no `&&`) or Git Bash; Python through `python -m uv run …`.
 - Every task: TDD where code is involved, one Conventional Commit per task, staging only that task's files.
-- **No AI attribution anywhere**: no `Co-Authored-By`, no "Generated with", no 🤖, in commits or PR text. Repeat this in
-  every subagent prompt that commits.
 - Never push, never force-push, never rewrite history, except Task 11 step 4 after Kenneth's explicit go-ahead.
 - Never claim ScholarSync is an official City of Taguig service, in any page, doc or commit.
-- After each task, update the local, git-ignored `STATE.md` (timestamp, next action, inventory, changelog line).
-  Never stage it.
 - Explore mode serves only `localhost` and `127.0.0.1`; every compose port is published on `127.0.0.1`.
 - Production is the default mode: no variable selects it, and a missing required variable fails at startup.
 - `apps/demo/` is reached only through `INSTALLED_APPS` (added when the folder exists) and the
@@ -37,7 +30,7 @@ Mailpit, an S3-compatible server, GitHub Actions.
 - Default host ports: app **8000**, Mailpit UI **8025**, PostgreSQL **5433**, storage **9000**, overridable with
   `APP_PORT`, `MAIL_PORT`, `DB_PORT`, `STORAGE_PORT`.
 - The explore secret key starts with `explore-only-`; production refuses any key with that prefix.
-- Pin every image and dependency to an exact current version, checked on the day; record the versions in `STATE.md`.
+- Pin every image and dependency to an exact current version, checked on the day; record the versions in the docs.
 - Python file edits from scripts use `encoding="utf-8"`.
 
 ## Review Focus
@@ -318,7 +311,7 @@ Mailpit, an S3-compatible server, GitHub Actions.
     `EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend"`, `EMAIL_HOST == "mail"` and `EMAIL_PORT == 1025`.
   - `tests/test_docker_files.py`:
     - `test_dockerignore_keeps_secrets_and_local_state_out`: `.dockerignore` lines include `.env`, `.env.*`, `.venv`,
-      `frontend/node_modules`, `static/dist`, `staticfiles`, `STATE.md`, `CLAUDE.local.md` and `.git`.
+      `frontend/node_modules`, `static/dist`, `staticfiles`, local notes and `.git`.
     - `test_entrypoint_is_lf_and_run_through_sh`: `b"\r" not in docker/entrypoint.sh bytes`; the `Dockerfile`
       contains `ENTRYPOINT ["sh", "/app/docker/entrypoint.sh"]`.
     - `test_every_compose_port_is_loopback_only`: every `ports` entry in `compose.yaml` starts with `"127.0.0.1:"`.
@@ -330,7 +323,7 @@ Mailpit, an S3-compatible server, GitHub Actions.
   local database on 5433) sit in a clearly marked "Local development" block at the top. Production values are
   placeholders.
 - [ ] **Step 4: Write the Docker files.** Pick and pin a currently maintained S3-compatible image for `storage` and a
-  CLI image for `storage-init` (the design leaves the product to the builder). Note the choice in `STATE.md`.
+  CLI image for `storage-init` (the design leaves the product to the builder).
 - [ ] **Step 5: Run the unit tests.** `python -m uv run pytest -n auto`: expected PASS.
 - [ ] **Step 6: Smoke-run the stack on a non-default port.** Run `$env:APP_PORT="8123"; docker compose up -d --build`,
   then poll `http://127.0.0.1:8123/healthz` until it answers or 180 s pass. Expected:
@@ -371,7 +364,7 @@ Mailpit, an S3-compatible server, GitHub Actions.
   YAML with `docker run --rm -v ${PWD}:/repo rhysd/actionlint:<pinned> -color` (or `uvx` an equivalent). Expected:
   no errors.
 - [ ] **Step 3: Commit.** `git commit -m "ci: add hosting-path and compose smoke jobs"`. CI runs only when Kenneth
-  pushes; record "CI unconfirmed until push" in `STATE.md`.
+  pushes; note "CI unconfirmed until push".
 
 ### Task 8: Guides
 
@@ -494,7 +487,7 @@ Build this only if Tasks 1–9 are done. Stop and report to Kenneth if it needs 
 - [ ] **Step 3: Write `devcontainer.json`.** It runs `docker compose up -d --build` on start, forwards 8000 and 8025,
   and labels port 8000 "ScholarSync". Add an "Open in GitHub Codespaces" badge to the README.
 - [ ] **Step 4: Verify.** Kenneth opens a codespace from his pushed branch, so this waits for a push. Record it as
-  pending in `STATE.md`.
+  pending.
 - [ ] **Step 5: Commit.** `git commit -m "feat: open ScholarSync in GitHub Codespaces"`
 
 ### Task 11: Publication
@@ -512,7 +505,7 @@ go-ahead at that moment.
 
   List each finding with the file, line and a suggested change.
 - [ ] **Step 3: Report to Kenneth** with the scan result and the content findings. Remind him to have a qualified
-  person review `/privacy/`, `/terms/` and the disclaimer before the flip. Claude's drafts are not legal advice. Apply the content changes he
+  person review `/privacy/`, `/terms/` and the disclaimer before the flip. The drafts are not legal advice. Apply the content changes he
   approves as one commit: `docs: prepare documents for publication`.
 - [ ] **Step 4: Only if the scan found a secret, and Kenneth says go:**
   1. Kenneth rotates the secret first.
@@ -524,6 +517,6 @@ go-ahead at that moment.
 - [ ] **Step 5: Tear down the spike, after Kenneth confirms.** Remove the M1 Vercel project, the Neon project and the R2
   bucket and its API token, using the CLIs or dashboards. Delete the local `.env.spike` and its `.gitignore` line (commit
   `chore: drop spike leftovers`).
-- [ ] **Step 6: Make the repository public.** Kenneth flips it himself, or says "go" and Claude runs
+- [ ] **Step 6: Make the repository public.** Kenneth flips it himself, or says "go" and the builder runs
   `gh repo edit Drainsoul/ScholarSyncV2 --visibility public --accept-visibility-change-consequences`. Then check that
-  the README renders on GitHub, and record the date in `STATE.md`.
+  the README renders on GitHub, and note the date.

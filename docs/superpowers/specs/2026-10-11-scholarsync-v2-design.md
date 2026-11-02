@@ -44,7 +44,7 @@
   published container image or release pipeline.
 
 ## 2. Stack
-Versions are pinned to the latest stable release when M2 scaffolds the project, then recorded in `STATE.md`.
+Versions are pinned to the latest stable release when M2 scaffolds the project, then recorded in the docs.
 
 | Layer | Choice | Notes |
 |---|---|---|
@@ -517,7 +517,7 @@ Summary of `docs/superpowers/specs/2026-10-30-open-source-self-hosting-design.md
     the grey ground. The context block is the program switcher for staff and "Scholarship office" for the office.
     The current nav item has a red tint and red text;
   - **public:** a white top bar with the brand and text navigation, the stripe on top, content max 72rem;
-  - **auth:** the split panel, now flat red with white text (Claude's call; not on the canvas), the stripe on top;
+  - **auth:** the split panel, now flat red with white text (a design choice; not on the canvas), the stripe on top;
   - navigation collapses behind a toggle (`nav.ts`) below 64rem and is fully visible without JS.
 - **Icons:** `scripts/sprite.mjs` builds `static/dist/icons.svg` from the Lucide names listed in `src/icons/icons.json`
   plus our own SVGs (the logo); templates use `{% icon "name" %}`. A misspelt name fails the build.
@@ -604,11 +604,10 @@ Each milestone gets its own implementation plan in `docs/superpowers/plans/` (TD
 starts, and ends with every acceptance item checked.
 
 **M0: Planning docs**
-- [ ] `CLAUDE.md`, `docs/legacy-audit.md`, this spec and `README.md` committed; `CLAUDE.local.md` and `STATE.md`
-  local.
+- [ ] `CLAUDE.md`, `docs/legacy-audit.md`, this spec and `README.md` committed.
 - [ ] Spec approved by Kenneth.
 
-**M1: Vercel go/no-go spike** (historical, superseded by revision 5; throwaway branch `spike/vercel`, kept local; results are in `STATE.md` → Spike results)
+**M1: Vercel go/no-go spike** (historical, superseded by revision 5; throwaway branch `spike/vercel`, kept local; results are in the M1 plan)
 - [ ] Minimal Django + Vite page deployed to a Vercel preview in `sin1`; static files served from the CDN; the
   django-vite manifest resolves at runtime.
 - [ ] Build runs Vite → collectstatic → `migrate` + `createcachetable` on the unpooled URL; the runtime uses the pooled
@@ -727,9 +726,9 @@ starts, and ends with every acceptance item checked.
 | Rate limits key on the proxy IP | Trusted forwarded-header configuration with a proxy count (§11) |
 | The S3-compatible container's image or licence changes | Code speaks only the S3 API; swapping the image is a compose change |
 | The legacy model is a toy trained on unknown data | Advisory only, clearly labelled; rules decide; retire or retrain when real data exists |
-| Business rules are still unclear (amounts, LANI tier criteria, at-risk) | Rules are data, editable by heads; open questions tracked in `STATE.md` |
+| Business rules are still unclear (amounts, LANI tier criteria, at-risk) | Rules are data, editable by heads; open questions tracked in §18 |
 
-## 18. Open questions (also tracked in `STATE.md`)
+## 18. Open questions
 1. ~~Leaked v1 secrets~~ Resolved 2026-10-12: Kenneth confirmed every v1 key had already been rotated.
 2. Confirm the benefit amounts per program and tier.
 3. What qualifies a student for each LANI tier (honors, premier, priority, basic plus, basic, SUC/LCU, review, lead)?
@@ -759,8 +758,7 @@ starts, and ends with every acceptance item checked.
 | S3-compatible storage for files (R2 was the first choice) | Private, presigned, swappable; any provider works since revision 5 |
 | Outbox + a small worker loop instead of Celery (was daily cron on Vercel) | Retries without a broker or new infrastructure |
 | Region `sin1` + Neon Singapore (historical, M1 spike only) | Users are in Taguig; no longer a target |
-| `CLAUDE.md` tracked and basic; `CLAUDE.local.md` and `STATE.md` git-ignored | Kenneth's request (2026-10-12) |
-| No AI attribution on any commit or PR | Kenneth's non-negotiable (`CLAUDE.local.md`) |
+| `CLAUDE.md` tracked and basic; personal notes stay local | Kenneth's request (2026-10-12) |
 | Redesign rev 4: red primary, blue secondary, yellow accent; Cark-style white sidebar shell (2026-10-30) | Kenneth's choice after reviewing and editing the design canvas |
 | Open source, one-command run, provider-neutral self-hosting; Vercel dropped (2026-10-30, revision 5) | Kenneth's portfolio project: nobody hosts an official copy, visitors run it on localhost with test accounts, self-hosters bring their own providers. Design: `docs/superpowers/specs/2026-10-30-open-source-self-hosting-design.md` |
 | Public information pages and a not-affiliated footer disclaimer (2026-10-30) | The repo is public and anyone can host it; the pages say it isn't an official City service, what happens to data, and who is responsible |
