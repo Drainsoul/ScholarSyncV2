@@ -44,7 +44,7 @@
   published container image or release pipeline.
 
 ## 2. Stack
-Versions are pinned to the latest stable release when M2 scaffolds the project, then recorded in `STATE.md`.
+Versions are pinned to the latest stable release when M2 scaffolds the project, then recorded in the docs.
 
 | Layer | Choice | Notes |
 |---|---|---|
@@ -517,7 +517,7 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
     the grey ground. The context block is the program switcher for staff and "Scholarship office" for the office.
     The current nav item has a red tint and red text;
   - **public:** a white top bar with the brand and text navigation, the stripe on top, content max 72rem;
-  - **auth:** the split panel, now flat red with white text (not on the canvas), the stripe on top;
+  - **auth:** the split panel, now flat red with white text (a design choice; not on the canvas), the stripe on top;
   - navigation collapses behind a toggle (`nav.ts`) below 64rem and is fully visible without JS.
 - **Icons:** `scripts/sprite.mjs` builds `static/dist/icons.svg` from the Lucide names listed in `src/icons/icons.json`
   plus our own SVGs (the logo); templates use `{% icon "name" %}`. A misspelt name fails the build.
@@ -604,11 +604,10 @@ Each milestone is broken into small steps (TDD, one commit per step) before work
 starts, and ends with every acceptance item checked.
 
 **M0: Planning docs**
-- [ ] The contributor guide, `docs/legacy-audit.md`, this spec and `README.md` committed; personal notes stay
-  local.
+- [ ] The contributor guide, `docs/legacy-audit.md`, this spec and `README.md` committed.
 - [ ] Spec approved by the maintainer.
 
-**M1: Vercel go/no-go spike** (historical, superseded by revision 5; throwaway branch `spike/vercel`, kept local; results are in `STATE.md` → Spike results)
+**M1: Vercel go/no-go spike** (historical, superseded by revision 5; throwaway branch `spike/vercel`, kept local)
 - [ ] Minimal Django + Vite page deployed to a Vercel preview in `sin1`; static files served from the CDN; the
   django-vite manifest resolves at runtime.
 - [ ] Build runs Vite → collectstatic → `migrate` + `createcachetable` on the unpooled URL; the runtime uses the pooled
@@ -727,9 +726,9 @@ starts, and ends with every acceptance item checked.
 | Rate limits key on the proxy IP | Trusted forwarded-header configuration with a proxy count (§11) |
 | The S3-compatible container's image or licence changes | Code speaks only the S3 API; swapping the image is a compose change |
 | The legacy model is a toy trained on unknown data | Advisory only, clearly labelled; rules decide; retire or retrain when real data exists |
-| Business rules are still unclear (amounts, LANI tier criteria, at-risk) | Rules are data, editable by heads; open questions tracked in `STATE.md` |
+| Business rules are still unclear (amounts, LANI tier criteria, at-risk) | Rules are data, editable by heads; open questions tracked in §18 |
 
-## 18. Open questions (also tracked in `STATE.md`)
+## 18. Open questions
 1. ~~Leaked v1 secrets~~ Resolved 2026-10-12: the maintainer confirmed every v1 key had already been rotated.
 2. Confirm the benefit amounts per program and tier.
 3. What qualifies a student for each LANI tier (honors, premier, priority, basic plus, basic, SUC/LCU, review, lead)?

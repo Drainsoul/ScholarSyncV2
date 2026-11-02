@@ -123,7 +123,7 @@ use a reserved test domain (for example `@scholarsync.test`); the exact addresse
 
 The accounts are pre-verified, so logging in never needs email.
 
-**Programs are not demo material**. The TCU CEAA and LANI program definitions (tiers, rules,
+**Programs are not demo material** *(design choice)*. The TCU CEAA and LANI program definitions (tiers, rules,
 required documents), the school list and the terms come from the non-demo `seed_programs` command that main spec §16
 already puts in M4, in `apps/programs/`. It is never run automatically in production. After deleting `apps/demo/`, a
 self-hoster starts with an empty system and either runs `seed_programs` for the Taguig starter programs or creates
@@ -155,7 +155,7 @@ exists, so the hosting guide's own check catches a forgotten deletion. *(Design 
 | Explore | set by `compose.yaml` (for example `SCHOLARSYNC_EXPLORE=true`) | off | off (plain `http://localhost`) | active | on |
 | Production | neither | off | on | inactive | refused |
 
-- **Explore mode is for the visitor's own machine only** *(Design choice, from the anti-goal)*. Compose publishes every
+- **Explore mode is for the visitor's own machine only** *(design choice, from the anti-goal)*. Compose publishes every
   port on `127.0.0.1`, and in explore mode `ALLOWED_HOSTS`, the CSRF origins and the public storage endpoint are fixed
   to `localhost`/`127.0.0.1`; settings refuse explore mode with any other host. Reaching it from another device or a
   remote VM is unsupported; anyone who wants that follows the hosting guide. The optional Codespaces setup, if built,
@@ -199,7 +199,7 @@ Removed or rewritten:
 - `VERCEL_ENV` checks (kit guard, Sentry environment/release), log wording in `apps/core/logging.py`;
 - the CI comment and any Vercel-only steps.
 
-The spike branch `spike/vercel` stays local and historical; `STATE.md` keeps its results as history.
+The spike branch `spike/vercel` stays local and historical.
 
 ## 9. `.env.example`
 
@@ -223,7 +223,7 @@ is rewritten to match.
   `pending/`) and email; build and run the image behind HTTPS (the host's TLS or a reverse proxy); run the worker or
   schedule the commands; create the first scholarship-office account; run `manage.py check --deploy`; back up the
   database. Examples stay generic, with at most one or two worked provider examples clearly marked as examples.
-  Self-hosters build the image from source (`docker build`); no image is published to a registry and
+  *(design choice)* Self-hosters build the image from source (`docker build`); no image is published to a registry and
   there is no release pipeline. The repo ships one production compose example (for example `compose.production.yaml`:
   web and worker only, with database, storage and email external, reading `.env`), which the guide uses and CI at
   least validates (`docker compose config`).
@@ -260,7 +260,7 @@ Applied when this document is approved:
    email; `.env.example`; README, SETUP, HOSTING; the hosting-path and compose-smoke CI jobs; the empty `apps/demo/`
    skeleton with its hook and deploy check. The explore run works and shows the existing pages (the kit and mockups)
    even before accounts exist.
-   M3.5 stands up the storage and mail containers, creates the bucket with its CORS rule and
+   *(Design choice on scope)* M3.5 stands up the storage and mail containers, creates the bucket with its CORS rule and
    `pending/` lifecycle rule, and adds the settings and `.env.example` entries. It does **not** add the S3 or email
    libraries or prove a presigned round trip: there is nothing to upload or send yet. Those become acceptance items
    of M4 (email through Mailpit in the compose smoke test) and M5 (a presigned upload/download round trip in the
@@ -316,7 +316,7 @@ fictional." It replaces today's public footer line ("ScholarSync is the scholars
 Taguig."), which claims an affiliation that doesn't exist. The "City of Taguig" label in the brand block stays (§3),
 and the disclaimer qualifies it.
 
-**Who the operator is**. Two settings, shown on the privacy, terms and contact pages:
+**Who the operator is** *(design choice)*. Two settings, shown on the privacy, terms and contact pages:
 `SITE_OPERATOR_NAME` and `PRIVACY_CONTACT_EMAIL`. In production both are required: startup fails without them, as
 with every other required variable. In explore and developer modes they default to "This local copy" and no email,
 and the privacy page then says the data stays on the visitor's computer. The maintainer's own email never appears in the repo;
