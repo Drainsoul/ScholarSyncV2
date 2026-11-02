@@ -25,6 +25,7 @@ def test_settings_refuse_to_load_without_required_vars(missing, tmp_path):
             "SITE_OPERATOR_NAME": "ScholarSync Test",
             "PRIVACY_CONTACT_EMAIL": "privacy@scholarsync.test",
             "DATABASE_URL": "postgres://u:p@localhost:5433/db",
+            "DJANGO_ALLOWED_HOSTS": "scholarsync.example",
             "DJANGO_ENV_FILE": str(tmp_path / "absent.env"),
         }
     )
@@ -49,6 +50,7 @@ def test_debug_defaults_to_off_when_unset(tmp_path):
             "SITE_OPERATOR_NAME": "ScholarSync Test",
             "PRIVACY_CONTACT_EMAIL": "privacy@scholarsync.test",
             "DATABASE_URL": "postgres://u:p@localhost:5433/db",
+            "DJANGO_ALLOWED_HOSTS": "scholarsync.example",
             "DJANGO_ENV_FILE": str(tmp_path / "absent.env"),
         }
     )
@@ -90,6 +92,9 @@ def _run_settings(tmp_path, names, _unset=(), **extra):
             **extra,
         }
     )
+    if "SCHOLARSYNC_EXPLORE" not in extra and "DJANGO_DEBUG" not in extra:
+        # Production needs a real host; explore refuses any other than localhost.
+        env.setdefault("DJANGO_ALLOWED_HOSTS", "scholarsync.example")
     for name in _unset:
         env.pop(name, None)
     code = (
@@ -380,3 +385,26 @@ def test_env_example_placeholders_fail_the_production_guard(tmp_path):
     )
     for name, value in pairs.items():
         assert _run_settings(tmp_path, [name], **{name: value}).returncode != 0, name
+
+
+@pytest.mark.parametrize(
+    "hosts", ["", " , ", "*", "scholarsync.example,*", ".scholarsync.example, *"]
+)
+def test_production_refuses_empty_or_wildcard_allowed_hosts(tmp_path, hosts):
+    result = _run_settings(tmp_path, ["ALLOWED_HOSTS"], DJANGO_ALLOWED_HOSTS=hosts)
+    assert result.returncode != 0
+    assert "DJANGO_ALLOWED_HOSTS" in result.stderr
+    assert "docs/HOSTING.md" in result.stderr
+
+
+def test_production_refuses_unset_allowed_hosts(tmp_path):
+    result = _run_settings(tmp_path, ["ALLOWED_HOSTS"], _unset=["DJANGO_ALLOWED_HOSTS"])
+    assert result.returncode != 0
+    assert "DJANGO_ALLOWED_HOSTS" in result.stderr
+
+
+def test_developer_mode_allows_empty_allowed_hosts(tmp_path):
+    values = settings_values(
+        tmp_path, ["ALLOWED_HOSTS"], DJANGO_DEBUG="true", DJANGO_ALLOWED_HOSTS=""
+    )
+    assert values["ALLOWED_HOSTS"] == []

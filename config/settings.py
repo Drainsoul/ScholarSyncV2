@@ -32,7 +32,12 @@ if EXPLORE:
         )
     ALLOWED_HOSTS = list(EXPLORE_HOSTS)
 else:
-    ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", [])
+    ALLOWED_HOSTS = [h.strip() for h in env.list("DJANGO_ALLOWED_HOSTS", []) if h.strip()]
+    if PRODUCTION and (not ALLOWED_HOSTS or "*" in ALLOWED_HOSTS):
+        raise ImproperlyConfigured(
+            "DJANGO_ALLOWED_HOSTS must list your host names in production: not empty, no '*'. "
+            "See docs/HOSTING.md."
+        )
 CSRF_TRUSTED_ORIGINS: list[str] = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", [])
 
 # GitHub Codespaces (explore only): its proxy forwards https://<name>-<port>.<domain> to the app.

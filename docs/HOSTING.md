@@ -32,7 +32,7 @@ At least:
 |---|---|
 | `DJANGO_DEBUG` | `false` |
 | `DJANGO_SECRET_KEY` | your own random key: `python -c "import secrets; print(secrets.token_urlsafe(64))"` or `openssl rand -base64 48` |
-| `DJANGO_ALLOWED_HOSTS` | your host name, for example `scholarships.example.org` (the first entry is also used by the container health check) |
+| `DJANGO_ALLOWED_HOSTS` | your host name, for example `scholarships.example.org` (the first entry is also used by the container health check). Empty or `*` is refused |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | `https://` plus the same host name |
 | `SITE_OPERATOR_NAME` | your organisation's name, shown on the privacy, terms and contact pages (required) |
 | `PRIVACY_CONTACT_EMAIL` | an address you read, where people send privacy requests (required) |
