@@ -37,7 +37,7 @@ CSP forbids them).
   - no step pills;
   - no icons in the figures box.
 - Sample data stays Faker-only (`apps/kit/samples.py`), never real people.
-- One Conventional Commit per task, staging only that task's files. 
+- One Conventional Commit per task, staging only that task's files.
 - Never push.
 - Python edits from scripts use `encoding="utf-8"` and `newline="\n"`.
 - The full gate after each task: `python -m uv run pytest -n auto`, the e2e suite, `ruff check .`,

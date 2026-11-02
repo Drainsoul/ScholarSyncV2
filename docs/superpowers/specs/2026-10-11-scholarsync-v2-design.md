@@ -607,7 +607,7 @@ starts, and ends with every acceptance item checked.
 - [ ] `CLAUDE.md`, `docs/legacy-audit.md`, this spec and `README.md` committed.
 - [ ] Spec approved by Kenneth.
 
-**M1: Vercel go/no-go spike** (historical, superseded by revision 5; throwaway branch `spike/vercel`, kept local; results are in the M1 plan)
+**M1: Vercel go/no-go spike** (historical, superseded by revision 5; throwaway branch `spike/vercel`, kept local; results are in the M1 plan's "Spike results" section)
 - [ ] Minimal Django + Vite page deployed to a Vercel preview in `sin1`; static files served from the CDN; the
   django-vite manifest resolves at runtime.
 - [ ] Build runs Vite → collectstatic → `migrate` + `createcachetable` on the unpooled URL; the runtime uses the pooled

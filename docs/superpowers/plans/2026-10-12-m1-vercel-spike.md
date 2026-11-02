@@ -1677,10 +1677,11 @@ No code. The maintainer creates the accounts and handles the secrets himself, an
   "Link to existing project? No", a throwaway project name, and leave the code directory as `./`. Don't connect
   the GitHub repo: deploys come from the CLI, so nothing gets pushed.
 - [ ] **Step 3: Neon.**
-  1. In the Vercel dashboard → the spike project → Storage → Create → Neon. Pick the Singapore region, connect it to Production and Preview, and turn on "Create database branch for deployment"
-     for Preview.
-  2. In the Neon console, create a branch `preview-base` from the main branch. If the integration lets you choose the parent for
-     preview branches, set it to `preview-base`. If it doesn't, note that: it's a spike finding.
+  1. In the Vercel dashboard → the spike project → Storage → Create → Neon. Pick the Singapore region, connect it
+     to Production and Preview, and turn on "Create database branch for deployment" for Preview.
+  2. In the Neon console, create a branch `preview-base` from the main branch. If the integration lets you choose
+     the parent for preview
+     branches, set it to `preview-base`. If it doesn't, note that: it's a spike finding.
   3. Confirm that Vercel shows the env vars `DATABASE_URL` and `DATABASE_URL_UNPOOLED`.
 - [ ] **Step 4: Cloudflare R2.**
   1. Create a throwaway bucket with location hint Asia-Pacific.
@@ -1788,3 +1789,34 @@ The maintainer runs the commands that use his tokens, with the tokens in his she
 - [ ] **Step 12: Tidy up.** Keep the `spike/vercel` branch for reference (don't merge it into `main`). Optionally delete
   the spike's Vercel project, Neon database, R2 bucket and keys once the results are recorded, then revoke
   the R2 token and Resend key.
+
+---
+
+## Spike results
+
+Outcome: **go** (recorded 2026-10-12). A throwaway Vercel project with a Neon database in Singapore, an R2 bucket and
+Resend was deployed (production plus one preview) and measured. The host later changed (see spec revision 5); these
+results remain as history.
+
+| Check | Result | Evidence |
+|---|---|---|
+| Install | pass | Vercel used `uv.lock` and `.python-version` (Python 3.13), not the preset `pip install -r requirements.txt` |
+| Build order | pass | `build.py` ran first (Vite, collectstatic, migrate, `createcachetable`); Vercel's own collectstatic ran after it, and the `staticfiles` folder already existed when our script started |
+| Migrations in build | pass (slow) | Applied on the unpooled URL; the first run took about 40 s because builds run in Washington against the Singapore database |
+| Assets and manifests | pass | Hashed assets are served from the CDN and the manifests resolve at runtime. Finding: hashed assets came with `Cache-Control: max-age=0`, so M2 adds immutable headers for `/static/` |
+| Region | pass | Function in `sin1`, database in `ap-southeast-1` |
+| DB pooling | pass | Runtime host is the pooled one; a warm `SELECT 1` took 21 to 35 ms |
+| Warm latency | pass | First byte about 0.17 s from Taguig |
+| Cold start | pass | 2.26 s to first byte after 16 min idle (new instance plus the database waking from auto-suspend); warm again at 0.17 to 0.19 s; a fresh instance with the database awake took 0.56 s |
+| Neon preview branches | pass | The preview deployment used a different database endpoint from production; the parent branch needed checking in the console |
+| Deployment protection | pass | Deployment URLs redirect to a login; only the production alias is public |
+| Client IP | pass | `REMOTE_ADDR`, `X-Forwarded-For`, `X-Real-IP` and allauth all equal the real IP, and spoofed headers are overwritten, so no trusted-IP header setting is needed |
+| R2 upload flow | pass | intent, PUT 200, confirm, `files/...`; download is a 302 with `attachment; filename=...` and identical bytes |
+| R2 wrong content | pass | Text sent as a PDF is rejected with 400 and the pending object is deleted |
+| R2 signed length | pass | A 50-byte PUT against a 100-byte intent returns 403 `SignatureDoesNotMatch` |
+| R2 CORS | pass | Preflight returns 204 for PUT with `content-type` |
+| Email (Resend) | pass | The probe endpoint sent one message and it arrived |
+| Cron auth | pass | Correct secret 200; wrong or missing 403 |
+| Bundle size | pass | 51.45 MB against a 500 MB limit |
+| Production gating | decided | A CI job on Ubuntu runs `vercel build` and `vercel deploy --prebuilt --prod` |
+| Sensitive env vars | finding | Values marked sensitive cannot be read back with `env pull`; keep a local copy of any token needed |

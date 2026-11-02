@@ -3,8 +3,8 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project
-ScholarSync V2 is a ground-up Django rewrite of ScholarSync, the City of Taguig scholarship platform. It has three
-roles:
+ScholarSync V2 is a ground-up Django rewrite of ScholarSync, an independent project modelled on the City of Taguig
+scholarship platform (no official affiliation). It has three roles:
 - **Students** build a profile, get matched to programs, apply with documents, and track their allowances.
 - **Program staff** review applications, manage scholars and terms, and run disbursements.
 - **The scholarship office** (super admin) manages programs, staff, reports and analytics.

@@ -199,7 +199,7 @@ Removed or rewritten:
 - `VERCEL_ENV` checks (kit guard, Sentry environment/release), log wording in `apps/core/logging.py`;
 - the CI comment and any Vercel-only steps.
 
-The spike branch `spike/vercel` stays local and historical; its results are kept as history in the M1 plan.
+The spike branch `spike/vercel` stays local and historical; its results are kept as history in the M1 plan's "Spike results" section.
 
 ## 9. `.env.example`
 

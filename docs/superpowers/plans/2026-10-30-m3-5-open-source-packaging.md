@@ -311,7 +311,7 @@ Mailpit, an S3-compatible server, GitHub Actions.
     `EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend"`, `EMAIL_HOST == "mail"` and `EMAIL_PORT == 1025`.
   - `tests/test_docker_files.py`:
     - `test_dockerignore_keeps_secrets_and_local_state_out`: `.dockerignore` lines include `.env`, `.env.*`, `.venv`,
-      `frontend/node_modules`, `static/dist`, `staticfiles`, local notes and `.git`.
+      `frontend/node_modules`, `static/dist`, `staticfiles` and `.git`.
     - `test_entrypoint_is_lf_and_run_through_sh`: `b"\r" not in docker/entrypoint.sh bytes`; the `Dockerfile`
       contains `ENTRYPOINT ["sh", "/app/docker/entrypoint.sh"]`.
     - `test_every_compose_port_is_loopback_only`: every `ports` entry in `compose.yaml` starts with `"127.0.0.1:"`.
