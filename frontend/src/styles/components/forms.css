@@ -50,6 +50,14 @@ fieldset.field {
   font: inherit;
 }
 
+/* At 16 px or more, phones don't zoom in on focus. */
+@media (pointer: coarse) {
+  .input,
+  .field :is(input:not([type="checkbox"], [type="radio"], [type="file"]), select, textarea) {
+    font-size: 1rem;
+  }
+}
+
 .field textarea {
   min-height: 7rem;
   resize: vertical;

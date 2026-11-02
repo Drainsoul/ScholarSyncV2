@@ -485,13 +485,14 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
   - **status text:** success `#11663a`, warning `#8f6500`, info `#1f4e9e`, danger `#9b1022`, neutral `#3d4654`;
   - **danger** `#9b1022`, darker than the primary red; danger buttons are outlined in it, with an icon and a verb;
   - **focus:** 3 px ink outline plus a yellow halo outside it;
-  - **type:** Lexend 600/700 headings, Source Sans 3 400/600/700 body at 16 px, line height 1.5, tabular figures for
-    money; captions and table headers 13 px;
+  - **type:** Lexend 600/700 headings, Source Sans 3 400/600/700 body at 15 px (inputs 16 px on touch screens so
+    phones don't zoom), line height 1.5, tabular figures for money; captions and table headers 13 px; headings h1 26,
+    h2 23, h3 21, h4 19 px (rev 6, 2026-11-03: the maintainer found rev 4 too big and chose one step denser);
   - **shape:** radius 8 px (controls, buttons, nav items), 10 px (small blocks), 12 px (cards, figures box, drawer
     edges); pills (999 px) only for counts; shadows only on floating layers (drawer, dialog, toast, menus).
   - Light theme in v2.0; tokens are role-named so a dark theme can be added later.
 - **Components** (`templates/components/` + CSS):
-  - **buttons:** 44 px tall, radius 8. Primary = solid red; secondary = white with a `#d0d5dd` border; soft = blue
+  - **buttons:** 40 px tall (36 px inside tables), radius 8. Primary = solid red; secondary = white with a `#d0d5dd` border; soft = blue
     tint with a blue border; ghost = no border, hover tint; danger = white, outlined in `#9b1022`. Icons only where
     they carry meaning (download, add, mail, close, menu, sign out, pause);
   - **cards:** white, 1 px border, radius 12, a title row with an optional link on the right. Page sections are
@@ -511,7 +512,7 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
   - **banners:** tinted box with radius 12 and an icon for warning and danger; **feedback:** dialog, toast, empty
     state as before.
 - **Layouts:**
-  - **app shell (staff, office, student):** a white 248 px sidebar (stripe, brand, a context block, grouped nav with
+  - **app shell (staff, office, student):** a white 224 px sidebar (stripe, brand, a context block, grouped nav with
     an icon per item and counts, an optional callout, a user card with the account menu and sign out at the bottom)
     beside a column with a white top bar (search for staff and office, term chooser, notifications) and the page on
     the grey ground. The context block is the program switcher for staff and "Scholarship office" for the office.
@@ -539,7 +540,7 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
 - **Accessibility:**
   - target WCAG 2.2 AA;
   - landmarks, one `h1`, a skip link, visible focus;
-  - every input labelled; 44 px touch targets;
+  - every input labelled; controls at least 36 px (2.5.8 asks for 24);
   - status shown as text, not colour alone;
   - `prefers-reduced-motion` respected;
   - tables with `th scope`.

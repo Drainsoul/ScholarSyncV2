@@ -101,7 +101,7 @@
 .split {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-6);
+  gap: var(--space-5);
 }
 
 @media (min-width: 64rem) {
@@ -113,7 +113,7 @@
 
 /* Rows of cards in a split: stacked rows keep the page gap, and the two cards share a height. */
 .split + .split {
-  margin-top: var(--space-6);
+  margin-top: var(--space-5);
 }
 
 @media (min-width: 64rem) {
@@ -125,7 +125,7 @@
 .stack {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-6);
+  gap: var(--space-5);
   min-width: 0;
 }
 
@@ -221,7 +221,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2) var(--space-6);
-  min-height: 4rem;
+  min-height: 3.5rem;
   padding-block: var(--space-2);
 }
 
@@ -286,7 +286,7 @@
 }
 
 /* App shell: staff, office and student (spec §12 rev 4). The DOM order is top bar, sidebar, page,
-   so the Menu button comes right before the sidebar it opens. From 64rem grid areas put the 248 px
+   so the Menu button comes right before the sidebar it opens. From 64rem grid areas put the 224 px
    sidebar in the left column at full height, with the top bar and the page beside it. Below 64rem
    the shell is one column and the sidebar is collapsible (nav.ts): it opens at full width under the
    top bar, above the page. */
@@ -622,12 +622,12 @@
 .app > .page {
   width: 100%;
   max-width: var(--content-max);
-  padding: var(--space-6) var(--space-4) var(--space-10);
+  padding: var(--space-5) var(--space-4) var(--space-10);
 }
 
 @media (min-width: 64rem) {
   .app > .page {
-    padding-inline: var(--space-8);
+    padding-inline: var(--space-6);
   }
 }
 
