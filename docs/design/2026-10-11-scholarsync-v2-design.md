@@ -516,7 +516,7 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
   - **app shell (staff, office, student):** a white 224 px sidebar (stripe, brand, a context block, grouped nav with
     an icon per item and counts, an optional callout, a user card with the account menu and sign out at the bottom)
     beside a column with a white top bar (search for staff and office, term chooser, notifications) and the page on
-    the grey ground. The context block is the program switcher for staff and "Scholarship office" for the office.
+    the grey ground, at most 72rem wide and centred in that column (rev 6). The context block is the program switcher for staff and "Scholarship office" for the office.
     The current nav item has a red tint and red text;
   - **public:** a white top bar with the brand and text navigation, the stripe on top, content max 72rem;
   - **auth:** the split panel, now flat red with white text (a design choice; not on the canvas), the stripe on top;

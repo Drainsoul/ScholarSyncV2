@@ -65,6 +65,20 @@ def test_sidebar_is_224px_on_desktop(page: Page, live_server, vite_build, name):
     assert topbar and topbar["x"] == 224
 
 
+@pytest.mark.parametrize("name", APP)
+def test_page_is_centred_beside_the_sidebar_on_a_wide_screen(
+    page: Page, live_server, vite_build, name
+):
+    page.set_viewport_size({"width": 1920, "height": 1080})
+    page.goto(f"{live_server.url}/_kit/layouts/{name}/")
+    topbar = page.locator(".topbar").bounding_box()
+    box = page.locator(".app > .page").bounding_box()
+    assert topbar and box and box["width"] == 1152  # --content-max
+    left = box["x"] - topbar["x"]
+    right = topbar["x"] + topbar["width"] - box["x"] - box["width"]
+    assert left > 0 and abs(left - right) <= 1
+
+
 @pytest.mark.parametrize("name", ["public", "auth", "student", "staff", "office"])
 @pytest.mark.parametrize("viewport", [PHONE, DESKTOP])
 def test_logo_sits_beside_the_name(page: Page, live_server, vite_build, name, viewport):

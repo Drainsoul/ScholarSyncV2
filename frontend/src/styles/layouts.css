@@ -623,10 +623,11 @@
   width: 100%;
 }
 
-/* The page on the grey ground */
+/* The page on the grey ground, centred in the space beside the sidebar on wide screens */
 .app > .page {
   width: 100%;
   max-width: var(--content-max);
+  margin-inline: auto;
   padding: var(--space-5) var(--space-4) var(--space-10);
 }
 
