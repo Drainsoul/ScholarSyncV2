@@ -17,23 +17,24 @@ ENV PYTHONUNBUFFERED=1 \
     UV_LINK_MODE=copy \
     PATH="/app/.venv/bin:$PATH"
 WORKDIR /app
+RUN useradd --system --no-create-home --uid 10001 scholarsync
 
 COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-dev --no-install-project
 
-COPY . .
-COPY --from=frontend /build/static/dist ./static/dist
+# The app runs as scholarsync; the virtualenv and collected static files stay root-owned (read-only).
+COPY --chown=scholarsync . .
+COPY --chown=scholarsync --from=frontend /build/static/dist ./static/dist
 
 # collectstatic needs settings to import; these values exist only for this build step.
 RUN DJANGO_SECRET_KEY=build-only-not-a-secret \
     SITE_OPERATOR_NAME="ScholarSync build" \
-    PRIVACY_CONTACT_EMAIL=privacy@scholarsync.test     DJANGO_ALLOWED_HOSTS=build.invalid \
+    PRIVACY_CONTACT_EMAIL=privacy@scholarsync.test \
+    DJANGO_ALLOWED_HOSTS=build.invalid \
     DATABASE_URL=postgres://build:build@localhost:5432/build \
     DJANGO_ENV_FILE=/nonexistent \
     python manage.py collectstatic --noinput
 
-RUN useradd --system --no-create-home --uid 10001 scholarsync \
-    && chown -R scholarsync /app
 USER scholarsync
 
 EXPOSE 8000
