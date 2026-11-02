@@ -158,7 +158,7 @@ TEMPLATES = [
     },
 ]
 
-# Database: Neon pooled URL at runtime, unpooled URL for migrations (build.py) ----------------
+# Database: any PostgreSQL 17 URL (docker/entrypoint.sh migrates via DATABASE_URL_UNPOOLED if set) -
 DATABASES = {
     "default": env.dj_db_url("DATABASE_URL", conn_max_age=0, conn_health_checks=True),
 }
@@ -298,6 +298,7 @@ if SENTRY_DSN:
 
     init_sentry(
         dsn=SENTRY_DSN,
-        environment=env.str("SENTRY_ENVIRONMENT", "production" if PRODUCTION else "local"),
+        # Blank (as in .env.example) means the mode's default.
+        environment=env.str("SENTRY_ENVIRONMENT", "") or ("production" if PRODUCTION else "local"),
         release=env.str("SENTRY_RELEASE", "") or None,
     )

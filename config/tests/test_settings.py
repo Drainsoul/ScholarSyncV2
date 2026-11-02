@@ -430,3 +430,39 @@ def test_explore_trusts_only_the_codespaces_origin(tmp_path):
         **_CODESPACE,
     )
     assert values["CSRF_TRUSTED_ORIGINS"] == ["https://demo-8000.app.github.dev"]
+
+
+@pytest.mark.parametrize(
+    ("mode", "value", "expected"),
+    [
+        ({}, "", "production"),
+        ({"SCHOLARSYNC_EXPLORE": "true"}, "", "local"),
+        ({}, "staging", "staging"),
+    ],
+)
+def test_blank_sentry_environment_uses_the_mode_default(tmp_path, mode, value, expected):
+    env = {key: v for key, v in os.environ.items() if key not in _MODE_VARS}
+    env.update(
+        {
+            "DJANGO_SECRET_KEY": "x" * 50,
+            "SITE_OPERATOR_NAME": "ScholarSync Test",
+            "PRIVACY_CONTACT_EMAIL": "privacy@scholarsync.test",
+            "DATABASE_URL": "postgres://u:p@localhost:5433/db",
+            "DJANGO_ENV_FILE": str(tmp_path / "absent.env"),
+            "SENTRY_DSN": "https://key@sentry.io/1",
+            "SENTRY_ENVIRONMENT": value,
+            **mode,
+        }
+    )
+    if not mode:
+        env["DJANGO_ALLOWED_HOSTS"] = "scholarsync.example"
+    code = (
+        "import apps.core.sentry as m; "
+        "m.init_sentry = lambda **kw: print(kw['environment']); "
+        "import config.settings"
+    )
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, "-c", code], cwd=ROOT, env=env, capture_output=True, text=True, check=False
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == expected
