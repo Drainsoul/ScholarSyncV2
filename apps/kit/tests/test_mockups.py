@@ -258,7 +258,10 @@ def test_scholars_page_has_the_canvas_figures_and_callout(client, kit_on, vite_b
         ("On hold", "12"),
         ("Budget used", "64%"),
     ):
-        assert re.search(rf">{label}</p>\s*<p class=\"figure__value num\">{value}</p>", figures)
+        assert re.search(
+            rf'<p class="figure__value num">{value}</p>\s*<p class="figure__label">{label}<',
+            figures,
+        )
     callout = body.split('class="callout"')[1].split("</div>")[0]
     assert "#clock" in callout and "Renewals close 15&nbsp;Nov" in callout
     assert "37 scholars are below the 80% GWA mark this term" in callout

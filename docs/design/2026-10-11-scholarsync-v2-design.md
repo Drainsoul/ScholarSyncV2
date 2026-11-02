@@ -464,7 +464,8 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
   UI UX Pro Max skill. He reviewed and edited the result on a design canvas; its boards are kept in
   `docs/design/2026-10-30-redesign/` and are the visual reference for this section. Rev 4 replaces rev 3's
   navy-led, unboxed look. The maintainer's rulings from the canvas review:
-  - one plain box of figures (label + number), no icons, captions or progress bars in it;
+  - figures are plain number + label pairs, no icons, captions or progress bars (rev 6, 2026-11-03: the maintainer
+    dropped the box; they are now one line under the page header);
   - status is bold coloured text, never a pill or tinted tag; tiers are plain text with no colour;
   - no decorative coloured circles (timeline dots, icon chips); no subtitle lines that repeat the obvious;
   - "needs attention" items are whole-row links with no underline, an arrow on the right and a hover state, and their
@@ -488,7 +489,7 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
   - **type:** Lexend 600/700 headings, Source Sans 3 400/600/700 body at 15 px (inputs 16 px on touch screens so
     phones don't zoom), line height 1.5, tabular figures for money; captions and table headers 13 px; headings h1 26,
     h2 23, h3 21, h4 19 px (rev 6, 2026-11-03: the maintainer found rev 4 too big and chose one step denser);
-  - **shape:** radius 8 px (controls, buttons, nav items), 10 px (small blocks), 12 px (cards, figures box, drawer
+  - **shape:** radius 8 px (controls, buttons, nav items), 10 px (small blocks), 12 px (cards, drawer
     edges); pills (999 px) only for counts; shadows only on floating layers (drawer, dialog, toast, menus).
   - Light theme in v2.0; tokens are role-named so a dark theme can be added later.
 - **Components** (`templates/components/` + CSS):
@@ -497,8 +498,8 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
     they carry meaning (download, add, mail, close, menu, sign out, pause);
   - **cards:** white, 1 px border, radius 12, a title row with an optional link on the right. Page sections are
     cards on the grey ground; a card never sits inside another card;
-  - **figures:** one bordered box of label + Lexend number cells divided by 1 px rules; cells wrap on narrow
-    screens;
+  - **figures:** one line of Lexend number + label pairs under the page header, divided by 1 px rules, with a
+    rule below; pairs wrap on narrow screens;
   - **status:** bold text in its tone colour (`.status--success` etc.), no background; **counts:** small pills (nav
     counts in yellow with ink text, tab counts grey or red tint on the current tab);
   - **avatars:** initials in a circle, tinted red, blue or yellow by position;

@@ -52,27 +52,29 @@
   }
 }
 
-/* Figures: one bordered box of label + number cells divided by 1 px rules (the box's border colour
-   showing through 1 px gaps). Cells wrap on narrow screens and stretch to fill each row. No icons,
-   captions or bars in it (the maintainer's ruling, spec §12 rev 4). */
+/* Figures: one quiet line of number + label pairs under the page header, divided by 1 px rules, with
+   a rule below the line. No box, icons, captions or bars (spec §12 rev 6). Pairs wrap on narrow
+   screens; a long label drops below its number. Every pair has a rule and padding on its left, and
+   the line is pulled left by that much and clipped, so whichever pair starts a row sits flush. */
 .figures {
+  --figure-lead: calc(var(--space-4) + 1px);
   display: flex;
   flex-wrap: wrap;
-  gap: 1px;
-  margin: 0 0 var(--space-6);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--border);
-  overflow: hidden;
+  gap: var(--space-2) 0;
+  margin: 0 0 var(--space-5) calc(-1 * var(--figure-lead));
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border);
+  clip-path: inset(0 0 0 var(--figure-lead));
 }
 
-/* Each figure is a size container, so its value can shrink to fit instead of wrapping. */
 .figure {
-  container-type: inline-size;
-  flex: 1 1 11.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-2);
   min-width: 0;
-  padding: var(--space-4) var(--space-6);
-  background: var(--surface);
+  padding-inline: var(--space-4);
+  border-left: 1px solid var(--border);
 }
 
 .figure p {
@@ -81,14 +83,12 @@
 
 .figure__label {
   color: var(--text-secondary);
-  font-weight: 600;
 }
 
-/* Money never breaks mid-number: one line, and the size steps down in a narrow figure
-   (12cqi fits "₱12,000,000.00" in Lexend). */
+/* Money never breaks mid-number. */
 .figure__value {
   font-family: var(--font-heading);
-  font-size: min(var(--text-3xl), 12cqi);
+  font-size: var(--text-lg);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   line-height: var(--leading-tight);

@@ -89,6 +89,11 @@
   border-bottom: 0;
 }
 
+/* Figures read as part of the header: they sit just under the title. */
+.page-header:has(+ .figures) {
+  margin-bottom: var(--space-3);
+}
+
 .page-header h1 {
   margin: 0;
 }
