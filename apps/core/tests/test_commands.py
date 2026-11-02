@@ -19,9 +19,12 @@ def test_prepare_is_idempotent(db: Any) -> None:
 def test_prepare_loads_the_demo_only_when_active(
     settings: Any, monkeypatch: pytest.MonkeyPatch, active: bool
 ) -> None:
-    if active and "load_demo" not in get_commands():
-        pytest.skip("the demo app has been deleted")
     settings.DEMO_ACTIVE = active
+    # The demo app may be absent (production settings, or a deleted folder); pretend it's there.
+    monkeypatch.setattr(
+        "apps.core.management.commands.prepare.get_commands",
+        lambda: {**get_commands(), "load_demo": "demo"},
+    )
     called: list[str] = []
     monkeypatch.setattr(
         "apps.core.management.commands.prepare.call_command",

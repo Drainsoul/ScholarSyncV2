@@ -113,10 +113,12 @@ INSTALLED_APPS = [
 ]
 
 # The demo lives in one deletable folder (spec 2026-10-30 section 5). Absent folder, no demo.
+# Production never installs it, so its templates and commands can't load even if the folder was
+# left behind; core's deploy check (demo.E001) still fails while the folder exists.
 DEMO_INSTALLED = demo_installed(BASE_DIR)
-if DEMO_INSTALLED:
-    INSTALLED_APPS.append("apps.demo")
 DEMO_ACTIVE = DEMO_INSTALLED and not PRODUCTION
+if DEMO_ACTIVE:
+    INSTALLED_APPS.append("apps.demo")
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
