@@ -5,12 +5,12 @@
   <h1>Privacy policy</h1>
   <p class="text-muted">Version {{ notice_version }}. Last updated {{ notice_version }}.</p>
   {% if explore %}
-  <div class="banner" role="note"><div><p>This copy runs on your computer. Anything you enter stays in its database, and emails go to the local inbox, not to real people.</p></div></div>
+  <div class="banner" role="note"><div><p>This is a local or personal copy, on your computer or in your own codespace. Anything you enter stays in its database, and emails go to the local inbox, not to real people.</p></div></div>
   {% endif %}
   <p>This policy explains how personal data is handled in this copy of ScholarSync. It follows Republic Act No. 10173, the Data Privacy Act of 2012 (RA 10173), of the Philippines. It is template text: whoever runs a copy should review it and adapt it to their organisation and their law.</p>
 
   <h2>Who is responsible</h2>
-  <p>The operator of this copy is the personal information controller: <strong>{{ operator_name }}</strong>.{% if not local_copy %} You can reach the operator about your data at <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>.{% else %} This copy has no privacy contact because it runs on your computer, and you are the only person who can see its data.{% endif %} ScholarSync is an independent portfolio project and is not run by the City of Taguig.</p>
+  <p>The operator of this copy is the personal information controller: <strong>{{ operator_name }}</strong>.{% if not local_copy %} You can reach the operator about your data at <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>.{% else %} This copy has no privacy contact because it is a local or personal copy, and you are the only person who can see its data.{% endif %} ScholarSync is an independent portfolio project and is not run by the City of Taguig.</p>
 
   <h2>What is collected</h2>
   <ul>
@@ -37,7 +37,7 @@
   </ul>
 
   <h2>Storage and security</h2>
-  <p>Data is kept in a PostgreSQL database and uploaded documents in private file storage. Connections use HTTPS. Documents are never served openly: they are downloaded through short-lived links. Staff only reach the programs they are assigned to. No system is perfectly secure, and the operator should tell you promptly if a breach affects you.</p>
+  <p>Data is kept in a PostgreSQL database and uploaded documents in private file storage. {% if not local_copy %}Connections use HTTPS. {% endif %}Documents are never served openly: they are downloaded through short-lived links. Staff only reach the programs they are assigned to. No system is perfectly secure, and the operator should tell you promptly if a breach affects you.</p>
 
   <h2>How long it is kept</h2>
   <p>Records are kept as set by the operator of this copy. Self-hosters: state your retention period here before going live. When a record is no longer needed, it should be deleted or made anonymous.</p>
@@ -56,7 +56,7 @@
   </ul>
 
   <h2>How to use your rights</h2>
-  <p>{% if not local_copy %}Write to <a href="mailto:{{ contact_email }}">{{ contact_email }}</a> and say what you need. The operator should answer within a reasonable time.{% else %}Because this copy runs on your computer, you can view and change its data yourself. Delete everything with <code>docker compose down -v</code>.{% endif %}</p>
+  <p>{% if not local_copy %}Write to <a href="mailto:{{ contact_email }}">{{ contact_email }}</a> and say what you need. The operator should answer within a reasonable time.{% else %}Because this is a local or personal copy, you can view and change its data yourself. Delete everything with <code>docker compose down -v</code>.{% endif %}</p>
 
   <h2>Cookies</h2>
   <p>This site uses only the cookies it needs to work. See the <a href="{% url 'core:cookies' %}">cookie notice</a>.</p>

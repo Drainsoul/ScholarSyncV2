@@ -28,8 +28,9 @@ def _context() -> dict[str, object]:
         "contact_email": settings.PRIVACY_CONTACT_EMAIL,
         "notice_version": settings.PRIVACY_NOTICE_VERSION,
         "explore": settings.EXPLORE,
-        # Explore and developer copies run on the visitor's own computer; a host's never does.
-        "local_copy": settings.EXPLORE or not settings.PRODUCTION,
+        # Explore and developer copies are local or personal (a computer or the visitor's own
+        # codespace); a hosted copy always runs in production mode.
+        "local_copy": not settings.PRODUCTION,
         "repo_url": REPO_URL,
     }
 
