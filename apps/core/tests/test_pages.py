@@ -52,8 +52,9 @@ def test_privacy_page_names_the_operator_and_contact(client, settings, vite_buil
 
 def test_explore_notice_only_in_explore_mode(client, settings, vite_build):
     notice = (
-        "This copy runs on your computer. Anything you enter stays in its database, "
-        "and emails go to the local inbox, not to real people."
+        "This is a local or personal copy, on your computer or in your own codespace. "
+        "Anything you enter stays in its database, and emails go to the local inbox, "
+        "not to real people."
     )
     assert notice not in client.get("/privacy/").content.decode()
     settings.EXPLORE = True
@@ -119,5 +120,28 @@ def test_local_copy_statement_is_gated_on_the_mode(client, settings, vite_build)
     settings.PRIVACY_CONTACT_EMAIL = ""  # even a blank contact is not a reason to claim it is local
     assert LOCAL_STATEMENT not in client.get("/privacy/").content.decode()
     settings.EXPLORE = True
+    settings.PRODUCTION = False
     settings.PRIVACY_CONTACT_EMAIL = ""
     assert LOCAL_STATEMENT in client.get("/privacy/").content.decode()
+
+
+@pytest.mark.parametrize(("production", "expected"), [(True, True), (False, False)])
+def test_https_claim_only_on_hosted_copies(client, settings, vite_build, production, expected):
+    settings.PRODUCTION = production
+    body = client.get("/privacy/").content.decode()
+    assert ("Connections use HTTPS." in body) is expected
+
+
+def test_help_does_not_promise_test_accounts_before_sign_in(client, vite_build):
+    body = client.get("/help/").content.decode()
+    assert "The README lists them" not in body
+    assert "arrive with sign-in (M4)" in body
+
+
+def test_local_copy_wording_covers_codespaces(client, settings, vite_build):
+    settings.PRODUCTION = False
+    settings.EXPLORE = True
+    for url in ("/privacy/", "/contact/"):
+        body = client.get(url).content.decode()
+        assert "local or personal copy" in body
+        assert "runs on your computer" not in body
