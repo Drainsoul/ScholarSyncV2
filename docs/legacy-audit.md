@@ -74,7 +74,7 @@ Status: **wired** = works end to end; **partial** = mixes real and fake data; **
 
 ## 3. Business rules v2 must settle
 The sources contradict each other. v2 keeps one source of truth (`BenefitTier` and the `Program` rules), seeded from the
-**admin** rate tables, and Kenneth confirms the amounts (`STATE.md` → Open questions).
+**admin** rate tables, and the scholarship office confirms the amounts (open question).
 
 | Rule | v1 source |
 |---|---|
@@ -168,33 +168,18 @@ The sources contradict each other. v2 keeps one source of truth (`BenefitTier` a
   response shape.
 
 ## 7. Problems, ranked
-**Security**
-1. **Role self-assignment:** signup accepts `account_type=super_admin` (`app.py:717, 737-747`).
-2. **Secrets exposure** (§8).
-   - The fallback `SECRET_KEY='please-set-a-secret-key-in-env'` (`app.py:33`) lets anyone forge a session if the
-     environment variable is missing.
-3. **Stored XSS:**
-   - About 260 `innerHTML` writes render student names and courses unescaped in admin tables
-     (`ceaa_admin_scholars.js:772`, `super_admin_scholars.js:233`, …).
-   - Uploads are served inline with the MIME type the client sent (`ceaa_admin_routes.py:377-412`).
-4. **Leaked password hash:** `password_hash` is returned by `/api/profile/save` (`app.py:1486, 1510`).
-5. **No CSRF and weak session handling:**
-   - no CSRF protection anywhere;
-   - an open redirect via `next` (`app.py:702`);
-   - no login throttling or password policy;
-   - `email_verified` is never checked;
-   - the role is read from a client-side session cookie, and sessions can't be revoked;
-   - `Secure` cookies are off by default.
-6. **Authorization gaps:**
-   - a CEAA admin can write LANI distribution rows;
-   - students set their own `scholarship_type`;
-   - the super admin "admins" API edits any user;
-   - report PUT accepts any column name;
-   - the uploader ID is taken from a form field.
-7. **No upload controls:** no type allowlist (`lani_admin_routes.py:1321`), no global size limit, and the MIME type
-   comes from the client.
-8. **PII in logs:** about 570 `print`s, including emails, request payloads and a reset-token prefix; 616 `console.*`
-   calls.
+**Security** (classes of problems; v2 fixes each by design)
+- **Credentials in history:** v1 committed credentials and keys to its git history (all since rotated).
+- **Authorization:** roles could be self-assigned at signup, program staff were not scoped to their own program, and
+  several endpoints trusted client-supplied identifiers or column names.
+- **Injection and output handling:** user-supplied text was rendered unescaped in admin tables, and uploads were
+  served inline with a client-chosen MIME type.
+- **Data exposure:** a profile endpoint returned more fields than it should, and error responses returned internal
+  details.
+- **Request and session handling:** v1 lacked CSRF protection, login throttling and a password policy, accepted
+  unvalidated redirect targets, did not enforce email verification, and could not revoke sessions.
+- **Uploads:** no type allowlist or global size limit.
+- **PII in logs:** emails and request payloads were printed to logs and browser consoles.
 
 **Structure and performance**
 - **Duplication:** CEAA and LANI are 67–99% copies across templates, CSS and JS; backend overlap is about 25% (routes) to
@@ -226,16 +211,9 @@ The sources contradict each other. v2 keeps one source of truth (`BenefitTier` a
 - **Junk committed to git:** `__pycache__/`, `tempCodeRunnerFile.py`, Windows `.lnk` shortcuts, five 2.1 MB uploaded
   PNGs, and GitHub Pages `CNAME` leftovers.
 
-## 8. Secrets exposure (values deliberately not copied here)
-| Kind | Where | Commits |
-|---|---|---|
-| Aiven Postgres host + password | hard-coded fallbacks in `database.py` and `main.py` | `f2e1e2f` → `43cdc4e`; `709f525`. **Still in the current tree** inside `__pycache__/database.cpython-312.pyc`, with the same password as before the "rotated keys" commit |
-| Google OAuth client ID + secret | `app.py` | `e895486` → `43cdc4e` |
-| Gmail SMTP user + app password | `app.py` fallbacks | `4c05f50`, `3dc56e5`, `d29792b`, `447b14c`, `bfe11e6` → `43cdc4e` |
-| Flask `SECRET_KEY` | `app.py` fallbacks | `2d8d6c7`, `1348d97`, `3d838b5`, `b6e9fe6` |
-
-The repo is public, so the values in its history must be treated as known. **Status (2026-10-12):** Kenneth confirmed
-that every one of these keys had already been rotated. v2 never touches the legacy repo.
+## 8. Secrets exposure
+v1 committed credentials (database, OAuth, SMTP and session-signing keys) to its history; they have since been rotated.
+v2 reads every secret from the environment, has no in-code fallbacks, and never touches the legacy repo.
 
 ## 9. Dependencies (v1)
 **Outdated or vulnerable:**
