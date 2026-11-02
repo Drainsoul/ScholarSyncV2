@@ -100,6 +100,14 @@ def test_run_worker_survives_a_failing_cycle(
     assert "Worker cycle failed" in caplog.text
 
 
+@pytest.mark.parametrize("interval", ["0", "-5", "abc"])
+def test_run_worker_rejects_a_non_positive_interval(interval: str) -> None:
+    from django.core.management.base import CommandError
+
+    with pytest.raises(CommandError, match="interval"):
+        call_command("run_worker", "--once", "--interval", interval, stdout=StringIO())
+
+
 @pytest.fixture(autouse=True)
 def _no_connection_cleanup(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
     if "db" not in request.fixturenames:
