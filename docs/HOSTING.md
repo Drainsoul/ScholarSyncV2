@@ -12,11 +12,15 @@ You need:
 Commands are for bash. On PowerShell, set variables with `$env:NAME = "value"` and copy with `Copy-Item`.
 
 ## 1. Delete the demo
+Work on a local branch of your own, so later updates merge cleanly (see "To update later" in step 5):
 ```
-rm -r apps/demo
+git switch -c hosting
+git rm -r apps/demo
+git commit -m "chore: remove the demo for hosting"
 ```
-That is the only change needed. The demo holds the test accounts, the sample data and the login-page notice. It is
-inactive in production mode anyway, but the deploy check (step 7) fails while the folder exists, so you cannot forget.
+That is the only code change needed. The demo holds the test accounts, the sample data and the login-page notice.
+Production mode never loads it anyway, but the deploy check (step 7) fails while the folder exists, so you cannot
+forget.
 
 ## 2. Create `.env`
 ```
@@ -130,7 +134,24 @@ scholarships.example.org {
 If the proxy runs on another host, edit the `ports` line of `web` to `"${APP_PORT:-8000}:8000"` (all interfaces) or
 `"PRIVATE_IP:${APP_PORT:-8000}:8000"` (one private interface), and firewall the port so only the proxy can connect.
 
-To update later: `git pull`, then run the same `up -d --build` command.
+To update later, merge the new upstream code into your `hosting` branch, then rebuild:
+```
+git fetch origin
+git merge origin/main
+docker compose -f compose.production.yaml up -d --build
+```
+If upstream changed anything inside `apps/demo`, the merge stops with a modify/delete conflict there. Keep the folder
+deleted and finish the merge:
+```
+git rm -r apps/demo
+git commit --no-edit
+```
+
+**Health checks and plain HTTP.** Production redirects every plain-HTTP request to HTTPS and answers only the host names
+in `DJANGO_ALLOWED_HOSTS`. That includes your platform's or load balancer's health probe: a probe that sends plain HTTP
+gets a `301`, and one that sends an unknown `Host` (such as an IP address) gets a `400`. Point probes at `/healthz` with
+the header `X-Forwarded-Proto: https` and an allowed `Host`, as the container's own check (`docker/healthcheck.py`)
+does. The app has no switch to turn the redirect off; set the header at the proxy instead.
 
 ## 6. Background jobs
 The `worker` service runs `manage.py cleanup` every 5 minutes (it deletes expired sessions now, and will also retry
