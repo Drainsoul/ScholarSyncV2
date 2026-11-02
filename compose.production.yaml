@@ -24,10 +24,10 @@ services:
     image: scholarsync:production
     env_file: .env
     environment: *forced
-    # Published on all interfaces for a proxy on another host. For a proxy on this machine,
-    # use "127.0.0.1:${APP_PORT:-8000}:8000" so only the proxy can reach it.
+    # Loopback only, for a TLS proxy on this machine. For a proxy on another host, widen it
+    # (docs/HOSTING.md step 5) and firewall the port so only the proxy can reach it.
     ports:
-      - "${APP_PORT:-8000}:8000"
+      - "127.0.0.1:${APP_PORT:-8000}:8000"
     restart: unless-stopped
     healthcheck: *healthcheck
 

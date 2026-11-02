@@ -98,3 +98,9 @@ def test_devcontainer_generates_a_key_and_keeps_ports_private():
     assert b"\r" not in (ROOT / ".devcontainer" / "explore-key.sh").read_bytes()
     ignored = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
     assert ".devcontainer/explore.env" in ignored
+
+
+def test_production_web_is_published_on_loopback_by_default():
+    block = _service_block("compose.production.yaml", "web")
+    assert '- "127.0.0.1:${APP_PORT:-8000}:8000"' in block
+    assert "ports:" not in _service_block("compose.production.yaml", "worker")
