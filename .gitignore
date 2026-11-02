@@ -222,6 +222,7 @@ __marimo__/
 # Local Claude Code files (personal, never committed)
 STATE.md
 CLAUDE.local.md
+.claude/
 
 # Build output and local tooling
 static/dist/
