@@ -112,3 +112,10 @@ def test_dockerfile_sets_ownership_without_a_recursive_chown():
     assert "COPY --chown=scholarsync . ." in dockerfile
     assert dockerfile.index("useradd") < dockerfile.index("COPY --chown=scholarsync")
     assert "USER scholarsync" in dockerfile
+
+
+def test_gunicorn_runs_without_a_control_socket():
+    # gunicorn 26 puts its control socket in $HOME, which the non-root user does not have.
+    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    cmd = next(line for line in dockerfile.splitlines() if line.startswith("CMD "))
+    assert '"--no-control-socket"' in cmd
