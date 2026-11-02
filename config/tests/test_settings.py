@@ -408,3 +408,25 @@ def test_developer_mode_allows_empty_allowed_hosts(tmp_path):
         tmp_path, ["ALLOWED_HOSTS"], DJANGO_DEBUG="true", DJANGO_ALLOWED_HOSTS=""
     )
     assert values["ALLOWED_HOSTS"] == []
+
+
+def test_explore_ignores_csrf_trusted_origins_from_env(tmp_path):
+    values = settings_values(
+        tmp_path,
+        ["CSRF_TRUSTED_ORIGINS"],
+        SCHOLARSYNC_EXPLORE="true",
+        DJANGO_CSRF_TRUSTED_ORIGINS="https://evil.example",
+    )
+    assert values["CSRF_TRUSTED_ORIGINS"] == []
+
+
+def test_explore_trusts_only_the_codespaces_origin(tmp_path):
+    values = settings_values(
+        tmp_path,
+        ["CSRF_TRUSTED_ORIGINS"],
+        SCHOLARSYNC_EXPLORE="true",
+        DJANGO_CSRF_TRUSTED_ORIGINS="https://evil.example",
+        DJANGO_SECRET_KEY="codespace-" + "a" * 64,
+        **_CODESPACE,
+    )
+    assert values["CSRF_TRUSTED_ORIGINS"] == ["https://demo-8000.app.github.dev"]

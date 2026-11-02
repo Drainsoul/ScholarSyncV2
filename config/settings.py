@@ -38,7 +38,8 @@ else:
             "DJANGO_ALLOWED_HOSTS must list your host names in production: not empty, no '*'. "
             "See docs/HOSTING.md."
         )
-CSRF_TRUSTED_ORIGINS: list[str] = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", [])
+# Explore trusts no extra origins (only the Codespaces one below may be added).
+CSRF_TRUSTED_ORIGINS: list[str] = [] if EXPLORE else env.list("DJANGO_CSRF_TRUSTED_ORIGINS", [])
 
 # GitHub Codespaces (explore only): its proxy forwards https://<name>-<port>.<domain> to the app.
 _codespace_name = env.str("CODESPACE_NAME", "")
