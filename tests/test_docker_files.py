@@ -104,3 +104,11 @@ def test_production_web_is_published_on_loopback_by_default():
     block = _service_block("compose.production.yaml", "web")
     assert '- "127.0.0.1:${APP_PORT:-8000}:8000"' in block
     assert "ports:" not in _service_block("compose.production.yaml", "worker")
+
+
+def test_dockerfile_sets_ownership_without_a_recursive_chown():
+    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    assert "chown -R" not in dockerfile
+    assert "COPY --chown=scholarsync . ." in dockerfile
+    assert dockerfile.index("useradd") < dockerfile.index("COPY --chown=scholarsync")
+    assert "USER scholarsync" in dockerfile
