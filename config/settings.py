@@ -32,7 +32,8 @@ if EXPLORE:
         )
     ALLOWED_HOSTS = list(EXPLORE_HOSTS)
 else:
-    ALLOWED_HOSTS = [h.strip() for h in env.list("DJANGO_ALLOWED_HOSTS", []) if h.strip()]
+    _hosts: list[str] = env.list("DJANGO_ALLOWED_HOSTS", [])
+    ALLOWED_HOSTS = [h.strip() for h in _hosts if h.strip()]
     if PRODUCTION and (not ALLOWED_HOSTS or "*" in ALLOWED_HOSTS):
         raise ImproperlyConfigured(
             "DJANGO_ALLOWED_HOSTS must list your host names in production: not empty, no '*'. "
