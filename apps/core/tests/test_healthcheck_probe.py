@@ -20,10 +20,10 @@ def _probe_headers(monkeypatch, allowed_hosts):
 @pytest.mark.django_db
 def test_probe_gets_200_under_production_settings(settings, monkeypatch):
     settings.DEBUG = False
-    settings.ALLOWED_HOSTS = ["scholarships.example.gov.ph", "www.example.gov.ph"]
+    settings.ALLOWED_HOSTS = ["scholarships.example.org", "www.example.org"]
     settings.SECURE_SSL_REDIRECT = True
-    headers = _probe_headers(monkeypatch, "scholarships.example.gov.ph,www.example.gov.ph")
-    assert headers["Host"] == "scholarships.example.gov.ph"
+    headers = _probe_headers(monkeypatch, "scholarships.example.org,www.example.org")
+    assert headers["Host"] == "scholarships.example.org"
     wsgi = {f"HTTP_{k.upper().replace('-', '_')}": v for k, v in headers.items()}
     response = Client().get("/healthz", secure=False, **wsgi)
     assert response.status_code == 200
@@ -32,8 +32,8 @@ def test_probe_gets_200_under_production_settings(settings, monkeypatch):
 
 @pytest.mark.django_db
 def test_plain_http_requests_still_redirect_in_production(settings):
-    settings.ALLOWED_HOSTS = ["scholarships.example.gov.ph"]
+    settings.ALLOWED_HOSTS = ["scholarships.example.org"]
     settings.SECURE_SSL_REDIRECT = True
-    response = Client().get("/", secure=False, HTTP_HOST="scholarships.example.gov.ph")
+    response = Client().get("/", secure=False, HTTP_HOST="scholarships.example.org")
     assert response.status_code == 301
     assert response["Location"].startswith("https://")
