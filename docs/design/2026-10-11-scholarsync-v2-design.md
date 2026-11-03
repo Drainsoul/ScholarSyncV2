@@ -10,6 +10,7 @@
   M3.5). Design: `docs/design/2026-10-30-open-source-self-hosting-design.md`.
 - **Revision:** 6 (2026-11-03): §12 denser after the maintainer's mockup review (14 px body, 36 px controls, 208 px
   sidebar); figures become one line under the page header; the page column is centred. Mockups approved.
+- **Revision:** 7 (2026-11-03): M4 decisions: accounts, outbox, consent, areas (§3, §4.1, §4.3, §6, §9, §10, §14, §16).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -79,9 +80,9 @@ Versions are pinned to the latest stable release when M2 scaffolds the project, 
 ```
 config/            settings.py, urls.py, wsgi.py
 apps/
-  accounts/        User (email login, role), allauth adapters, invite/claim
+  accounts/        User (email login, role), ConsentRecord, allauth adapters, invite/claim
   programs/        Program, ProgramMembership, BenefitTier, RequiredDocument, School, AcademicTerm
-  students/        StudentProfile, FamilyMember, EducationRecord, ConsentRecord
+  students/        StudentProfile, FamilyMember, EducationRecord
   files/           StoredFile, upload intents, presign/confirm/download
   applications/    Application, Document, DocumentFile, review services
   awards/          Award, ScholarTerm, renewals, term rollover, at-risk selector
@@ -124,7 +125,15 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - fields: `email` (unique, login), `full_name`, `role` ∈ {`student`, `staff`, `super_admin`}, `is_active`,
     `is_staff` (Django admin only), `last_login`;
   - signup always creates `role=student`;
-  - only a super admin (via a service) or `create_office_admin` can create staff or super admins.
+  - only a super admin (via a service) or `create_office_admin` can create staff or super admins;
+  - emails are stored stripped and lower-cased, and are unique on `Lower(email)`;
+  - `create_superuser` exists only for Django's interface: `is_staff` + `is_superuser`, `role=staff`, no memberships.
+    Django admin stays out until M11.
+- **`ConsentRecord`:**
+  - fields: `user` FK, `notice_version`, `consented_at`, `ip_hash`;
+  - recorded at signup and whenever the privacy notice changes;
+  - it hangs off the user because a profile does not exist at signup; staff-created profiles record consent when the
+    student claims them (M6).
 - **`ProfileInvite`:**
   - fields: `profile` FK, `email`, `token_hash`, `expires_at`, `claimed_at`;
   - lets the owner of a staff-created `StudentProfile` claim it by verifying that email.
@@ -179,8 +188,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 - **`EducationRecord`:** `profile`, `level` ∈ {elementary, jhs, shs, als, college}, `school` FK, `course`,
   `year_level`, `gwa` (Decimal), `gwa_scale` (copied from the school, overridable), `units`, `year_from`, `year_to`,
   `is_current`.
-- **`ConsentRecord`:** `profile`, `notice_version`, `consented_at`, `ip_hash`. Recorded at signup and whenever the
-  privacy notice changes.
+- **`ConsentRecord`:** lives in `accounts` (§4.1), because a profile does not exist at signup.
 
 ### 4.4 files
 - **`StoredFile`:**
@@ -267,7 +275,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 - **`ReportFile`:** `report`, `file` FK `StoredFile`.
 - **`Task`:** `owner`, `program` (nullable), `title`, `notes`, `due_on`, `done_at`.
 - **`Notification`:** `recipient`, `kind`, `title`, `body`, `url`, `read_at`.
-- **`EmailOutbox`:** `to`, `template`, `context` (JSON), `status` ∈ {queued, sent, failed}, `attempts`,
+- **`EmailOutbox`:** `to`, `kind`, `context` (JSON, whitelisted strings only; see §9), `status` ∈ {queued, sent, failed}, `attempts`,
   `last_error`, `provider_message_id`, `sent_at`.
 - **`AuditEvent`:** `actor`, `action` (dotted, e.g. `application.approved`), `program` (nullable), `target_type`,
   `target_id`, `data` (JSON diff, no secrets), `ip_hash`, `at`. Append-only: no update or delete views.
@@ -293,6 +301,13 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 ## 6. Authorization
 - **Roles:** `User.role` decides which area a user can enter. Staff powers come from `ProgramMembership`, and a super
   admin can do everything in `/office/` and act in any program.
+- **Access rules:**
+  - anonymous → redirect to login, with `next`;
+  - signed in with the wrong role or no membership → 403;
+  - unknown program slug → 404;
+  - a super admin passes every program.
+- **Login lands on the role's home:** student `/me/`; staff their first program (by name), or a "no programs yet"
+  page; super admin `/office/`.
 - **Mixins and decorators:**
   - `StudentRequiredMixin`, `ProgramStaffRequiredMixin(level=staff|head)`, `SuperAdminRequiredMixin`;
   - object access always goes through a scoped selector (e.g. `applications_for_program(program)`), never through a
@@ -374,12 +389,17 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - `transaction.on_commit` tries the send through the configured SMTP transport with a 5-second timeout. On failure the row is
     `failed`, with `last_error` set.
   - Batch actions (bulk approvals, disbursements) send one batched call over the same transport.
+  - allauth emails go through the outbox too. A row stores `kind` (the allauth template name, e.g.
+    `email_confirmation_signup`) and only whitelisted string values in `context`; `context` is emptied once the row is
+    `sent` or reaches 5 attempts.
+  - Sending locks the row (`select_for_update(skip_locked=True)`) so it goes out once. The message's `Message-ID` is
+    stored as `provider_message_id`.
 - **Templates:** `templates/emails/<kind>.{html,txt}`, autoescaped.
   - v1 messages to port: application received, application decided, allowance approved/released, password reset (from
     allauth).
   - New: invite/claim, document declined, application returned.
 - **Background jobs:** two management commands, run on a loop by the `worker` service (or from any cron or scheduler):
-  - `send_outbox` retries `failed` rows, up to 5 attempts;
+  - `send_outbox` retries `failed` rows, up to 5 attempts, and also picks up `queued` rows older than 5 minutes;
   - `cleanup` runs `clearsessions`, deletes expired invites, and purges `sent` outbox rows older than 90 days.
 - **Scope:** both commands are idempotent. There are no HTTP cron endpoints and no `CRON_SECRET`.
 
@@ -389,9 +409,13 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - Google OIDC links to the account only when the Google email is verified;
   - allauth rate limits (Django database cache, via `createcachetable`);
   - reauthentication before revert/release, membership and role changes, and program money settings;
-  - Argon2 first in `PASSWORD_HASHERS`; validators: minimum length 10, common, numeric, similarity.
+  - Argon2 first in `PASSWORD_HASHERS`; validators: minimum length 10, common, numeric, similarity;
+  - Google signup shows the signup form (no auto signup), so the consent box is always ticked by a person;
+  - unknown-account emails are off;
+  - tests use the local-memory cache; deployments use the database cache.
 - **Sessions:**
   - database-backed; `Secure`, `HttpOnly`, `SameSite=Lax`; 12-hour age;
+  - `ACCOUNT_SESSION_REMEMBER = True`, so there is no "remember me" checkbox;
   - logout is POST only.
 - **CSRF and redirects:**
   - Django CSRF on every form; HTMX sends `X-CSRFToken` through `hx-headers` on `<body>`;
@@ -571,6 +595,7 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
 ## 14. Settings and environment variables (names only)
 - **Mode:** `SCHOLARSYNC_EXPLORE` (set by compose only), `DJANGO_DEBUG`.
 - **Core:** `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`, `SITE_URL`.
+- **Proxy:** `TRUSTED_PROXY_COUNT` (default 0; set to the number of proxies in front of the app, usually 1).
 - **Database:** `DATABASE_URL`, `DATABASE_URL_UNPOOLED` (optional).
 - **Files (S3-compatible):** `S3_ENDPOINT_URL`, `S3_PUBLIC_ENDPOINT_URL` (optional), `S3_REGION`, `S3_BUCKET`,
   `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_ADDRESSING_STYLE`.
@@ -658,7 +683,8 @@ starts, and ends with every acceptance item checked.
   green.
 
 **M4: Accounts, email, minimal Program**
-- [ ] Custom `User`, allauth (verification, Google, reset, rate limits, reauth), roles; signup only ever makes students.
+- [ ] Custom `User`, `AuditEvent`, allauth (verification, Google, reset, rate limits, reauth), roles; signup only ever
+  makes students.
 - [ ] Minimal `Program` + `ProgramMembership`; scoping mixins; permission-matrix test.
 - [ ] `EmailOutbox` + SMTP transport + `send_outbox` command (email proven through Mailpit in the compose smoke);
   privacy notice (page from M3.5) + `ConsentRecord`.
