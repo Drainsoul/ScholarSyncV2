@@ -10,7 +10,8 @@
   M3.5). Design: `docs/design/2026-10-30-open-source-self-hosting-design.md`.
 - **Revision:** 6 (2026-11-03): §12 denser after the maintainer's mockup review (14 px body, 36 px controls, 208 px
   sidebar); figures become one line under the page header; the page column is centred. Mockups approved.
-- **Revision:** 7 (2026-11-03): M4 decisions: accounts, outbox, consent, areas (§3, §4.1, §4.3, §6, §9, §10, §14, §16).
+- **Revision:** 7 (2026-11-03): M4 decisions: accounts, outbox, consent, areas (§3, §4.1, §4.3, §6, §9, §10, §14, §16);
+  M4 final-review follow-ups (§9, §10, §14).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -403,13 +404,19 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - New: invite/claim, document declined, application returned.
 - **Background jobs:** two management commands, run on a loop by the `worker` service (or from any cron or scheduler):
   - `send_outbox` retries `failed` rows, up to 5 attempts, and also picks up `queued` rows older than 5 minutes;
-  - `cleanup` runs `clearsessions`, deletes expired invites, and purges `sent` outbox rows older than 90 days.
+  - `cleanup` runs `clearsessions`, deletes expired invites, and purges `sent` outbox rows and exhausted `failed` rows
+    (5 attempts) older than 90 days.
 - **Scope:** both commands are idempotent. There are no HTTP cron endpoints and no `CRON_SECRET`.
 
 ## 10. Security and privacy
 - **Authentication:**
   - allauth with email as the login and `ACCOUNT_EMAIL_VERIFICATION="mandatory"`;
   - Google OIDC links to the account only when the Google email is verified;
+  - Google sign-in is for students only: staff and office accounts sign in with their password, and the social
+    adapter's `pre_social_login` refuses both a Google login and a Google connect that would reach one;
+  - emails greet the user by name only when the address they go to is verified (anyone can type a name and someone
+    else's address into the signup form);
+  - `ACCOUNT_SIGNUP_REDIRECT_URL` sends a new student to `/me/` after email confirmation;
   - allauth rate limits (Django database cache, via `createcachetable`);
   - reauthentication before revert/release, membership and role changes, and program money settings;
   - Argon2 first in `PASSWORD_HASHERS`; validators: minimum length 10, common, numeric, similarity;
@@ -602,7 +609,8 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
 - **Database:** `DATABASE_URL`, `DATABASE_URL_UNPOOLED` (optional).
 - **Files (S3-compatible):** `S3_ENDPOINT_URL`, `S3_PUBLIC_ENDPOINT_URL` (optional), `S3_REGION`, `S3_BUCKET`,
   `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_ADDRESSING_STYLE`.
-- **Email:** `EMAIL_URL` (SMTP, URL-style), `DEFAULT_FROM_EMAIL`.
+- **Email:** `EMAIL_URL` (SMTP, URL-style), `DEFAULT_FROM_EMAIL`. Production requires a real SMTP `EMAIL_URL`: blank,
+  `console://`, `memory://`, `dummy://` and `file://` refuse to start.
 - **Google sign-in (optional):** `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
 - **Operator (required in production):** `SITE_OPERATOR_NAME`, `PRIVACY_CONTACT_EMAIL`. In explore and developer modes
   they default to "This local copy" and no email.
