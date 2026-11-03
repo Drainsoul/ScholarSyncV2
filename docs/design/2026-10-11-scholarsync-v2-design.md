@@ -8,6 +8,8 @@
 - **Revision:** 5 (2026-10-30): open source and self-hosting. Vercel is no longer the deployment target; the app runs
   from one `docker compose up` and on any container host with any provider (§1, §2, §5, §7, §9, §11, §14-§19, new
   M3.5). Design: `docs/design/2026-10-30-open-source-self-hosting-design.md`.
+- **Revision:** 6 (2026-11-03): §12 denser after the maintainer's mockup review (14 px body, 36 px controls, 208 px
+  sidebar); figures become one line under the page header; the page column is centred. Mockups approved.
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
