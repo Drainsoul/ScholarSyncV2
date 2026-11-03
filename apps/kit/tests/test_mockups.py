@@ -289,7 +289,10 @@ def test_restyled_mockups_use_cards_and_status_text(client, kit_on, vite_build):
     money = client.get("/_kit/mockups/disbursements/").content.decode()
     assert "<meter" not in money and 'class="filters"' not in money
     assert 'class="table-toolbar"' in money
-    assert '<progress class="progress progress--primary" max="100" value="64"' in money
+    assert "<progress" not in money  # budget used is a figure, not a bar
+    assert re.search(
+        r'<p class="figure__value num">64%</p>\s*<p class="figure__label">Budget used<', money
+    )
     apply = client.get("/_kit/mockups/apply/").content.decode()
     assert 'class="section' not in apply and 'class="steps' not in apply
     assert '<progress class="progress progress--secondary"' in apply

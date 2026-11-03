@@ -1507,16 +1507,6 @@ html:not(.js) [data-bulk-all] {
   font-weight: 700;
 }
 
-.budget-used {
-  font-family: var(--font-heading);
-  font-size: var(--text-xl);
-  font-weight: 600;
-}
-
-.card__note {
-  margin: 0;
-}
-
 /* Windows High Contrast: backgrounds are dropped, so the current tab and chart bars need system
    colours (the current nav item is under App shell in layouts.css). */
 @media (forced-colors: active) {
