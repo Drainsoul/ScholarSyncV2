@@ -27,8 +27,8 @@ What starts:
 | `mail` | Mailpit, the inbox that catches every email | <http://localhost:8025> |
 
 On the first run the app image is built (the front-end bundle is built inside it, so you need no Node), the database
-is migrated and the sample data is loaded if the database has no users yet. Later runs start in seconds and keep your
-data. No `.env` file is needed; if you have one, explore mode ignores it.
+is migrated and the demo accounts are loaded. Every start runs the loader again; it only adds what is missing (a
+deleted demo account comes back) and never touches your other data. Later runs start in seconds. No `.env` file is needed; if you have one, explore mode ignores it.
 
 Explore mode is for your own computer only. Every port is published on `127.0.0.1`, and the app answers only
 `localhost` and `127.0.0.1`. To let other people use it, follow [HOSTING.md](HOSTING.md).
@@ -37,7 +37,8 @@ Pages to try: the home page `/`, the design kit and mockups `/_kit/`, and the he
 
 ### Test accounts
 The login page offers these as one-click buttons. All four use the password `explore-taguig-2026`; they exist only
-on this copy.
+on this copy. They exist in explore and developer copies (`docker compose up`, or `DJANGO_DEBUG=true`), never on
+a hosted copy.
 
 - Student: `student@scholarsync.test`
 - Program staff: `staff@scholarsync.test`

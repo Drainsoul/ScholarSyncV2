@@ -54,8 +54,7 @@ Every account uses the password `explore-taguig-2026`.
 | Program head | `head@scholarsync.test` | staff features plus releasing money and program settings |
 | Scholarship office | `office@scholarsync.test` | all programs, staff, reports, analytics |
 
-They are offered on the login page as one-click buttons. They exist only on copies run with `docker compose up`,
-never on a hosted one.
+They are offered on the login page as one-click buttons. They exist in explore and developer copies (`docker compose up`, or `DJANGO_DEBUG=true`), never on a hosted copy.
 
 ## Self-hosting
 See [docs/HOSTING.md](docs/HOSTING.md). After the first start, create the scholarship-office account:

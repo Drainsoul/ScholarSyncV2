@@ -13,6 +13,9 @@ export function initFill(): void {
       const password = form.querySelector<HTMLInputElement>("[name=password]");
       if (login) login.value = button.dataset.fillEmail ?? "";
       if (password) password.value = button.dataset.fillPassword ?? "";
+      const status = document.querySelector<HTMLElement>("[data-fill-status]");
+      if (status)
+        status.textContent = `Filled in the ${button.textContent?.trim() ?? ""} account. Press Log in.`;
       form.querySelector<HTMLElement>("[type=submit], button:not([type])")?.focus();
     });
   }
