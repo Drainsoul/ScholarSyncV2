@@ -1,5 +1,7 @@
+from pathlib import Path
 from typing import Any
 
+import allauth
 import pytest
 from django.conf import settings
 from django.template.loader import get_template
@@ -10,23 +12,38 @@ from apps.accounts.tests.factories import UserFactory
 from apps.workspace.emails import KINDS
 from apps.workspace.models import EmailOutbox
 
-ALLAUTH_KINDS = {
-    "email_confirmation_signup",
-    "email_confirmation",
-    "password_reset_key",
-    "account_already_exists",
-    "password_changed",
-    "password_reset",
-    "email_changed",
-    "email_deleted",
-    "password_set",
-    "account_connected",
-    "account_disconnected",
+# allauth kinds our settings never send. Anything else allauth ships must be in KINDS, so an
+# allauth upgrade that adds a kind fails this test instead of a send_mail at runtime.
+DISABLED_ALLAUTH_KINDS = {
+    "login_code",  # ACCOUNT_LOGIN_BY_CODE_ENABLED is off
+    "password_reset_code",  # password reset is by link, not by code
+    "unknown_account",  # ACCOUNT_EMAIL_UNKNOWN_ACCOUNTS = False
+    "email_confirm",  # a legacy template; no allauth code path sends it
 }
+# mfa is not installed, and its templates live under mfa/email/, outside these two folders.
+ALLAUTH_TEMPLATES = Path(allauth.__file__).parent / "templates"
+
+
+def _installed_allauth_kinds() -> set[str]:
+    return {
+        path.name.removesuffix("_subject.txt")
+        for folder in ("account", "socialaccount")
+        for path in (ALLAUTH_TEMPLATES / folder / "email").glob("*_subject.txt")
+    }
 
 
 def test_every_allauth_kind_is_registered() -> None:
-    assert ALLAUTH_KINDS <= set(KINDS)
+    expected = _installed_allauth_kinds() - DISABLED_ALLAUTH_KINDS
+    assert DISABLED_ALLAUTH_KINDS <= _installed_allauth_kinds()  # the list is not stale
+    assert {kind for kind in KINDS if kind in _installed_allauth_kinds()} == expected
+
+
+def test_the_disabled_allauth_kinds_stay_disabled() -> None:
+    from allauth.account import app_settings
+
+    assert not app_settings.LOGIN_BY_CODE_ENABLED
+    assert not app_settings.PASSWORD_RESET_BY_CODE_ENABLED
+    assert not app_settings.EMAIL_UNKNOWN_ACCOUNTS
 
 
 @pytest.mark.parametrize("kind", sorted(KINDS))
