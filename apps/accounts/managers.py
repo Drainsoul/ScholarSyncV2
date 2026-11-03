@@ -6,11 +6,16 @@ if TYPE_CHECKING:
     from .models import User
 
 
+def normalise_email(email: str | None) -> str:
+    """Strip and lower-case the whole address: login is an exact match on the stored value."""
+    return (email or "").strip().lower()
+
+
 class UserManager(BaseUserManager["User"]):
     use_in_migrations = True
 
     def _create(self, email: str, password: str | None, **extra: Any) -> "User":
-        email = (email or "").strip().lower()
+        email = normalise_email(email)
         if not email:
             raise ValueError("An email address is required.")
         user = self.model(email=email, **extra)
@@ -20,6 +25,9 @@ class UserManager(BaseUserManager["User"]):
             user.set_password(password)
         user.save(using=self._db)
         return user
+
+    def get_by_natural_key(self, username: str | None) -> "User":
+        return super().get_by_natural_key(normalise_email(username))
 
     def create_user(self, email: str, password: str | None = None, **extra: Any) -> "User":
         extra.setdefault("is_staff", False)

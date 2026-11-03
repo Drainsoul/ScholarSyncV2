@@ -1,10 +1,10 @@
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
 from django.db.models.functions import Lower
 
-from .managers import UserManager
+from .managers import UserManager, normalise_email
 
 
 class User(AbstractBaseUser, PermissionsMixin):
@@ -13,7 +13,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         STAFF = "staff", "Program staff"
         SUPER_ADMIN = "super_admin", "Scholarship office"
 
-    email = models.EmailField(max_length=254)
+    email = models.EmailField(max_length=254, unique=True)
     full_name = models.CharField(max_length=150)
     role = models.CharField(max_length=20, choices=Role, default=Role.STUDENT)
     is_active = models.BooleanField(default=True)
@@ -37,6 +37,14 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self) -> str:
         return self.email
+
+    def clean(self) -> None:
+        super().clean()
+        self.email = normalise_email(self.email)
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        self.email = normalise_email(self.email)
+        super().save(*args, **kwargs)
 
     def get_full_name(self) -> str:
         return self.full_name

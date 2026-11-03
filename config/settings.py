@@ -246,8 +246,7 @@ SECURE_HSTS_SECONDS = 31_536_000 if PRODUCTION else 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = PRODUCTION
 # Preload is a one-way commitment for the whole domain; decide at launch (spec §10, M12).
 SECURE_HSTS_PRELOAD = False
-# auth.E003: email uniqueness is a case-insensitive functional constraint the check cannot see.
-SILENCED_SYSTEM_CHECKS = ["security.W021", "auth.E003"]
+SILENCED_SYSTEM_CHECKS = ["security.W021"]
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"
 SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"

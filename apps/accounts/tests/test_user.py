@@ -47,3 +47,31 @@ def test_factory_builds_a_usable_user(db):
     user = UserFactory.create()
     assert user.email.endswith("@scholarsync.test")
     assert user.check_password("factory-pass-2026")
+
+
+def test_save_normalises_the_email(db):
+    user = User(email=" Mixed@Case.TEST ")
+    user.save()
+    user.refresh_from_db()
+    assert user.email == "mixed@case.test"
+
+
+def test_clean_normalises_the_email():
+    user = User(email=" Mixed@Case.TEST ")
+    user.clean()
+    assert user.email == "mixed@case.test"
+
+
+def test_get_by_natural_key_ignores_case(db):
+    user = User(email=" Mixed@Case.TEST ")
+    user.save()
+    assert User.objects.get_by_natural_key("MIXED@case.test") == user
+
+
+def test_create_user_requires_an_email(db):
+    with pytest.raises(ValueError):
+        User.objects.create_user("")
+
+
+def test_create_user_without_password_is_unusable(db):
+    assert not User.objects.create_user("np@scholarsync.test").has_usable_password()
