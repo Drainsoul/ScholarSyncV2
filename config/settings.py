@@ -232,6 +232,8 @@ SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
 ALLAUTH_TRUSTED_PROXY_COUNT = env.int("TRUSTED_PROXY_COUNT", 0)
 LOGIN_URL = "account_login"
 LOGIN_REDIRECT_URL = "core:home"  # the adapter sends each role to its own home
+# Only students sign up, and the post-verification login follows this URL, not the adapter.
+ACCOUNT_SIGNUP_REDIRECT_URL = "students:home"
 
 # Google sign-in is offered only when both values are set.
 _GOOGLE_CLIENT_ID = env.str("GOOGLE_CLIENT_ID", "")
