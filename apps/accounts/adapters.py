@@ -2,10 +2,10 @@ from typing import Any
 
 from allauth.account.adapter import DefaultAccountAdapter
 from allauth.account.models import EmailAddress
-from allauth.core import context
 from allauth.core.exceptions import ImmediateHttpResponse
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from allauth.socialaccount.models import SocialApp
+from allauth.socialaccount.providers.base import AuthProcess
 from django.contrib import messages
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.forms import BaseForm
@@ -16,6 +16,13 @@ from apps.core.shell import home_url_for
 from apps.workspace import emails
 
 from .models import User
+
+
+def _is_privileged(user: object) -> bool:
+    """Staff, the scholarship office, or anyone with a Django staff or superuser flag."""
+    return isinstance(user, User) and (
+        user.role != User.Role.STUDENT or user.is_staff or user.is_superuser
+    )
 
 
 def _force_student(user: User) -> None:
@@ -86,23 +93,26 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):  # type: ignore[misc]
         except SocialApp.DoesNotExist:
             raise Http404 from None
 
-    def authenticate_by_email(self, sociallogin: Any) -> Any:
-        """Email sign-in and auto-connect are for students only.
+    def pre_social_login(self, request: HttpRequest, sociallogin: Any) -> None:
+        """Google sign-in and connecting Google are for students only.
 
-        A staff or scholarship-office account must be signed into with its password, so a Google
-        account that merely shares its email address can never reach it.
+        allauth calls this after both lookups (an existing Google link, then a verified email
+        match) and before anything logs in or connects. A staff or scholarship-office account must
+        be signed into with its password, so no Google account can ever reach it.
         """
-        found = super().authenticate_by_email(sociallogin)
-        if found is None or sociallogin.state.get("process") == "connect":
-            return found
-        user = found[0]
-        if user.role != User.Role.STUDENT or user.is_staff or user.is_superuser:
+        if sociallogin.state.get("process") == AuthProcess.CONNECT:
+            if _is_privileged(request.user):
+                messages.error(
+                    request, "Staff and scholarship-office accounts sign in with their password."
+                )
+                assert isinstance(request.user, User)
+                raise ImmediateHttpResponse(redirect(home_url_for(request.user)))
+            return
+        if sociallogin.is_existing and _is_privileged(sociallogin.user):
             messages.error(
-                context.request,
-                "This account signs in with its email and password. Sign in below.",
+                request, "This account signs in with its email and password. Sign in below."
             )
             raise ImmediateHttpResponse(redirect("account_login"))
-        return found
 
     def save_user(
         self, request: HttpRequest, sociallogin: Any, form: BaseForm | None = None

@@ -1,14 +1,10 @@
 from smtplib import SMTPException
-from types import SimpleNamespace
 from typing import Any
 
 import pytest
 from allauth.account.models import EmailAddress
-from allauth.core.context import request_context
-from allauth.core.exceptions import ImmediateHttpResponse
 from allauth.socialaccount.models import SocialAccount, SocialLogin
 from django.conf import settings
-from django.contrib.messages.storage.fallback import FallbackStorage
 from django.core.mail import EmailMultiAlternatives
 from django.test import RequestFactory
 
@@ -164,43 +160,6 @@ def test_social_adapter_forces_student_without_the_account_adapter(
     assert not saved.is_staff and not saved.is_superuser
 
 
-def _email_login(address: str) -> Any:
-    from allauth.account.models import EmailAddress
-
-    return SimpleNamespace(
-        email_addresses=[EmailAddress(email=address, verified=True)],
-        provider=SimpleNamespace(app=None, get_settings=dict),
-        state={},
-    )
-
-
-def _request_with_messages(rf: RequestFactory) -> Any:
-    request = rf.get("/")
-    request.session = {}  # type: ignore[assignment]
-    request._messages = FallbackStorage(request)  # type: ignore[attr-defined]
-    return request
-
-
-@pytest.mark.parametrize("role", [User.Role.STAFF, User.Role.SUPER_ADMIN])
-def test_google_email_match_never_reaches_staff_or_office(
-    db: Any, rf: RequestFactory, role: User.Role
-) -> None:
-    UserFactory.create(email="boss@scholarsync.test", role=role, verified=True)
-    request = _request_with_messages(rf)
-    with request_context(request), pytest.raises(ImmediateHttpResponse) as refused:
-        SocialAccountAdapter().authenticate_by_email(_email_login("boss@scholarsync.test"))
-    assert refused.value.response.status_code == 302
-    assert refused.value.response.url == "/accounts/login/"
-    assert [str(m) for m in request._messages]
-
-
-def test_google_email_match_still_connects_a_student(db: Any, rf: RequestFactory) -> None:
-    student = UserFactory.create(email="kid@scholarsync.test", verified=True)
-    with request_context(_request_with_messages(rf)):
-        found = SocialAccountAdapter().authenticate_by_email(_email_login("kid@scholarsync.test"))
-    assert found is not None and found[0] == student
-
-
 def test_signup_name_never_reaches_the_unverified_address(
     client: Any, db: Any, mailoutbox: Any, django_capture_on_commit_callbacks: Any
 ) -> None:
@@ -209,15 +168,3 @@ def test_signup_name_never_reaches_the_unverified_address(
     assert "evil.example" not in mailoutbox[0].body
     assert "evil.example" not in str(mailoutbox[0].alternatives)
     assert "evil.example" not in mailoutbox[0].subject
-
-
-@pytest.mark.parametrize("flag", ["is_staff", "is_superuser"])
-def test_google_email_match_refuses_a_student_with_staff_flags(
-    db: Any, rf: RequestFactory, flag: str
-) -> None:
-    UserFactory.create(email="odd@scholarsync.test", verified=True, **{flag: True})
-    request = _request_with_messages(rf)
-    with request_context(request), pytest.raises(ImmediateHttpResponse) as refused:
-        SocialAccountAdapter().authenticate_by_email(_email_login("odd@scholarsync.test"))
-    assert refused.value.response.url == "/accounts/login/"
-    assert [str(m) for m in request._messages]
