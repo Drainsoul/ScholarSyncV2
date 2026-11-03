@@ -38,6 +38,39 @@ def create_staff_user(
 
 
 @transaction.atomic
+def promote_to_office(*, user: User, full_name: str, password: str) -> User:
+    """Make an existing account the scholarship office's, from the command line.
+
+    For an operator whose address signed up on the site before `create_office_admin` ran. The
+    command decides whether that is allowed; this sets the role, name and password and marks the
+    address verified and primary. The password change also signs out every existing session.
+    """
+    was_verified = EmailAddress.objects.filter(
+        user=user, email__iexact=user.email, verified=True
+    ).exists()
+    validate_password(password, user=User(email=user.email, full_name=full_name))
+    user.role = User.Role.SUPER_ADMIN
+    user.full_name = full_name
+    user.set_password(password)
+    user.save()
+    EmailAddress.objects.filter(user=user).exclude(email__iexact=user.email).update(primary=False)
+    address = EmailAddress.objects.filter(user=user, email__iexact=user.email).first()
+    if address is None:
+        EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)
+    else:
+        address.verified = True
+        address.primary = True
+        address.save(update_fields=["verified", "primary"])
+    record(
+        actor=None,
+        action="user.promoted",
+        target=user,
+        data={"role": str(User.Role.SUPER_ADMIN), "was_verified": was_verified},
+    )
+    return user
+
+
+@transaction.atomic
 def record_consent(*, user: User, request: HttpRequest | None) -> ConsentRecord:
     """Store that this user accepted the current privacy notice."""
     consent = ConsentRecord.objects.create(

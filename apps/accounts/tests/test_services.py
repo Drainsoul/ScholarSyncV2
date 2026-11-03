@@ -3,7 +3,7 @@ from allauth.account.models import EmailAddress
 from django.core.exceptions import PermissionDenied, ValidationError
 
 from apps.accounts.models import User
-from apps.accounts.services import create_staff_user
+from apps.accounts.services import create_staff_user, promote_to_office
 from apps.accounts.tests.factories import UserFactory
 from apps.core.models import AuditEvent
 
@@ -95,3 +95,25 @@ def test_inactive_super_admin_cannot_create_staff(db):
             password=PASSWORD,
         )
     assert not User.objects.filter(email="x@scholarsync.test").exists()
+
+
+def test_promote_to_office_makes_one_primary_verified_address(db):
+    user = UserFactory.create(email="ana@scholarsync.test", verified=False)
+    EmailAddress.objects.filter(user=user).update(primary=False)
+    EmailAddress.objects.create(user=user, email="other@scholarsync.test", primary=True)
+    promote_to_office(user=user, full_name="Ana Cruz", password=PASSWORD)
+    primary = EmailAddress.objects.get(user=user, primary=True)
+    assert primary.email == "ana@scholarsync.test" and primary.verified
+    assert user.is_super_admin
+    assert AuditEvent.objects.get(action="user.promoted").data == {
+        "role": "super_admin",
+        "was_verified": False,
+    }
+
+
+def test_promote_to_office_checks_the_password(db):
+    user = UserFactory.create(email="ana@scholarsync.test", verified=False)
+    with pytest.raises(ValidationError):
+        promote_to_office(user=user, full_name="Ana Cruz", password="12345678")
+    user.refresh_from_db()
+    assert user.is_student

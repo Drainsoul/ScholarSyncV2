@@ -174,7 +174,8 @@ It must print `System check identified no issues`. If it says the demo app is st
 Then open your site over HTTPS and `/healthz`; it answers `{"ok": true}`.
 
 ## 8. First accounts and programs
-Create the first scholarship-office account. It is the only way to get a first sign-in on a hosted copy:
+Create the first scholarship-office account. It is the only way to get a first sign-in on a hosted copy. Run this
+before you sign up on the site:
 
 ```
 docker compose -f compose.production.yaml exec web python manage.py create_office_admin --email you@example.org --full-name "Your Name"
@@ -183,6 +184,11 @@ docker compose -f compose.production.yaml exec web python manage.py create_offic
 The command asks for the password twice and never prints the email address. For scripts, add `--no-input` and pass
 the password in the `OFFICE_ADMIN_PASSWORD` environment variable (`exec -e OFFICE_ADMIN_PASSWORD=...`). Then sign in at
 `/accounts/login/`.
+
+If the address already signed up on the site, the command takes that account over when the address was never
+verified (whoever typed it may not own it). If it was verified, the command stops; add `--promote-existing` to make
+that account the office account. Either way the account gets the office role, your name and the new password, and
+the change is audited.
 
 To start with the Taguig programs, run `python manage.py seed_programs` (in the container:
 `docker compose -f compose.production.yaml run --rm -e SKIP_PREPARE=1 web python manage.py seed_programs`); or create
