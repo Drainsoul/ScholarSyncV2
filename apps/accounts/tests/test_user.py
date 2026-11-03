@@ -50,22 +50,22 @@ def test_factory_builds_a_usable_user(db):
 
 
 def test_save_normalises_the_email(db):
-    user = User(email=" Mixed@Case.TEST ")
+    user = User(email=" Mixed@ScholarSync.TEST ")
     user.save()
     user.refresh_from_db()
-    assert user.email == "mixed@case.test"
+    assert user.email == "mixed@scholarsync.test"
 
 
 def test_clean_normalises_the_email():
-    user = User(email=" Mixed@Case.TEST ")
+    user = User(email=" Mixed@ScholarSync.TEST ")
     user.clean()
-    assert user.email == "mixed@case.test"
+    assert user.email == "mixed@scholarsync.test"
 
 
 def test_get_by_natural_key_ignores_case(db):
-    user = User(email=" Mixed@Case.TEST ")
+    user = User(email=" Mixed@ScholarSync.TEST ")
     user.save()
-    assert User.objects.get_by_natural_key("MIXED@case.test") == user
+    assert User.objects.get_by_natural_key("MIXED@scholarsync.test") == user
 
 
 def test_create_user_requires_an_email(db):
