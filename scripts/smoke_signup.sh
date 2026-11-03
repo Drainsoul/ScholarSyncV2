@@ -5,7 +5,10 @@ set -eu
 
 app="${1:?app base URL}"
 mail="${2:?Mailpit base URL}"
-address="smoke@scholarsync.test"
+# A fresh address per run, so a persistent stack that already holds an earlier run still works.
+address="smoke+$(date +%s)@scholarsync.test"
+query_address="smoke%2B${address#smoke+}"
+password="${SMOKE_PASSWORD:-smoke-signup-2026}"
 jar="$(mktemp)"
 trap 'rm -f "$jar"' EXIT
 
@@ -16,19 +19,23 @@ if [ -z "$token" ]; then
   exit 1
 fi
 
-curl -fsS -o /dev/null -c "$jar" -b "$jar" \
+code="$(curl -sS -o /dev/null -w "%{http_code}" -c "$jar" -b "$jar" \
   -H "Referer: $app/accounts/signup/" \
   --data-urlencode "csrfmiddlewaretoken=$token" \
   --data-urlencode "email=$address" \
   --data-urlencode "full_name=Smoke Test" \
-  --data-urlencode "password1=smoke-signup-2026" \
-  --data-urlencode "password2=smoke-signup-2026" \
+  --data-urlencode "password1=$password" \
+  --data-urlencode "password2=$password" \
   --data-urlencode "consent=on" \
-  "$app/accounts/signup/"
+  "$app/accounts/signup/")"
+if [ "$code" != "302" ]; then
+  echo "signup was not accepted (HTTP $code)" >&2
+  exit 1
+fi
 
 for _ in $(seq 1 30); do
-  total="$(curl -fsS "$mail/api/v1/search?query=to:$address" | grep -o '"total":[0-9]*' | head -n 1 | grep -o '[0-9]*$' || true)"
-  if [ "${total:-0}" -ge 1 ]; then
+  found="$(curl -fsS "$mail/api/v1/search?query=to:$query_address" | grep -o '"messages_count":[0-9]*' | head -n 1 | grep -o '[0-9]*$' || true)"
+  if [ "${found:-0}" -ge 1 ]; then
     echo "verification email reached Mailpit"
     exit 0
   fi
