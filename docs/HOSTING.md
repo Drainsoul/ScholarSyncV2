@@ -27,8 +27,9 @@ forget.
 cp .env.example .env
 ```
 Edit `.env`. Set at least the values below. The app refuses to start without the secret key, the database URL, the operator name and privacy
-contact, and (in production) the allowed hosts. It starts without `EMAIL_URL` and the `S3_*` values, but then email goes to the
-container log and file uploads do not work, so set them before real use.
+contact, and (in production) the allowed hosts and a real SMTP `EMAIL_URL`: production refuses a blank one and the
+`console://`, `memory://`, `dummy://` and `file://` backends, which would write reset and verification links to the
+log or drop mail. It starts without the `S3_*` values, but then file uploads do not work, so set them before real use.
 
 At least:
 
@@ -41,7 +42,7 @@ At least:
 | `SITE_OPERATOR_NAME` | your organisation's name, shown on the privacy, terms and contact pages (required) |
 | `PRIVACY_CONTACT_EMAIL` | an address you read, where people send privacy requests (required) |
 | `DATABASE_URL` | your PostgreSQL URL (step 4) |
-| `EMAIL_URL`, `DEFAULT_FROM_EMAIL` | your SMTP server and a From address it allows (step 4) |
+| `EMAIL_URL`, `DEFAULT_FROM_EMAIL` | your SMTP server and a From address it allows (step 4). Required: production will not start without a real SMTP URL |
 | `S3_ENDPOINT_URL`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_ADDRESSING_STYLE` | your storage (step 4) |
 | `TRUSTED_PROXY_COUNT` | the number of reverse proxies in front of the app: behind one HTTPS proxy, set `TRUSTED_PROXY_COUNT=1` (default 0). Without it, sign-in rate limits count every visitor as the proxy |
 | `CSP_REPORT_ONLY` | leave `true` at first; set `false` once pages load with no violation reports |

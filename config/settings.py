@@ -178,7 +178,26 @@ DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
 # Email: one URL (smtp://user:pass@host:587, smtp+tls://..., console://) -----------------------
 if not os.environ.get("EMAIL_URL"):
     os.environ.pop("EMAIL_URL", None)  # a blank line in .env means "use the console backend"
-globals().update(env.dj_email_url("EMAIL_URL", "console://"))
+if PRODUCTION and not os.environ.get("EMAIL_URL", "").strip():
+    raise ImproperlyConfigured(
+        "EMAIL_URL is blank. Production needs a real SMTP server, or reset and verification "
+        "links would be written to the log. See docs/HOSTING.md."
+    )
+_email_config = env.dj_email_url("EMAIL_URL", "console://")
+globals().update(_email_config)
+# Backends that never deliver: they would print links into the log or drop mail while every
+# outbox row reads "sent".
+_UNDELIVERED_EMAIL_BACKENDS = {
+    "django.core.mail.backends.console.EmailBackend",
+    "django.core.mail.backends.locmem.EmailBackend",
+    "django.core.mail.backends.dummy.EmailBackend",
+    "django.core.mail.backends.filebased.EmailBackend",
+}
+if PRODUCTION and _email_config["EMAIL_BACKEND"] in _UNDELIVERED_EMAIL_BACKENDS:
+    raise ImproperlyConfigured(
+        "EMAIL_URL must point at a real SMTP server in production, not a console, memory or "
+        "dummy backend. See docs/HOSTING.md."
+    )
 EMAIL_TIMEOUT = 5
 DEFAULT_FROM_EMAIL = env.str("DEFAULT_FROM_EMAIL", "ScholarSync <no-reply@localhost>")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL

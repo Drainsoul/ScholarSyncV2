@@ -8,6 +8,8 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
+# Production refuses to start without a real SMTP URL; nothing ever connects to this one.
+SMTP_URL = "smtp://localhost:25"
 
 
 @pytest.mark.parametrize(
@@ -27,6 +29,7 @@ def test_settings_refuse_to_load_without_required_vars(missing, tmp_path):
             "DATABASE_URL": "postgres://u:p@localhost:5433/db",
             "DJANGO_ALLOWED_HOSTS": "scholarsync.example",
             "DJANGO_ENV_FILE": str(tmp_path / "absent.env"),
+            "EMAIL_URL": SMTP_URL,
         }
     )
     del env[missing]
@@ -52,6 +55,7 @@ def test_debug_defaults_to_off_when_unset(tmp_path):
             "DATABASE_URL": "postgres://u:p@localhost:5433/db",
             "DJANGO_ALLOWED_HOSTS": "scholarsync.example",
             "DJANGO_ENV_FILE": str(tmp_path / "absent.env"),
+            "EMAIL_URL": SMTP_URL,
         }
     )
     result = subprocess.run(  # noqa: S603
@@ -77,6 +81,7 @@ _MODE_VARS = {
     "APP_PORT",
     "SITE_OPERATOR_NAME",
     "PRIVACY_CONTACT_EMAIL",
+    "EMAIL_URL",
 }
 
 
@@ -89,6 +94,7 @@ def _run_settings(tmp_path, names, _unset=(), **extra):
             "PRIVACY_CONTACT_EMAIL": "privacy@scholarsync.test",
             "DATABASE_URL": "postgres://u:p@localhost:5433/db",
             "DJANGO_ENV_FILE": str(tmp_path / "absent.env"),
+            "EMAIL_URL": SMTP_URL,
             **extra,
         }
     )
@@ -449,6 +455,7 @@ def test_blank_sentry_environment_uses_the_mode_default(tmp_path, mode, value, e
             "PRIVACY_CONTACT_EMAIL": "privacy@scholarsync.test",
             "DATABASE_URL": "postgres://u:p@localhost:5433/db",
             "DJANGO_ENV_FILE": str(tmp_path / "absent.env"),
+            "EMAIL_URL": SMTP_URL,
             "SENTRY_DSN": "https://key@sentry.io/1",
             "SENTRY_ENVIRONMENT": value,
             **mode,
@@ -466,3 +473,25 @@ def test_blank_sentry_environment_uses_the_mode_default(tmp_path, mode, value, e
     )
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == expected
+
+
+@pytest.mark.parametrize(
+    "value", ["", "   ", "console://", "memory://", "dummy://", "file:///tmp/mail"]
+)
+def test_production_refuses_an_email_url_that_never_delivers(tmp_path, value):
+    result = _run_settings(tmp_path, ["EMAIL_BACKEND"], EMAIL_URL=value)
+    assert result.returncode != 0
+    assert "EMAIL_URL" in result.stderr
+    assert "docs/HOSTING.md" in result.stderr
+
+
+def test_production_refuses_an_unset_email_url(tmp_path):
+    result = _run_settings(tmp_path, ["EMAIL_BACKEND"], _unset=["EMAIL_URL"])
+    assert result.returncode != 0
+    assert "EMAIL_URL" in result.stderr
+
+
+@pytest.mark.parametrize("mode", [{"SCHOLARSYNC_EXPLORE": "true"}, {"DJANGO_DEBUG": "true"}])
+def test_blank_email_url_prints_to_the_console_outside_production(tmp_path, mode):
+    values = settings_values(tmp_path, ["EMAIL_BACKEND"], EMAIL_URL="", **mode)
+    assert values["EMAIL_BACKEND"] == "django.core.mail.backends.console.EmailBackend"

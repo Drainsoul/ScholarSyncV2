@@ -15,6 +15,9 @@ os.environ.setdefault("SITE_OPERATOR_NAME", "ScholarSync CI")
 os.environ.setdefault("PRIVACY_CONTACT_EMAIL", "privacy@scholarsync.test")
 # Production refuses an empty or wildcard host list.
 os.environ.setdefault("DJANGO_ALLOWED_HOSTS", "scholarsync.example")
+# Production refuses a blank or console EMAIL_URL. Nothing connects to it: pytest-django swaps in
+# the locmem backend for every test (the `mailoutbox` fixture reads it).
+os.environ.setdefault("EMAIL_URL", "smtp://localhost:25")
 
 from config.settings import *  # noqa: E402, F403
 
