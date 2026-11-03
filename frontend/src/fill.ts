@@ -1,5 +1,6 @@
 // One-click form filler. A button with data-fill-email and data-fill-password fills the login form's
-// "login" and "password" inputs and moves focus to the submit button. The buttons render hidden and
+// "login" and "password" inputs and moves focus to the submit button. If a [data-fill-status] element exists, it also gets a short
+// announcement ("Filled in the … account. Press Log in.") for screen readers. The buttons render hidden and
 // are revealed here, so without JS the page shows plain text instead. No-op when none exist.
 
 export function initFill(): void {

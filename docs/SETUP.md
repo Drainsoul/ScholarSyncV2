@@ -28,7 +28,8 @@ What starts:
 
 On the first run the app image is built (the front-end bundle is built inside it, so you need no Node), the database
 is migrated and the demo accounts are loaded. Every start runs the loader again; it only adds what is missing (a
-deleted demo account comes back) and never touches your other data. Later runs start in seconds. No `.env` file is needed; if you have one, explore mode ignores it.
+deleted demo account comes back) and never touches your other data. Later runs start in seconds. No `.env` file is
+needed; if you have one, explore mode ignores it.
 
 Explore mode is for your own computer only. Every port is published on `127.0.0.1`, and the app answers only
 `localhost` and `127.0.0.1`. To let other people use it, follow [HOSTING.md](HOSTING.md).
@@ -133,9 +134,12 @@ Copy-Item .env.example .env                                # local settings; nev
 python -m uv sync                                          # Python 3.13 and the dependencies
 Set-Location frontend; npm install; Set-Location ..        # the first install must run inside frontend/
 python -m uv run python manage.py migrate
+python -m uv run python manage.py load_demo                # the test accounts; safe to re-run
 npm --prefix frontend run build                            # or run `npm --prefix frontend run dev` with VITE_DEV_MODE=true in .env
 python -m uv run python manage.py runserver
 ```
+
+`load_demo` loads the four test accounts (see above). It only adds what is missing, so it is safe to re-run.
 
 The app is at <http://localhost:8000> and the design kit at <http://localhost:8000/_kit/>. Without an `EMAIL_URL`, emails
 print to the terminal.

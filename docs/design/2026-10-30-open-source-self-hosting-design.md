@@ -79,8 +79,9 @@ and the same container doubles as the self-hosting artifact.)*
 | worker | sends queued email and runs periodic cleanup (§7) | none |
 
 **First run:** builds the image (Vite bundle inside the build, so no Node on the host), waits for the database, runs
-migrations and `createcachetable`, creates the storage bucket, then loads the demo (accounts + sample data) **only if the
-database has no users yet**. Later runs start in seconds and keep the visitor's data. `docker compose down -v` resets
+migrations and `createcachetable`, creates the storage bucket, then loads the demo (accounts + sample data). The loader runs
+on every start, adds only what is missing and re-creates a deleted demo account. Later runs start in seconds and keep
+the visitor's data. `docker compose down -v` resets
 everything.
 
 **Requirements on the run:**
