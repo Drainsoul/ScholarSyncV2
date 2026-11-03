@@ -17,3 +17,6 @@ os.environ.setdefault("PRIVACY_CONTACT_EMAIL", "privacy@scholarsync.test")
 os.environ.setdefault("DJANGO_ALLOWED_HOSTS", "scholarsync.example")
 
 from config.settings import *  # noqa: E402, F403
+
+# Rate limits (allauth) need a cache and tests have no cache table.
+CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}

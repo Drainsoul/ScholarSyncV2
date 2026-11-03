@@ -3,6 +3,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from django.core.cache import cache
 from django.test import Client
 
 ROOT = Path(__file__).resolve().parent
@@ -21,6 +22,12 @@ class HttpsClient(Client):
 @pytest.fixture
 def client() -> HttpsClient:
     return HttpsClient()
+
+
+@pytest.fixture(autouse=True)
+def _clear_cache():
+    """Rate-limit counters live in the cache; never let them leak between tests."""
+    cache.clear()
 
 
 @pytest.fixture(autouse=True)

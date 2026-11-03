@@ -15,6 +15,9 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
 from config.settings import *  # noqa: E402, F403
 
+# Rate limits (allauth) need a cache and tests have no cache table.
+CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+
 STORAGES = {
     **STORAGES,  # noqa: F405
     "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},

@@ -138,6 +138,7 @@ Notes:
 - Do not run the one-command `web` container and `runserver` at the same time on port 8000. Set `APP_PORT` for one of
   them, or `docker compose stop web worker`.
 - `docker compose down -v` deletes the development database. Use `docker compose down` to keep it.
+- A database created before M4 has Django's default user table and must be reset before `migrate`: `docker compose down -v`, or drop and recreate the development database.
 
 ### Checks (the same commands CI runs)
 ```powershell
