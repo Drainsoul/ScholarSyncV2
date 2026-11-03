@@ -22,3 +22,7 @@ STORAGES = {
     **STORAGES,  # noqa: F405
     "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
 }
+
+# The live server's media handler serves every path when MEDIA_URL is empty, and on Windows it
+# raises "Bad URL" for any path with a colon (an email-confirmation key has two).
+MEDIA_URL = "/media/"
