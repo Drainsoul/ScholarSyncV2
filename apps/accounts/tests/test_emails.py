@@ -59,3 +59,55 @@ def test_unverified_address_mails_carry_no_name(db: Any) -> None:
     assert all(
         row.context == {"activate_url": "https://x.test/"} for row in EmailOutbox.objects.all()
     )
+
+
+EVIL = "Visit https://evil.example now"
+
+
+def test_reset_to_an_unverified_address_carries_no_name(
+    db: Any, rf: RequestFactory, mailoutbox: Any, django_capture_on_commit_callbacks: Any
+) -> None:
+    user = UserFactory.create(full_name=EVIL, verified=False)
+    with django_capture_on_commit_callbacks(execute=True):
+        AccountAdapter().send_mail(
+            "account/email/password_reset_key",
+            user.email,
+            {"user": user, "password_reset_url": "https://x.test/r/"},
+        )
+    assert EmailOutbox.objects.get().context == {}  # sent rows forget their context
+    assert "evil.example" not in mailoutbox[0].body
+    assert "evil.example" not in str(mailoutbox[0].alternatives)
+
+
+def test_reset_row_context_to_an_unverified_address_has_no_name(db: Any) -> None:
+    user = UserFactory.create(full_name=EVIL, verified=False)
+    AccountAdapter().send_mail(
+        "account/email/password_reset_key",
+        user.email,
+        {"user": user, "password_reset_url": "https://x.test/r/"},
+    )
+    assert EmailOutbox.objects.get().context == {"password_reset_url": "https://x.test/r/"}
+
+
+def test_reset_to_a_verified_address_includes_the_name(db: Any) -> None:
+    user = UserFactory.create(full_name="Ana Cruz", verified=True)
+    AccountAdapter().send_mail(
+        "account/email/password_reset_key",
+        user.email.upper(),
+        {"user": user, "password_reset_url": "https://x.test/r/"},
+    )
+    assert EmailOutbox.objects.get().context["full_name"] == "Ana Cruz"
+
+
+def test_account_exists_to_an_unverified_address_carries_no_name(db: Any) -> None:
+    user = UserFactory.create(full_name=EVIL, verified=False)
+    AccountAdapter().send_mail(
+        "account/email/account_already_exists",
+        user.email,
+        {
+            "user": user,
+            "signup_url": "https://x.test/s/",
+            "password_reset_url": "https://x.test/r/",
+        },
+    )
+    assert "full_name" not in EmailOutbox.objects.get().context

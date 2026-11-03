@@ -1,6 +1,7 @@
 from typing import Any
 
 from allauth.account.adapter import DefaultAccountAdapter
+from allauth.account.models import EmailAddress
 from allauth.core import context
 from allauth.core.exceptions import ImmediateHttpResponse
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
@@ -54,9 +55,16 @@ class AccountAdapter(DefaultAccountAdapter):  # type: ignore[misc]
             for key, value in context.items()
             if key in allowed and key not in ("full_name", "provider_name")
         }
-        full_name = getattr(context.get("user"), "full_name", "")
-        if full_name and "full_name" in allowed:
-            data["full_name"] = str(full_name)
+        # The name is typed by whoever signed up, so it only goes to an address its owner has
+        # verified. Anyone can register someone else's address with a phishing name.
+        user = context.get("user")
+        if (
+            "full_name" in allowed
+            and isinstance(user, User)
+            and user.full_name
+            and EmailAddress.objects.filter(user=user, email__iexact=email, verified=True).exists()
+        ):
+            data["full_name"] = user.full_name
         provider_name = getattr(context.get("provider"), "name", "")
         if provider_name and "provider_name" in allowed:
             data["provider_name"] = str(provider_name)

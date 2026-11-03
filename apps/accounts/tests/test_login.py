@@ -158,3 +158,15 @@ def test_social_connect_notifications_are_queued(
         )
     row = EmailOutbox.objects.get()
     assert row.kind == kind and row.status == "sent"
+
+
+@pytest.mark.parametrize("kind", ["account_connected", "account_disconnected"])
+def test_social_notifications_carry_the_provider_name(
+    db: Any, rf: RequestFactory, kind: str
+) -> None:
+    user = UserFactory.create(full_name="Ana Cruz", verified=True)
+    with request_context(rf.get("/")):
+        AccountAdapter().send_notification_mail(
+            f"socialaccount/email/{kind}", user, {"provider": SimpleNamespace(name="Google")}
+        )
+    assert EmailOutbox.objects.get().context == {"provider_name": "Google", "full_name": "Ana Cruz"}

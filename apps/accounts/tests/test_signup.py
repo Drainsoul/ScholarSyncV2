@@ -209,3 +209,15 @@ def test_signup_name_never_reaches_the_unverified_address(
     assert "evil.example" not in mailoutbox[0].body
     assert "evil.example" not in str(mailoutbox[0].alternatives)
     assert "evil.example" not in mailoutbox[0].subject
+
+
+@pytest.mark.parametrize("flag", ["is_staff", "is_superuser"])
+def test_google_email_match_refuses_a_student_with_staff_flags(
+    db: Any, rf: RequestFactory, flag: str
+) -> None:
+    UserFactory.create(email="odd@scholarsync.test", verified=True, **{flag: True})
+    request = _request_with_messages(rf)
+    with request_context(request), pytest.raises(ImmediateHttpResponse) as refused:
+        SocialAccountAdapter().authenticate_by_email(_email_login("odd@scholarsync.test"))
+    assert refused.value.response.url == "/accounts/login/"
+    assert [str(m) for m in request._messages]
