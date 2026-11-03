@@ -117,3 +117,9 @@ def test_gunicorn_runs_without_a_control_socket():
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
     cmd = next(line for line in dockerfile.splitlines() if line.startswith("CMD "))
     assert '"--no-control-socket"' in cmd
+
+
+def test_smoke_signup_script_is_lf_posix_sh():
+    script = (ROOT / "scripts" / "smoke_signup.sh").read_bytes()
+    assert b"\r" not in script
+    assert script.startswith(b"#!/bin/sh\n")

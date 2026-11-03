@@ -122,6 +122,9 @@ jobs:
           curl -fsS -o /dev/null http://127.0.0.1:8123/
           curl -fsS -o /dev/null http://127.0.0.1:8123/_kit/
           curl -fsS -o /dev/null http://127.0.0.1:8025/
+          curl -fsS http://127.0.0.1:8123/accounts/login/ | grep -q "Use a test account"
+      - name: Sign up and receive the verification email
+        run: sh scripts/smoke_signup.sh http://127.0.0.1:8123 http://127.0.0.1:8025
       - name: Check the published port
         run: |
           port="$(docker compose port web 8000)"
