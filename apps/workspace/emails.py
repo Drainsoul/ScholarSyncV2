@@ -19,7 +19,16 @@ logger = logging.getLogger(__name__)
 MAX_ATTEMPTS = 5
 
 # kind -> the context keys its templates may use. Anything else is dropped at enqueue.
-KINDS: dict[str, frozenset[str]] = {}
+_NAME = frozenset({"full_name"})
+KINDS: dict[str, frozenset[str]] = {
+    "email_confirmation_signup": frozenset({"activate_url", "full_name"}),
+    "email_confirmation": frozenset({"activate_url", "full_name"}),
+    "password_reset_key": frozenset({"password_reset_url", "full_name"}),
+    "account_already_exists": frozenset({"signup_url", "password_reset_url", "full_name"}),
+    "password_changed": _NAME,
+    "password_reset": _NAME,
+    "email_changed": _NAME,
+}
 
 
 def enqueue(*, to: str, kind: str, context: dict[str, str]) -> EmailOutbox:

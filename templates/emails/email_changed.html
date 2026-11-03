@@ -1,0 +1,6 @@
+{% extends "emails/base.html" %}
+{% block body %}
+    <p>{% if full_name %}Hello {{ full_name }},{% else %}Hello,{% endif %}</p>
+    <p>The email address on your ScholarSync account was just changed. This message went to the old address.</p>
+    <p>If you did not do this, contact the scholarship office straight away.</p>
+{% endblock %}

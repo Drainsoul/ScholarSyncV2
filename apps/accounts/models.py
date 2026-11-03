@@ -63,3 +63,15 @@ class User(AbstractBaseUser, PermissionsMixin):
     @property
     def is_super_admin(self) -> bool:
         return self.role == self.Role.SUPER_ADMIN
+
+
+class ConsentRecord(models.Model):
+    """That a person accepted a version of the privacy notice, and when. The IP is stored hashed."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="consents")
+    notice_version = models.CharField(max_length=20)
+    consented_at = models.DateTimeField(auto_now_add=True)
+    ip_hash = models.CharField(max_length=64, blank=True)
+
+    def __str__(self) -> str:
+        return f"{self.notice_version} #{self.user_id}"

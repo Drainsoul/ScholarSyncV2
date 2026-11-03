@@ -1,0 +1,9 @@
+{% extends "emails/base.txt" %}
+{% block body %}{% if full_name %}Hello {{ full_name }},{% else %}Hello,{% endif %}
+
+Someone tried to sign up for ScholarSync with this email address, but an account already exists. If that was you, you can reset your password with the link below.
+
+{{ password_reset_url }}
+
+If it was not you, you can ignore this message. Your account is unchanged.
+{% endblock %}

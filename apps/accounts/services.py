@@ -1,12 +1,14 @@
 from allauth.account.models import EmailAddress
+from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
+from django.http import HttpRequest
 
-from apps.core.audit import record
+from apps.core.audit import client_ip, hash_ip, record
 
 from .managers import normalise_email
-from .models import User
+from .models import ConsentRecord, User
 
 
 @transaction.atomic
@@ -33,3 +35,21 @@ def create_staff_user(
     EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)
     record(actor=actor, action="user.created", target=user, data={"role": str(role)})
     return user
+
+
+@transaction.atomic
+def record_consent(*, user: User, request: HttpRequest | None) -> ConsentRecord:
+    """Store that this user accepted the current privacy notice."""
+    consent = ConsentRecord.objects.create(
+        user=user,
+        notice_version=settings.PRIVACY_NOTICE_VERSION,
+        ip_hash=hash_ip(client_ip(request)),
+    )
+    record(
+        actor=user,
+        action="consent.recorded",
+        target=consent,
+        data={"notice_version": consent.notice_version},
+        request=request,
+    )
+    return consent

@@ -1,0 +1,7 @@
+{% extends "emails/base.html" %}
+{% block body %}
+    <p>{% if full_name %}Hello {{ full_name }},{% else %}Hello,{% endif %}</p>
+    <p>Thank you for creating a ScholarSync account. Please confirm your email address to finish signing up.</p>
+    <p><a href="{{ activate_url }}">{{ activate_url }}</a></p>
+    <p>This link works for 3 days. If you did not sign up, you can ignore this message.</p>
+{% endblock %}

@@ -114,6 +114,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "allauth",
     "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
     "django_vite",
     "csp",
     "template_partials",
@@ -198,6 +200,50 @@ CACHES = {
 }
 
 AUTH_USER_MODEL = "accounts.User"
+
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
+]
+
+# Accounts (django-allauth): email login, verified before first sign-in, students only ----------
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_LOGIN_METHODS = {"email"}
+ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+ACCOUNT_UNIQUE_EMAIL = True
+ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
+ACCOUNT_SESSION_REMEMBER = True
+ACCOUNT_EMAIL_UNKNOWN_ACCOUNTS = False
+ACCOUNT_EMAIL_NOTIFICATIONS = True
+ACCOUNT_REAUTHENTICATION_REQUIRED = True
+ACCOUNT_REAUTHENTICATION_TIMEOUT = 300
+ACCOUNT_LOGOUT_ON_GET = False
+ACCOUNT_ADAPTER = "apps.accounts.adapters.AccountAdapter"
+ACCOUNT_FORMS = {"signup": "apps.accounts.forms.SignupForm"}
+SOCIALACCOUNT_ADAPTER = "apps.accounts.adapters.SocialAccountAdapter"
+SOCIALACCOUNT_FORMS = {"signup": "apps.accounts.forms.SocialSignupForm"}
+SOCIALACCOUNT_AUTO_SIGNUP = False
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
+# How many reverse proxies sit in front of the app (0 = none). Rate limits key on the client IP.
+ALLAUTH_TRUSTED_PROXY_COUNT = env.int("TRUSTED_PROXY_COUNT", 0)
+LOGIN_URL = "account_login"
+LOGIN_REDIRECT_URL = "/"  # replaced with the role home later
+
+# Google sign-in is offered only when both values are set.
+_GOOGLE_CLIENT_ID = env.str("GOOGLE_CLIENT_ID", "")
+_GOOGLE_CLIENT_SECRET = env.str("GOOGLE_CLIENT_SECRET", "")
+SOCIALACCOUNT_PROVIDERS: dict[str, object] = (
+    {
+        "google": {
+            "APPS": [{"client_id": _GOOGLE_CLIENT_ID, "secret": _GOOGLE_CLIENT_SECRET}],
+            "SCOPE": ["profile", "email"],
+        }
+    }
+    if _GOOGLE_CLIENT_ID and _GOOGLE_CLIENT_SECRET
+    else {}
+)
 
 PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.Argon2PasswordHasher",

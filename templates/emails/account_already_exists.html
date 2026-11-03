@@ -1,0 +1,7 @@
+{% extends "emails/base.html" %}
+{% block body %}
+    <p>{% if full_name %}Hello {{ full_name }},{% else %}Hello,{% endif %}</p>
+    <p>Someone tried to sign up for ScholarSync with this email address, but an account already exists. If that was you, you can reset your password with the link below.</p>
+    <p><a href="{{ password_reset_url }}">{{ password_reset_url }}</a></p>
+    <p>If it was not you, you can ignore this message. Your account is unchanged.</p>
+{% endblock %}

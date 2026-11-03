@@ -1,0 +1,7 @@
+{% extends "emails/base.txt" %}
+{% block body %}{% if full_name %}Hello {{ full_name }},{% else %}Hello,{% endif %}
+
+The email address on your ScholarSync account was just changed. This message went to the old address.
+
+If you did not do this, contact the scholarship office straight away.
+{% endblock %}

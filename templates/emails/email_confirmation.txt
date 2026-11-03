@@ -1,0 +1,9 @@
+{% extends "emails/base.txt" %}
+{% block body %}{% if full_name %}Hello {{ full_name }},{% else %}Hello,{% endif %}
+
+Please confirm this email address for your ScholarSync account.
+
+{{ activate_url }}
+
+This link works for 3 days. If you did not ask for this, you can ignore this message.
+{% endblock %}
