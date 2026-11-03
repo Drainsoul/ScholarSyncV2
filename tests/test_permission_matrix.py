@@ -1,6 +1,11 @@
-"""Every URL name is classified here, and every persona is checked against its rule (spec 6)."""
+"""Every URL name is classified here, and every persona is checked against its rule (spec 6).
+
+A rule gives, per persona, an exact status. A redirect is `(302, target)` where target is a path,
+"home" (the persona's own role home) or "login" (the sign-in page carrying `next=<requested path>`).
+"""
 
 from typing import Any
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 from django.urls import URLPattern, URLResolver, get_resolver, reverse
@@ -11,11 +16,31 @@ from apps.programs.models import ProgramMembership
 from apps.programs.tests.factories import MembershipFactory, ProgramFactory
 
 PERSONAS = ["anonymous", "student", "other_student", "staff", "other_staff", "head", "office"]
+SIGNED_IN = PERSONAS[1:]
+HOMES = {
+    "student": "/me/",
+    "other_student": "/me/",
+    "staff": "/staff/tcu-ceaa/",
+    "other_staff": "/staff/lani/",
+    "head": "/staff/tcu-ceaa/",
+    "office": "/office/",
+}
+LOGIN = (302, "login")
+HOME = (302, "home")
+CHANGE_PASSWORD = (302, "/accounts/password/change/")
+SIGN_IN_PAGE = (302, "/accounts/login/")
+
 RULES: dict[str, dict[str, Any]] = {
-    "public": {p: "ok" for p in PERSONAS},
-    "signed_in": {"anonymous": "login", **{p: "ok" for p in PERSONAS[1:]}},
+    "public": {p: 200 for p in PERSONAS},
+    # Sign in and sign up are for guests; anyone signed in is sent to their own home.
+    "guest_only": {"anonymous": 200, **{p: HOME for p in SIGNED_IN}},
+    "signed_in": {"anonymous": LOGIN, **{p: 200 for p in SIGNED_IN}},
+    # Everyone here has a password, so allauth sends them to change it instead.
+    "set_password": {"anonymous": LOGIN, **{p: CHANGE_PASSWORD for p in SIGNED_IN}},
+    # /staff/ is for staff with no program; every persona here has a home elsewhere.
+    "no_programs": {"anonymous": LOGIN, **{p: HOME for p in SIGNED_IN}},
     "student": {
-        "anonymous": "login",
+        "anonymous": LOGIN,
         "student": 200,
         "other_student": 200,
         "staff": 403,
@@ -24,7 +49,7 @@ RULES: dict[str, dict[str, Any]] = {
         "office": 403,
     },
     "staff": {
-        "anonymous": "login",
+        "anonymous": LOGIN,
         "student": 403,
         "other_student": 403,
         "staff": 200,
@@ -32,18 +57,17 @@ RULES: dict[str, dict[str, Any]] = {
         "head": 200,
         "office": 200,
     },
-    "office": {
-        "anonymous": "login",
-        **{p: 403 for p in PERSONAS[1:6]},
-        "office": 200,
-    },
+    "office": {"anonymous": LOGIN, **{p: 403 for p in PERSONAS[1:6]}, "office": 200},
     "kit": {p: 404 for p in PERSONAS},
-    # Confirm page for signed-in users; a signed-out visit has nothing to sign out of and goes home.
-    "logout": {"anonymous": 302, **{p: 200 for p in PERSONAS[1:]}},
-    # Steps of a sign-in or sign-up in progress: with none in progress, everyone is redirected.
-    "flow_redirect": {p: 302 for p in PERSONAS},
+    # A signed-out visit has nothing to sign out of and goes home; signed in gets the confirm page.
+    "logout": {"anonymous": (302, "/"), **{p: 200 for p in SIGNED_IN}},
+    # Next step of a sign-in by emailed code; with none in progress, back to the sign-in page.
+    "login_code": {"anonymous": SIGN_IN_PAGE, **{p: HOME for p in SIGNED_IN}},
+    "no_pending_signup": {p: SIGN_IN_PAGE for p in PERSONAS},
     # allauth answers a GET without its state or token with 401, whoever asks.
     "error_401": {p: 401 for p in PERSONAS},
+    # Google is installed but has no credentials by default (explore mode, most self-hosters).
+    "google_off": {p: 404 for p in PERSONAS},
 }
 URLS: dict[str, str] = {
     "core:home": "public",
@@ -55,11 +79,11 @@ URLS: dict[str, str] = {
     "core:help": "public",
     "core:contact": "public",
     "students:home": "student",
-    "workspace:no_programs": "signed_in",
+    "workspace:no_programs": "no_programs",
     "workspace:dashboard": "staff",
     "office:home": "office",
-    "account_login": "public",
-    "account_signup": "public",
+    "account_login": "guest_only",
+    "account_signup": "guest_only",
     "account_logout": "logout",
     "account_inactive": "public",
     "account_reset_password": "public",
@@ -68,18 +92,18 @@ URLS: dict[str, str] = {
     "account_reset_password_from_key_done": "public",
     "account_confirm_email": "public",
     "account_email_verification_sent": "public",
-    "account_confirm_login_code": "flow_redirect",
+    "account_confirm_login_code": "login_code",
     "account_email": "signed_in",
     "account_change_password": "signed_in",
-    "account_set_password": "signed_in",
+    "account_set_password": "set_password",
     "account_reauthenticate": "signed_in",
-    "google_login": "public",
-    "google_callback": "error_401",
-    "google_login_by_token": "error_401",
+    "google_login": "google_off",
+    "google_callback": "google_off",
+    "google_login_by_token": "google_off",
     "socialaccount_connections": "signed_in",
     "socialaccount_login_cancelled": "public",
     "socialaccount_login_error": "error_401",
-    "socialaccount_signup": "flow_redirect",
+    "socialaccount_signup": "no_pending_signup",
     "kit:index": "kit",
     "kit:demo-toast": "kit",
     "kit:demo-dialog": "kit",
@@ -99,27 +123,30 @@ URL_KWARGS: dict[str, dict[str, str]] = {
 }
 
 
-def _collect(patterns: Any, prefix: str = "") -> set[str]:
+def _walk(patterns: Any, prefix: str = "", route: str = "") -> tuple[set[str], list[str]]:
     names: set[str] = set()
+    unnamed: list[str] = []
     for entry in patterns:
         if isinstance(entry, URLResolver):
             ns = f"{prefix}{entry.namespace}:" if entry.namespace else prefix
-            names |= _collect(entry.url_patterns, ns)
-        elif isinstance(entry, URLPattern) and entry.name:
-            names.add(f"{prefix}{entry.name}")
-    return names
+            found, missing = _walk(entry.url_patterns, ns, route + str(entry.pattern))
+            names |= found
+            unnamed += missing
+        elif isinstance(entry, URLPattern):
+            if entry.name:
+                names.add(f"{prefix}{entry.name}")
+            else:
+                unnamed.append(route + str(entry.pattern))
+    return names, unnamed
 
 
 def test_every_url_is_in_the_matrix() -> None:
-    found = _collect(get_resolver().url_patterns)
+    found, unnamed = _walk(get_resolver().url_patterns)
     missing, extra = sorted(found - set(URLS)), sorted(set(URLS) - found)
     assert not missing and not extra, f"not in the matrix: {missing}; not in the URLconf: {extra}"
-
-
-@pytest.fixture(autouse=True)
-def _google_configured(settings: Any) -> None:
-    """Google sign-in is off without credentials; give it some so its URLs can be checked."""
-    settings.SOCIALACCOUNT_PROVIDERS = {"google": {"APPS": [{"client_id": "id", "secret": "x"}]}}
+    # Only allauth's legacy permanent redirects (accounts/social/...) may go without a name.
+    stray = [route for route in unnamed if not route.startswith("accounts/social/")]
+    assert not stray, f"unnamed URL patterns would escape the matrix: {stray}"
 
 
 @pytest.fixture
@@ -148,14 +175,31 @@ def test_access(name: str, persona: str, client: Any, personas: dict[str, User |
     url = reverse(name, kwargs=URL_KWARGS.get(name))
     response = client.get(url)
     expected = RULES[URLS[name]][persona]
-    if expected == "login":
-        assert response.status_code == 302, url
-        assert response.url.startswith(reverse("account_login")), url
-        assert "next=" in response.url, url
-    elif expected == "ok":
-        assert response.status_code < 400, (url, response.status_code)
-    else:
+    if isinstance(expected, int):
         assert response.status_code == expected, (url, response.status_code)
+        return
+    status, target = expected
+    assert response.status_code == status, (url, response.status_code)
+    location = urlsplit(response.url)
+    if target == "login":
+        assert location.path == reverse("account_login"), (url, response.url)
+        assert parse_qs(location.query).get("next") == [url], (url, response.url)
+    else:
+        want = HOMES[persona] if target == "home" else target
+        assert location.path == want, (url, response.url)
+
+
+def test_no_programs_page_shows_for_staff_without_programs(client: Any, db: Any) -> None:
+    client.force_login(UserFactory.create(role=User.Role.STAFF, verified=True))
+    assert client.get("/staff/").status_code == 200
+
+
+def test_google_with_keys_shows_confirm_page_and_rejects_a_bare_callback(
+    client: Any, db: Any, settings: Any
+) -> None:
+    settings.SOCIALACCOUNT_PROVIDERS = {"google": {"APPS": [{"client_id": "id", "secret": "x"}]}}
+    assert client.get(reverse("google_login")).status_code == 200
+    assert client.get(reverse("google_callback")).status_code == 401
 
 
 def test_unknown_program_is_404_for_staff(client: Any, personas: dict[str, User | None]) -> None:

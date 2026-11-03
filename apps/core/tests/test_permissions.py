@@ -87,3 +87,34 @@ def test_no_programs_page_only_for_staff_without_programs(client: Any, db: Any) 
     assert response.status_code == 302 and response.url == "/me/"
     client.force_login(UserFactory.create(role=User.Role.STAFF))
     assert b"No programs yet" in client.get("/staff/").content
+
+
+def test_super_admin_passes_a_head_only_view(rf: Any, db: Any) -> None:
+    request = rf.get("/")
+    request.user = UserFactory.create(role=User.Role.SUPER_ADMIN)
+    program = ProgramFactory.create()
+    assert _HeadOnly.as_view()(request, program=program.slug).status_code == 200
+
+
+def test_office_gets_404_for_an_inactive_program(client: Any, db: Any) -> None:
+    program = ProgramFactory.create(is_active=False)
+    client.force_login(UserFactory.create(role=User.Role.SUPER_ADMIN))
+    assert client.get(f"/staff/{program.slug}/").status_code == 404
+
+
+def test_inactive_user_is_sent_to_login(client: Any, db: Any) -> None:
+    user = UserFactory.create(is_active=False)
+    client.force_login(user)  # force_login ignores is_active; the session backend then rejects it
+    response = client.get("/me/")
+    assert response.status_code == 302 and response.url.startswith("/accounts/login/")
+
+
+def test_head_of_one_program_is_only_staff_in_another(rf: Any, db: Any) -> None:
+    program_a, program_b = ProgramFactory.create(), ProgramFactory.create()
+    user = MembershipFactory.create(program=program_a, level=ProgramMembership.Level.HEAD).user
+    MembershipFactory.create(user=user, program=program_b)
+    request = rf.get("/")
+    request.user = user
+    assert _HeadOnly.as_view()(request, program=program_a.slug).status_code == 200
+    with pytest.raises(PermissionDenied):
+        _HeadOnly.as_view()(request, program=program_b.slug)

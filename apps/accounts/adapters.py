@@ -5,10 +5,11 @@ from allauth.account.models import EmailAddress
 from allauth.core import context
 from allauth.core.exceptions import ImmediateHttpResponse
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
+from allauth.socialaccount.models import SocialApp
 from django.contrib import messages
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.forms import BaseForm
-from django.http import HttpRequest
+from django.http import Http404, HttpRequest
 from django.shortcuts import redirect
 
 from apps.core.shell import home_url_for
@@ -78,6 +79,13 @@ class AccountAdapter(DefaultAccountAdapter):  # type: ignore[misc]
 
 
 class SocialAccountAdapter(DefaultSocialAccountAdapter):  # type: ignore[misc]
+    def get_app(self, request: HttpRequest, provider: str, client_id: str | None = None) -> Any:
+        """A provider without credentials answers 404, not a 500 (explore mode has no keys)."""
+        try:
+            return super().get_app(request, provider, client_id=client_id)
+        except SocialApp.DoesNotExist:
+            raise Http404 from None
+
     def authenticate_by_email(self, sociallogin: Any) -> Any:
         """Email sign-in and auto-connect are for students only.
 
