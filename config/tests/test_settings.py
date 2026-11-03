@@ -495,3 +495,9 @@ def test_production_refuses_an_unset_email_url(tmp_path):
 def test_blank_email_url_prints_to_the_console_outside_production(tmp_path, mode):
     values = settings_values(tmp_path, ["EMAIL_BACKEND"], EMAIL_URL="", **mode)
     assert values["EMAIL_BACKEND"] == "django.core.mail.backends.console.EmailBackend"
+
+
+@pytest.mark.parametrize(("value", "expected"), [("", 0), ("  ", 0), ("2", 2)])
+def test_trusted_proxy_count_treats_blank_as_the_default(tmp_path, value, expected):
+    values = settings_values(tmp_path, ["ALLAUTH_TRUSTED_PROXY_COUNT"], TRUSTED_PROXY_COUNT=value)
+    assert values["ALLAUTH_TRUSTED_PROXY_COUNT"] == expected

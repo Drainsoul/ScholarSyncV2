@@ -248,6 +248,9 @@ SOCIALACCOUNT_AUTO_SIGNUP = False
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
 # How many reverse proxies sit in front of the app (0 = none). Rate limits key on the client IP.
+# Blank means the default (compose.production.yaml then supplies 1).
+if not os.environ.get("TRUSTED_PROXY_COUNT", "").strip():
+    os.environ.pop("TRUSTED_PROXY_COUNT", None)
 ALLAUTH_TRUSTED_PROXY_COUNT = env.int("TRUSTED_PROXY_COUNT", 0)
 LOGIN_URL = "account_login"
 LOGIN_REDIRECT_URL = "core:home"  # the adapter sends each role to its own home

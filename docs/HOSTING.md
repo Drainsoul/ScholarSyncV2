@@ -44,7 +44,7 @@ At least:
 | `DATABASE_URL` | your PostgreSQL URL (step 4) |
 | `EMAIL_URL`, `DEFAULT_FROM_EMAIL` | your SMTP server and a From address it allows (step 4). Required: production will not start without a real SMTP URL |
 | `S3_ENDPOINT_URL`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_ADDRESSING_STYLE` | your storage (step 4) |
-| `TRUSTED_PROXY_COUNT` | the number of reverse proxies in front of the app: behind one HTTPS proxy, set `TRUSTED_PROXY_COUNT=1` (default 0). Without it, sign-in rate limits count every visitor as the proxy. `compose.production.yaml` already sets `1` for `web`, overriding `.env`; behind two proxies (a CDN in front of yours), change it there to `2` |
+| `TRUSTED_PROXY_COUNT` | the number of reverse proxies in front of the app: behind one HTTPS proxy, set `TRUSTED_PROXY_COUNT=1` (default 0). Without it, sign-in rate limits count every visitor as the proxy. `compose.production.yaml` defaults it to `1` for `web` when `.env` leaves it blank; behind two proxies (a CDN in front of yours), set `2` |
 | `CSP_REPORT_ONLY` | leave `true` at first; set `false` once pages load with no violation reports |
 
 Also delete or replace the development-only values at the top of the file. The app refuses to start in production if
@@ -126,7 +126,9 @@ docker compose -f compose.production.yaml logs web
 
 Put a TLS reverse proxy in front of the app and forward to `APP_PORT` (default 8000). The proxy must send
 `X-Forwarded-Proto: https` and the original `Host`. The app redirects plain HTTP to HTTPS, so without that header it
-loops. A minimal Caddy example (an example, not a requirement):
+loops. The proxy must also append to `X-Forwarded-For` or overwrite it (nginx:
+`proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`; Caddy does it by default), and `TRUSTED_PROXY_COUNT`
+must equal the number of proxies, or visitors can spoof their IP address and dodge the per-IP sign-in rate limits. A minimal Caddy example (an example, not a requirement):
 ```
 scholarships.example.org {
     reverse_proxy 127.0.0.1:8000

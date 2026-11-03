@@ -123,3 +123,8 @@ def test_smoke_signup_script_is_lf_posix_sh():
     script = (ROOT / "scripts" / "smoke_signup.sh").read_bytes()
     assert b"\r" not in script
     assert script.startswith(b"#!/bin/sh\n")
+
+
+def test_production_web_trusts_one_proxy_unless_env_says_otherwise():
+    web = _service_block("compose.production.yaml", "web")
+    assert 'TRUSTED_PROXY_COUNT: "${TRUSTED_PROXY_COUNT:-1}"' in web

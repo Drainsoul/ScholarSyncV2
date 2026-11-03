@@ -25,10 +25,10 @@ services:
     env_file: .env
     environment:
       <<: *forced
-      # This file always runs behind one TLS proxy, so rate limits read the visitor's address from
-      # the last X-Forwarded-For hop. Behind two (a CDN in front of your proxy), change it to "2".
-      # It overrides .env, where the example's 0 would count every visitor as the proxy.
-      TRUSTED_PROXY_COUNT: "1"
+      # This file always runs behind a TLS proxy, so rate limits read the visitor's address from
+      # X-Forwarded-For, one hop per proxy. Default 1; behind two (a CDN in front of your proxy),
+      # set TRUSTED_PROXY_COUNT=2 in .env. Leaving it blank there keeps 1.
+      TRUSTED_PROXY_COUNT: "${TRUSTED_PROXY_COUNT:-1}"
     # Loopback only, for a TLS proxy on this machine. For a proxy on another host, widen it
     # (docs/HOSTING.md step 5) and firewall the port so only the proxy can reach it.
     ports:
