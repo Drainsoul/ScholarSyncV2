@@ -120,6 +120,7 @@ INSTALLED_APPS = [
     "apps.accounts",
     "apps.core",
     "apps.programs",
+    "apps.workspace",
     "apps.kit",
 ]
 
@@ -174,6 +175,7 @@ DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
 if not os.environ.get("EMAIL_URL"):
     os.environ.pop("EMAIL_URL", None)  # a blank line in .env means "use the console backend"
 globals().update(env.dj_email_url("EMAIL_URL", "console://"))
+EMAIL_TIMEOUT = 5
 DEFAULT_FROM_EMAIL = env.str("DEFAULT_FROM_EMAIL", "ScholarSync <no-reply@localhost>")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 

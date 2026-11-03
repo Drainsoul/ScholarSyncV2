@@ -52,7 +52,7 @@ def test_run_worker_once_runs_cleanup(monkeypatch: pytest.MonkeyPatch) -> None:
         lambda name, *args, **kwargs: called.append(name),
     )
     call_command("run_worker", "--once", stdout=StringIO())
-    assert called == ["cleanup"]
+    assert called == ["send_outbox", "cleanup"]
 
 
 def test_run_worker_stops_on_sigterm_after_current_cycle(
@@ -71,7 +71,7 @@ def test_run_worker_stops_on_sigterm_after_current_cycle(
     monkeypatch.setattr("apps.core.management.commands.run_worker.call_command", fake)
     out = StringIO()
     call_command("run_worker", "--interval", "60", stdout=out)
-    assert called == ["cleanup"]
+    assert called == ["send_outbox", "cleanup"]
     assert "Worker stopped." in out.getvalue()
 
 
@@ -96,7 +96,7 @@ def test_run_worker_survives_a_failing_cycle(
         lambda self, timeout=None: False,
     )
     call_command("run_worker", "--interval", "1", stdout=StringIO())
-    assert called == ["cleanup", "cleanup"]
+    assert called == ["send_outbox", "cleanup"]
     assert "Worker cycle failed" in caplog.text
 
 
@@ -114,3 +114,27 @@ def _no_connection_cleanup(request: pytest.FixtureRequest, monkeypatch: pytest.M
         monkeypatch.setattr(
             "apps.core.management.commands.run_worker.close_old_connections", lambda: None
         )
+
+
+def test_worker_cycle_sends_the_outbox_then_cleans_up(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    called: list[str] = []
+    monkeypatch.setattr(
+        "apps.core.management.commands.run_worker.call_command",
+        lambda name, *args, **kwargs: called.append(name),
+    )
+    call_command("run_worker", "--once", stdout=StringIO())
+    assert called == ["send_outbox", "cleanup"]
+
+    called.clear()
+
+    def failing_first(name: str, *args: Any, **kwargs: Any) -> None:
+        called.append(name)
+        if name == "send_outbox":
+            raise RuntimeError("smtp down")
+
+    monkeypatch.setattr("apps.core.management.commands.run_worker.call_command", failing_first)
+    call_command("run_worker", "--once", stdout=StringIO())
+    assert called == ["send_outbox", "cleanup"]
+    assert "Worker cycle failed" in caplog.text

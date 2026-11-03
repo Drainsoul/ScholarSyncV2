@@ -35,9 +35,11 @@ class Command(BaseCommand):
     def _cycle(self) -> None:
         close_old_connections()
         try:
-            call_command("cleanup")
-        except Exception:
-            logger.exception("Worker cycle failed; will retry next interval.")
+            for name in ("send_outbox", "cleanup"):
+                try:
+                    call_command(name)
+                except Exception:
+                    logger.exception("Worker cycle failed (%s); will retry next interval.", name)
         finally:
             close_old_connections()
 
