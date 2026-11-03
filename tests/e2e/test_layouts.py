@@ -55,14 +55,14 @@ def test_nav_is_visible_without_javascript_on_a_phone(browser: Browser, live_ser
 
 
 @pytest.mark.parametrize("name", APP)
-def test_sidebar_is_224px_on_desktop(page: Page, live_server, vite_build, name):
+def test_sidebar_is_208px_on_desktop(page: Page, live_server, vite_build, name):
     page.set_viewport_size(DESKTOP)
     page.goto(f"{live_server.url}/_kit/layouts/{name}/")
     box = page.locator(".sidebar").bounding_box()
     assert box and box["x"] == 0
-    assert box["width"] == 224
+    assert box["width"] == 208
     topbar = page.locator(".topbar").bounding_box()
-    assert topbar and topbar["x"] == 224
+    assert topbar and topbar["x"] == 208
 
 
 @pytest.mark.parametrize("name", APP)

@@ -3,7 +3,7 @@
   <h2 id="data-title">Data display</h2>
   <div class="kit-state">
     <h3>Toolbar, sortable table and numbered pagination</h3>
-    <p>Search and filter selects sit in a toolbar above the table. Headers are 13 px bold on a pale band, rows tint on hover, money is right-aligned in tabular figures, and the current page is red.</p>
+    <p>Search and filter selects sit in a toolbar above the table. Headers are 12 px bold on a pale band, rows tint on hover, money is right-aligned in tabular figures, and the current page is red.</p>
     <form id="scholar-filters" class="table-toolbar" method="get" action="{% url 'kit:index' %}#data" role="search" aria-label="Filter scholars"
       hx-get="{% url 'kit:index' %}" hx-target="#scholars-table" hx-swap="outerHTML" hx-push-url="true"
       hx-sync="this:replace" hx-trigger="submit, input delay:300ms, change">

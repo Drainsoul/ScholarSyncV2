@@ -1,4 +1,4 @@
-/* Buttons (spec §12 rev 6): 40 px tall (36 px in tables), radius 8, a 1 px border on every variant so they line up. */
+/* Buttons (spec §12 rev 6): 36 px tall (32 px in tables), radius 8, a 1 px border on every variant so they line up. */
 .btn {
   display: inline-flex;
   align-items: center;

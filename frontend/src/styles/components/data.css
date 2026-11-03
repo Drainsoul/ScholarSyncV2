@@ -3,7 +3,7 @@
    load, which ran the buttons' colour transition (a visible fade) on every page with a button in a
    card. */
 .card {
-  --panel-pad: var(--space-5);
+  --panel-pad: var(--space-4);
   padding: var(--space-4) var(--panel-pad);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -290,7 +290,7 @@ progress::-moz-progress-bar {
 }
 
 .table :is(th, td) {
-  padding: var(--space-2) var(--space-4);
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--track);
   text-align: left;
   vertical-align: middle;
