@@ -24,7 +24,7 @@ def create_staff_user(
     """
     if role not in (User.Role.STAFF, User.Role.SUPER_ADMIN):
         raise ValueError("Only staff and scholarship-office accounts are created here.")
-    if actor is not None and not actor.is_super_admin:
+    if actor is not None and not (actor.is_super_admin and actor.is_active):
         raise PermissionDenied("Only the scholarship office can create staff accounts.")
     email = normalise_email(email)
     if password is not None:

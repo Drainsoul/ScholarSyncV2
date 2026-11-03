@@ -1,4 +1,8 @@
+import logging
+
 import pytest
+from django.core.exceptions import PermissionDenied
+from django.db.models import ProtectedError
 
 from apps.accounts.tests.factories import UserFactory
 from apps.core.audit import client_ip, hash_ip, record
@@ -64,3 +68,38 @@ def test_audit_events_cannot_change_or_be_deleted(db):
     with pytest.raises(ValueError):
         event.delete()
     assert AuditEvent.objects.get(pk=event.pk).action == "x.y"
+
+
+def test_bulk_update_and_delete_are_refused(db):
+    event = record(actor=None, action="x.y")
+    with pytest.raises(ValueError):
+        AuditEvent.objects.filter(pk=event.pk).update(action="x.z")
+    with pytest.raises(ValueError):
+        AuditEvent.objects.filter(pk=event.pk).delete()
+    with pytest.raises(ValueError):
+        AuditEvent.objects.bulk_update([event], ["action"])
+    assert AuditEvent.objects.get(pk=event.pk).action == "x.y"
+
+
+def test_deleting_an_actor_or_program_is_blocked(db):
+    actor = UserFactory.create()
+    program = ProgramFactory.create()
+    event = record(actor=actor, action="x.y", program=program)
+    with pytest.raises(ProtectedError):
+        actor.delete()
+    with pytest.raises(ProtectedError):
+        program.delete()
+    event.refresh_from_db()
+    assert event.actor == actor and event.program == program
+
+
+def test_client_ip_logs_and_returns_empty_when_the_adapter_refuses(rf, monkeypatch, caplog):
+    class Adapter:
+        def get_client_ip(self, request):
+            raise PermissionDenied("203.0.113.7")
+
+    monkeypatch.setattr("apps.core.audit.get_adapter", lambda request: Adapter())
+    with caplog.at_level(logging.WARNING, logger="apps.core.audit"):
+        assert client_ip(rf.get("/")) == ""
+    assert "Client IP unavailable: PermissionDenied" in caplog.text
+    assert "203.0.113.7" not in caplog.text

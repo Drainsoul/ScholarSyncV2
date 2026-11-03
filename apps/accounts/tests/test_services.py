@@ -82,3 +82,16 @@ def test_create_staff_user_without_a_password_has_an_unusable_one(db):
         actor=None, email="x@scholarsync.test", full_name="X", role=User.Role.STAFF
     )
     assert not user.has_usable_password()
+
+
+def test_inactive_super_admin_cannot_create_staff(db):
+    actor = UserFactory.create(role=User.Role.SUPER_ADMIN, is_active=False)
+    with pytest.raises(PermissionDenied):
+        create_staff_user(
+            actor=actor,
+            email="x@scholarsync.test",
+            full_name="X",
+            role=User.Role.STAFF,
+            password=PASSWORD,
+        )
+    assert not User.objects.filter(email="x@scholarsync.test").exists()

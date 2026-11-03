@@ -1,8 +1,10 @@
 import hashlib
 import hmac
+import logging
 
 from allauth.account.adapter import get_adapter
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured, PermissionDenied
 from django.db.models import Model
 from django.http import HttpRequest
 
@@ -10,6 +12,8 @@ from apps.accounts.models import User
 from apps.programs.models import Program
 
 from .models import AuditEvent
+
+logger = logging.getLogger(__name__)
 
 
 def hash_ip(ip: str) -> str:
@@ -25,7 +29,8 @@ def client_ip(request: HttpRequest | None) -> str:
         return ""
     try:
         return get_adapter(request).get_client_ip(request) or ""
-    except Exception:
+    except (PermissionDenied, ImproperlyConfigured) as exc:
+        logger.warning("Client IP unavailable: %s", type(exc).__name__)
         return ""
 
 
