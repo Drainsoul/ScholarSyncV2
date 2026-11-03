@@ -117,6 +117,7 @@ INSTALLED_APPS = [
     "template_partials",
     "apps.accounts",
     "apps.core",
+    "apps.programs",
     "apps.kit",
 ]
 

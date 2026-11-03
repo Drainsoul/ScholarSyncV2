@@ -173,8 +173,12 @@ Then open your site over HTTPS and `/healthz`; it answers `{"ok": true}`.
 
 ## 8. First accounts and programs
 Sign-in and the scholarship-office account arrive with M4. This section will give the command that creates the first
-scholarship-office account, and the optional `seed_programs` command that loads the TCU CEAA and LANI starter programs,
-the school list and the terms. Until then a hosted copy has no way to sign in.
+scholarship-office account. Until then a hosted copy has no way to sign in.
+
+To start with the Taguig programs, run `python manage.py seed_programs` (in the container:
+`docker compose -f compose.production.yaml run --rm -e SKIP_PREPARE=1 web python manage.py seed_programs`); or create
+your own programs later in the office screens. It is safe to run more than once and never overwrites your edits. The
+school list and terms arrive with later milestones.
 
 ## 9. Backups
 Back up the database and the bucket. Test a restore once.
