@@ -388,6 +388,9 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - `workspace.services.notify(user, kind, …)` creates a `Notification` and, when emailed, an `EmailOutbox` row.
   - `transaction.on_commit` tries the send through the configured SMTP transport with a 5-second timeout. On failure the row is
     `failed`, with `last_error` set.
+  - Inside a web request the commit only queues the row id (a per-request `ContextVar`); a `request_finished` receiver
+    sends it after the response, so SMTP never delays a page or times a password reset. Outside a request (commands,
+    the worker, the demo loader) it sends on commit.
   - Batch actions (bulk approvals, disbursements) send one batched call over the same transport.
   - allauth emails go through the outbox too. A row stores `kind` (the allauth template name, e.g.
     `email_confirmation_signup`) and only whitelisted string values in `context`; `context` is emptied once the row is

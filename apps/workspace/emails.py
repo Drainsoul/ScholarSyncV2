@@ -2,13 +2,22 @@
 
 The context is a plain-string whitelist per kind and is emptied once the message is sent (or has
 given up), so tokens and links never sit in the database longer than needed.
+
+When the row is committed during a web request, the send waits for `request_finished`, after the
+response has gone out: a slow SMTP server never delays a page, and a password reset for a known
+address takes as long as one for an unknown address. Anywhere else (commands, the worker, the demo
+loader) it sends as soon as the transaction commits.
 """
 
 import logging
+from contextvars import ContextVar
+from typing import Any
 
 from django.core.mail import EmailMultiAlternatives
 from django.core.mail.message import make_msgid
-from django.db import transaction
+from django.core.signals import request_finished, request_started
+from django.db import connections, transaction
+from django.dispatch import receiver
 from django.template.loader import render_to_string
 from django.utils import timezone
 
@@ -41,8 +50,43 @@ def enqueue(*, to: str, kind: str, context: dict[str, str]) -> EmailOutbox:
     row = EmailOutbox.objects.create(
         to=to, kind=kind, context={k: v for k, v in context.items() if k in allowed}
     )
-    transaction.on_commit(lambda: send(row.pk))
+    transaction.on_commit(lambda: _send_or_defer(row.pk))
     return row
+
+
+# Row ids committed during the current request; None outside a request.
+_after_response: ContextVar[list[int] | None] = ContextVar("emails_after_response", default=None)
+
+
+def _send_or_defer(row_id: int) -> None:
+    queue = _after_response.get()
+    if queue is None:
+        send(row_id)
+    else:
+        queue.append(row_id)
+
+
+@receiver(request_started, dispatch_uid="workspace.emails.start_queue")
+def _start_queue(**kwargs: Any) -> None:
+    _after_response.set([])
+
+
+@receiver(request_finished, dispatch_uid="workspace.emails.send_queue")
+def _send_queue(**kwargs: Any) -> None:
+    queue = _after_response.get()
+    _after_response.set(None)
+    if not queue:
+        return
+    for row_id in queue:
+        try:
+            send(row_id)
+        except Exception:  # send() never raises; a signal receiver must not either
+            logger.exception("Email %s could not be sent after the response.", row_id)
+    # Django closed the request's connections before this ran; close the one send() reopened
+    # (outside a test transaction), as the next request would.
+    for connection in connections.all(initialized_only=True):
+        if not connection.in_atomic_block:
+            connection.close_if_unusable_or_obsolete()
 
 
 def send(row_id: int) -> bool:
