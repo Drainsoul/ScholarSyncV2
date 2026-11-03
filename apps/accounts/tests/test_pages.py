@@ -98,3 +98,24 @@ def test_form_errors_form_an_alert_that_takes_focus(client: Any, vite_build: Any
     response = client.post("/accounts/login/", {"login": "x@scholarsync.test", "password": "nope"})
     body = response.content.decode()
     assert 'role="alert"' in body and 'tabindex="-1"' in body and "autofocus" in body
+
+
+@pytest.mark.parametrize(
+    "url",
+    ["/accounts/email/", "/accounts/password/change/", "/accounts/logout/"],
+)
+def test_signed_in_account_pages_render_with_submit_buttons(
+    client: Any, vite_build: Any, db: Any, url: str
+) -> None:
+    from apps.accounts.tests.factories import UserFactory
+
+    client.force_login(UserFactory.create(verified=True))
+    body = _get(client, url)
+    buttons = re.findall(r"<button\b[^>]*>", body)
+    assert buttons
+    for tag in buttons:
+        if "data-" in tag or "icon-btn" in tag or 'aria-label="Dismiss"' in tag:
+            continue  # the site's own chrome (toasts, menus), not allauth's
+        assert "type=" not in tag or 'type="submit"' in tag or 'type="button"' in tag
+    action = [t for t in buttons if 'class="btn' in t]
+    assert action and all('type="button"' not in t for t in action)
