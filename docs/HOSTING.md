@@ -44,7 +44,7 @@ At least:
 | `DATABASE_URL` | your PostgreSQL URL (step 4) |
 | `EMAIL_URL`, `DEFAULT_FROM_EMAIL` | your SMTP server and a From address it allows (step 4). Required: production will not start without a real SMTP URL |
 | `S3_ENDPOINT_URL`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_ADDRESSING_STYLE` | your storage (step 4) |
-| `TRUSTED_PROXY_COUNT` | the number of reverse proxies in front of the app: behind one HTTPS proxy, set `TRUSTED_PROXY_COUNT=1` (default 0). Without it, sign-in rate limits count every visitor as the proxy |
+| `TRUSTED_PROXY_COUNT` | the number of reverse proxies in front of the app: behind one HTTPS proxy, set `TRUSTED_PROXY_COUNT=1` (default 0). Without it, sign-in rate limits count every visitor as the proxy. `compose.production.yaml` already sets `1` for `web`, overriding `.env`; behind two proxies (a CDN in front of yours), change it there to `2` |
 | `CSP_REPORT_ONLY` | leave `true` at first; set `false` once pages load with no violation reports |
 
 Also delete or replace the development-only values at the top of the file. The app refuses to start in production if
