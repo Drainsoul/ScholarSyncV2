@@ -21,7 +21,10 @@ TO = "ana@scholarsync.test"
 
 @pytest.fixture(autouse=True)
 def _test_kind(settings: Any, monkeypatch: pytest.MonkeyPatch) -> None:
-    settings.TEMPLATES[0]["DIRS"] = [TEST_TEMPLATES, *settings.TEMPLATES[0]["DIRS"]]
+    # Assign a new list so the setting_changed signal resets the cached template engine.
+    templates = [dict(engine) for engine in settings.TEMPLATES]
+    templates[0]["DIRS"] = [TEST_TEMPLATES, *templates[0]["DIRS"]]
+    settings.TEMPLATES = templates
     monkeypatch.setitem(emails.KINDS, "test_message", frozenset({"greeting"}))
 
 

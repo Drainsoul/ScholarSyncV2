@@ -1,0 +1,6 @@
+{% extends "emails/base.html" %}
+{% block body %}
+    <p>{% if full_name %}Hello {{ full_name }},{% else %}Hello,{% endif %}</p>
+    <p>A {{ provider_name }} account was just disconnected from your ScholarSync account.</p>
+    <p>If you did not do this, contact the scholarship office straight away.</p>
+{% endblock %}

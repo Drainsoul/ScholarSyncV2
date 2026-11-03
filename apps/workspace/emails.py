@@ -21,13 +21,18 @@ MAX_ATTEMPTS = 5
 # kind -> the context keys its templates may use. Anything else is dropped at enqueue.
 _NAME = frozenset({"full_name"})
 KINDS: dict[str, frozenset[str]] = {
-    "email_confirmation_signup": frozenset({"activate_url", "full_name"}),
-    "email_confirmation": frozenset({"activate_url", "full_name"}),
+    # Sent before the address is verified, so no name: anyone can type anything into it.
+    "email_confirmation_signup": frozenset({"activate_url"}),
+    "email_confirmation": frozenset({"activate_url"}),
     "password_reset_key": frozenset({"password_reset_url", "full_name"}),
     "account_already_exists": frozenset({"signup_url", "password_reset_url", "full_name"}),
     "password_changed": _NAME,
     "password_reset": _NAME,
     "email_changed": _NAME,
+    "email_deleted": frozenset({"deleted_email", "full_name"}),
+    "password_set": _NAME,
+    "account_connected": frozenset({"provider_name", "full_name"}),
+    "account_disconnected": frozenset({"provider_name", "full_name"}),
 }
 
 

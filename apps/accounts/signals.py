@@ -1,6 +1,6 @@
 from typing import Any
 
-from allauth.account.signals import email_confirmed, password_changed, password_reset
+from allauth.account.signals import email_confirmed, password_changed, password_reset, password_set
 from django.dispatch import receiver
 from django.http import HttpRequest
 
@@ -27,3 +27,8 @@ def on_password_reset(request: HttpRequest | None, user: User, **kwargs: Any) ->
 @receiver(password_changed)
 def on_password_changed(request: HttpRequest | None, user: User, **kwargs: Any) -> None:
     record(actor=user, action="user.password_changed", target=user, request=request)
+
+
+@receiver(password_set)
+def on_password_set(request: HttpRequest | None, user: User, **kwargs: Any) -> None:
+    record(actor=user, action="user.password_set", target=user, request=request)

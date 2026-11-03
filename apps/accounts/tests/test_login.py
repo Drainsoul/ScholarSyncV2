@@ -1,10 +1,16 @@
 from datetime import timedelta
+from types import SimpleNamespace
 from typing import Any
 
+import pytest
+from allauth.account.models import EmailAddress
+from allauth.core.context import request_context
 from django.core.cache import cache
+from django.test import RequestFactory
 from django.urls import reverse
 from django.utils import timezone
 
+from apps.accounts.adapters import AccountAdapter
 from apps.accounts.tests.factories import DEFAULT_PASSWORD, UserFactory
 from apps.core.models import AuditEvent
 from apps.workspace.models import EmailOutbox
@@ -40,7 +46,7 @@ def test_password_reset_for_an_unknown_email_sends_nothing(
     client: Any, db: Any, mailoutbox: Any
 ) -> None:
     response = client.post("/accounts/password/reset/", {"email": "nobody@scholarsync.test"})
-    assert response.status_code == 302
+    assert response.status_code == 302 and response.url == reverse("account_reset_password_done")
     assert EmailOutbox.objects.count() == 0 and mailoutbox == []
 
 
@@ -49,7 +55,8 @@ def test_password_reset_sends_the_key_through_the_outbox(
 ) -> None:
     UserFactory.create(email="ana@scholarsync.test", verified=True)
     with django_capture_on_commit_callbacks(execute=True):
-        client.post("/accounts/password/reset/", {"email": "ana@scholarsync.test"})
+        response = client.post("/accounts/password/reset/", {"email": "ana@scholarsync.test"})
+    assert response.url == reverse("account_reset_password_done")
     assert EmailOutbox.objects.get().kind == "password_reset_key"
     assert "/accounts/password/reset/key/" in mailoutbox[0].body
 
@@ -101,3 +108,53 @@ def test_repeated_failed_logins_are_rate_limited(client: Any, db: Any) -> None:
     cache.clear()
     _login(client, "ana@scholarsync.test")
     assert client.session["_auth_user_id"] == str(user.pk)
+
+
+def test_removing_a_secondary_email_is_notified_not_a_500(
+    client: Any, db: Any, django_capture_on_commit_callbacks: Any
+) -> None:
+    user = UserFactory.create(email="ana@scholarsync.test", verified=True)
+    EmailAddress.objects.create(user=user, email="old@scholarsync.test", verified=True)
+    _login(client, "ana@scholarsync.test")
+    with django_capture_on_commit_callbacks(execute=True):
+        response = client.post(
+            "/accounts/email/", {"action_remove": "", "email": "old@scholarsync.test"}
+        )
+        assert response.url.startswith(reverse("account_reauthenticate"))
+        response = client.post(response.url, {"password": DEFAULT_PASSWORD})  # replays the removal
+    assert response.status_code == 302
+    assert not EmailAddress.objects.filter(email="old@scholarsync.test").exists()
+    row = EmailOutbox.objects.get()
+    assert row.kind == "email_deleted" and row.status == "sent"
+
+
+def test_setting_a_first_password_is_notified_and_audited(
+    client: Any, db: Any, django_capture_on_commit_callbacks: Any
+) -> None:
+    user = UserFactory.create(email="gina@scholarsync.test", password=None, verified=True)
+    assert not user.has_usable_password()
+    client.force_login(user)
+    with django_capture_on_commit_callbacks(execute=True):
+        response = client.post(
+            "/accounts/password/set/",
+            {"password1": "first-pass-2026-x", "password2": "first-pass-2026-x"},
+        )
+    assert response.status_code == 302 and "login" not in response.url
+    user.refresh_from_db()
+    assert user.has_usable_password()
+    assert EmailOutbox.objects.get().kind == "password_set"
+    assert AuditEvent.objects.filter(action="user.password_set", actor=user).exists()
+
+
+@pytest.mark.parametrize("kind", ["account_connected", "account_disconnected"])
+def test_social_connect_notifications_are_queued(
+    db: Any, rf: RequestFactory, kind: str, django_capture_on_commit_callbacks: Any
+) -> None:
+    user = UserFactory.create(full_name="Ana Cruz", verified=True)
+    provider = SimpleNamespace(name="Google")
+    with request_context(rf.get("/")), django_capture_on_commit_callbacks(execute=True):
+        AccountAdapter().send_notification_mail(
+            f"socialaccount/email/{kind}", user, {"provider": provider}
+        )
+    row = EmailOutbox.objects.get()
+    assert row.kind == kind and row.status == "sent"

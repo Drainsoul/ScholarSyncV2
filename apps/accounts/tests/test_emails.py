@@ -17,6 +17,10 @@ ALLAUTH_KINDS = {
     "password_changed",
     "password_reset",
     "email_changed",
+    "email_deleted",
+    "password_set",
+    "account_connected",
+    "account_disconnected",
 }
 
 
@@ -33,9 +37,25 @@ def test_every_allauth_kind_has_three_templates(kind: str) -> None:
 def test_adapter_keeps_only_whitelisted_strings(db: Any, rf: RequestFactory) -> None:
     user = UserFactory.create(full_name="Ana Cruz")
     AccountAdapter().send_mail(
-        "account/email/email_confirmation_signup",
+        "account/email/password_reset_key",
         user.email,
-        {"user": user, "key": "k", "request": rf.get("/"), "activate_url": "https://x.test/a/"},
+        {
+            "user": user,
+            "key": "k",
+            "request": rf.get("/"),
+            "password_reset_url": "https://x.test/a/",
+        },
     )
     row = EmailOutbox.objects.get()
-    assert row.context == {"activate_url": "https://x.test/a/", "full_name": "Ana Cruz"}
+    assert row.context == {"password_reset_url": "https://x.test/a/", "full_name": "Ana Cruz"}
+
+
+def test_unverified_address_mails_carry_no_name(db: Any) -> None:
+    user = UserFactory.create(full_name="Visit https://evil.example now")
+    for prefix in ("email_confirmation_signup", "email_confirmation"):
+        AccountAdapter().send_mail(
+            f"account/email/{prefix}", user.email, {"user": user, "activate_url": "https://x.test/"}
+        )
+    assert all(
+        row.context == {"activate_url": "https://x.test/"} for row in EmailOutbox.objects.all()
+    )

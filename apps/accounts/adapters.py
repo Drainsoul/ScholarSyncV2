@@ -1,10 +1,14 @@
 from typing import Any
 
 from allauth.account.adapter import DefaultAccountAdapter
+from allauth.core import context
+from allauth.core.exceptions import ImmediateHttpResponse
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
+from django.contrib import messages
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.forms import BaseForm
 from django.http import HttpRequest
+from django.shortcuts import redirect
 
 from apps.workspace import emails
 
@@ -44,19 +48,40 @@ class AccountAdapter(DefaultAccountAdapter):  # type: ignore[misc]
     def send_mail(self, template_prefix: str, email: str, context: dict[str, Any]) -> None:
         """Queue the message in the outbox instead of sending it inline."""
         kind = template_prefix.rsplit("/", 1)[-1]
+        allowed = emails.KINDS[kind]
         data = {
             key: str(value)
             for key, value in context.items()
-            if key in emails.KINDS[kind] and key != "full_name"
+            if key in allowed and key not in ("full_name", "provider_name")
         }
-        user = context.get("user")
-        full_name = getattr(user, "full_name", "")
-        if full_name:
+        full_name = getattr(context.get("user"), "full_name", "")
+        if full_name and "full_name" in allowed:
             data["full_name"] = str(full_name)
+        provider_name = getattr(context.get("provider"), "name", "")
+        if provider_name and "provider_name" in allowed:
+            data["provider_name"] = str(provider_name)
         emails.enqueue(to=email, kind=kind, context=data)
 
 
 class SocialAccountAdapter(DefaultSocialAccountAdapter):  # type: ignore[misc]
+    def authenticate_by_email(self, sociallogin: Any) -> Any:
+        """Email sign-in and auto-connect are for students only.
+
+        A staff or scholarship-office account must be signed into with its password, so a Google
+        account that merely shares its email address can never reach it.
+        """
+        found = super().authenticate_by_email(sociallogin)
+        if found is None or sociallogin.state.get("process") == "connect":
+            return found
+        user = found[0]
+        if user.role != User.Role.STUDENT or user.is_staff or user.is_superuser:
+            messages.error(
+                context.request,
+                "This account signs in with its email and password. Sign in below.",
+            )
+            raise ImmediateHttpResponse(redirect("account_login"))
+        return found
+
     def save_user(
         self, request: HttpRequest, sociallogin: Any, form: BaseForm | None = None
     ) -> Any:

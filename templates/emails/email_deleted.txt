@@ -1,0 +1,7 @@
+{% extends "emails/base.txt" %}
+{% block body %}{% if full_name %}Hello {{ full_name }},{% else %}Hello,{% endif %}
+
+The email address {{ deleted_email }} was just removed from your ScholarSync account.
+
+If you did not do this, contact the scholarship office straight away.
+{% endblock %}

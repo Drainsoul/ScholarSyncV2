@@ -1,5 +1,5 @@
 {% extends "emails/base.txt" %}
-{% block body %}{% if full_name %}Hello {{ full_name }},{% else %}Hello,{% endif %}
+{% block body %}Hello,
 
 Please confirm this email address for your ScholarSync account.
 
