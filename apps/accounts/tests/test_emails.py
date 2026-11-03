@@ -1,6 +1,7 @@
 from typing import Any
 
 import pytest
+from django.conf import settings
 from django.template.loader import get_template
 from django.test import RequestFactory
 
@@ -111,3 +112,20 @@ def test_account_exists_to_an_unverified_address_carries_no_name(db: Any) -> Non
         },
     )
     assert "full_name" not in EmailOutbox.objects.get().context
+
+
+def test_text_bodies_are_not_html_escaped(
+    db: Any, mailoutbox: Any, django_capture_on_commit_callbacks: Any
+) -> None:
+    user = UserFactory.create(full_name="Ana D'Souza & <Co>", verified=True)
+    with django_capture_on_commit_callbacks(execute=True):
+        AccountAdapter().send_mail("account/email/password_changed", user.email, {"user": user})
+    message = mailoutbox[0]
+    assert "Hello Ana D'Souza & <Co>," in message.body
+    assert "D&#x27;Souza &amp; &lt;Co&gt;" in message.alternatives[0][0]  # HTML stays escaped
+
+
+@pytest.mark.parametrize("kind", sorted(KINDS))
+def test_every_text_body_extends_the_unescaped_base(kind: str) -> None:
+    source = (settings.BASE_DIR / "templates" / "emails" / f"{kind}.txt").read_text("utf-8")
+    assert source.startswith('{% extends "emails/base.txt" %}')

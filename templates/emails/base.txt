@@ -1,6 +1,6 @@
 ScholarSync
 
-{% block body %}{% endblock %}
+{% autoescape off %}{% block body %}{% endblock %}{% endautoescape %}
 
 --
 You received this because someone used this address on ScholarSync.
