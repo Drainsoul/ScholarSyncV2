@@ -122,7 +122,9 @@ INSTALLED_APPS = [
     "apps.accounts",
     "apps.core",
     "apps.programs",
+    "apps.students",
     "apps.workspace",
+    "apps.office",
     "apps.kit",
 ]
 
@@ -229,7 +231,7 @@ SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
 # How many reverse proxies sit in front of the app (0 = none). Rate limits key on the client IP.
 ALLAUTH_TRUSTED_PROXY_COUNT = env.int("TRUSTED_PROXY_COUNT", 0)
 LOGIN_URL = "account_login"
-LOGIN_REDIRECT_URL = "/"  # replaced with the role home later
+LOGIN_REDIRECT_URL = "core:home"  # the adapter sends each role to its own home
 
 # Google sign-in is offered only when both values are set.
 _GOOGLE_CLIENT_ID = env.str("GOOGLE_CLIENT_ID", "")

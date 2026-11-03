@@ -11,6 +11,7 @@ from django.forms import BaseForm
 from django.http import HttpRequest
 from django.shortcuts import redirect
 
+from apps.core.shell import home_url_for
 from apps.workspace import emails
 
 from .models import User
@@ -33,6 +34,11 @@ class AccountAdapter(DefaultAccountAdapter):  # type: ignore[misc]
         if commit:
             saved.save()
         return saved
+
+    def get_login_redirect_url(self, request: HttpRequest) -> str:
+        # allauth applies a safe `next` before it asks the adapter, so this is only the default.
+        assert isinstance(request.user, User)
+        return home_url_for(request.user)
 
     def send_notification_mail(
         self,

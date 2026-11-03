@@ -1,0 +1,6 @@
+{% extends "layouts/staff.html" %}
+{% block title %}{{ program.name }}{% endblock %}
+{% block content %}
+  <h1>{{ program.name }}</h1>
+  {% include "components/empty_state.html" with title="Applications and scholars for this program will show here." %}
+{% endblock %}
