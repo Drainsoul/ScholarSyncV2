@@ -45,15 +45,17 @@ Public pages: about, privacy, terms, cookies, FAQ and contact are in the running
 `/terms/`, `/cookies/`, `/help/`, `/contact/`); their text lives in [templates/core/pages/](templates/core/pages/). To report a security problem, see [SECURITY.md](SECURITY.md).
 
 ## Test accounts
+Every account uses the password `explore-taguig-2026`.
+
 | Role | Account | What it shows |
 |---|---|---|
-| Student | arrives with sign-in (M4) | the student area |
-| Program staff | arrives with sign-in (M4) | reviewing applications, scholars, disbursements |
-| Program head | arrives with sign-in (M4) | staff features plus releasing money and program settings |
-| Scholarship office | arrives with sign-in (M4) | all programs, staff, reports, analytics |
+| Student | `student@scholarsync.test` | the student area |
+| Program staff | `staff@scholarsync.test` | reviewing applications, scholars, disbursements |
+| Program head | `head@scholarsync.test` | staff features plus releasing money and program settings |
+| Scholarship office | `office@scholarsync.test` | all programs, staff, reports, analytics |
 
-When they exist, they are listed here and offered on the login page as one-click buttons. They exist only on copies
-run with `docker compose up`, never on a hosted one.
+They are offered on the login page as one-click buttons. They exist only on copies run with `docker compose up`,
+never on a hosted one.
 
 ## Self-hosting
 See [docs/HOSTING.md](docs/HOSTING.md). After the first start, create the scholarship-office account:

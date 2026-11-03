@@ -1,0 +1,18 @@
+{% load demo %}{% demo_accounts as accounts %}{% demo_password as password %}
+<section class="notice" aria-labelledby="demo-notice-title">
+  <h2 id="demo-notice-title" class="notice__title">Exploring ScholarSync? Use a test account</h2>
+  <p>These accounts and their data exist only on this copy.</p>
+  <dl class="notice__list">
+    {% for account in accounts %}
+      <dt>{{ account.button }}</dt>
+      <dd>{{ account.email }}</dd>
+    {% endfor %}
+    <dt>Password (all four)</dt>
+    <dd>{{ password }}</dd>
+  </dl>
+  <div class="notice__actions">
+    {% for account in accounts %}
+      <button type="button" class="btn btn--secondary" data-fill-email="{{ account.email }}" data-fill-password="{{ password }}" hidden>{{ account.button }}</button>
+    {% endfor %}
+  </div>
+</section>

@@ -33,8 +33,16 @@ data. No `.env` file is needed; if you have one, explore mode ignores it.
 Explore mode is for your own computer only. Every port is published on `127.0.0.1`, and the app answers only
 `localhost` and `127.0.0.1`. To let other people use it, follow [HOSTING.md](HOSTING.md).
 
-Pages to try: the home page `/`, the design kit and mockups `/_kit/`, and the health check `/healthz`. Sign-in and the
-test accounts arrive with M4.
+Pages to try: the home page `/`, the design kit and mockups `/_kit/`, and the health check `/healthz`.
+
+### Test accounts
+The login page offers these as one-click buttons. All four use the password `explore-taguig-2026`; they exist only
+on this copy.
+
+- Student: `student@scholarsync.test`
+- Program staff: `staff@scholarsync.test`
+- Program head: `head@scholarsync.test`
+- Scholarship office: `office@scholarsync.test`
 
 ### Email
 The app sends all email to Mailpit. Open <http://localhost:8025> to read it. Nothing is delivered to real addresses.
