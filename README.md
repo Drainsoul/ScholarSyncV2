@@ -55,6 +55,13 @@ Public pages: about, privacy, terms, cookies, FAQ and contact are in the running
 When they exist, they are listed here and offered on the login page as one-click buttons. They exist only on copies
 run with `docker compose up`, never on a hosted one.
 
+## Self-hosting
+See [docs/HOSTING.md](docs/HOSTING.md). After the first start, create the scholarship-office account:
+
+```
+docker compose -f compose.production.yaml exec web python manage.py create_office_admin --email you@example.org --full-name "Your Name"
+```
+
 ## Stack
 Django 5.2 LTS (Python 3.13) · PostgreSQL 17 · Django templates + HTMX + a little TypeScript (Vite) · any
 S3-compatible storage for files · any SMTP server for email · runs in Docker.

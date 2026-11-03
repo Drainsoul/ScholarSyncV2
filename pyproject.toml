@@ -64,7 +64,7 @@ disallow_incomplete_defs = false
 disallow_untyped_calls = false
 
 [[tool.mypy.overrides]]
-module = ["environs.*", "csp.*", "django_vite.*", "whitenoise.*"]
+module = ["allauth.*", "environs.*", "csp.*", "django_vite.*", "whitenoise.*"]
 ignore_missing_imports = true
 
 [tool.django-stubs]
