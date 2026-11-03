@@ -1,0 +1,1 @@
+{% load ui %}{% for bound_field in attrs.form %}{% if bound_field.is_hidden %}{{ bound_field }}{% else %}{% field bound_field marker=False %}{% endif %}{% endfor %}

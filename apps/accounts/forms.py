@@ -17,6 +17,8 @@ from .services import record_consent
 class ConsentFieldsMixin(forms.Form):
     """The two fields every sign-up asks for, and what is recorded once the account exists."""
 
+    field_order = ["email", "full_name", "password1", "password2", "consent"]
+
     full_name = forms.CharField(label="Full name", max_length=150, strip=True)
     consent = forms.BooleanField(
         label="I have read the privacy notice",

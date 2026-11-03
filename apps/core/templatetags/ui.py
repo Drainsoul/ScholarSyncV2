@@ -79,8 +79,12 @@ def peso(value: Decimal | int | None) -> str:
 
 
 @register.inclusion_tag("components/field.html")
-def field(bound_field: BoundField) -> dict[str, object]:
-    """Label, help, error and widget for one form field, with the ARIA links between them."""
+def field(bound_field: BoundField, marker: bool = True) -> dict[str, object]:
+    """Label, help, error and widget for one form field, with the ARIA links between them.
+
+    `marker=False` leaves the visible "(required)" out of the label, for a form that says once
+    that every field is required. The input keeps its `required` attribute either way.
+    """
     help_id = f"{bound_field.auto_id}-help"
     error_id = f"{bound_field.auto_id}-error"
     described_by = [
@@ -110,6 +114,7 @@ def field(bound_field: BoundField) -> dict[str, object]:
         "help_id": help_id,
         "error_id": error_id,
         "layout": layout,
+        "marker": marker,
     }
 
 

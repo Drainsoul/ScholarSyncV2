@@ -18,7 +18,7 @@ def render_field(form: forms.Form, name: str) -> str:
 
 def test_help_text_is_linked_to_the_input():
     html = render_field(ApplicantForm(), "full_name")
-    assert '<p class="field__help" id="id_full_name-help">As on your school ID.</p>' in html
+    assert '<div class="field__help" id="id_full_name-help">As on your school ID.</div>' in html
     assert 'aria-describedby="id_full_name-help"' in html
     assert "aria-invalid" not in html
     assert '<span class="field__required">(required)</span>' in html
@@ -59,3 +59,11 @@ def test_radio_group_is_a_fieldset_with_a_legend():
     html = render_field(ApplicantForm(), "year_level").strip()
     assert html.startswith('<fieldset class="field field--group')
     assert '<legend class="field__label">Year level' in html
+
+
+def test_marker_can_be_left_out():
+    form = ApplicantForm()
+    html = Template("{% load ui %}{% field f marker=False %}").render(
+        Context({"f": form["full_name"]})
+    )
+    assert "(required)" not in html and 'for="id_full_name"' in html

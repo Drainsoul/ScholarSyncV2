@@ -1,0 +1,16 @@
+{% load allauth %}
+<form method="{{ attrs.method }}"{% if attrs.id %} id="{{ attrs.id }}"{% endif %}{% if attrs.action %} action="{{ attrs.action }}"{% endif %} novalidate>
+  {% if attrs.form.errors %}
+  <div class="banner banner--danger" role="alert" tabindex="-1" autofocus>
+    <div>
+      <p class="banner__title">There is a problem</p>
+      <ul>
+        {% for error in attrs.form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+        {% for bound_field in attrs.form %}{% for error in bound_field.errors %}<li><a href="#{{ bound_field.id_for_label }}">{{ bound_field.label }}: {{ error }}</a></li>{% endfor %}{% endfor %}
+      </ul>
+    </div>
+  </div>
+  {% endif %}
+  {% slot body %}{% endslot %}
+  <div class="btn-row">{% slot actions %}{% endslot %}</div>
+</form>

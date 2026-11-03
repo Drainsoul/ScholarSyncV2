@@ -27,6 +27,11 @@ fieldset.field {
   color: var(--text-muted);
 }
 
+.field__help ul {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
 .field__error {
   display: flex;
   align-items: flex-start;

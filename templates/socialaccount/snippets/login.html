@@ -1,0 +1,7 @@
+{% load allauth socialaccount %}
+{% get_providers as socialaccount_providers %}
+{% if socialaccount_providers %}
+  {% if not SOCIALACCOUNT_ONLY %}<p class="auth-or"><span>or</span></p>{% endif %}
+  {% include "socialaccount/snippets/provider_list.html" with process="login" %}
+  {% include "socialaccount/snippets/login_extra.html" %}
+{% endif %}

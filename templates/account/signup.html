@@ -1,0 +1,26 @@
+{% extends "account/base_entrance.html" %}
+{% load allauth %}
+{% block head_title %}Create your account{% endblock %}
+{% block content %}
+  {% element h1 %}Create your account{% endelement %}
+  {% if not SOCIALACCOUNT_ONLY %}
+    {% element p %}All fields are required.{% endelement %}
+    {% url 'account_signup' as action_url %}
+    {% element form form=form method="post" action=action_url id="signup-form" tags="entrance,signup" %}
+      {% slot body %}
+        {% csrf_token %}
+        {% element fields form=form %}{% endelement %}
+        {{ redirect_field }}
+      {% endslot %}
+      {% slot actions %}
+        {% element button type="submit" tags="prominent,signup" %}Create account{% endelement %}
+      {% endslot %}
+    {% endelement %}
+    <ul class="auth-links">
+      <li>Already have an account? <a href="{{ login_url }}">Log in</a></li>
+    </ul>
+  {% endif %}
+  {% if SOCIALACCOUNT_ENABLED %}
+    {% include "socialaccount/snippets/login.html" with page_layout="entrance" %}
+  {% endif %}
+{% endblock content %}

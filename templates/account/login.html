@@ -1,0 +1,27 @@
+{% extends "account/base_entrance.html" %}
+{% load allauth slots %}
+{% block head_title %}Log in{% endblock %}
+{% block content %}
+  {% element h1 %}Log in{% endelement %}
+  {% include_if_present "demo/login_notice.html" %}
+  {% if not SOCIALACCOUNT_ONLY %}
+    {% url 'account_login' as login_url %}
+    {% element form form=form method="post" action=login_url id="login-form" tags="entrance,login" %}
+      {% slot body %}
+        {% csrf_token %}
+        {% element fields form=form %}{% endelement %}
+        {{ redirect_field }}
+      {% endslot %}
+      {% slot actions %}
+        {% element button type="submit" tags="prominent,login" %}Log in{% endelement %}
+      {% endslot %}
+    {% endelement %}
+    <ul class="auth-links">
+      <li><a href="{% url 'account_reset_password' %}">Forgot your password?</a></li>
+      <li>New here? <a href="{{ signup_url }}">Create an account</a></li>
+    </ul>
+  {% endif %}
+  {% if SOCIALACCOUNT_ENABLED %}
+    {% include "socialaccount/snippets/login.html" with page_layout="entrance" %}
+  {% endif %}
+{% endblock content %}

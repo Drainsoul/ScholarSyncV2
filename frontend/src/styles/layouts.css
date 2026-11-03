@@ -844,6 +844,48 @@
   padding: var(--space-8) var(--space-6);
 }
 
+/* The account pages: links under the form, the "or" before the social buttons, and their list. */
+.auth-links,
+.provider-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.auth-links {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-6);
+}
+
+.auth-or {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-6) 0;
+  color: var(--text-muted);
+}
+
+.auth-or::before,
+.auth-or::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--border);
+}
+
+.provider-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.provider-list .btn {
+  width: 100%;
+}
+
+.auth-section {
+  margin-top: var(--space-6);
+}
+
 /* A short screen (1440 x 900 and below): the callout goes, so the user card stays above the fold. */
 @media (min-width: 64rem) and (max-height: 56rem) {
   .sidebar .callout {
