@@ -113,6 +113,10 @@ DEFAULT_FROM_EMAIL=ScholarSync <no-reply@your-domain.example>
 Use `smtps://` for port 465 and `smtp://` for an unencrypted relay. Set up SPF and DKIM for your sending domain with
 your provider, or mail lands in spam.
 
+**Google sign-in (optional, students only).** Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` to offer it. If you
+remove the keys later, students who signed in only with Google have no password: they must use "Forgot password" to
+set one before they can sign in again.
+
 ## 5. Build and run behind HTTPS
 ```
 docker compose -f compose.production.yaml up -d --build
@@ -158,12 +162,13 @@ the header `X-Forwarded-Proto: https` and an allowed `Host`, as the container's 
 does. The app has no switch to turn the redirect off; set the header at the proxy instead.
 
 ## 6. Background jobs
-The `worker` service runs `manage.py cleanup` every 5 minutes (it deletes expired sessions now, and will also retry
-failed email and clear old rows as features arrive). Nothing else is needed.
+The `worker` service runs `manage.py send_outbox` (retries failed email and sends any left queued) and
+`manage.py cleanup` (expired sessions, outbox rows older than 90 days). Nothing else is needed.
 
-If you do not run the worker, schedule the same command yourself, for example every 5 minutes from cron or your
+If you do not run the worker, schedule the same commands yourself, for example every 5 minutes from cron or your
 host's scheduler:
 ```
+docker compose -f compose.production.yaml run --rm -e SKIP_PREPARE=1 web python manage.py send_outbox
 docker compose -f compose.production.yaml run --rm -e SKIP_PREPARE=1 web python manage.py cleanup
 ```
 Remove the `worker` service from the compose file in that case.
