@@ -84,7 +84,7 @@ def test_run_worker_survives_a_failing_cycle(
 
     def fake(name: str, *args: Any, **kwargs: Any) -> None:
         called.append(name)
-        if len(called) == 1:
+        if len(called) <= 2:
             raise RuntimeError("db restarting")
         handler = signal.getsignal(signal.SIGTERM)
         assert callable(handler)
@@ -96,7 +96,7 @@ def test_run_worker_survives_a_failing_cycle(
         lambda self, timeout=None: False,
     )
     call_command("run_worker", "--interval", "1", stdout=StringIO())
-    assert called == ["send_outbox", "cleanup"]
+    assert called == ["send_outbox", "cleanup", "send_outbox", "cleanup"]
     assert "Worker cycle failed" in caplog.text
 
 

@@ -165,3 +165,52 @@ def test_cleanup_purges_sent_rows_after_90_days(db: Any, time_machine: Any) -> N
         "recent@scholarsync.test",
         "failed@scholarsync.test",
     }
+
+
+def test_a_render_error_never_stores_context_values(
+    db: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def boom(*args: Any, **kwargs: Any) -> str:
+        raise ValueError("bad value tok-12345")
+
+    monkeypatch.setattr(emails, "render_to_string", boom)
+    row = _row()
+    assert send(row.pk) is False
+    row.refresh_from_db()
+    assert row.status == "failed" and row.attempts == 1
+    assert row.last_error == "ValueError while rendering"
+    assert "tok-12345" not in row.last_error
+
+
+def test_a_missing_template_counts_as_an_attempt_and_wipes_at_five(db: Any) -> None:
+    row = EmailOutbox.objects.create(to=TO, kind="no_such_kind", context={"greeting": "Hi"})
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        assert send(row.pk) is False
+        row.refresh_from_db()
+        assert row.attempts == attempt
+        assert row.last_error == "TemplateDoesNotExist while rendering"
+        assert row.context == ({} if attempt == MAX_ATTEMPTS else {"greeting": "Hi"})
+    assert send(row.pk) is False
+    row.refresh_from_db()
+    assert row.attempts == MAX_ATTEMPTS
+
+
+def test_cleanup_purges_exhausted_failed_rows_after_90_days(db: Any) -> None:
+    now = timezone.now()
+    for name, attempts, age in [
+        ("old", MAX_ATTEMPTS, 91),
+        ("recent", MAX_ATTEMPTS, 89),
+        ("retrying", 2, 91),
+    ]:
+        row = EmailOutbox.objects.create(
+            to=f"{name}@scholarsync.test",
+            kind="test_message",
+            status="failed",
+            attempts=attempts,
+        )
+        EmailOutbox.objects.filter(pk=row.pk).update(updated_at=now - timedelta(days=age))
+    call_command("cleanup")
+    assert set(EmailOutbox.objects.values_list("to", flat=True)) == {
+        "recent@scholarsync.test",
+        "retrying@scholarsync.test",
+    }

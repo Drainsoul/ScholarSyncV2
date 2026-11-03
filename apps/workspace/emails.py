@@ -39,16 +39,14 @@ def send(row_id: int) -> bool:
             if row is None or row.status == EmailOutbox.Status.SENT or row.attempts >= MAX_ATTEMPTS:
                 return False
             try:
-                message_id = _deliver(row)
+                parts = _render(row)
             except Exception as exc:
-                row.attempts += 1
-                row.status = EmailOutbox.Status.FAILED
-                row.last_error = f"{type(exc).__name__}: {exc}"[:500]
-                if row.attempts >= MAX_ATTEMPTS:
-                    row.context = {}
-                row.save()
-                logger.warning("Email %s failed (attempt %s).", row.pk, row.attempts)
-                return False
+                # Template errors can echo context values (tokens, links): keep the class only.
+                return _fail(row, f"{type(exc).__name__} while rendering")
+            try:
+                message_id = _deliver(row, *parts)
+            except Exception as exc:
+                return _fail(row, f"{type(exc).__name__}: {exc}"[:500])
             row.status = EmailOutbox.Status.SENT
             row.sent_at = timezone.now()
             row.provider_message_id = message_id
@@ -61,11 +59,26 @@ def send(row_id: int) -> bool:
         return False
 
 
-def _deliver(row: EmailOutbox) -> str:
+def _fail(row: EmailOutbox, error: str) -> bool:
+    row.attempts += 1
+    row.status = EmailOutbox.Status.FAILED
+    row.last_error = error
+    if row.attempts >= MAX_ATTEMPTS:
+        row.context = {}
+    row.save()
+    logger.warning("Email %s failed (attempt %s).", row.pk, row.attempts)
+    return False
+
+
+def _render(row: EmailOutbox) -> tuple[str, str, str]:
     template = f"emails/{row.kind}"
     subject = " ".join(render_to_string(f"{template}_subject.txt", row.context).split())
     text = render_to_string(f"{template}.txt", row.context)
     html = render_to_string(f"{template}.html", row.context)
+    return subject, text, html
+
+
+def _deliver(row: EmailOutbox, subject: str, text: str, html: str) -> str:
     message_id = make_msgid()
     message = EmailMultiAlternatives(subject, text, to=[row.to], headers={"Message-ID": message_id})
     message.attach_alternative(html, "text/html")
