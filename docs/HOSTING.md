@@ -187,8 +187,9 @@ the password in the `OFFICE_ADMIN_PASSWORD` environment variable (`exec -e OFFIC
 
 If the address already signed up on the site, the command takes that account over when the address was never
 verified (whoever typed it may not own it). If it was verified, the command stops; add `--promote-existing` to make
-that account the office account. Either way the account gets the office role, your name and the new password, and
-the change is audited.
+that account the office account. Either way the account gets the office role, your name and the new password; its
+other email addresses, linked Google accounts, pending confirmations and sessions are removed, so whoever created it
+keeps no way back in; and the change is audited.
 
 To start with the Taguig programs, run `python manage.py seed_programs` (in the container:
 `docker compose -f compose.production.yaml run --rm -e SKIP_PREPARE=1 web python manage.py seed_programs`); or create

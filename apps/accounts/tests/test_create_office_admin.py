@@ -39,7 +39,13 @@ def _assert_promoted(user, *, was_verified, out):
     assert address.verified and address.primary
     event = AuditEvent.objects.get(action="user.promoted")
     assert event.actor is None and event.target_id == str(user.pk)
-    assert event.data == {"role": "super_admin", "was_verified": was_verified}
+    assert event.data == {
+        "role": "super_admin",
+        "was_verified": was_verified,
+        "emails_removed": 0,
+        "social_removed": 0,
+        "sessions_ended": 0,
+    }
     assert "now the office account" in out
     assert "scholarsync.test" not in out.lower()
 
