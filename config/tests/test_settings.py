@@ -344,6 +344,46 @@ def test_csp_allows_the_storage_origin(tmp_path):
     assert "http://localhost:9000" in directives["connect-src"]
 
 
+def test_csp_allows_the_bucket_subdomain_with_virtual_addressing(tmp_path):
+    values = settings_values(
+        tmp_path,
+        ["CONTENT_SECURITY_POLICY_REPORT_ONLY"],
+        S3_ENDPOINT_URL="https://s3.ap-southeast-1.amazonaws.com",
+        S3_BUCKET="scholars",
+        S3_ADDRESSING_STYLE="virtual",
+    )
+    directives = values["CONTENT_SECURITY_POLICY_REPORT_ONLY"]["DIRECTIVES"]
+    origin = "https://scholars.s3.ap-southeast-1.amazonaws.com"
+    assert origin in directives["img-src"]
+    assert origin in directives["connect-src"]
+    assert "https://s3.ap-southeast-1.amazonaws.com" not in directives["connect-src"]
+
+
+def test_csp_virtual_addressing_follows_the_public_endpoint(tmp_path):
+    values = settings_values(
+        tmp_path,
+        ["CONTENT_SECURITY_POLICY_REPORT_ONLY"],
+        S3_ENDPOINT_URL="http://storage:9000",
+        S3_PUBLIC_ENDPOINT_URL="http://localhost:9000",
+        S3_BUCKET="b",
+        S3_ADDRESSING_STYLE="virtual",
+    )
+    directives = values["CONTENT_SECURITY_POLICY_REPORT_ONLY"]["DIRECTIVES"]
+    assert directives["connect-src"] == ["'self'", "http://b.localhost:9000"]
+
+
+def test_csp_path_addressing_keeps_the_endpoint_origin(tmp_path):
+    values = settings_values(
+        tmp_path,
+        ["CONTENT_SECURITY_POLICY_REPORT_ONLY"],
+        S3_ENDPOINT_URL="https://acct.r2.cloudflarestorage.com",
+        S3_BUCKET="scholars",
+        S3_ADDRESSING_STYLE="path",
+    )
+    directives = values["CONTENT_SECURITY_POLICY_REPORT_ONLY"]["DIRECTIVES"]
+    assert directives["connect-src"] == ["'self'", "https://acct.r2.cloudflarestorage.com"]
+
+
 def test_storage_origin_is_absent_from_csp_when_unset(tmp_path):
     values = settings_values(tmp_path, ["CONTENT_SECURITY_POLICY_REPORT_ONLY", "S3_STORAGE"])
     directives = values["CONTENT_SECURITY_POLICY_REPORT_ONLY"]["DIRECTIVES"]

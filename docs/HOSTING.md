@@ -107,7 +107,8 @@ aws --endpoint-url "$S3_ENDPOINT_URL" s3api put-bucket-cors --bucket YOUR_BUCKET
 aws --endpoint-url "$S3_ENDPOINT_URL" s3api put-bucket-lifecycle-configuration --bucket YOUR_BUCKET --lifecycle-configuration '{"Rules":[{"ID":"expire-pending","Status":"Enabled","Filter":{"Prefix":"pending/"},"Expiration":{"Days":1}}]}'
 ```
 Example values: Cloudflare R2 uses `S3_REGION=auto` and an endpoint like `https://ACCOUNT.r2.cloudflarestorage.com`; AWS S3
-uses a region like `us-east-1` and `S3_ADDRESSING_STYLE=virtual`.
+uses a region like `us-east-1`, an endpoint like `https://s3.us-east-1.amazonaws.com` (required for uploads) and
+`S3_ADDRESSING_STYLE=virtual`.
 
 **SMTP.** Take the host, port and credentials from your email provider and set one URL:
 ```

@@ -348,15 +348,18 @@ PERMISSIONS_POLICY = (
 )
 
 
-def _origin(url: str) -> str:
-    """scheme://host[:port] of a URL, or "" when it has none."""
-    parts = urlsplit(url)
-    return f"{parts.scheme}://{parts.netloc}" if parts.scheme and parts.netloc else ""
+def _storage_sources() -> list[str]:
+    """Origins browsers use for presigned PUT and GET: path style is the endpoint itself,
+    virtual style is the bucket's own subdomain of it."""
+    endpoint = urlsplit(S3_STORAGE["public_endpoint_url"] or S3_STORAGE["endpoint_url"])
+    if not (endpoint.scheme and endpoint.netloc):
+        return []
+    if S3_STORAGE["addressing_style"] == "virtual" and S3_STORAGE["bucket"]:
+        return [f"{endpoint.scheme}://{S3_STORAGE['bucket']}.{endpoint.netloc}"]
+    return [f"{endpoint.scheme}://{endpoint.netloc}"]
 
 
-# Browsers talk to the storage origin directly (presigned PUT and GET).
-_STORAGE_ORIGIN = _origin(S3_STORAGE["public_endpoint_url"] or S3_STORAGE["endpoint_url"])
-_STORAGE_SOURCES = [_STORAGE_ORIGIN] if _STORAGE_ORIGIN else []
+_STORAGE_SOURCES = _storage_sources()
 
 _CSP_DIRECTIVES = {
     "default-src": [SELF],

@@ -88,7 +88,7 @@ def test_not_configured(settings):
         storage.presigned_put(key="x", content_type="a/b", size=1)
 
 
-def test_is_configured_with_blank_endpoint(settings):
+def test_blank_endpoint_is_not_configured(settings):
     settings.S3_STORAGE = {
         "endpoint_url": "",
         "public_endpoint_url": "",
@@ -98,7 +98,7 @@ def test_is_configured_with_blank_endpoint(settings):
         "secret_access_key": "s",
         "addressing_style": "virtual",
     }
-    assert storage.is_configured()
+    assert not storage.is_configured()
 
 
 def test_unreachable_storage_is_unavailable(settings):

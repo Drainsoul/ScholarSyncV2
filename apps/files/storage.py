@@ -29,7 +29,8 @@ def _cfg() -> dict[str, str]:
 
 def is_configured() -> bool:
     cfg = _cfg()
-    return all(cfg.get(name) for name in ("bucket", "region", "access_key_id", "secret_access_key"))
+    names = ("endpoint_url", "bucket", "region", "access_key_id", "secret_access_key")
+    return all(cfg.get(name) for name in names)
 
 
 def _require() -> dict[str, str]:
