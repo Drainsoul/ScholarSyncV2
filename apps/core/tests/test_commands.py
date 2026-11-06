@@ -45,6 +45,41 @@ def test_cleanup_clears_expired_sessions(db: Any) -> None:
     assert list(Session.objects.values_list("session_key", flat=True)) == ["live"]
 
 
+def test_cleanup_removes_stale_files(db: Any) -> None:
+    from apps.files.models import StoredFile
+    from apps.files.tests.factories import StoredFileFactory
+
+    now = timezone.now()
+    pending, rejected, ready = (
+        StoredFile.Status.PENDING,
+        StoredFile.Status.REJECTED,
+        StoredFile.Status.READY,
+    )
+    stale_pending = StoredFileFactory.create(status=pending)
+    fresh_pending = StoredFileFactory.create(status=pending)
+    old_ready = StoredFileFactory.create(
+        status=ready, sniffed_type="application/pdf", sha256="a" * 64
+    )
+    old_rejected = StoredFileFactory.create(status=rejected, rejected_reason="missing")
+    recent_rejected = StoredFileFactory.create(status=rejected, rejected_reason="missing")
+    # auto_now fields can't be set on create; write the timestamps directly.
+    StoredFile.objects.filter(pk=stale_pending.pk).update(created_at=now - timedelta(hours=25))
+    StoredFile.objects.filter(pk=fresh_pending.pk).update(created_at=now - timedelta(hours=1))
+    StoredFile.objects.filter(pk=old_ready.pk).update(
+        created_at=now - timedelta(days=400), updated_at=now - timedelta(days=400)
+    )
+    StoredFile.objects.filter(pk=old_rejected.pk).update(updated_at=now - timedelta(days=31))
+    StoredFile.objects.filter(pk=recent_rejected.pk).update(updated_at=now - timedelta(days=29))
+
+    call_command("cleanup")
+
+    assert set(StoredFile.objects.values_list("pk", flat=True)) == {
+        fresh_pending.pk,
+        old_ready.pk,
+        recent_rejected.pk,
+    }
+
+
 def test_run_worker_once_runs_cleanup(monkeypatch: pytest.MonkeyPatch) -> None:
     called: list[str] = []
     monkeypatch.setattr(

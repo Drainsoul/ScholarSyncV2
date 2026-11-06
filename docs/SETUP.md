@@ -148,6 +148,8 @@ Notes:
 - `.env.example` has `DJANGO_DEBUG=true` and a database URL that uses `127.0.0.1`, not `localhost`. Compose publishes
   ports on IPv4 loopback only, and `localhost` can resolve to IPv6 and fail.
 - Developer mode loads the demo and the kit, and serves plain HTTP.
+- Uploads work in developer mode once `storage` and `storage-init` are up (the `S3_*` values in `.env.example` point
+  at them), through `runserver` on port 8000: the bucket's CORS rule names `localhost:8000` and `127.0.0.1:8000`.
 - Do not run the one-command `web` container and `runserver` at the same time on port 8000. Set `APP_PORT` for one of
   them, or `docker compose stop web worker`.
 - `docker compose down -v` deletes the development database. Use `docker compose down` to keep it.

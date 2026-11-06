@@ -213,6 +213,12 @@ S3_STORAGE: dict[str, str] = {
     "secret_access_key": env.str("S3_SECRET_ACCESS_KEY", ""),
     "addressing_style": env.str("S3_ADDRESSING_STYLE", "path"),
 }
+# The compose storage service's key is public (it is in compose.yaml and .env.example).
+if PRODUCTION and S3_STORAGE["secret_access_key"] == "scholarsync-explore-secret":  # noqa: S105
+    raise ImproperlyConfigured(
+        "S3_SECRET_ACCESS_KEY is the public explore storage key. "
+        "Use your own storage keys in production (docs/HOSTING.md)."
+    )
 
 CACHES = {
     "default": {

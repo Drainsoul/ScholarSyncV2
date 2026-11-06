@@ -16,7 +16,13 @@ def test_every_setting_variable_is_documented():
     assert not missing, f".env.example does not document: {missing}"
 
 
+# The compose storage service's public key: production refuses it, so it is not a real secret.
+EXPLORE_STORAGE_SECRET = "scholarsync-explore-secret"  # noqa: S105
+
+
 def test_env_example_holds_no_real_secrets():
     for name in ("DJANGO_SECRET_KEY", "S3_SECRET_ACCESS_KEY", "EMAIL_URL"):
         for value in re.findall(rf"^{name}=(.*)$", EXAMPLE, flags=re.MULTILINE):
-            assert value.strip() == "" or "change-me" in value, f"{name} looks like a real value"
+            assert value.strip() in {"", EXPLORE_STORAGE_SECRET} or "change-me" in value, (
+                f"{name} looks like a real value"
+            )

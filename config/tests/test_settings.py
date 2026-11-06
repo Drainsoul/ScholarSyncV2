@@ -283,6 +283,24 @@ def test_production_refuses_the_explore_secret_key(tmp_path):
     assert explore.returncode == 0, explore.stderr
 
 
+def test_production_refuses_the_explore_storage_secret(tmp_path):
+    secret = "scholarsync-explore-secret"
+    result = _run_settings(tmp_path, ["S3_STORAGE"], S3_SECRET_ACCESS_KEY=secret)
+    assert result.returncode != 0
+    assert "public explore storage key" in result.stderr
+    assert "docs/HOSTING.md" in result.stderr
+    explore = _run_settings(
+        tmp_path, ["S3_STORAGE"], S3_SECRET_ACCESS_KEY=secret, SCHOLARSYNC_EXPLORE="true"
+    )
+    assert explore.returncode == 0, explore.stderr
+    developer = _run_settings(
+        tmp_path, ["S3_STORAGE"], S3_SECRET_ACCESS_KEY=secret, DJANGO_DEBUG="true"
+    )
+    assert developer.returncode == 0, developer.stderr
+    own = _run_settings(tmp_path, ["S3_STORAGE"], S3_SECRET_ACCESS_KEY="a-real-secret")
+    assert own.returncode == 0, own.stderr
+
+
 def test_csrf_trusted_origins_from_env(tmp_path):
     values = settings_values(
         tmp_path,

@@ -29,7 +29,9 @@ cp .env.example .env
 Edit `.env`. Set at least the values below. The app refuses to start without the secret key, the database URL, the operator name and privacy
 contact, and (in production) the allowed hosts and a real SMTP `EMAIL_URL`: production refuses a blank one and the
 `console://`, `memory://`, `dummy://` and `file://` backends, which would write reset and verification links to the
-log or drop mail. It starts without the `S3_*` values, but then file uploads do not work, so set them before real use.
+log or drop mail. It starts without the `S3_*` values, but then file uploads answer 503 until you set them, so set them
+before real use. Production refuses the public explore storage secret from `.env.example` and `compose.yaml`: use your
+own storage keys.
 
 At least:
 
@@ -91,7 +93,9 @@ Use any provider. Names below are examples only.
   ```json
   {"CORSRules":[{"AllowedOrigins":["https://scholarships.example.org"],"AllowedMethods":["GET","PUT","HEAD"],"AllowedHeaders":["*"],"ExposeHeaders":["ETag"],"MaxAgeSeconds":3600}]}
   ```
-- add a **lifecycle rule** that expires objects under the prefix `pending/` after 1 day (abandoned uploads);
+- add a **lifecycle rule** that expires objects under the prefix `pending/` after 1 day (abandoned uploads). A
+  presigned upload link stays valid for 10 minutes, so this rule is what removes abandoned or re-sent uploads;
+  downloads are 5-minute links;
 - create an access key limited to that bucket, and set the `S3_*` variables. The endpoint must be reachable from the
   browser as well as from the app. Only if the browser needs a different address than the app, set
   `S3_PUBLIC_ENDPOINT_URL`.
