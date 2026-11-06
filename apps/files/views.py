@@ -45,7 +45,8 @@ def _json_api(view: Callable[..., JsonResponse]) -> Callable[..., JsonResponse]:
 def _parse_intent(request: HttpRequest) -> tuple[str, str, str, int] | None:
     try:
         body = json.loads(request.body)
-    except ValueError:
+    except (ValueError, RecursionError):
+        # RecursionError: a deeply nested body overflows the JSON parser's stack.
         return None
     if not isinstance(body, dict):
         return None

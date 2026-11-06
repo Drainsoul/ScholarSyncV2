@@ -69,6 +69,12 @@ def test_intent_bad_json(signed_in, s3, body):
     assert response.json() == {"error": COPY_READ}
 
 
+def test_intent_deeply_nested_json_is_400(signed_in, s3):
+    response = post_json(signed_in, INTENT, "[" * 100_000)
+    assert response.status_code == 400
+    assert response.json() == {"error": COPY_READ}
+
+
 @pytest.mark.parametrize(
     "over",
     [{"size": "10"}, {"size": True}, {"size": 1.5}, {"name": 3}, {"purpose": None}, {"type": []}],
