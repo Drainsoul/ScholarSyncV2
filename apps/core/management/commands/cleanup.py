@@ -16,7 +16,8 @@ class Command(BaseCommand):
 
     def handle(self, *args: Any, **options: Any) -> None:
         call_command("clearsessions")
-        cutoff = timezone.now() - timedelta(days=90)
+        now = timezone.now()
+        cutoff = now - timedelta(days=90)
         EmailOutbox.objects.filter(
             Q(status=EmailOutbox.Status.SENT, sent_at__lt=cutoff)
             | Q(
@@ -30,10 +31,10 @@ class Command(BaseCommand):
         StoredFile.objects.filter(
             Q(
                 status=StoredFile.Status.PENDING,
-                created_at__lt=timezone.now() - timedelta(days=1),
+                created_at__lt=now - timedelta(days=1),
             )
             | Q(
                 status=StoredFile.Status.REJECTED,
-                updated_at__lt=timezone.now() - timedelta(days=30),
+                updated_at__lt=now - timedelta(days=30),
             )
         ).delete()

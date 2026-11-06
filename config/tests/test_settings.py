@@ -301,6 +301,19 @@ def test_production_refuses_the_explore_storage_secret(tmp_path):
     assert own.returncode == 0, own.stderr
 
 
+def test_pytest_settings_survive_the_explore_storage_secret_in_env():
+    env = {**os.environ, "S3_SECRET_ACCESS_KEY": "scholarsync-explore-secret"}
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, "-c", "import config.test_settings"],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+
+
 def test_csrf_trusted_origins_from_env(tmp_path):
     values = settings_values(
         tmp_path,
