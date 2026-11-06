@@ -122,6 +122,7 @@ INSTALLED_APPS = [
     "apps.accounts",
     "apps.core",
     "apps.programs",
+    "apps.files",
     "apps.students",
     "apps.workspace",
     "apps.office",

@@ -16,6 +16,9 @@ dependencies = [
     "gunicorn>=26.2.0",
     "django-allauth[socialaccount]==65.20.1",
     "argon2-cffi==25.1.0",
+    "boto3==1.43.118",
+    "filetype==1.2.0",
+    "pillow==13.0.0",
 ]
 
 [dependency-groups]
@@ -29,6 +32,7 @@ dev = [
     "django-stubs[compatible-mypy]>=6.1.2",
     "pytest-playwright>=0.10",
     "time-machine==3.5.1",
+    "moto[server]==5.2.4",
 ]
 
 [tool.pytest.ini_options]
@@ -64,7 +68,7 @@ disallow_incomplete_defs = false
 disallow_untyped_calls = false
 
 [[tool.mypy.overrides]]
-module = ["allauth.*", "environs.*", "csp.*", "django_vite.*", "whitenoise.*"]
+module = ["allauth.*", "environs.*", "csp.*", "django_vite.*", "whitenoise.*", "boto3.*", "botocore.*", "filetype.*", "moto.*"]
 ignore_missing_imports = true
 
 [tool.django-stubs]
