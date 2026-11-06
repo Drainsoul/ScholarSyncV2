@@ -1,6 +1,8 @@
 import re
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -119,8 +121,9 @@ def test_gunicorn_runs_without_a_control_socket():
     assert '"--no-control-socket"' in cmd
 
 
-def test_smoke_signup_script_is_lf_posix_sh():
-    script = (ROOT / "scripts" / "smoke_signup.sh").read_bytes()
+@pytest.mark.parametrize("name", ["smoke_signup.sh", "smoke_upload.sh"])
+def test_smoke_scripts_are_lf_posix_sh(name):
+    script = (ROOT / "scripts" / name).read_bytes()
     assert b"\r" not in script
     assert script.startswith(b"#!/bin/sh\n")
 
