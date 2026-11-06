@@ -34,15 +34,9 @@ REJECTIONS: dict[str, str] = {
     "image": "We couldn't read this image. Upload a different JPG or PNG.",
 }
 
-_IMAGE_ERRORS = (
-    OSError,  # includes PIL.UnidentifiedImageError
-    ValueError,
-    SyntaxError,
-    EOFError,
-    Image.DecompressionBombError,
-    Image.DecompressionBombWarning,
-)
-_FORMATS = {policy.JPEG: "JPEG", policy.PNG: "PNG"}
+# Pillow formats accepted per sniffed type. Phones export multi-picture JPEGs (depth or gain
+# maps) that Pillow opens as MPO; saving as JPEG keeps the first picture only.
+_FORMATS = {policy.JPEG: frozenset({"JPEG", "MPO"}), policy.PNG: frozenset({"PNG"})}
 
 
 class UploadRejected(Exception):
@@ -172,7 +166,7 @@ def _reencode(body: bytes, mime: str) -> bytes:
             width, height = opened.size
             if width * height > policy.MAX_IMAGE_PIXELS:
                 raise _Rejected("image")
-            if opened.format != _FORMATS[mime]:
+            if opened.format not in _FORMATS[mime]:
                 raise _Rejected("image")
             opened.load()
             image = ImageOps.exif_transpose(opened)
@@ -184,7 +178,12 @@ def _reencode(body: bytes, mime: str) -> bytes:
                 image.save(out, format="JPEG", quality=90, exif=b"", icc_profile=None)
             else:
                 image.save(out, format="PNG", optimize=True, exif=b"", icc_profile=None)
-    except _IMAGE_ERRORS as exc:
+    except (_Rejected, MemoryError):
+        raise
+    except Exception as exc:
+        # Malformed images raise far more than OSError (struct.error, IndexError, KeyError,
+        # TypeError, ZeroDivisionError, decompression-bomb errors...). Any of them means the
+        # image can't be read, and confirm must save the rejection rather than fail.
         raise _Rejected("image") from exc
     return out.getvalue()
 

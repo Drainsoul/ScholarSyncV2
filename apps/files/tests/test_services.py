@@ -1,6 +1,7 @@
 import datetime as dt
 import hashlib
 import io
+import struct
 import uuid
 from zoneinfo import ZoneInfo
 
@@ -412,3 +413,35 @@ def test_policy_help_text():
     assert policy.help_text("photo") == "JPG or PNG, up to 5 MB."
     assert policy.help_text("report") == "PDF, up to 20 MB."
     assert "export" not in policy.RULES
+
+
+def test_any_pillow_error_rejects_the_photo(s3, student, monkeypatch):
+    def broken_transpose(image: Image.Image) -> Image.Image:
+        raise struct.error("unpack requires a buffer of 4 bytes")
+
+    monkeypatch.setattr("apps.files.services.ImageOps.exif_transpose", broken_transpose)
+    body = jpeg_with_exif(orientation=6)
+    intent = start(student, body, purpose="photo", content_type="image/jpeg")
+    upload(intent, body)
+    file = services.confirm_upload(user=student, file_id=intent.file.id)
+    assert file.status == StoredFile.Status.REJECTED
+    assert file.rejected_reason == "image"
+    file.refresh_from_db()
+    assert file.status == StoredFile.Status.REJECTED
+    assert objects(s3) == set()
+
+
+def test_multi_picture_jpeg_is_accepted(s3, student):
+    first = Image.new("RGB", (20, 10), (10, 120, 10))
+    second = Image.new("RGB", (8, 4), (0, 0, 0))
+    buffer = io.BytesIO()
+    first.save(buffer, "MPO", save_all=True, append_images=[second])
+    body = buffer.getvalue()
+    assert Image.open(io.BytesIO(body)).format == "MPO"
+    intent = start(student, body, purpose="photo", content_type="image/jpeg")
+    upload(intent, body)
+    file = services.confirm_upload(user=student, file_id=intent.file.id)
+    assert file.status == StoredFile.Status.READY
+    stored = Image.open(io.BytesIO(storage.read_all(file.final_key)))
+    assert stored.format == "JPEG"
+    assert stored.size == (20, 10)
