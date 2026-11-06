@@ -244,6 +244,20 @@ def test_confirm_rejects_wrong_size(s3, student):
     assert objects(s3) == set()
 
 
+def test_photo_stored_with_a_different_size_is_rejected_before_reading(s3, student, monkeypatch):
+    body = png_bytes()
+    intent = start(student, body, purpose="photo", content_type="image/png")
+    s3.put_object(Bucket=s3.bucket, Key=intent.file.key, Body=body + b"x" * 100)
+
+    def no_read(key):
+        raise AssertionError("read_all must not run")
+
+    monkeypatch.setattr(storage, "read_all", no_read)
+    file = services.confirm_upload(user=student, file_id=intent.file.id)
+    assert file.rejected_reason == "size"
+    assert objects(s3) == set()
+
+
 def test_confirm_checks_the_copy_not_the_pending_object(s3, student, monkeypatch):
     body = pdf_bytes()
     intent = start(student, body)

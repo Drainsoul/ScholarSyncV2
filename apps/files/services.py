@@ -190,8 +190,13 @@ def _reencode(body: bytes, mime: str) -> bytes:
 
 def _verify_photo(file: StoredFile) -> tuple[str, int, str]:
     """Photos: one read of the pending object; everything is checked and re-encoded from it."""
-    if storage.head_size(file.key) is None:
+    stored_size = storage.head_size(file.key)
+    if stored_size is None:
         raise _Rejected("missing")
+    if stored_size != file.size:
+        # Storage that ignores the signed length would otherwise let us read an unbounded body.
+        storage.delete(file.key)
+        raise _Rejected("size")
     body = storage.read_all(file.key)
     try:
         if len(body) != file.size:
