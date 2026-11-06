@@ -33,6 +33,8 @@ interface Field {
 
 // The latest run per field, so a stale run (a file replaced mid-upload) changes nothing.
 const runs = new WeakMap<HTMLElement, number>();
+// The PUT in flight per field, aborted when a new file replaces it.
+const puts = new WeakMap<HTMLElement, XMLHttpRequest>();
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -112,6 +114,7 @@ async function post(url: string, body?: unknown): Promise<Record<string, unknown
 }
 
 function put(
+  root: HTMLElement,
   url: string,
   headers: Record<string, unknown>,
   file: File,
@@ -119,6 +122,10 @@ function put(
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
+    puts.set(root, xhr);
+    xhr.addEventListener("loadend", () => {
+      if (puts.get(root) === xhr) puts.delete(root);
+    });
     xhr.open("PUT", url);
     for (const [name, value] of Object.entries(headers)) {
       if (typeof value === "string") xhr.setRequestHeader(name, value);
@@ -188,19 +195,10 @@ function showProgress(field: Field, name: string): (percent: number) => void {
   return update;
 }
 
-function doneIcon(): SVGSVGElement | null {
-  // The sprite's URL is hashed by the build; borrow it from an icon already on the page.
-  const href = document.querySelector('use[href*="icons.svg#"]')?.getAttribute("href");
-  if (!href) return null;
-  const ns = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("class", "icon");
-  svg.setAttribute("aria-hidden", "true");
-  svg.setAttribute("focusable", "false");
-  const use = document.createElementNS(ns, "use");
-  use.setAttribute("href", `${href.split("#")[0] ?? ""}#circle-check`);
-  svg.append(use);
-  return svg;
+function doneIcon(field: Field): Node | null {
+  // The template renders the icon (with the sprite's hashed URL) in an inert <template>.
+  const template = field.root.querySelector<HTMLTemplateElement>("template[data-upload-done-icon]");
+  return template?.content.firstElementChild?.cloneNode(true) ?? null;
 }
 
 function showDone(field: Field, id: string, name: string): void {
@@ -212,7 +210,7 @@ function showDone(field: Field, id: string, name: string): void {
   status.className = "file-input__status file-input__status--done";
   const text = document.createElement("span");
   text.textContent = `${name} uploaded`;
-  const icon = doneIcon();
+  const icon = doneIcon(field);
   if (icon) status.append(icon);
   status.append(text);
   placeStatus(field, status);
@@ -253,6 +251,8 @@ function showError(field: Field, message: string): void {
 async function upload(field: Field, file: File): Promise<void> {
   const run = (runs.get(field.root) ?? 0) + 1;
   runs.set(field.root, run);
+  puts.get(field.root)?.abort();
+  puts.delete(field.root);
   const current = (): boolean => runs.get(field.root) === run;
   // Replace hides itself; keep keyboard focus in the field on the control it reveals.
   const replaceHadFocus = field.replace !== null && document.activeElement === field.replace;
@@ -281,7 +281,7 @@ async function upload(field: Field, file: File): Promise<void> {
       throw new UploadError(SERVER_ERROR);
     }
     const headers = isRecord(intent.headers) ? intent.headers : {};
-    await put(url, headers, file, (percent) => {
+    await put(field.root, url, headers, file, (percent) => {
       if (current()) progress(percent);
     });
     if (!current()) return;

@@ -125,6 +125,7 @@ def test_done_state_has_no_native_file_text(
     )
     field = document_field(page)
     expect(field.locator(".file-input__status")).to_have_text("grades.pdf uploaded")
+    expect(field.locator(".file-input__status svg use")).to_have_count(1)
     expect(field.locator(".file-input__control")).to_be_hidden()
     replace = field.get_by_role("button", name="Replace file")
     expect(replace).to_be_visible()

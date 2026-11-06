@@ -8,6 +8,7 @@
   <input type="hidden" name="{{ name }}" data-upload-value>
   <p class="visually-hidden" role="status" data-upload-live></p>
   <p class="file-input__nojs">Uploading files needs JavaScript. Turn it on and reload the page.</p>
+  <template data-upload-done-icon>{% icon "circle-check" %}</template>
   {% endif %}
   {% if state == "uploading" %}
   <div class="file-input__status">
