@@ -1,3 +1,5 @@
+from collections.abc import Generator
+from typing import cast
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -111,3 +113,28 @@ def test_unreachable_storage_is_unavailable(settings):
     }
     with pytest.raises(storage.StorageUnavailable):
         storage.head_size("x")
+
+
+def test_iter_chunks_closes_the_body_when_stopped_early(s3, monkeypatch):
+    storage.put(key="pending/c", body=b"0123456789", content_type="application/pdf")
+    closed = []
+    real_client = storage._client()
+    original = real_client.get_object
+
+    def spy(**kwargs):
+        response = original(**kwargs)
+        body = response["Body"]
+        real_close = body.close
+
+        def close():
+            closed.append(True)
+            real_close()
+
+        body.close = close
+        return response
+
+    monkeypatch.setattr(real_client, "get_object", spy)
+    chunks = cast(Generator[bytes], storage.iter_chunks("pending/c", 3))
+    assert next(chunks) == b"012"
+    chunks.close()
+    assert closed == [True]

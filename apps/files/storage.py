@@ -94,7 +94,8 @@ def _is_missing(exc: Exception) -> bool:
 
 
 def _unavailable(exc: Exception) -> StorageUnavailable:
-    # Never put keys or file names in the message; the exception type is enough.
+    # The message carries only the exception type. The chained botocore error embeds the object
+    # URL, so keys must stay opaque UUIDs (pending/<uuid>, files/<purpose>/<uuid>), not file names.
     return StorageUnavailable(f"Object storage request failed ({type(exc).__name__}).")
 
 
@@ -181,7 +182,11 @@ def iter_chunks(key: str, chunk_size: int = 1 << 20) -> Iterator[bytes]:
     client = _client()
     try:
         response = client.get_object(Bucket=_bucket(), Key=key)
-        yield from response["Body"].iter_chunks(chunk_size)
+        body = response["Body"]
+        try:
+            yield from body.iter_chunks(chunk_size)
+        finally:
+            body.close()
     except (BotoCoreError, ClientError) as exc:
         raise _unavailable(exc) from exc
 
