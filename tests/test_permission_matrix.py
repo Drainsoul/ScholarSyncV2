@@ -68,6 +68,10 @@ RULES: dict[str, dict[str, Any]] = {
     "error_401": {p: 401 for p in PERSONAS},
     # Google is installed but has no credentials by default (explore mode, most self-hosters).
     "google_off": {p: 404 for p in PERSONAS},
+    # Upload endpoints take POST only; a GET is 405 for everyone (an anonymous POST gets 401 JSON).
+    "post_only": {p: 405 for p in PERSONAS},
+    # Someone else's file, or an id that doesn't exist, is a 404 and reveals nothing.
+    "own_file": {"anonymous": LOGIN, **{p: 404 for p in SIGNED_IN}},
 }
 URLS: dict[str, str] = {
     "core:home": "public",
@@ -112,11 +116,16 @@ URLS: dict[str, str] = {
     "kit:mockup": "kit",
     "kit:layout": "kit",
     "kit:demo-signout": "kit",
+    "files:upload-intent": "post_only",
+    "files:upload-confirm": "post_only",
+    "files:download": "own_file",
 }
 URL_KWARGS: dict[str, dict[str, str]] = {
     "workspace:dashboard": {"program": "tcu-ceaa"},
     "kit:mockup": {"slug": "x"},
     "kit:layout": {"name": "x"},
+    "files:upload-confirm": {"file_id": "00000000-0000-0000-0000-000000000000"},
+    "files:download": {"file_id": "00000000-0000-0000-0000-000000000000"},
     # An unknown key shows allauth's invalid-link page (200), it does not 404.
     "account_confirm_email": {"key": "x"},
     "account_reset_password_from_key": {"uidb36": "1", "key": "x"},
