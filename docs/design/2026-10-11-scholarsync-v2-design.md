@@ -12,6 +12,7 @@
   sidebar); figures become one line under the page header; the page column is centred. Mockups approved.
 - **Revision:** 7 (2026-11-03): M4 decisions: accounts, outbox, consent, areas (§3, §4.1, §4.3, §6, §9, §10, §14, §16);
   M4 final-review follow-ups (§9, §10, §14).
+- **Revision:** 8 (2026-11-06): M5 decisions: files (§4.4, §7, §14, §16).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -193,8 +194,10 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 
 ### 4.4 files
 - **`StoredFile`:**
-  - fields: `key` (object-store key), `status` ∈ {pending, ready, rejected}, `original_name`, `declared_type`,
-    `sniffed_type`, `size`, `sha256`, `uploaded_by`, `purpose` ∈ {document, photo, report, export};
+  - fields: `id` (UUID, so ids are never guessable), `key` (object-store key), `status` ∈ {pending, ready, rejected},
+    `rejected_reason`, `original_name`, `declared_type`, `sniffed_type`, `size`, `sha256`, `uploaded_by`,
+    `purpose` ∈ {document, photo, report, export};
+  - `export` files are written by the server only and never go through an upload intent;
   - flow: §7.
 
 ### 4.5 applications
@@ -339,20 +342,36 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
     design works on every host.
 - **Upload flow:**
   1. **Intent:** the browser calls `POST /files/uploads/` with purpose, name, declared type and size. The service checks
-     the purpose's allowlist (PDF, JPEG, PNG; never SVG or HTML) and its size limit. It then creates a
-     `StoredFile(status=pending)` and returns a presigned PUT for `pending/<uuid>` that signs `ContentType` and
-     `ContentLength`.
+     the purpose's allowlist (never SVG or HTML) and its size limit. It then creates a `StoredFile(status=pending)` and
+     returns a presigned PUT for `pending/<uuid>` that signs `ContentType` and `ContentLength`.
   2. **Upload:** `upload.ts` PUTs the file straight to the bucket, with a progress bar.
-  3. **Confirm:** the browser calls `POST /files/uploads/<id>/confirm/`. The server issues a HEAD (checking the size) and
-     a ranged GET of the first 4 KB to sniff the type with `filetype`. On a mismatch the file is `rejected`.
-     - Photos are re-encoded with Pillow to strip EXIF.
-     - The object is copied to `files/<purpose>/<uuid>`, and the pending object is deleted.
-     - The file becomes `ready`, with its sha256 recorded.
+  3. **Confirm:** the browser calls `POST /files/uploads/<id>/confirm/`. Confirm locks the row and is idempotent.
+     - The server copies `pending/<id>` to `files/<purpose>/<id>` first, because a presigned PUT stays valid for
+       10 minutes and the pending object can change meanwhile.
+     - It checks the copy only: a HEAD (size), a 4 KB sniff of the type with `filetype`, and a streamed sha256. On a
+       mismatch the file is `rejected`, with `rejected_reason`.
+     - It then deletes the pending object, and the file becomes `ready`.
+     - Photos are read once (the whole object), checked, EXIF-transposed, re-encoded without metadata and capped at
+       40 megapixels.
   4. **Housekeeping:** a 1-day lifecycle rule on `pending/` deletes abandoned uploads.
-- **Download:** `GET /files/<id>/` checks access (owner, or staff of the owning program), writes an `AuditEvent`
-  (`file.viewed`), and 302s to a presigned GET valid for 5 minutes with
-  `ResponseContentDisposition=attachment; filename=…` and the sniffed `ResponseContentType`. Files are never served
-  inline from the app origin.
+- **Purposes:**
+
+  | Purpose    | Types          | Largest | Who                   |
+  |------------|----------------|---------|-----------------------|
+  | `document` | PDF, JPEG, PNG | 10 MB   | any role              |
+  | `photo`    | JPEG, PNG      | 5 MB    | any role              |
+  | `report`   | PDF            | 20 MB   | staff and office only |
+
+  A user may start at most 20 uploads per hour.
+- **Download:** `GET /files/<id>/` checks access, writes an `AuditEvent` (`file.viewed`), and 302s to a presigned GET
+  valid for 5 minutes with `ResponseContentDisposition=attachment; filename=…` and the sniffed `ResponseContentType`.
+  Files are never served inline from the app origin.
+  - In M5 the uploader and the super admin may download. Later milestones widen access in the selector (documents:
+    staff of the owning program, M7/M8). No access answers 404.
+  - The redirect carries `Cache-Control: no-store`.
+  - Names are cleaned (no path parts or control characters, at most 255 characters) and sent as an ASCII fallback plus
+    RFC 6266 `filename*`. The extension follows the sniffed type.
+- **Errors:** storage not configured or unavailable answers 503 with a sentence; anonymous POSTs answer 401 JSON.
 - **Exports:** large CSV/XLSX exports are written to the bucket under `exports/` and the browser is redirected to them
   (the size threshold is an implementation detail).
 - **Bucket:** private; CORS allows PUT and GET from the app's origins only; encryption at rest is the provider's.
@@ -608,7 +627,8 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
 - **Proxy:** `TRUSTED_PROXY_COUNT` (default 0; set to the number of proxies in front of the app, usually 1).
 - **Database:** `DATABASE_URL`, `DATABASE_URL_UNPOOLED` (optional).
 - **Files (S3-compatible):** `S3_ENDPOINT_URL`, `S3_PUBLIC_ENDPOINT_URL` (optional), `S3_REGION`, `S3_BUCKET`,
-  `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_ADDRESSING_STYLE`.
+  `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_ADDRESSING_STYLE`. `.env.example` carries the local compose storage
+  values; production refuses the explore storage secret `scholarsync-explore-secret`.
 - **Email:** `EMAIL_URL` (SMTP, URL-style), `DEFAULT_FROM_EMAIL`. Production requires a real SMTP `EMAIL_URL`: blank,
   `console://`, `memory://`, `dummy://` and `file://` refuse to start.
 - **Google sign-in (optional):** `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
@@ -707,6 +727,7 @@ starts, and ends with every acceptance item checked.
 - [ ] `StoredFile` intent → PUT → confirm → final; allowlists; sniffing; EXIF strip; attachment downloads with audit;
   `upload.ts`; the compose storage container locally, any S3-compatible service in deployments. A presigned
   upload/download round trip joins the compose smoke test.
+- [ ] The live uploader runs on `/_kit/demo/upload/` until M6 (photo) and M7 (documents) use it.
 
 **M6: Reference data + student profile**
 - [ ] Full `Program` config, `BenefitTier` (effective-from), `RequiredDocument`, `School`, `AcademicTerm`.
