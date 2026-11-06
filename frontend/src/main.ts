@@ -13,6 +13,7 @@ import { initDialogs } from "./dialog";
 import { initFill } from "./fill";
 import { initNav } from "./nav";
 import { initToasts } from "./toast";
+import { initUploads } from "./upload";
 
 document.documentElement.classList.add("js");
 initToasts();
@@ -20,3 +21,4 @@ initDialogs();
 initBulk();
 initNav();
 initFill();
+initUploads();

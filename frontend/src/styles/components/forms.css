@@ -222,3 +222,23 @@ input:is([type="checkbox"], [type="radio"]):disabled {
 .file-input__status progress {
   flex: 1;
 }
+
+/* The upload field (upload.ts): the no-JS sentence only shows without JavaScript; once a file is
+   uploaded the native control (and its "No file chosen" text) gives way to the status and Replace. */
+.file-input__nojs {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+html.js .file-input__nojs {
+  display: none;
+}
+
+.file-input--done .file-input__control {
+  display: none;
+}
+
+.file-input [data-upload-replace] {
+  justify-self: start;
+}

@@ -12,6 +12,15 @@ os.environ["SCHOLARSYNC_EXPLORE"] = "true"
 os.environ["CSP_REPORT_ONLY"] = "false"
 # Playwright's sync API runs an event loop in the test thread; without this the ORM refuses to run.
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
+# Storage is the moto server that tests/e2e/conftest.py starts (e2e_storage). Set before the
+# import so the CSP's connect-src and img-src name its origin.
+os.environ["S3_ENDPOINT_URL"] = "http://127.0.0.1:9199"
+os.environ["S3_PUBLIC_ENDPOINT_URL"] = ""
+os.environ["S3_REGION"] = "us-east-1"
+os.environ["S3_BUCKET"] = "e2e"
+os.environ["S3_ACCESS_KEY_ID"] = "test"
+os.environ["S3_SECRET_ACCESS_KEY"] = "test"  # noqa: S105
+os.environ["S3_ADDRESSING_STYLE"] = "path"
 
 from config.settings import *  # noqa: E402, F403
 

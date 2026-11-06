@@ -16,8 +16,8 @@ export interface ToastDetail {
 
 const TONES: ReadonlySet<string> = new Set(["info", "success", "warning", "danger"]);
 const AUTO_HIDE_MS = 8000;
-const SERVER_ERROR = "Something went wrong on our side. Try again.";
-const NETWORK_ERROR = "We couldn't reach the server. Check your connection and try again.";
+export const SERVER_ERROR = "Something went wrong on our side. Try again.";
+export const NETWORK_ERROR = "We couldn't reach the server. Check your connection and try again.";
 
 function isToastDetail(value: unknown): value is ToastDetail {
   return (
