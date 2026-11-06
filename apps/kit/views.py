@@ -22,6 +22,7 @@ from django.views.decorators.http import require_http_methods, require_POST, req
 
 from apps.core.htmx import HtmxHttpRequest, Tone, close_dialog, toast
 from apps.core.templatetags.ui import peso
+from apps.files.selectors import ready_files_for
 from apps.kit import samples
 from apps.kit.forms import KitForm, invalid_kit_form
 
@@ -200,6 +201,14 @@ def demo_dialog(request: HtmxHttpRequest) -> HttpResponse:
     response = render(request, template, {"amount": RELEASE_AMOUNT, "count": RELEASE_COUNT})
     patch_vary_headers(response, ("HX-Request",))
     return response
+
+
+@kit_only
+@require_safe
+def demo_upload(request: HttpRequest) -> HttpResponse:
+    user = request.user
+    files = ready_files_for(user) if user.is_authenticated else []
+    return render(request, "kit/demo_upload.html", {"files": files})
 
 
 @kit_only

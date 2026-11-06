@@ -1,0 +1,24 @@
+{% extends "kit/base.html" %}{% load uploads %}
+{% block title %}Try uploads{% endblock %}
+{% block content %}
+<h1>Try uploads</h1>
+{% if user.is_authenticated %}
+<form method="post" action="#" class="stack">
+  {% csrf_token %}
+  {% upload_field "document" "kit-document" "kit-document" "Supporting document" %}
+  {% upload_field "photo" "kit-photo" "kit-photo" "Photo" %}
+</form>
+<h2>Your files</h2>
+{% if files %}
+<ul>
+  {% for file in files %}
+  <li><a href="{% url 'files:download' file.id %}">{{ file.original_name }}</a> ({{ file.size|filesizeformat }})</li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>No files yet.</p>
+{% endif %}
+{% else %}
+<p>Sign in to try uploads. <a href="{% url 'account_login' %}?next={{ request.path|urlencode }}">Sign in</a></p>
+{% endif %}
+{% endblock %}

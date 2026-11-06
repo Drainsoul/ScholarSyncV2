@@ -45,6 +45,7 @@
   </div>
   <div class="kit-state">
     <h3>File input</h3>
+    <p><a href="{% url 'kit:demo-upload' %}">Try a real upload</a> (sign in first).</p>
     {% include "components/file_input.html" with id="file-idle" name="grades" label="Certificate of grades" help="PDF, JPG or PNG, up to 10 MB." state="idle" %}
     {% include "components/file_input.html" with id="file-uploading" name="residency" label="Proof of residency" state="uploading" progress=40 filename="barangay-certificate.pdf" %}
     {% include "components/file_input.html" with id="file-done" name="enrollment" label="Certificate of enrollment" state="done" filename="enrollment-2026.pdf" %}

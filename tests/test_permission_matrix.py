@@ -112,6 +112,7 @@ URLS: dict[str, str] = {
     "kit:demo-toast": "kit",
     "kit:demo-dialog": "kit",
     "kit:demo-bulk": "kit",
+    "kit:demo-upload": "kit",
     "kit:mockups": "kit",
     "kit:mockup": "kit",
     "kit:layout": "kit",

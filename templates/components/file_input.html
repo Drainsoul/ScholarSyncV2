@@ -1,9 +1,14 @@
 {% load ui %}
-<div class="file-input{% if state == 'error' %} field--invalid{% endif %}">
+<div class="file-input{% if state == 'error' %} field--invalid{% endif %}{% if state == 'done' %} file-input--done{% endif %}">
   <label class="field__label" for="{{ id }}">{{ label }}</label>
   {% if help %}<p class="field__help" id="{{ id }}-help">{{ help }}</p>{% endif %}
   {% if state == "error" %}<p class="field__error" id="{{ id }}-error"><span>{{ error }}</span></p>{% endif %}
-  <input class="file-input__control" type="file" id="{{ id }}" name="{{ name }}" accept="application/pdf,image/jpeg,image/png"{% if help or state == 'error' %} aria-describedby="{% if help %}{{ id }}-help{% endif %}{% if help and state == 'error' %} {% endif %}{% if state == 'error' %}{{ id }}-error{% endif %}"{% endif %}{% if state == 'error' %} aria-invalid="true"{% endif %}>
+  <input class="file-input__control" type="file" id="{{ id }}"{% if upload %} data-upload-purpose="{{ upload.purpose }}" data-upload-url="{{ upload.intent_url }}" data-upload-max="{{ upload.max_bytes }}" accept="{{ upload.accept }}"{% else %} name="{{ name }}" accept="application/pdf,image/jpeg,image/png"{% endif %}{% if help or state == 'error' %} aria-describedby="{% if help %}{{ id }}-help{% endif %}{% if help and state == 'error' %} {% endif %}{% if state == 'error' %}{{ id }}-error{% endif %}"{% endif %}{% if state == 'error' %} aria-invalid="true"{% endif %}>
+  {% if upload %}
+  <input type="hidden" name="{{ name }}" data-upload-value>
+  <p class="visually-hidden" role="status" data-upload-live></p>
+  <p class="file-input__nojs">Uploading files needs JavaScript. Turn it on and reload the page.</p>
+  {% endif %}
   {% if state == "uploading" %}
   <div class="file-input__status">
     <progress max="100" value="{{ progress }}" aria-label="Upload progress for {{ label }}">{{ progress }}%</progress>
@@ -11,5 +16,8 @@
   </div>
   {% elif state == "done" %}
   <p class="file-input__status file-input__status--done">{% icon "circle-check" %}<span>{{ filename }} uploaded</span></p>
+  {% endif %}
+  {% if upload or state == "done" %}
+  <button type="button" class="btn btn--secondary btn--sm" data-upload-replace{% if state != "done" %} hidden{% endif %}>Replace file</button>
   {% endif %}
 </div>
