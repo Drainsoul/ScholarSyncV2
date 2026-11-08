@@ -320,10 +320,11 @@ def claim_profile(*, user: User, token: str, request: HttpRequest | None) -> Stu
     found = find_invite(token)
     if found is None:
         raise ValidationError(INVALID_LINK)
-    # Lock the account first (two claims by one user serialise), then the invite and profile.
+    # Lock order matches issue_invite: account, then profile, then invite. Opposite orders deadlock.
     locked_user = User.objects.select_for_update().get(pk=user.pk)
+    StudentProfile.objects.select_for_update().get(pk=found.profile_id)
     invite = (
-        ProfileInvite.objects.select_for_update(of=("self", "profile"))
+        ProfileInvite.objects.select_for_update(of=("self",))
         .select_related("profile")
         .get(pk=found.pk)
     )

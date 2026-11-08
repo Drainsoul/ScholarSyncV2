@@ -5,6 +5,8 @@ from typing import Any
 import pytest
 from allauth.account.models import EmailAddress
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from apps.accounts.models import ConsentRecord, User
@@ -219,3 +221,20 @@ def test_token_lookup_finds_by_hash(db: Any) -> None:
     found = find_invite(token)
     assert found is not None and found.pk == invite.pk and found.profile.pk == profile.pk
     assert find_invite(invite.token_hash) is None  # the hash itself is not a token
+
+
+def test_claim_locks_the_profile_before_the_invite(db: Any) -> None:
+    """issue_invite locks the profile then touches invites; claim must take the same order."""
+    _, _, _, _, token = _setup()
+    with CaptureQueriesContext(connection) as queries:
+        claim_profile(user=_student(), token=token, request=None)
+    locks = [q["sql"] for q in queries if "FOR UPDATE" in q["sql"]]
+    tables = [
+        "students_profileinvite"
+        if 'FROM "students_profileinvite"' in sql
+        else "students_studentprofile"
+        for sql in locks
+        if 'FROM "accounts_user"' not in sql
+    ]
+    assert tables[0] == "students_studentprofile", tables
+    assert tables.index("students_profileinvite") > 0
