@@ -1,7 +1,7 @@
 import hashlib
 
 from allauth.account.models import EmailAddress
-from django.db.models import Case, IntegerField, OuterRef, QuerySet, Subquery, Value, When
+from django.db.models import Case, F, IntegerField, OuterRef, QuerySet, Subquery, Value, When
 from django.http import Http404
 
 from apps.accounts.models import User
@@ -38,7 +38,18 @@ def family_for(profile: StudentProfile) -> QuerySet[FamilyMember]:
 
 
 def education_for(profile: StudentProfile) -> QuerySet[EducationRecord]:
-    return profile.education.select_related("school").order_by("-is_current", "-year_from", "pk")
+    return profile.education.select_related("school").order_by(
+        "-is_current", F("year_from").desc(nulls_last=True), "pk"
+    )
+
+
+def current_education(profile: StudentProfile) -> EducationRecord | None:
+    return profile.education.select_related("school").filter(is_current=True).first()
+
+
+def effective_school_type(record: EducationRecord) -> str:
+    """The listed school's type, else the type the student typed ("" if unknown)."""
+    return record.school.type if record.school is not None else record.school_type
 
 
 def profile_page(user: User) -> tuple[StudentProfile | None, Completion]:

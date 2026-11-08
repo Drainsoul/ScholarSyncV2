@@ -165,6 +165,11 @@ class EducationRecord(models.Model):
                 | (Q(gwa_scale="four_point") & Q(gwa__gte=0) & Q(gwa__lte=4)),
                 name="students_education_gwa_in_scale_range",
             ),
+            models.UniqueConstraint(
+                fields=["profile"],
+                condition=Q(is_current=True),
+                name="students_education_one_current",
+            ),
         ]
 
     def __str__(self) -> str:
