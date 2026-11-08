@@ -83,9 +83,9 @@ Versions are pinned to the latest stable release when M2 scaffolds the project, 
 ```
 config/            settings.py, urls.py, wsgi.py
 apps/
-  accounts/        User (email login, role), ConsentRecord, allauth adapters, invite/claim
+  accounts/        User (email login, role), ConsentRecord, allauth adapters
   programs/        Program, ProgramMembership, BenefitTier, RequiredDocument, School, AcademicTerm
-  students/        StudentProfile, FamilyMember, EducationRecord
+  students/        StudentProfile, FamilyMember, EducationRecord, ProfileInvite, invite/claim
   files/           StoredFile, upload intents, presign/confirm/download
   applications/    Application, Document, DocumentFile, review services
   awards/          Award, ScholarTerm, renewals, term rollover, at-risk selector
@@ -208,7 +208,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 - **`FamilyMember`:** `profile`, `relation` ∈ {father, mother, guardian, sibling}, name, `occupation`,
   `monthly_income`, `contact`.
 - **`EducationRecord`:** `profile`, `level` ∈ {elementary, jhs, shs, als, college}, `school` FK (nullable), `course`,
-  `year_level`, `gwa` (Decimal), `gwa_scale` (copied from the school, overridable), `units`, `year_from`, `year_to`,
+  `year_level`, `gwa` (Decimal), `gwa_scale` (a listed school's scale always applies; it is chosen only on the "not listed" fallback), `units`, `year_from`, `year_to`,
   `is_current`.
   - Fallback for schools not in the list (every elementary, JHS and SHS school, and colleges the office has not
     added): `school_name`, `school_type` and `gwa_scale`. Exactly one of `school` or `school_name` is set.
