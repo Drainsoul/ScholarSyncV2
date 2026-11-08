@@ -2,5 +2,11 @@
 {% block title %}Your scholarships{% endblock %}
 {% block content %}
   <h1>Your scholarships</h1>
+  <section class="card" aria-labelledby="profile-title">
+    <h2 class="card__title" id="profile-title">Your profile</h2>
+    <p class="profile-figure"><span class="profile-figure__value num">{{ completion.percent }}%</span> complete</p>
+    <progress class="progress progress--secondary" max="100" value="{{ completion.percent }}" aria-label="Profile complete">{{ completion.percent }}%</progress>
+    <a class="btn btn--soft" href="{% url 'students:profile' %}">{% if completion.percent == 100 %}View your profile{% else %}Complete your profile{% endif %}</a>
+  </section>
   {% include "components/empty_state.html" with title="Your applications and allowances will show here." %}
 {% endblock %}

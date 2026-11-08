@@ -1,0 +1,19 @@
+{% extends "layouts/student.html" %}{% load ui %}
+{% block title %}Personal details{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div><h1>Personal details</h1><p class="page-header__meta"><a href="{% url 'students:profile' %}">Back to your profile</a></p></div>
+  </div>
+  <section class="card" aria-labelledby="personal-title">
+    <h2 class="card__title" id="personal-title">About you</h2>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include "components/form_errors.html" %}
+      {% for bound_field in form %}{% field bound_field %}{% endfor %}
+      <div class="btn-row">
+        <button type="submit" class="btn btn--primary">Save</button>
+        <a class="btn btn--secondary" href="{% url 'students:profile' %}">Cancel</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

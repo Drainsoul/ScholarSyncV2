@@ -1,0 +1,22 @@
+{% extends "layouts/student.html" %}
+{% block title %}Your profile{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div><h1>Your profile</h1><p class="page-header__meta num">{{ completion.percent }}% complete</p></div>
+  </div>
+  <section class="card" aria-labelledby="sections-title">
+    <h2 class="card__title" id="sections-title">Sections</h2>
+    <progress class="progress progress--secondary" max="100" value="{{ completion.percent }}" aria-label="Profile complete">{{ completion.percent }}%</progress>
+    <ul class="stack" role="list">
+      {% for item in sections %}
+        <li class="card__header">
+          <div>
+            <h3>{{ item.section.label }}</h3>
+            <p class="text-sm text-muted">{% if item.section.done %}Complete{% else %}Missing: {{ item.section.missing|join:", " }}{% endif %}</p>
+          </div>
+          {% if item.edit_url %}<a class="btn btn--secondary" href="{{ item.edit_url }}">Edit<span class="visually-hidden"> {{ item.section.label|lower }}</span></a>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endblock %}

@@ -85,6 +85,8 @@ URLS: dict[str, str] = {
     "programs:list": "public",
     "programs:detail": "public",
     "students:home": "student",
+    "students:profile": "student",
+    "students:profile-personal": "student",
     "workspace:no_programs": "no_programs",
     "workspace:dashboard": "staff",
     "office:home": "office",

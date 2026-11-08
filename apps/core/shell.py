@@ -26,15 +26,30 @@ def shell_context(
     """Context the app layouts expect: viewer, sign-out, home link, nav and program switcher."""
     user = request.user
     assert isinstance(user, User)
+    nav: list[dict[str, object]]
     if area == "student":
         home, label, icon = reverse("students:home"), "Home", "house"
-    elif area == "office":
-        home, label, icon = reverse("office:home"), "Overview", "layout-dashboard"
-    elif program is not None:
-        home = reverse("workspace:dashboard", kwargs={"program": program.slug})
-        label, icon = "Dashboard", "layout-dashboard"
+        profile = reverse("students:profile")
+        path = request.path
+        nav = [
+            {"label": label, "url": home, "current": path == home, "count": 0, "icon": icon},
+            {
+                "label": "Profile",
+                "url": profile,
+                "current": path.startswith(profile),
+                "count": 0,
+                "icon": "user",
+            },
+        ]
     else:
-        home, label, icon = reverse("workspace:no_programs"), "Dashboard", "layout-dashboard"
+        if area == "office":
+            home, label, icon = reverse("office:home"), "Overview", "layout-dashboard"
+        elif program is not None:
+            home = reverse("workspace:dashboard", kwargs={"program": program.slug})
+            label, icon = "Dashboard", "layout-dashboard"
+        else:
+            home, label, icon = reverse("workspace:no_programs"), "Dashboard", "layout-dashboard"
+        nav = [{"label": label, "url": home, "current": True, "count": 0, "icon": icon}]
     context: dict[str, object] = {
         "viewer": {
             "name": user.full_name or user.email,
@@ -43,7 +58,7 @@ def shell_context(
         },
         "logout_url": reverse("account_logout"),
         "home_url": home,
-        "nav_items": [{"label": label, "url": home, "current": True, "count": 0, "icon": icon}],
+        "nav_items": nav,
     }
     if area == "staff" and program is not None:
         context["program"] = program
