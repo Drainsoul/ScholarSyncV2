@@ -1,0 +1,25 @@
+{% extends "layouts/auth.html" %}{% load ui %}
+{% block title %}Claim your profile{% endblock %}
+{% block content %}
+  <h1>Claim your profile</h1>
+  {% if not user.is_authenticated %}
+  <p>Sign in or create an account with the email address this invitation was sent to ({{ masked_email }}), then open this link again.</p>
+  <div class="btn-row">
+    <a class="btn btn--primary" href="{% url 'account_login' %}?next={{ claim_path }}">Sign in</a>
+    <a class="btn btn--secondary" href="{% url 'account_signup' %}?next={{ claim_path }}">Create an account</a>
+  </div>
+  {% elif problem %}
+  <div class="banner banner--danger" role="alert"><div><p>{{ problem }}</p></div></div>
+  <div class="btn-row"><a class="btn btn--secondary" href="{% url 'core:home' %}">Go to the home page</a></div>
+  {% else %}
+  <h2>Claim the profile for {{ invite.profile.first_name }} {{ invite.profile.last_name }}?</h2>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% include "components/form_errors.html" %}
+    {% for bound_field in form %}{% field bound_field %}{% endfor %}
+    <div class="btn-row">
+      <button type="submit" class="btn btn--primary">Claim profile</button>
+    </div>
+  </form>
+  {% endif %}
+{% endblock %}

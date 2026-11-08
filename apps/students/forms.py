@@ -5,6 +5,7 @@ from typing import Any
 
 from django import forms
 from django.utils import timezone
+from django.utils.html import format_html
 
 from apps.accounts.models import User
 from apps.files.models import StoredFile
@@ -229,3 +230,16 @@ class PhotoForm(forms.Form):
         if file is None:
             raise forms.ValidationError("Upload the photo again.")
         return file
+
+
+class ClaimForm(forms.Form):
+    """The one thing a student confirms before a staff-created profile becomes theirs."""
+
+    consent = forms.BooleanField(
+        label=format_html(
+            'I have read the <a href="{}">privacy notice</a> and agree to ScholarSync keeping '
+            "my information for my scholarship applications.",
+            "/privacy/",
+        ),
+        required=True,
+    )

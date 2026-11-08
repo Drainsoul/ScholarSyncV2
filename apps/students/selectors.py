@@ -76,6 +76,12 @@ def find_invite(token: str) -> ProfileInvite | None:
     )
 
 
+def mask_email(email: str) -> str:
+    """The address with most of the local part hidden: p•••@example.com."""
+    local, _, domain = email.partition("@")
+    return f"{local[:1]}•••@{domain}"
+
+
 def claim_problem(invite: ProfileInvite, user: User) -> str | None:
     """Why this user cannot claim this invite now, as a sentence for them, or None."""
     if not invite.is_usable:

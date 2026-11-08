@@ -1,22 +1,30 @@
 from typing import Any
+from urllib.parse import quote
 
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.http import Http404, HttpRequest, HttpResponse
+from django.http.response import HttpResponseBase
 from django.shortcuts import redirect, render
 from django.urls import NoReverseMatch, reverse
+from django.utils.cache import add_never_cache_headers
 from django.views import View
+from django.views.defaults import page_not_found
 from django.views.generic import TemplateView
 
 from apps.accounts.models import User
 from apps.core.permissions import StudentRequiredMixin
 from apps.core.shell import shell_context
 from apps.students import services
-from apps.students.forms import EducationForm, FamilyMemberForm, PersonalForm, PhotoForm
-from apps.students.models import EducationRecord, FamilyMember
+from apps.students.forms import ClaimForm, EducationForm, FamilyMemberForm, PersonalForm, PhotoForm
+from apps.students.models import EducationRecord, FamilyMember, ProfileInvite
 from apps.students.selectors import (
+    claim_problem,
     education_for,
     family_for,
+    find_invite,
+    mask_email,
     own_education_record,
     own_family_member,
     profile_for,
@@ -252,7 +260,57 @@ def _initial(instance: models.Model | None, fields: tuple[str, ...]) -> dict[str
 
 
 class ClaimView(View):
-    """Placeholder until the claim screen exists: every link is unknown."""
+    """Open a staff-created profile from an emailed link. The path carries a secret token.
 
-    def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
-        raise Http404("No such link.")
+    Every response (the 404 too) is never cached and sends only the site's origin as Referrer,
+    never the path, so the token cannot leak through a shared cache or to a page the user
+    opens from here. Not "no-referrer": that makes the browser send "Origin: null" on the
+    form POST, and Django's CSRF check then refuses the claim.
+    """
+
+    template_name = "students/claim.html"
+
+    def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponseBase:
+        response = super().dispatch(request, *args, **kwargs)
+        add_never_cache_headers(response)
+        response["Referrer-Policy"] = "strict-origin"
+        return response
+
+    def _render(
+        self, request: HttpRequest, invite: ProfileInvite, form: ClaimForm, problem: str | None
+    ) -> HttpResponse:
+        context = {
+            "invite": invite,
+            "masked_email": mask_email(invite.email),
+            "form": form,
+            "problem": problem,
+            "claim_path": quote(request.path, safe="/"),
+        }
+        return render(request, self.template_name, context)
+
+    def get(self, request: HttpRequest, token: str) -> HttpResponse:
+        invite = find_invite(token)
+        if invite is None:
+            return page_not_found(request, Http404("No such link."))
+        problem = (
+            claim_problem(invite, _student(request)) if request.user.is_authenticated else None
+        )
+        return self._render(request, invite, ClaimForm(), problem)
+
+    def post(self, request: HttpRequest, token: str) -> HttpResponse:
+        invite = find_invite(token)
+        if invite is None:
+            return page_not_found(request, Http404("No such link."))
+        if not request.user.is_authenticated:
+            return self._render(request, invite, ClaimForm(), None)
+        user = _student(request)
+        problem = claim_problem(invite, user)
+        form = ClaimForm(request.POST)
+        if problem is not None or not form.is_valid():
+            return self._render(request, invite, form, problem)
+        try:
+            services.claim_profile(user=user, token=token, request=request)
+        except ValidationError as error:
+            return self._render(request, invite, form, " ".join(error.messages))
+        messages.success(request, "Profile claimed. Check that your details are right.")
+        return redirect("students:profile")
