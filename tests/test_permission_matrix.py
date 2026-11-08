@@ -97,6 +97,7 @@ URLS: dict[str, str] = {
     "students:home": "student",
     "students:profile": "student",
     "students:profile-personal": "student",
+    "students:profile-photo": "student",
     "students:profile-family": "student",
     "students:profile-family-add": "student",
     "students:profile-family-edit": "own_record",

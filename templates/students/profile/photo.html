@@ -1,0 +1,36 @@
+{% extends "layouts/student.html" %}{% load uploads %}
+{% block title %}Profile photo{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div><h1>Profile photo</h1><p class="page-header__meta"><a href="{% url 'students:profile' %}">Back to your profile</a></p></div>
+  </div>
+  <section class="card" aria-labelledby="photo-title">
+    <h2 class="card__title" id="photo-title">Your photo</h2>
+    {% if form.photo.errors %}
+    <div class="banner banner--danger" role="alert">
+      <div>
+        <p class="banner__title">There is a problem</p>
+        <ul>{% for error in form.photo.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+      </div>
+    </div>
+    {% endif %}
+    {% if photo %}
+    <img class="profile-photo" src="{% url 'files:download' photo.id %}" alt="Your profile photo" width="160" height="160">
+    {% endif %}
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% upload_field "photo" "profile-photo" "photo" "Photo" "A clear, recent photo of your face. JPG or PNG, up to 5 MB." %}
+      <div class="btn-row">
+        <button type="submit" class="btn btn--primary">Save photo</button>
+        <a class="btn btn--secondary" href="{% url 'students:profile' %}">Cancel</a>
+      </div>
+    </form>
+    {% if photo %}
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="remove">
+      <button type="submit" class="btn btn--secondary">Remove photo</button>
+    </form>
+    {% endif %}
+  </section>
+{% endblock %}

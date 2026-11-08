@@ -8,6 +8,7 @@ urlpatterns = [
     path("", views.HomeView.as_view(), name="home"),
     path("profile/", views.ProfileView.as_view(), name="profile"),
     path("profile/personal/", views.PersonalView.as_view(), name="profile-personal"),
+    path("profile/photo/", views.PhotoView.as_view(), name="profile-photo"),
     path("profile/family/", views.FamilyListView.as_view(), name="profile-family"),
     path("profile/family/add/", views.FamilyFormView.as_view(), name="profile-family-add"),
     path("profile/family/<int:pk>/", views.FamilyFormView.as_view(), name="profile-family-edit"),

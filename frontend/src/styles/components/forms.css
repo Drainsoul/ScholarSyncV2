@@ -242,3 +242,14 @@ html.js .file-input__nojs {
 .file-input [data-upload-replace] {
   justify-self: start;
 }
+
+/* The student's profile photo (students/profile/photo.html). */
+.profile-photo {
+  display: block;
+  width: 160px;
+  height: 160px;
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  object-fit: cover;
+}

@@ -12,7 +12,7 @@ from apps.accounts.models import User
 from apps.core.permissions import StudentRequiredMixin
 from apps.core.shell import shell_context
 from apps.students import services
-from apps.students.forms import EducationForm, FamilyMemberForm, PersonalForm
+from apps.students.forms import EducationForm, FamilyMemberForm, PersonalForm, PhotoForm
 from apps.students.models import EducationRecord, FamilyMember
 from apps.students.selectors import (
     education_for,
@@ -86,6 +86,32 @@ class PersonalView(StudentRequiredMixin, View):
         services.ensure_profile(user=_student(request))
         services.update_personal(user=_student(request), data=form.cleaned_data)
         messages.success(request, "Personal details saved.")
+        return redirect("students:profile")
+
+
+class PhotoView(StudentRequiredMixin, View):
+    template_name = "students/profile/photo.html"
+
+    def _render(self, request: HttpRequest, form: PhotoForm, status: int = 200) -> HttpResponse:
+        profile = profile_for(_student(request))
+        photo = profile.photo if profile else None
+        context = {**shell_context(request, area="student"), "form": form, "photo": photo}
+        return render(request, self.template_name, context, status=status)
+
+    def get(self, request: HttpRequest) -> HttpResponse:
+        return self._render(request, PhotoForm(user=_student(request)))
+
+    def post(self, request: HttpRequest) -> HttpResponse:
+        user = _student(request)
+        if request.POST.get("action") == "remove":
+            services.remove_photo(user=user)
+            messages.success(request, "Photo removed.")
+            return redirect("students:profile-photo")
+        form = PhotoForm(request.POST, user=user)
+        if not form.is_valid():
+            return self._render(request, form)
+        services.set_photo(user=user, file=form.cleaned_data["photo"])
+        messages.success(request, "Photo saved.")
         return redirect("students:profile")
 
 

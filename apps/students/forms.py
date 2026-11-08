@@ -6,6 +6,9 @@ from typing import Any
 from django import forms
 from django.utils import timezone
 
+from apps.accounts.models import User
+from apps.files.models import StoredFile
+from apps.files.selectors import usable_file
 from apps.programs.models import School
 from apps.students.models import EducationRecord, FamilyMember, StudentProfile
 from apps.students.services import PERSONAL_FIELDS
@@ -212,3 +215,17 @@ class EducationForm(forms.Form):
         ):
             self.add_error("year_to", "The end year can't be before the start year.")
         return cleaned
+
+
+class PhotoForm(forms.Form):
+    photo = forms.CharField(required=False)
+
+    def __init__(self, *args: Any, user: User, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.user = user
+
+    def clean_photo(self) -> StoredFile:
+        file = usable_file(self.user, self.cleaned_data["photo"], "photo")
+        if file is None:
+            raise forms.ValidationError("Upload the photo again.")
+        return file

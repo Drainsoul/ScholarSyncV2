@@ -2,6 +2,7 @@
 {% block title %}Try uploads{% endblock %}
 {% block content %}
 <h1>Try uploads</h1>
+<p>The profile photo uploader now lives at <a href="{% url 'students:profile-photo' %}">/me/profile/photo/</a>. This page keeps the document and photo fields for trying uploads.</p>
 {% if user.is_authenticated %}
 <form method="post" action="#" class="stack">
   {% csrf_token %}
