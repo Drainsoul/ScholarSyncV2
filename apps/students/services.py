@@ -164,9 +164,9 @@ def add_education(*, user: User, data: Mapping[str, object]) -> EducationRecord:
     education = EducationRecord(profile=profile)
     _assign(education, data, EDUCATION_FIELDS)
     _normalise_school(education)
-    education.save()
     if education.is_current:
         _clear_other_current(education)
+    education.save()
     audit.record(
         actor=user, action="education.added", target=education, data={"level": education.level}
     )
@@ -184,9 +184,9 @@ def update_education(
     _normalise_school(record)
     changed = _changed(record, before)
     if changed:
-        record.save(update_fields=[*changed, "updated_at"])
         if record.is_current:
             _clear_other_current(record)
+        record.save(update_fields=[*changed, "updated_at"])
         audit.record(
             actor=user,
             action="education.updated",
@@ -209,6 +209,12 @@ def remove_education(*, user: User, record: EducationRecord) -> None:
 @transaction.atomic
 def set_photo(*, user: User, file: StoredFile) -> StudentProfile:
     profile = ensure_profile(user=user)
+    if (
+        file.uploaded_by_id != user.pk
+        or file.status != StoredFile.Status.READY
+        or file.purpose != StoredFile.Purpose.PHOTO
+    ):
+        raise PermissionDenied("That file can't be used as a profile photo.")
     profile.photo = file
     profile.save(update_fields=["photo", "updated_at"])
     audit.record(
@@ -220,6 +226,8 @@ def set_photo(*, user: User, file: StoredFile) -> StudentProfile:
 @transaction.atomic
 def remove_photo(*, user: User) -> StudentProfile:
     profile = ensure_profile(user=user)
+    if profile.photo_id is None:
+        return profile
     profile.photo = None
     profile.save(update_fields=["photo", "updated_at"])
     audit.record(actor=user, action="profile.photo_removed", target=profile)

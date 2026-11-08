@@ -3,11 +3,13 @@ from typing import Any
 
 import pytest
 from django.core.exceptions import PermissionDenied
+from django.db import IntegrityError, transaction
 from django.http import Http404
 
 from apps.accounts.models import User
 from apps.accounts.tests.factories import UserFactory
 from apps.core.models import AuditEvent
+from apps.files.models import StoredFile
 from apps.files.tests.factories import StoredFileFactory
 from apps.programs.models import School
 from apps.programs.tests.factories import SchoolFactory
@@ -222,3 +224,86 @@ def test_staff_cannot_use_student_services() -> None:
     with pytest.raises(PermissionDenied):
         services.add_education(user=staff, data={"level": "jhs", "school_name": "X"})
     assert not StudentProfile.objects.filter(user=staff).exists()
+
+
+def _photo(user: User, **overrides: object) -> StoredFile:
+    fields: dict[str, object] = {
+        "uploaded_by": user,
+        "purpose": "photo",
+        "status": "ready",
+        "sha256": "a" * 64,
+        "sniffed_type": "image/png",
+    }
+    return StoredFileFactory.create(**{**fields, **overrides})
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"uploaded_by": None},  # replaced below with another user
+        {"status": "pending", "sha256": "", "sniffed_type": ""},
+        {"purpose": "document"},
+    ],
+    ids=["someone-elses", "not-ready", "not-a-photo"],
+)
+def test_set_photo_refuses_unusable_files(overrides: dict[str, object]) -> None:
+    user = _student()
+    if overrides.get("uploaded_by", 1) is None:
+        overrides = {"uploaded_by": _student()}
+    file = _photo(user, **overrides)
+    with pytest.raises(PermissionDenied):
+        services.set_photo(user=user, file=file)
+    assert not StudentProfile.objects.filter(user=user, photo__isnull=False).exists()
+    assert not AuditEvent.objects.filter(action="profile.photo_set").exists()
+
+
+def test_remove_photo_without_a_photo_does_nothing() -> None:
+    user = _student()
+    services.ensure_profile(user=user)
+    before = StudentProfile.objects.get(user=user).updated_at
+    services.remove_photo(user=user)
+    assert not AuditEvent.objects.filter(action="profile.photo_removed").exists()
+    assert StudentProfile.objects.get(user=user).updated_at == before
+
+
+def test_education_update_and_remove_refuse_someone_elses_row() -> None:
+    theirs = EducationRecordFactory.create()
+    with pytest.raises(PermissionDenied):
+        services.update_education(user=_student(), record=theirs, data={"course": "X"})
+    with pytest.raises(PermissionDenied):
+        services.remove_education(user=_student(), record=theirs)
+    assert EducationRecord.objects.filter(pk=theirs.pk).exists()
+
+
+def test_database_allows_one_current_education_per_profile() -> None:
+    profile = ProfileFactory.create()
+    EducationRecordFactory.create(profile=profile, is_current=True)
+    with pytest.raises(IntegrityError), transaction.atomic():
+        EducationRecordFactory.create(profile=profile, is_current=True)
+    EducationRecordFactory.create(profile=profile, is_current=False)
+    EducationRecordFactory.create(profile=ProfileFactory.create(), is_current=True)
+
+
+def test_current_education_and_effective_school_type() -> None:
+    profile = ProfileFactory.create()
+    assert selectors.current_education(profile) is None
+    EducationRecordFactory.create(profile=profile, is_current=False)
+    listed = EducationRecordFactory.create(
+        profile=profile, is_current=True, school=SchoolFactory.create(type=School.Type.SUC)
+    )
+    found = selectors.current_education(profile)
+    assert found == listed
+    assert selectors.effective_school_type(listed) == "suc"
+    typed = EducationRecordFactory.build(
+        profile=profile, school=None, school_name="Elsewhere", school_type="private"
+    )
+    assert selectors.effective_school_type(typed) == "private"
+    unknown = EducationRecordFactory.build(profile=profile, school=None, school_type="")
+    assert selectors.effective_school_type(unknown) == ""
+
+
+def test_undated_education_sorts_after_dated() -> None:
+    profile = ProfileFactory.create()
+    undated = EducationRecordFactory.create(profile=profile, is_current=False, year_from=None)
+    dated = EducationRecordFactory.create(profile=profile, is_current=False, year_from=2015)
+    assert list(selectors.education_for(profile)) == [dated, undated]
