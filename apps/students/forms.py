@@ -16,7 +16,8 @@ from apps.students.services import PERSONAL_FIELDS
 
 MIN_BIRTH_DATE = date(1900, 1, 1)
 PHONE_ERROR = "Enter a mobile number like 0917 123 4567."
-_PHONE = re.compile(r"^(?:\+?63|0)(9\d{9})$")
+_PHONE = re.compile(r"^(?:\+?63|0)(9\d{9})$", re.ASCII)
+_THOUSANDS = re.compile(r"^\d{1,3}(,\d{3})+(\.\d+)?$", re.ASCII)
 
 
 def normalise_phone(phone: str) -> str:
@@ -34,7 +35,9 @@ class CommaDecimalField(forms.DecimalField):
 
     def to_python(self, value: Any) -> Decimal | None:  # type: ignore[override]
         if isinstance(value, str):
-            value = value.replace(",", "")
+            value = value.strip()
+            if _THOUSANDS.match(value):
+                value = value.replace(",", "")
         return super().to_python(value)
 
 
@@ -63,7 +66,15 @@ class PersonalForm(forms.ModelForm):  # type: ignore[type-arg]
             "residing_since": "Living in Taguig since (year)",
         }
         widgets = {
-            "birth_date": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+            "first_name": forms.TextInput(attrs={"autocomplete": "given-name"}),
+            "middle_name": forms.TextInput(attrs={"autocomplete": "additional-name"}),
+            "last_name": forms.TextInput(attrs={"autocomplete": "family-name"}),
+            "suffix": forms.TextInput(attrs={"autocomplete": "honorific-suffix"}),
+            "birth_date": forms.DateInput(
+                attrs={"type": "date", "autocomplete": "bday"}, format="%Y-%m-%d"
+            ),
+            "sex": forms.Select(attrs={"autocomplete": "sex"}),
+            "address_line": forms.TextInput(attrs={"autocomplete": "street-address"}),
             "phone": forms.TextInput(attrs={"type": "tel", "autocomplete": "tel"}),
         }
 

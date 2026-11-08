@@ -52,7 +52,9 @@ def test_valid_phones_are_stored_in_international_form(phone):
     assert form.cleaned_data["phone"] == "+639171234567"
 
 
-@pytest.mark.parametrize("phone", ["0217123456", "12345", "0917123456a"])
+@pytest.mark.parametrize(
+    "phone", ["0217123456", "12345", "0917123456a", "٠٩١٧١٢٣٤٥٦٧", "09١٧١٢٣٤٥٦٧"]
+)
 def test_other_phones_are_refused(phone):
     form = PersonalForm(personal_data(phone=phone))
     assert form.errors["phone"] == [PHONE_ERROR]
@@ -62,6 +64,34 @@ def test_income_accepts_thousands_commas():
     form = PersonalForm(personal_data(monthly_household_income="25,000.50"))
     assert form.is_valid(), form.errors
     assert form.cleaned_data["monthly_household_income"] == Decimal("25000.50")
+
+
+@pytest.mark.parametrize("income", ["25,5", "1,2,3", "25,00", ",500", "1,000,"])
+def test_income_commas_only_as_thousands_separators(income):
+    form = PersonalForm(personal_data(monthly_household_income=income))
+    assert form.errors["monthly_household_income"] == ["Enter a number."]
+
+
+def test_income_with_several_thousands_groups():
+    form = PersonalForm(personal_data(monthly_household_income="1,250,000"))
+    assert form.is_valid(), form.errors
+    assert form.cleaned_data["monthly_household_income"] == Decimal("1250000")
+
+
+def test_personal_form_autocomplete_tokens():
+    form = PersonalForm()
+    expected = {
+        "first_name": "given-name",
+        "middle_name": "additional-name",
+        "last_name": "family-name",
+        "suffix": "honorific-suffix",
+        "birth_date": "bday",
+        "sex": "sex",
+        "address_line": "street-address",
+        "phone": "tel",
+    }
+    for name, token in expected.items():
+        assert form.fields[name].widget.attrs.get("autocomplete") == token, name
 
 
 def test_negative_income_is_refused():
