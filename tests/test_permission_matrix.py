@@ -72,6 +72,16 @@ RULES: dict[str, dict[str, Any]] = {
     "post_only": {p: 405 for p in PERSONAS},
     # Someone else's file, or an id that doesn't exist, is a 404 and reveals nothing.
     "own_file": {"anonymous": LOGIN, **{p: 404 for p in SIGNED_IN}},
+    # A student's own row is theirs alone: any other id is a 404 (a missing row looks the same).
+    "own_record": {
+        "anonymous": LOGIN,
+        "student": 404,
+        "other_student": 404,
+        "staff": 403,
+        "other_staff": 403,
+        "head": 403,
+        "office": 403,
+    },
 }
 URLS: dict[str, str] = {
     "core:home": "public",
@@ -87,6 +97,14 @@ URLS: dict[str, str] = {
     "students:home": "student",
     "students:profile": "student",
     "students:profile-personal": "student",
+    "students:profile-family": "student",
+    "students:profile-family-add": "student",
+    "students:profile-family-edit": "own_record",
+    "students:profile-family-delete": "own_record",
+    "students:profile-education": "student",
+    "students:profile-education-add": "student",
+    "students:profile-education-edit": "own_record",
+    "students:profile-education-delete": "own_record",
     "workspace:no_programs": "no_programs",
     "workspace:dashboard": "staff",
     "office:home": "office",
@@ -132,6 +150,10 @@ URL_KWARGS: dict[str, dict[str, str]] = {
     "kit:layout": {"name": "x"},
     "files:upload-confirm": {"file_id": "00000000-0000-0000-0000-000000000000"},
     "files:download": {"file_id": "00000000-0000-0000-0000-000000000000"},
+    "students:profile-family-edit": {"pk": "999999"},
+    "students:profile-family-delete": {"pk": "999999"},
+    "students:profile-education-edit": {"pk": "999999"},
+    "students:profile-education-delete": {"pk": "999999"},
     # An unknown key shows allauth's invalid-link page (200), it does not 404.
     "account_confirm_email": {"key": "x"},
     "account_reset_password_from_key": {"uidb36": "1", "key": "x"},

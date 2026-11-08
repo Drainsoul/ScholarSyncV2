@@ -1,0 +1,29 @@
+{% extends "layouts/student.html" %}
+{% block title %}Family{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div><h1>Family</h1><p class="page-header__meta"><a href="{% url 'students:profile' %}">Back to your profile</a></p></div>
+    <a class="btn btn--primary" href="{% url 'students:profile-family-add' %}">Add family member</a>
+  </div>
+  <section class="card" aria-labelledby="family-title">
+    <h2 class="card__title" id="family-title">Your family</h2>
+    {% if members %}
+      <ul class="stack" role="list">
+        {% for member in members %}
+          <li class="card__header">
+            <div>
+              <h3>{{ member.name }}</h3>
+              <p class="text-sm text-muted">{{ member.get_relation_display }}{% if member.occupation %} · {{ member.occupation }}{% endif %}{% if member.monthly_income is not None %} · <span class="num">₱{{ member.monthly_income|floatformat:2 }}</span> a month{% endif %}</p>
+            </div>
+            <div class="btn-row">
+              <a class="btn btn--secondary" href="{% url 'students:profile-family-edit' member.pk %}">Edit<span class="visually-hidden"> {{ member.name }}</span></a>
+              <a class="btn btn--secondary" href="{% url 'students:profile-family-delete' member.pk %}">Remove<span class="visually-hidden"> {{ member.name }}</span></a>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      {% include "components/empty_state.html" with title="No family members yet." body="Add at least a parent or guardian." %}
+    {% endif %}
+  </section>
+{% endblock %}

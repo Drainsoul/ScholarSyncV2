@@ -1,0 +1,16 @@
+{% extends "layouts/student.html" %}
+{% block title %}{{ heading }}{% endblock %}
+{% block content %}
+  <div class="page-header"><div><h1>{{ heading }}</h1></div></div>
+  <section class="card" aria-labelledby="confirm-title">
+    <h2 class="card__title" id="confirm-title">Are you sure?</h2>
+    <p>This removes <strong>{{ what }}</strong> from your profile.</p>
+    <form method="post">
+      {% csrf_token %}
+      <div class="btn-row">
+        <button type="submit" class="btn btn--danger">Remove</button>
+        <a class="btn btn--secondary" href="{{ cancel_url }}">Cancel</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

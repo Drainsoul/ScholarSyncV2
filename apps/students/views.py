@@ -1,6 +1,7 @@
 from typing import Any
 
 from django.contrib import messages
+from django.db import models
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import NoReverseMatch, reverse
@@ -11,8 +12,16 @@ from apps.accounts.models import User
 from apps.core.permissions import StudentRequiredMixin
 from apps.core.shell import shell_context
 from apps.students import services
-from apps.students.forms import PersonalForm
-from apps.students.selectors import profile_page
+from apps.students.forms import EducationForm, FamilyMemberForm, PersonalForm
+from apps.students.models import EducationRecord, FamilyMember
+from apps.students.selectors import (
+    education_for,
+    family_for,
+    own_education_record,
+    own_family_member,
+    profile_for,
+    profile_page,
+)
 
 
 def _student(request: HttpRequest) -> User:
@@ -78,3 +87,139 @@ class PersonalView(StudentRequiredMixin, View):
         services.update_personal(user=_student(request), data=form.cleaned_data)
         messages.success(request, "Personal details saved.")
         return redirect("students:profile")
+
+
+class FamilyListView(StudentRequiredMixin, TemplateView):
+    template_name = "students/profile/family.html"
+
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        profile = profile_for(_student(self.request))
+        members = list(family_for(profile)) if profile else []
+        return {
+            **super().get_context_data(**kwargs),
+            **shell_context(self.request, area="student"),
+            "members": members,
+        }
+
+
+class FamilyFormView(StudentRequiredMixin, View):
+    """Add (no pk) or edit one of the student's own family rows."""
+
+    template_name = "students/profile/family_form.html"
+
+    def _render(
+        self, request: HttpRequest, form: FamilyMemberForm, member: FamilyMember | None
+    ) -> HttpResponse:
+        context = {**shell_context(request, area="student"), "form": form, "member": member}
+        return render(request, self.template_name, context)
+
+    def get(self, request: HttpRequest, pk: int | None = None) -> HttpResponse:
+        member = own_family_member(_student(request), pk) if pk is not None else None
+        form = FamilyMemberForm(initial=_initial(member, services.FAMILY_FIELDS))
+        return self._render(request, form, member)
+
+    def post(self, request: HttpRequest, pk: int | None = None) -> HttpResponse:
+        user = _student(request)
+        member = own_family_member(user, pk) if pk is not None else None
+        form = FamilyMemberForm(request.POST)
+        if not form.is_valid():
+            return self._render(request, form, member)
+        if member is None:
+            services.add_family_member(user=user, data=form.cleaned_data)
+            messages.success(request, "Family member added.")
+        else:
+            services.update_family_member(user=user, member=member, data=form.cleaned_data)
+            messages.success(request, "Family member updated.")
+        return redirect("students:profile-family")
+
+
+class FamilyDeleteView(StudentRequiredMixin, View):
+    template_name = "students/profile/confirm_delete.html"
+
+    def get(self, request: HttpRequest, pk: int) -> HttpResponse:
+        member = own_family_member(_student(request), pk)
+        context = {
+            **shell_context(request, area="student"),
+            "heading": "Remove family member",
+            "what": f"{member.get_relation_display()}: {member.name}",
+            "cancel_url": reverse("students:profile-family"),
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        user = _student(request)
+        services.remove_family_member(user=user, member=own_family_member(user, pk))
+        messages.success(request, "Family member removed.")
+        return redirect("students:profile-family")
+
+
+class EducationListView(StudentRequiredMixin, TemplateView):
+    template_name = "students/profile/education.html"
+
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        profile = profile_for(_student(self.request))
+        records = list(education_for(profile)) if profile else []
+        return {
+            **super().get_context_data(**kwargs),
+            **shell_context(self.request, area="student"),
+            "records": records,
+        }
+
+
+class EducationFormView(StudentRequiredMixin, View):
+    """Add (no pk) or edit one of the student's own education rows."""
+
+    template_name = "students/profile/education_form.html"
+
+    def _render(
+        self, request: HttpRequest, form: EducationForm, record: EducationRecord | None
+    ) -> HttpResponse:
+        context = {**shell_context(request, area="student"), "form": form, "record": record}
+        return render(request, self.template_name, context)
+
+    def get(self, request: HttpRequest, pk: int | None = None) -> HttpResponse:
+        record = own_education_record(_student(request), pk) if pk is not None else None
+        initial = _initial(record, services.EDUCATION_FIELDS)
+        if record is not None:
+            initial["school"] = record.school_id
+        return self._render(request, EducationForm(initial=initial), record)
+
+    def post(self, request: HttpRequest, pk: int | None = None) -> HttpResponse:
+        user = _student(request)
+        record = own_education_record(user, pk) if pk is not None else None
+        form = EducationForm(request.POST)
+        if not form.is_valid():
+            return self._render(request, form, record)
+        if record is None:
+            services.add_education(user=user, data=form.cleaned_data)
+            messages.success(request, "School added.")
+        else:
+            services.update_education(user=user, record=record, data=form.cleaned_data)
+            messages.success(request, "School updated.")
+        return redirect("students:profile-education")
+
+
+class EducationDeleteView(StudentRequiredMixin, View):
+    template_name = "students/profile/confirm_delete.html"
+
+    def get(self, request: HttpRequest, pk: int) -> HttpResponse:
+        record = own_education_record(_student(request), pk)
+        context = {
+            **shell_context(request, area="student"),
+            "heading": "Remove school",
+            "what": f"{record.get_level_display()}: {record.school or record.school_name}",
+            "cancel_url": reverse("students:profile-education"),
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        user = _student(request)
+        services.remove_education(user=user, record=own_education_record(user, pk))
+        messages.success(request, "School removed.")
+        return redirect("students:profile-education")
+
+
+def _initial(instance: models.Model | None, fields: tuple[str, ...]) -> dict[str, Any]:
+    if instance is None:
+        return {}
+    return {name: getattr(instance, name) for name in fields}

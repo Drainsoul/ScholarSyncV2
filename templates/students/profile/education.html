@@ -1,0 +1,29 @@
+{% extends "layouts/student.html" %}
+{% block title %}Education{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div><h1>Education</h1><p class="page-header__meta"><a href="{% url 'students:profile' %}">Back to your profile</a></p></div>
+    <a class="btn btn--primary" href="{% url 'students:profile-education-add' %}">Add school</a>
+  </div>
+  <section class="card" aria-labelledby="education-title">
+    <h2 class="card__title" id="education-title">Your schools</h2>
+    {% if records %}
+      <ul class="stack" role="list">
+        {% for record in records %}
+          <li class="card__header">
+            <div>
+              <h3>{% firstof record.school.name record.school_name %}</h3>
+              <p class="text-sm text-muted">{{ record.get_level_display }}{% if record.course %} · {{ record.course }}{% endif %}{% if record.is_current %} · Current{% endif %}{% if record.gwa is not None %} · GWA <span class="num">{{ record.gwa }}</span>{% endif %}</p>
+            </div>
+            <div class="btn-row">
+              <a class="btn btn--secondary" href="{% url 'students:profile-education-edit' record.pk %}">Edit<span class="visually-hidden"> {% firstof record.school.name record.school_name %}</span></a>
+              <a class="btn btn--secondary" href="{% url 'students:profile-education-delete' record.pk %}">Remove<span class="visually-hidden"> {% firstof record.school.name record.school_name %}</span></a>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      {% include "components/empty_state.html" with title="No schools yet." body="Add your current or most recent school." %}
+    {% endif %}
+  </section>
+{% endblock %}
