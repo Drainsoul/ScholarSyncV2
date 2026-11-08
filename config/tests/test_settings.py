@@ -572,3 +572,40 @@ def test_blank_email_url_prints_to_the_console_outside_production(tmp_path, mode
 def test_trusted_proxy_count_treats_blank_as_the_default(tmp_path, value, expected):
     values = settings_values(tmp_path, ["ALLAUTH_TRUSTED_PROXY_COUNT"], TRUSTED_PROXY_COUNT=value)
     assert values["ALLAUTH_TRUSTED_PROXY_COUNT"] == expected
+
+
+def test_production_refuses_a_wildcard_first_host_without_site_url(tmp_path):
+    result = _run_settings(
+        tmp_path, ["SITE_URL"], DJANGO_ALLOWED_HOSTS=".scholarsync.example", SITE_URL=""
+    )
+    assert result.returncode != 0
+    assert "SITE_URL" in result.stderr
+    assert "docs/HOSTING.md" in result.stderr
+
+
+def test_production_accepts_a_wildcard_first_host_with_site_url(tmp_path):
+    values = settings_values(
+        tmp_path,
+        ["SITE_URL"],
+        DJANGO_ALLOWED_HOSTS=".scholarsync.example",
+        SITE_URL="https://scholarsync.example/",
+    )
+    assert values["SITE_URL"] == "https://scholarsync.example"
+
+
+def test_production_refuses_a_non_https_site_url(tmp_path):
+    result = _run_settings(tmp_path, ["SITE_URL"], SITE_URL="http://scholarsync.example")
+    assert result.returncode != 0
+    assert "SITE_URL" in result.stderr
+
+
+def test_site_url_defaults_to_the_first_host_in_production(tmp_path):
+    values = settings_values(tmp_path, ["SITE_URL"])
+    assert values["SITE_URL"] == "https://scholarsync.example"
+
+
+def test_developer_mode_allows_an_http_site_url(tmp_path):
+    values = settings_values(
+        tmp_path, ["SITE_URL"], DJANGO_DEBUG="true", SITE_URL="http://127.0.0.1:8000"
+    )
+    assert values["SITE_URL"] == "http://127.0.0.1:8000"

@@ -73,6 +73,16 @@ if PRODUCTION and SECRET_KEY.startswith("local-dev-only-"):
 # Blank: the first allowed host over https in production, else the local address. Never taken
 # from a request, so a forged Host header cannot point an emailed link elsewhere.
 SITE_URL = env.str("SITE_URL", "").strip().rstrip("/")
+if PRODUCTION:
+    if not SITE_URL and (not ALLOWED_HOSTS or ALLOWED_HOSTS[0].startswith(".")):
+        raise ImproperlyConfigured(
+            "Set SITE_URL (for example https://scholarships.example.org) because the first "
+            "DJANGO_ALLOWED_HOSTS entry is a wildcard that cannot be used in a link (docs/HOSTING.md)."
+        )
+    if SITE_URL and not SITE_URL.startswith("https://"):
+        raise ImproperlyConfigured(
+            "SITE_URL must start with https:// in production (docs/HOSTING.md)."
+        )
 if not SITE_URL:
     SITE_URL = (
         f"https://{ALLOWED_HOSTS[0]}"
