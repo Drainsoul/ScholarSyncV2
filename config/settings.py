@@ -77,7 +77,7 @@ if PRODUCTION:
     if not SITE_URL and (not ALLOWED_HOSTS or ALLOWED_HOSTS[0].startswith(".")):
         raise ImproperlyConfigured(
             "Set SITE_URL (for example https://scholarships.example.org) because the first "
-            "DJANGO_ALLOWED_HOSTS entry is a wildcard that cannot be used in a link (docs/HOSTING.md)."
+            "DJANGO_ALLOWED_HOSTS entry is a wildcard that is no link (docs/HOSTING.md)."
         )
     if SITE_URL and not SITE_URL.startswith("https://"):
         raise ImproperlyConfigured(
