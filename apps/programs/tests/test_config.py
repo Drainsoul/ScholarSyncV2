@@ -155,3 +155,9 @@ def test_tiers_in_force_query_count(db, django_assert_max_num_queries):
         BenefitTierFactory.create(program=p, code=f"t{n}", effective_from=term)
     with django_assert_max_num_queries(1):
         assert len(tiers_in_force(p, term)) == 10
+
+
+def test_database_refuses_unknown_allowed_school_types(db):
+    with pytest.raises(IntegrityError), transaction.atomic():
+        ProgramFactory.create(allowed_school_types=["public", "academy"])
+    ProgramFactory.create(allowed_school_types=["public", "lcu"])

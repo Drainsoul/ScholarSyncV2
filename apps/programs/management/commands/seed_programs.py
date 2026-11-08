@@ -51,7 +51,7 @@ class Command(BaseCommand):
                 ]
                 program.allowed_schools.set(allowed)
             for order, (code, name, base, merit) in enumerate(entry["tiers"]):
-                # A code can have several rows (one per effective term), so get_or_create would crash.
+                # A code can have one row per effective term, so get_or_create would crash.
                 if BenefitTier.objects.filter(program=program, code=code).exists():
                     continue
                 BenefitTier.objects.create(

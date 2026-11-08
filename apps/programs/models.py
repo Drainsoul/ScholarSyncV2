@@ -94,6 +94,10 @@ class Program(models.Model):
                 | Q(applications_open_on__lte=F("applications_close_on")),
                 name="programs_program_window_order",
             ),
+            models.CheckConstraint(
+                condition=Q(allowed_school_types__contained_by=["public", "private", "suc", "lcu"]),
+                name="programs_program_school_types_valid",
+            ),
         ]
 
     def __str__(self) -> str:

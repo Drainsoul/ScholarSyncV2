@@ -144,6 +144,7 @@ def test_seed_survives_a_tier_with_history(db):
     lani = Program.objects.get(slug="lani")
     base = BenefitTier.objects.get(program=lani, code="honors")
     later = AcademicTerm.objects.exclude(pk=base.effective_from_id).order_by("sort_key").last()
+    assert later is not None
     BenefitTier.objects.create(
         program=lani,
         code="honors",
