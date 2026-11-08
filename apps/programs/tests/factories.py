@@ -1,10 +1,18 @@
 from datetime import date
+from decimal import Decimal
 
 import factory
 
 from apps.accounts.models import User
 from apps.accounts.tests.factories import UserFactory
-from apps.programs.models import AcademicTerm, Program, ProgramMembership, School
+from apps.programs.models import (
+    AcademicTerm,
+    BenefitTier,
+    Program,
+    ProgramMembership,
+    RequiredDocument,
+    School,
+)
 from apps.programs.terms import school_year_terms
 
 
@@ -50,3 +58,30 @@ class AcademicTermFactory(factory.django.DjangoModelFactory[AcademicTerm]):
         lambda o: school_year_terms(date(o.school_year_start, 8, 1))[o.term - 1].ends_on
     )
     is_current = False
+
+
+class BenefitTierFactory(factory.django.DjangoModelFactory[BenefitTier]):
+    class Meta:
+        model = BenefitTier
+
+    program = factory.declarations.SubFactory(ProgramFactory)
+    code = factory.declarations.Sequence(lambda n: f"tier-{n}")
+    name = factory.declarations.Sequence(lambda n: f"Tier {n}")
+    base_amount = Decimal("5000.00")
+    merit_amount = Decimal("0.00")
+    effective_from = factory.declarations.SubFactory(AcademicTermFactory)
+    is_active = True
+    sort_order = 0
+
+
+class RequiredDocumentFactory(factory.django.DjangoModelFactory[RequiredDocument]):
+    class Meta:
+        model = RequiredDocument
+
+    program = factory.declarations.SubFactory(ProgramFactory)
+    code = factory.declarations.Sequence(lambda n: f"doc-{n}")
+    label = factory.declarations.Sequence(lambda n: f"Document {n}")
+    help_text = ""
+    applies_to = RequiredDocument.AppliesTo.BOTH
+    is_required = True
+    sort_order = 0
