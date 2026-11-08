@@ -7,6 +7,7 @@ from django.core.paginator import Page
 from django.forms import BoundField
 from django.template import Context, TemplateSyntaxError
 from django.templatetags.static import static
+from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.safestring import SafeString
 
@@ -35,6 +36,17 @@ def icon(name: str, label: str = "") -> SafeString:
 STATUS_TONES = frozenset({"success", "warning", "info", "danger", "neutral"})
 AVATAR_TONES = ("red", "blue", "yellow")
 AVATAR_SIZES = frozenset({"", "lg"})
+
+
+@register.simple_tag(takes_context=True)
+def public_nav(context: Context) -> list[dict[str, object]]:
+    """The public top bar: Programs first, then Help. Used when a page passes no nav_items."""
+    path = context["request"].path if "request" in context else ""
+    items = [("Programs", reverse("programs:list")), ("Help", reverse("core:help"))]
+    return [
+        {"label": label, "url": url, "current": path.startswith(url), "count": 0, "icon": ""}
+        for label, url in items
+    ]
 
 
 @register.simple_tag

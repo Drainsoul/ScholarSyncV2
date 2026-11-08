@@ -1,0 +1,11 @@
+{% extends "layouts/public.html" %}
+{% block title %}Programs{% endblock %}
+{% block content %}
+<h1>Scholarship programs</h1>
+<ul class="stack" role="list">
+  {% for program in programs %}<li>
+    <h2><a href="{% url 'programs:detail' program.slug %}">{{ program.name }}</a></h2>
+    {% if program.description %}<p>{{ program.description }}</p>{% endif %}
+  </li>{% empty %}<li><p>No programs are open right now.</p></li>{% endfor %}
+</ul>
+{% endblock %}

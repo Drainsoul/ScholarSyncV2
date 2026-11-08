@@ -82,6 +82,8 @@ URLS: dict[str, str] = {
     "core:cookies": "public",
     "core:help": "public",
     "core:contact": "public",
+    "programs:list": "public",
+    "programs:detail": "public",
     "students:home": "student",
     "workspace:no_programs": "no_programs",
     "workspace:dashboard": "staff",
@@ -123,6 +125,7 @@ URLS: dict[str, str] = {
 }
 URL_KWARGS: dict[str, dict[str, str]] = {
     "workspace:dashboard": {"program": "tcu-ceaa"},
+    "programs:detail": {"slug": "tcu-ceaa"},
     "kit:mockup": {"slug": "x"},
     "kit:layout": {"name": "x"},
     "files:upload-confirm": {"file_id": "00000000-0000-0000-0000-000000000000"},

@@ -1,0 +1,35 @@
+{% extends "layouts/public.html" %}{% load ui %}
+{% block title %}{{ program.name }}{% endblock %}
+{% block content %}
+<h1>{{ program.name }}</h1>
+{% if program.description %}<p>{{ program.description }}</p>{% endif %}
+<section class="section">
+  <h2>Who can apply</h2>
+  {% if rules %}<ul>{% for sentence in rules %}<li>{{ sentence }}</li>{% endfor %}</ul>
+  {% else %}<p>The scholarship office hasn't published the rules yet.</p>{% endif %}
+</section>
+<section class="section">
+  <h2>Allowance per semester</h2>
+  {% if term and tiers %}
+  <div class="table-wrap" role="region" aria-label="Allowance per semester" tabindex="0">
+    <table class="table">
+      <thead><tr><th scope="col">Tier</th><th scope="col">Amount</th><th scope="col">With merit</th></tr></thead>
+      <tbody>{% for tier in tiers %}<tr>
+        <th scope="row">{{ tier.name }}</th>
+        <td class="num">{{ tier.base_amount|peso }}</td>
+        <td class="num">{{ tier.merit_amount|peso }}</td>
+      </tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% else %}<p>Amounts will be published with the next school term.</p>{% endif %}
+</section>
+<section class="section">
+  <h2>Applications</h2>
+  {% if program.applications_open_on and program.applications_close_on %}<p>Open {{ program.applications_open_on|date:"F j, Y" }} to {{ program.applications_close_on|date:"F j, Y" }}.</p>
+  {% else %}<p>Dates to be announced.</p>{% endif %}
+</section>
+<section class="section">
+  <h2>Documents for new applicants</h2>
+  <ul>{% for document in documents %}<li><strong>{{ document.label }}</strong>{% if not document.is_required %} (optional){% endif %}{% if document.help_text %}<br>{{ document.help_text }}{% endif %}</li>{% empty %}<li>No documents are listed yet.</li>{% endfor %}</ul>
+</section>
+{% endblock %}
