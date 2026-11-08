@@ -14,6 +14,8 @@ from django.template.utils import get_app_template_dirs
 from apps.accounts.models import User
 from apps.demo import loader
 from apps.demo.accounts import ACCOUNTS, PASSWORD
+from apps.students.models import ProfileInvite, StudentProfile
+from apps.students.selectors import profile_page
 
 DEMO_DIR = Path(__file__).resolve().parents[1]
 
@@ -80,6 +82,39 @@ def test_load_completes_a_partial_earlier_run(demo_app, settings):
     loader.load()
     User.objects.filter(email="office@scholarsync.test").delete()
     assert loader.load() == 1
+
+
+@pytest.mark.django_db
+def test_load_twice_leaves_one_student_profile_and_one_staff_created_profile(demo_app, settings):
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    loader.load()
+    assert StudentProfile.objects.filter(user__email="student@scholarsync.test").count() == 1
+    unclaimed = StudentProfile.objects.filter(user__isnull=True)
+    assert unclaimed.count() == 1
+    assert ProfileInvite.objects.filter(email="paolo@scholarsync.test").count() == 1
+    paolo = unclaimed.get()
+    assert (paolo.first_name, paolo.last_name) == ("Paolo", "Villanueva")
+    assert paolo.created_for is not None
+    assert paolo.created_for.slug == "tcu-ceaa"
+    assert paolo.created_by is not None
+    assert paolo.created_by.email == "staff@scholarsync.test"
+
+
+@pytest.mark.django_db
+def test_demo_student_profile_is_92_percent_complete_without_a_photo(demo_app, settings):
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    profile, completion = profile_page(User.objects.get(email="student@scholarsync.test"))
+    assert profile is not None
+    assert completion.percent == 92
+    assert [s.missing for s in completion.sections if s.key == "photo"] == [("a photo",)]
+    assert profile.barangay == "ususan"
+    assert profile.family.get().name == "Teresa Hawkins"
+    assert profile.education.count() == 2
+    current = profile.education.get(is_current=True)
+    assert current.school is not None
+    assert current.school.name == "Taguig City University"
 
 
 def test_password_passes_the_validators():

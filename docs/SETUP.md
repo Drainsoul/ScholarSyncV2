@@ -139,7 +139,11 @@ npm --prefix frontend run build                            # or run `npm --prefi
 python -m uv run python manage.py runserver
 ```
 
-`load_demo` loads the four test accounts (see above). It only adds what is missing, so it is safe to re-run.
+`load_demo` loads the four test accounts (see above). It only adds what is missing, so it is safe to re-run. It also gives the student a sample profile and creates an
+unclaimed one for Paolo Villanueva (his invite email goes to Mailpit in explore mode).
+
+`load_demo` runs `seed_programs`, which seeds the programs, their benefit tiers and required
+documents, the starter schools and the academic terms. It never overwrites your edits.
 
 The app is at <http://localhost:8000> and the design kit at <http://localhost:8000/_kit/>. Without an `EMAIL_URL`, emails
 print to the terminal.

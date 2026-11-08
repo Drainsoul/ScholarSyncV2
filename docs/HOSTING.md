@@ -205,8 +205,8 @@ keeps no way back in; and the change is audited.
 
 To start with the Taguig programs, run `python manage.py seed_programs` (in the container:
 `docker compose -f compose.production.yaml run --rm -e SKIP_PREPARE=1 web python manage.py seed_programs`); or create
-your own programs later in the office screens. It is safe to run more than once and never overwrites your edits. The
-school list and terms arrive with later milestones.
+your own programs later in the office screens. It also seeds the benefit tiers, required documents, starter schools
+and academic terms. It is safe to run more than once and never overwrites your edits.
 
 ## 9. Backups
 Back up the database and the bucket. Test a restore once.
