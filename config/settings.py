@@ -69,6 +69,17 @@ if PRODUCTION and SECRET_KEY.startswith("local-dev-only-"):
         "Generate your own secret key for production (docs/HOSTING.md)."
     )
 
+# The public address of this copy, for links in emails sent outside a request (spec section 10).
+# Blank: the first allowed host over https in production, else the local address. Never taken
+# from a request, so a forged Host header cannot point an emailed link elsewhere.
+SITE_URL = env.str("SITE_URL", "").strip().rstrip("/")
+if not SITE_URL:
+    SITE_URL = (
+        f"https://{ALLOWED_HOSTS[0]}"
+        if PRODUCTION and ALLOWED_HOSTS
+        else f"http://127.0.0.1:{env.int('APP_PORT', 8000)}"
+    )
+
 # Who runs this copy (open-source spec section 15). Required in production: the privacy, terms and
 # contact pages name the operator, and a host must decide who that is. Explore and developer
 # copies run on the visitor's own computer.

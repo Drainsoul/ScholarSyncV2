@@ -42,6 +42,8 @@ KINDS: dict[str, frozenset[str]] = {
     "password_set": _NAME,
     "account_connected": frozenset({"provider_name", "full_name"}),
     "account_disconnected": frozenset({"provider_name", "full_name"}),
+    # The address is unverified, so no name either.
+    "profile_invite": frozenset({"claim_url"}),
 }
 
 

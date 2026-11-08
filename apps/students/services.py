@@ -1,14 +1,26 @@
 """Student profile writes. Every service is audited; audit data holds field names, never values."""
 
+import secrets
 from collections.abc import Iterable, Mapping
+from datetime import date, datetime, timedelta
 
-from django.core.exceptions import PermissionDenied
+from django.conf import settings
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.validators import validate_email
 from django.db import models, transaction
+from django.http import HttpRequest
+from django.urls import reverse
+from django.utils import timezone
 
 from apps.accounts.models import User
+from apps.accounts.services import record_consent
 from apps.core import audit
 from apps.files.models import StoredFile
-from apps.students.models import EducationRecord, FamilyMember, StudentProfile
+from apps.programs.models import Program
+from apps.programs.selectors import membership_for
+from apps.students.models import EducationRecord, FamilyMember, ProfileInvite, StudentProfile
+from apps.students.selectors import INVALID_LINK, claim_problem, find_invite, hash_token
+from apps.workspace.emails import enqueue
 
 PERSONAL_FIELDS = (
     "first_name",
@@ -211,4 +223,130 @@ def remove_photo(*, user: User) -> StudentProfile:
     profile.photo = None
     profile.save(update_fields=["photo", "updated_at"])
     audit.record(actor=user, action="profile.photo_removed", target=profile)
+    return profile
+
+
+def _require_program_staff(actor: User, program: Program | None) -> None:
+    """The office, or staff or head of this program. Nobody else, whatever their role says."""
+    if not actor.is_active:
+        raise PermissionDenied("Not allowed.")
+    if actor.is_super_admin:
+        return
+    if program is not None and actor.is_program_staff and membership_for(actor, program):
+        return
+    raise PermissionDenied("Only this program's staff can do that.")
+
+
+def _clean_email(email: str) -> str:
+    cleaned = email.strip().lower()
+    try:
+        validate_email(cleaned)
+    except ValidationError:
+        raise ValidationError("Enter a valid email address.") from None
+    return cleaned
+
+
+def _expire_open_invites(profile: StudentProfile, now: datetime) -> None:
+    profile.invites.filter(claimed_at__isnull=True, expires_at__gt=now).update(
+        expires_at=now, updated_at=now
+    )
+
+
+@transaction.atomic
+def create_staff_profile(
+    *,
+    actor: User,
+    program: Program,
+    first_name: str,
+    middle_name: str,
+    last_name: str,
+    suffix: str,
+    birth_date: date,
+    email: str,
+) -> tuple[StudentProfile, ProfileInvite]:
+    _require_program_staff(actor, program)
+    cleaned = _clean_email(email)
+    profile = StudentProfile.objects.create(
+        first_name=first_name,
+        middle_name=middle_name,
+        last_name=last_name,
+        suffix=suffix,
+        birth_date=birth_date,
+        created_by=actor,
+        created_for=program,
+    )
+    audit.record(actor=actor, action="profile.created_by_staff", target=profile, program=program)
+    return profile, issue_invite(actor=actor, profile=profile, email=cleaned)
+
+
+@transaction.atomic
+def issue_invite(
+    *, actor: User, profile: StudentProfile, email: str | None = None
+) -> ProfileInvite:
+    """Send a fresh claim link; every older unclaimed link of this profile stops working."""
+    _require_program_staff(actor, profile.created_for)
+    locked = StudentProfile.objects.select_for_update().get(pk=profile.pk)
+    if locked.user_id is not None:
+        raise ValidationError("This profile has already been claimed.")
+    if email is None:
+        previous = locked.invites.order_by("-pk").first()
+        if previous is None:
+            raise ValidationError("Enter the student's email address.")
+        email = previous.email
+    cleaned = _clean_email(email)
+    now = timezone.now()
+    _expire_open_invites(locked, now)
+    token = secrets.token_urlsafe(32)
+    invite = ProfileInvite.objects.create(
+        profile=locked,
+        email=cleaned,
+        token_hash=hash_token(token),
+        expires_at=now + timedelta(days=ProfileInvite.INVITE_DAYS),
+        created_by=actor,
+    )
+    # No name in the email: the address is unverified, so anyone could have been typed into it.
+    enqueue(
+        to=cleaned,
+        kind="profile_invite",
+        context={"claim_url": settings.SITE_URL + reverse("claim:start", args=[token])},
+    )
+    audit.record(actor=actor, action="invite.sent", target=invite, program=locked.created_for)
+    return invite
+
+
+@transaction.atomic
+def claim_profile(*, user: User, token: str, request: HttpRequest | None) -> StudentProfile:
+    """Attach the invited profile to this account. Everything is re-checked under row locks."""
+    found = find_invite(token)
+    if found is None:
+        raise ValidationError(INVALID_LINK)
+    # Lock the account first (two claims by one user serialise), then the invite and profile.
+    locked_user = User.objects.select_for_update().get(pk=user.pk)
+    invite = (
+        ProfileInvite.objects.select_for_update(of=("self", "profile"))
+        .select_related("profile")
+        .get(pk=found.pk)
+    )
+    message = claim_problem(invite, locked_user)
+    if message is not None:
+        raise ValidationError(message)
+    now = timezone.now()
+    profile = invite.profile
+    profile.user = locked_user
+    profile.save(update_fields=["user", "updated_at"])
+    invite.claimed_at = now
+    invite.claimed_by = locked_user
+    invite.save(update_fields=["claimed_at", "claimed_by", "updated_at"])
+    _expire_open_invites(profile, now)
+    locked_user.full_name = profile.full_name
+    locked_user.save(update_fields=["full_name"])
+    user.full_name = locked_user.full_name
+    record_consent(user=locked_user, request=request)
+    audit.record(
+        actor=locked_user,
+        action="profile.claimed",
+        target=profile,
+        program=profile.created_for,
+        request=request,
+    )
     return profile

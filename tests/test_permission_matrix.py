@@ -59,6 +59,8 @@ RULES: dict[str, dict[str, Any]] = {
     },
     "office": {"anonymous": LOGIN, **{p: 403 for p in PERSONAS[1:6]}, "office": 200},
     "kit": {p: 404 for p in PERSONAS},
+    # An unknown claim link is a 404 for everyone.
+    "claim_unknown": {p: 404 for p in PERSONAS},
     # A signed-out visit has nothing to sign out of and goes home; signed in gets the confirm page.
     "logout": {"anonymous": (302, "/"), **{p: 200 for p in SIGNED_IN}},
     # Next step of a sign-in by emailed code; with none in progress, back to the sign-in page.
@@ -143,6 +145,7 @@ URLS: dict[str, str] = {
     "files:upload-intent": "post_only",
     "files:upload-confirm": "post_only",
     "files:download": "own_file",
+    "claim:start": "claim_unknown",
 }
 URL_KWARGS: dict[str, dict[str, str]] = {
     "workspace:dashboard": {"program": "tcu-ceaa"},
@@ -151,6 +154,7 @@ URL_KWARGS: dict[str, dict[str, str]] = {
     "kit:layout": {"name": "x"},
     "files:upload-confirm": {"file_id": "00000000-0000-0000-0000-000000000000"},
     "files:download": {"file_id": "00000000-0000-0000-0000-000000000000"},
+    "claim:start": {"token": "unknown-token"},
     "students:profile-family-edit": {"pk": "999999"},
     "students:profile-family-delete": {"pk": "999999"},
     "students:profile-education-edit": {"pk": "999999"},

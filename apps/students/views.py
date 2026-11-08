@@ -2,7 +2,7 @@ from typing import Any
 
 from django.contrib import messages
 from django.db import models
-from django.http import HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import NoReverseMatch, reverse
 from django.views import View
@@ -249,3 +249,10 @@ def _initial(instance: models.Model | None, fields: tuple[str, ...]) -> dict[str
     if instance is None:
         return {}
     return {name: getattr(instance, name) for name in fields}
+
+
+class ClaimView(View):
+    """Placeholder until the claim screen exists: every link is unknown."""
+
+    def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        raise Http404("No such link.")

@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 from django.db.models import F, Q
+from django.utils import timezone
 
 from apps.files.models import StoredFile
 from apps.programs.models import Program, School
@@ -168,3 +169,45 @@ class EducationRecord(models.Model):
 
     def __str__(self) -> str:
         return f"{self.get_level_display()}: {self.school or self.school_name}"
+
+
+class ProfileInvite(models.Model):
+    """An emailed link that lets one student account claim a staff-created profile.
+
+    Only the SHA-256 of the token is stored; the token itself exists in the email alone.
+    """
+
+    INVITE_DAYS = 14
+
+    profile = models.ForeignKey(StudentProfile, on_delete=models.CASCADE, related_name="invites")
+    email = models.EmailField(max_length=254)
+    token_hash = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField()
+    claimed_at = models.DateTimeField(null=True, blank=True)
+    claimed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f"Invite for profile {self.profile_id}"
+
+    @property
+    def is_usable(self) -> bool:
+        return (
+            self.claimed_at is None
+            and self.expires_at > timezone.now()
+            and self.profile.user_id is None
+        )

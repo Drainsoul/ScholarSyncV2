@@ -1,0 +1,9 @@
+{% extends "emails/base.txt" %}
+{% block body %}Hello,
+
+The scholarship staff created a student profile for you on ScholarSync. To see it and keep it up to date, open this link and sign in or create an account with this email address:
+
+{{ claim_url }}
+
+The link works for 14 days. If you weren't expecting this, you can ignore this email.
+{% endblock %}

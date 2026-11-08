@@ -1,9 +1,16 @@
+import hashlib
+
+from allauth.account.models import EmailAddress
 from django.db.models import Case, IntegerField, QuerySet, Value, When
 from django.http import Http404
 
 from apps.accounts.models import User
 from apps.students.completion import Completion, completion
-from apps.students.models import EducationRecord, FamilyMember, StudentProfile
+from apps.students.models import EducationRecord, FamilyMember, ProfileInvite, StudentProfile
+
+INVALID_LINK = (
+    "This link has expired or has already been used. Ask the scholarship staff to send a new one."
+)
 
 _RELATION_ORDER = (
     FamilyMember.Relation.FATHER,
@@ -55,3 +62,31 @@ def own_education_record(user: User, pk: int) -> EducationRecord:
         return EducationRecord.objects.get(pk=pk, profile__user=user)
     except EducationRecord.DoesNotExist:
         raise Http404("No such education record.") from None
+
+
+def hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def find_invite(token: str) -> ProfileInvite | None:
+    """The invite for this emailed token. Lookup is by hash; the token is never stored."""
+    return (
+        ProfileInvite.objects.select_related("profile").filter(token_hash=hash_token(token)).first()
+    )
+
+
+def claim_problem(invite: ProfileInvite, user: User) -> str | None:
+    """Why this user cannot claim this invite now, as a sentence for them, or None."""
+    if not invite.is_usable:
+        return INVALID_LINK
+    if not user.is_student:
+        return "Only student accounts can claim a profile."
+    verified = EmailAddress.objects.filter(user=user, verified=True, email__iexact=invite.email)
+    if not verified.exists():
+        return (
+            "This invitation was sent to a different email address. "
+            "Sign in with that address to claim the profile."
+        )
+    if profile_for(user) is not None:
+        return "Your account already has a profile. Contact the scholarship office to combine them."
+    return None
