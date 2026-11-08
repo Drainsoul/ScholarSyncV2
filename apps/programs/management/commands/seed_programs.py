@@ -51,18 +51,19 @@ class Command(BaseCommand):
                 ]
                 program.allowed_schools.set(allowed)
             for order, (code, name, base, merit) in enumerate(entry["tiers"]):
-                _, tier_created = BenefitTier.objects.get_or_create(
+                # A code can have several rows (one per effective term), so get_or_create would crash.
+                if BenefitTier.objects.filter(program=program, code=code).exists():
+                    continue
+                BenefitTier.objects.create(
                     program=program,
                     code=code,
-                    defaults={
-                        "name": name,
-                        "base_amount": base,
-                        "merit_amount": merit,
-                        "effective_from": first_term,
-                        "sort_order": order,
-                    },
+                    name=name,
+                    base_amount=base,
+                    merit_amount=merit,
+                    effective_from=first_term,
+                    sort_order=order,
                 )
-                tiers += tier_created
+                tiers += 1
             for order, (code, label, applies_to, required, types, help_text) in enumerate(
                 STARTER_DOCUMENTS
             ):

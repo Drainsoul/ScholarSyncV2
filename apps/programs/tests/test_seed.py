@@ -137,3 +137,22 @@ def test_seed_allowed_school_uses_existing_row_with_different_case(db):
     call_command("seed_programs")
     ceaa = Program.objects.get(slug="tcu-ceaa")
     assert list(ceaa.allowed_schools.all()) == [existing]
+
+
+def test_seed_survives_a_tier_with_history(db):
+    call_command("seed_programs")
+    lani = Program.objects.get(slug="lani")
+    base = BenefitTier.objects.get(program=lani, code="honors")
+    later = AcademicTerm.objects.exclude(pk=base.effective_from_id).order_by("sort_key").last()
+    BenefitTier.objects.create(
+        program=lani,
+        code="honors",
+        name=base.name,
+        base_amount=base.base_amount,
+        merit_amount=base.merit_amount,
+        effective_from=later,
+        sort_order=base.sort_order,
+    )
+    before = BenefitTier.objects.count()
+    call_command("seed_programs")
+    assert BenefitTier.objects.count() == before
