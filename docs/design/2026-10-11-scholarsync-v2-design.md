@@ -13,6 +13,7 @@
 - **Revision:** 7 (2026-11-03): M4 decisions: accounts, outbox, consent, areas (§3, §4.1, §4.3, §6, §9, §10, §14, §16);
   M4 final-review follow-ups (§9, §10, §14).
 - **Revision:** 8 (2026-11-06): M5 decisions: files (§4.4, §7, §14, §16).
+- **Revision:** 9 (2026-11-08): M6 decisions: reference data and student profile (§4.1, §4.2, §4.3, §5, §16).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -136,15 +137,21 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - recorded at signup and whenever the privacy notice changes;
   - it hangs off the user because a profile does not exist at signup; staff-created profiles record consent when the
     student claims them (M6).
-- **`ProfileInvite`:**
-  - fields: `profile` FK, `email`, `token_hash`, `expires_at`, `claimed_at`;
-  - lets the owner of a staff-created `StudentProfile` claim it by verifying that email.
+- **`ProfileInvite`** (lives in `apps/students`, so claim services sit beside the profile and `accounts` never imports
+  `students`):
+  - fields: `profile` FK, `email` (lower-cased), `token_hash`, `expires_at`, `claimed_at`, `claimed_by`, `created_by`;
+  - lets the owner of a staff-created `StudentProfile` claim it by verifying that email;
+  - the link expires after 14 days; only the sha256 hash of the token is stored;
+  - a link works once; sending it again expires every older link of that profile;
+  - only a student whose account has a verified email equal to the invite's, and who has no profile yet, can claim;
+  - consent is recorded at claim (`ConsentRecord`, §4.1 above); the claimant's `User.full_name` is set from the profile.
 
 ### 4.2 programs
 - **`School`:** `name` (unique), `type` ∈ {public, private, SUC, LCU}, `grading_scale` ∈ {percent, one_to_five,
   four_point}, `is_in_taguig`.
 - **`AcademicTerm`:**
   - fields: `school_year_start` (e.g. 2026), `term` ∈ {1, 2, 3 (summer)}, `starts_on`, `ends_on`, `is_current`;
+  - `sort_key`: a generated column, `school_year_start * 10 + term`, for ordering and "latest ≤" lookups;
   - constraints: unique (`school_year_start`, `term`); at most one current term (partial unique).
 - **`Program`:**
   - identity: `slug` (e.g. `tcu-ceaa`, `lani`), `name`, `description`, `is_active`;
@@ -167,29 +174,50 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 - **`RequiredDocument`:**
   - fields: `program`, `code`, `label`, `help_text`, `applies_to` ∈ {new, renewal, both}, `is_required`,
     `accepted_types` (pdf/jpg/png), `max_bytes`, `sort_order`;
+  - caps: `max_bytes` is at most 10 MB (10,485,760), because the M5 document rule caps uploads there;
   - constraint: unique (`program`, `code`).
 
 **Seed data** (`seed_programs`):
 - TCU CEAA, with one tier `standard` (5,000 base / 10,000 merit).
 - LANI, with tiers honors / premier / priority (20,000 / 25,000), basic plus (10,000 / 15,000), basic and SUC/LCU
   (7,500 / 12,500), review (15,000 / 20,000) and lead (30,000 / 50,000).
-- The required documents from the v1 templates.
+- The required documents from the v1 templates: both programs get the same list; rows with the same label and help
+  text are merged into `applies_to=both`; every row takes at most 10 MB.
+- Schools: Taguig City University (LCU, percent, in Taguig), University of the Philippines (SUC, 1-5) and University
+  of Santo Tomas (private, 1-5), the three names in v1's model.
+- Terms, if none exist: the school year containing today, starting 1 August. Term 1 runs 1 Aug-31 Dec, term 2 runs
+  1 Jan-31 May and the summer term runs 1 Jun-31 Jul; the one containing today is current.
+- Rules, from v1's forms (all pending §18 Q3/Q4):
+  - CEAA: new GWA ≥ 80%, TCU only; renewal ≥ 80% and ≥ 15 units;
+  - LANI: new GWA ≥ 75%; renewal 1-5 GWA ≤ 2.50, ≥ 15 units, no failing grades.
 - These are the v1 admin values (`docs/legacy-audit.md` §3), pending the maintainer's confirmation.
 
 ### 4.3 students
 - **`StudentProfile`:**
   - `user` (nullable, unique): null for staff-created or imported records until they are claimed;
   - name fields; `birth_date`; `sex`; `phone`;
-  - address: `address_line`, `barangay` (choices: Taguig barangays), `district`;
+  - the name fields are the source of truth: saving them also sets `User.full_name`;
+  - address: `address_line`, `barangay` (choices: the list below, plus "I don't live in Taguig"); there is no
+    `district` (v1 had a free choice with no barangay mapping, the EMBO districting is still changing and no rule uses
+    it; add it when a rule needs it);
   - `residing_since` (year); `is_registered_voter`; `monthly_household_income`;
   - `photo` FK `StoredFile`;
-  - `created_by`;
+  - `created_by`, and `created_for` (the `Program` a staff member created the profile for; null for self-created
+    profiles). `/staff/<slug>/students/` lists only the unclaimed profiles created for that program;
   - `completion` is computed from required fields.
 - **`FamilyMember`:** `profile`, `relation` ∈ {father, mother, guardian, sibling}, name, `occupation`,
   `monthly_income`, `contact`.
-- **`EducationRecord`:** `profile`, `level` ∈ {elementary, jhs, shs, als, college}, `school` FK, `course`,
+- **`EducationRecord`:** `profile`, `level` ∈ {elementary, jhs, shs, als, college}, `school` FK (nullable), `course`,
   `year_level`, `gwa` (Decimal), `gwa_scale` (copied from the school, overridable), `units`, `year_from`, `year_to`,
   `is_current`.
+  - Fallback for schools not in the list (every elementary, JHS and SHS school, and colleges the office has not
+    added): `school_name`, `school_type` and `gwa_scale`. Exactly one of `school` or `school_name` is set.
+- **Barangays** (38, source "PSA PSGC, not yet verified; EMBO included per the maintainer, 2026-11-08"): Bagumbayan, Bambang,
+  Calzada, Cembo, Central Bicutan, Central Signal Village, Comembo, East Rembo, Fort Bonifacio, Hagonoy, Ibayo-Tipas,
+  Katuparan, Ligid-Tipas, Lower Bicutan, Maharlika Village, Napindan, New Lower Bicutan, North Daang Hari, North Signal
+  Village, Palingon, Pembo, Pinagsama, Pitogo, Post Proper Northside, Post Proper Southside, Rizal, San Miguel,
+  Santa Ana, South Cembo, South Daang Hari, South Signal Village, Tanyag, Tuktukan, Upper Bicutan, Ususan, Wawa,
+  West Rembo, Western Bicutan. Ten of them are the EMBO barangays (transferred from Makati by the Supreme Court).
 - **`ConsentRecord`:** lives in `accounts` (§4.1), because a profile does not exist at signup.
 
 ### 4.4 files
@@ -287,13 +315,14 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 ## 5. URL map
 | Area | URL | Who |
 |---|---|---|
-| Public | `/`, `/programs/`, `/programs/<slug>/`, `/about/`, `/help/`, `/privacy/`, `/terms/`, `/cookies/`, `/contact/` (the six information pages; footer disclaimer in §11) | anyone |
+| Public | `/`, `/programs/` (M6), `/programs/<slug>/` (M6), `/about/`, `/help/`, `/privacy/`, `/terms/`, `/cookies/`, `/contact/` (the six information pages; footer disclaimer in §11) | anyone |
 | Health | `/healthz` (database ping, no details) | anyone |
 | Accounts | `/accounts/…` (allauth: signup, login, logout POST, email confirm, password reset, Google), `/accounts/claim/<token>/` | anyone |
-| Student | `/me/` (dashboard), `/me/profile/` (+ `personal/`, `family/`, `education/`, `photo/`) | student |
+| Student | `/me/` (dashboard), `/me/profile/` (+ `personal/`, `family/`, `family/<id>/` + `…/delete/`, `education/`, `education/<id>/` + `…/delete/`, `photo/`) | student (own records only) |
 | Student | `/me/match/`, `/me/applications/`, `/me/applications/new/<slug>/`, `/me/applications/<id>/` (documents, submit, withdraw) | student (own records only) |
 | Student | `/me/scholarships/` (awards, terms, disbursements, schedules), `/me/notifications/` | student |
 | Staff | `/staff/<slug>/` (dashboard) | program staff/head |
+| Staff | `students/` (unclaimed profiles created for this program), `students/new/`, `students/<id>/invite/` | program staff/head |
 | Staff | `applications/`, `applications/new/` (on behalf), `applications/<id>/` (review, documents, decide) | program staff/head |
 | Staff | `scholars/`, `scholars/<award>/`, `scholars/import/`, `scholars/export/`, `terms/` (rollover) | program staff/head |
 | Staff | `schedules/`, `disbursements/`, `disbursements/<schedule>/`, `budget/` | program staff/head (see §6) |
@@ -732,6 +761,8 @@ starts, and ends with every acceptance item checked.
 **M6: Reference data + student profile**
 - [ ] Full `Program` config, `BenefitTier` (effective-from), `RequiredDocument`, `School`, `AcademicTerm`.
 - [ ] Profile sections, photo, completion tracker; staff-created profiles + invite/claim.
+- [ ] Profile forms are plain POST/redirect; reference data is seeded, editable from M11.
+- [ ] The barangay list (38, EMBO included) is not yet verified against PSA PSGC; check it in a browser.
 - [ ] Extend the demo loader for this milestone's screens.
 
 **M7: Matching + student applications**
@@ -759,6 +790,8 @@ starts, and ends with every acceptance item checked.
 - [ ] Staff dashboards (stats, trends, at-risk, tasks); office: programs CRUD, staff + memberships, schools, terms,
   cross-program scholars, reports review, analytics (trends, success rate, approval time, top feeder school), audit
   viewer; notifications center; support form.
+- [ ] Head program settings at `/staff/<slug>/settings/` (tiers, documents, rules, window; reauth for money settings
+  per §10).
 - [ ] Extend the demo loader for this milestone's screens.
 
 **M12: Hardening + hosting guide**
