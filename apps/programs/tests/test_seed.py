@@ -125,3 +125,15 @@ def test_seed_leaves_existing_terms_alone(db):
     call_command("seed_programs")
     assert AcademicTerm.objects.count() == 1
     assert {t.effective_from_id for t in BenefitTier.objects.all()} == {term.pk}
+
+
+def test_seed_allowed_school_uses_existing_row_with_different_case(db):
+    existing = School.objects.create(
+        name="taguig city university",
+        type=School.Type.LCU,
+        grading_scale=School.Scale.PERCENT,
+        is_in_taguig=True,
+    )
+    call_command("seed_programs")
+    ceaa = Program.objects.get(slug="tcu-ceaa")
+    assert list(ceaa.allowed_schools.all()) == [existing]

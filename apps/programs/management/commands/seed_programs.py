@@ -44,7 +44,12 @@ class Command(BaseCommand):
             )
             programs += was_created
             if was_created and entry["school_names"]:
-                program.allowed_schools.set(School.objects.filter(name__in=entry["school_names"]))
+                allowed = [
+                    school
+                    for name in entry["school_names"]
+                    if (school := School.objects.filter(name__iexact=name).first())
+                ]
+                program.allowed_schools.set(allowed)
             for order, (code, name, base, merit) in enumerate(entry["tiers"]):
                 _, tier_created = BenefitTier.objects.get_or_create(
                     program=program,
