@@ -1,0 +1,28 @@
+{% extends "layouts/staff.html" %}
+{% block title %}Students{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div><h1>Students</h1><p class="page-header__meta">Profiles you created for {{ program.name }} that students have not claimed yet.</p></div>
+    <a class="btn btn--primary" href="{% url 'workspace:students-new' program=program.slug %}">New profile</a>
+  </div>
+  {% if profiles %}
+  <div class="table-wrap" role="region" aria-label="Unclaimed student profiles" tabindex="0">
+    <table class="table">
+      <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Invitation</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+      <tbody>{% for profile in profiles %}<tr>
+        <th scope="row">{{ profile.full_name }}</th>
+        <td>{{ profile.invite_email|default:"" }}</td>
+        <td>{% if profile.invite_expires_at and profile.invite_expires_at > now %}Sent, expires {{ profile.invite_expires_at|date:"j M Y" }}{% else %}Expired{% endif %}</td>
+        <td>
+          <form method="post" action="{% url 'workspace:students-invite' program=program.slug profile_id=profile.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn--secondary">Send again<span class="visually-hidden"> to {{ profile.full_name }}</span></button>
+          </form>
+        </td>
+      </tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% else %}
+  {% include "components/empty_state.html" with title="Profiles you create for students show here until they claim them." %}
+  {% endif %}
+{% endblock %}

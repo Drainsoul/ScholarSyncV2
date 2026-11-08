@@ -1,10 +1,11 @@
 import hashlib
 
 from allauth.account.models import EmailAddress
-from django.db.models import Case, IntegerField, QuerySet, Value, When
+from django.db.models import Case, IntegerField, OuterRef, QuerySet, Subquery, Value, When
 from django.http import Http404
 
 from apps.accounts.models import User
+from apps.programs.models import Program
 from apps.students.completion import Completion, completion
 from apps.students.models import EducationRecord, FamilyMember, ProfileInvite, StudentProfile
 
@@ -90,3 +91,20 @@ def claim_problem(invite: ProfileInvite, user: User) -> str | None:
     if profile_for(user) is not None:
         return "Your account already has a profile. Contact the scholarship office to combine them."
     return None
+
+
+def unclaimed_profiles_for(program: Program) -> QuerySet[StudentProfile]:
+    """Profiles staff created for this program that no student has claimed, newest first.
+
+    Each row carries its latest invite's email, expiry and claim time (one query in all).
+    """
+    latest = ProfileInvite.objects.filter(profile=OuterRef("pk")).order_by("-pk")
+    return (
+        StudentProfile.objects.filter(created_for=program, user__isnull=True)
+        .annotate(
+            invite_email=Subquery(latest.values("email")[:1]),
+            invite_expires_at=Subquery(latest.values("expires_at")[:1]),
+            invite_claimed_at=Subquery(latest.values("claimed_at")[:1]),
+        )
+        .order_by("-created_at", "-pk")
+    )

@@ -1,0 +1,19 @@
+{% extends "layouts/staff.html" %}{% load ui %}
+{% block title %}New student profile{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div><h1>New student profile</h1><p class="page-header__meta"><a href="{% url 'workspace:students' program=program.slug %}">Back to students</a></p></div>
+  </div>
+  <section class="card" aria-labelledby="new-title">
+    <h2 class="card__title" id="new-title">Who is the student?</h2>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include "components/form_errors.html" %}
+      {% for bound_field in form %}{% field bound_field %}{% endfor %}
+      <div class="btn-row">
+        <button type="submit" class="btn btn--primary">Create and send invitation</button>
+        <a class="btn btn--secondary" href="{% url 'workspace:students' program=program.slug %}">Cancel</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

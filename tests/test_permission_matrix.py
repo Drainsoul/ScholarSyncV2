@@ -57,6 +57,16 @@ RULES: dict[str, dict[str, Any]] = {
         "head": 200,
         "office": 200,
     },
+    # A staff action that only answers POST: the guards run first, then a GET is 405.
+    "staff_post_only": {
+        "anonymous": LOGIN,
+        "student": 403,
+        "other_student": 403,
+        "staff": 405,
+        "other_staff": 403,
+        "head": 405,
+        "office": 405,
+    },
     "office": {"anonymous": LOGIN, **{p: 403 for p in PERSONAS[1:6]}, "office": 200},
     "kit": {p: 404 for p in PERSONAS},
     # An unknown claim link is a 404 for everyone.
@@ -110,6 +120,9 @@ URLS: dict[str, str] = {
     "students:profile-education-delete": "own_record",
     "workspace:no_programs": "no_programs",
     "workspace:dashboard": "staff",
+    "workspace:students": "staff",
+    "workspace:students-new": "staff",
+    "workspace:students-invite": "staff_post_only",
     "office:home": "office",
     "account_login": "guest_only",
     "account_signup": "guest_only",
@@ -149,6 +162,9 @@ URLS: dict[str, str] = {
 }
 URL_KWARGS: dict[str, dict[str, str]] = {
     "workspace:dashboard": {"program": "tcu-ceaa"},
+    "workspace:students": {"program": "tcu-ceaa"},
+    "workspace:students-new": {"program": "tcu-ceaa"},
+    "workspace:students-invite": {"program": "tcu-ceaa", "profile_id": "999999"},
     "programs:detail": {"slug": "tcu-ceaa"},
     "kit:mockup": {"slug": "x"},
     "kit:layout": {"name": "x"},

@@ -49,7 +49,21 @@ def shell_context(
             label, icon = "Dashboard", "layout-dashboard"
         else:
             home, label, icon = reverse("workspace:no_programs"), "Dashboard", "layout-dashboard"
-        nav = [{"label": label, "url": home, "current": True, "count": 0, "icon": icon}]
+        if area == "staff" and program is not None:
+            students = reverse("workspace:students", kwargs={"program": program.slug})
+            path = request.path
+            nav = [
+                {"label": label, "url": home, "current": path == home, "count": 0, "icon": icon},
+                {
+                    "label": "Students",
+                    "url": students,
+                    "current": path.startswith(students),
+                    "count": 0,
+                    "icon": "users",
+                },
+            ]
+        else:
+            nav = [{"label": label, "url": home, "current": True, "count": 0, "icon": icon}]
     context: dict[str, object] = {
         "viewer": {
             "name": user.full_name or user.email,
