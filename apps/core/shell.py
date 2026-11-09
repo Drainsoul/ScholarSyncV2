@@ -30,6 +30,8 @@ def shell_context(
     if area == "student":
         home, label, icon = reverse("students:home"), "Home", "house"
         profile = reverse("students:profile")
+        match = reverse("matching:match")
+        applications = "/me/applications/"  # swapped for reverse() later
         path = request.path
         nav = [
             {"label": label, "url": home, "current": path == home, "count": 0, "icon": icon},
@@ -39,6 +41,20 @@ def shell_context(
                 "current": path.startswith(profile),
                 "count": 0,
                 "icon": "user",
+            },
+            {
+                "label": "Find scholarships",
+                "url": match,
+                "current": path.startswith(match),
+                "count": 0,
+                "icon": "list-checks",
+            },
+            {
+                "label": "Applications",
+                "url": applications,
+                "current": path.startswith(applications),
+                "count": 0,
+                "icon": "file-text",
             },
         ]
     else:

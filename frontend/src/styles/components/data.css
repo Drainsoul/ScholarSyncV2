@@ -707,6 +707,7 @@ meter::-moz-meter-bar {
   color: var(--warning);
 }
 
+.checklist .is-missing > .icon,
 .checklist .is-pending > .icon {
   color: var(--text-muted);
 }

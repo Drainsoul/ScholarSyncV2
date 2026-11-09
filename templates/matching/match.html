@@ -1,0 +1,38 @@
+{% extends "layouts/student.html" %}{% load ui %}
+{% block title %}Find scholarships{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Find scholarships</h1>
+    <p class="page-header__meta">{% if page.term %}For {{ page.term }}{% else %}No school term is set up yet.{% endif %}</p>
+  </div>
+</div>
+{% if not page.profile %}
+  {% include "components/empty_state.html" with title="Start your profile first" body="We check the scholarship rules against your profile." action_url=profile_url action_label="Go to your profile" %}
+{% else %}
+<div class="stack">
+  {% for card in cards %}
+  <section class="card" aria-labelledby="program-{{ card.match.program.slug }}">
+    <div class="card__header">
+      <h2 class="card__title" id="program-{{ card.match.program.slug }}">{{ card.match.program.name }}</h2>
+      <p>{% if card.match.result.eligible %}{% status "success" "You qualify" %}{% else %}{% status "warning" "Not yet" %}{% endif %}</p>
+    </div>
+    {% include "components/checklist.html" with items=card.items %}
+    {% if card.match.result.eligible and card.match.result.tier_candidates %}
+    <p class="text-sm">Allowance tiers: {% for tier in card.match.result.tier_candidates %}{{ tier.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+    {% endif %}
+    {% if card.match.open_application_id %}
+    <div class="btn-row"><a class="btn btn--secondary" href="/me/applications/{{ card.match.open_application_id }}/">Continue your application</a></div>
+    {% elif card.match.result.eligible %}
+    <div class="btn-row"><a class="btn btn--primary" href="/me/applications/new/{{ card.match.program.slug }}/">Apply</a></div>
+    {% endif %}
+  </section>
+  {% endfor %}
+  <section class="card" aria-labelledby="hint-title">
+    <h2 class="card__title" id="hint-title">Suggested by v1's model</h2>
+    <p>{{ hint_text }}</p>
+    <p class="text-sm text-muted">Advisory only: the program rules above decide. The model's income units are unknown.</p>
+  </section>
+</div>
+{% endif %}
+{% endblock %}

@@ -106,6 +106,7 @@ URLS: dict[str, str] = {
     "core:contact": "public",
     "programs:list": "public",
     "programs:detail": "public",
+    "matching:match": "student",
     "students:home": "student",
     "students:profile": "student",
     "students:profile-personal": "student",
