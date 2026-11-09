@@ -14,6 +14,7 @@
   M4 final-review follow-ups (§9, §10, §14).
 - **Revision:** 8 (2026-11-06): M5 decisions: files (§4.4, §7, §14, §16).
 - **Revision:** 9 (2026-11-08): M6 decisions: reference data and student profile (§4.1, §4.2, §4.3, §5, §16).
+- **Revision:** 10 (2026-11-10): M7 decisions: matching and student applications (§4.2, §4.5, §5, §8, §9, §16).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -155,7 +156,8 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - constraints: unique (`school_year_start`, `term`); at most one current term (partial unique).
 - **`Program`:**
   - identity: `slug` (e.g. `tcu-ceaa`, `lani`), `name`, `description`, `is_active`;
-  - window and limits: `applications_open_on`, `applications_close_on`, `max_terms`, `claim_location_default`;
+  - window and limits: `applications_open_on`, `applications_close_on`, `max_terms`, `claim_location_default`; a
+    blank open date means already open and a blank close date means no closing date (the seed sets neither);
   - **eligibility rules:**
     - `min_gwa_percent`, `max_gwa_one_to_five` (scale-aware thresholds), `min_units`;
     - `min_residency_years`, `requires_registered_voter`;
@@ -189,7 +191,11 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   1 Jan-31 May and the summer term runs 1 Jun-31 Jul; the one containing today is current.
 - Rules, from v1's forms (all pending §18 Q3/Q4):
   - CEAA: new GWA ≥ 80%, TCU only; renewal ≥ 80% and ≥ 15 units;
-  - LANI: new GWA ≥ 75%; renewal 1-5 GWA ≤ 2.50, ≥ 15 units, no failing grades.
+  - LANI: new GWA ≥ 75%, or ≤ 3.00 on the 1-5 scale (3.00 is the passing mark there, as 75% is on the percent
+    scale; without it every UP and UST student is locked out under the §8 scale rule); renewal 1-5 GWA ≤ 2.50,
+    ≥ 15 units, no failing grades.
+  - The seed never overwrites an existing program, so an existing database needs `docker compose down -v` (or the
+    M11 settings page) to pick up new values.
 - These are the v1 admin values (`docs/legacy-audit.md` §3), pending the maintainer's confirmation.
 
 ### 4.3 students
@@ -231,25 +237,43 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 ### 4.5 applications
 - **`Application`:**
   - fields:
-    - `profile`, `program`, `term`, `kind` ∈ {new, renewal}, `award` (renewal only);
+    - `profile`, `program`, `term`, `kind` ∈ {new, renewal}; `award` (renewal only) arrives with `Award` in M9, as an
+      expand-only addition;
     - `requested_tier` FK `BenefitTier`;
-    - academic: `school`, `course`, `year_level`, `gwa`, `gwa_scale`, `units`;
+    - academic: `school` (nullable FK), `school_name`, `school_type`, `course`, `year_level`, `gwa`, `gwa_scale`,
+      `units`; the school fallback matches `EducationRecord`, and exactly one of the FK or the name is set once
+      submitted;
+    - the academic snapshot is copied from the current education record at submit, not at start, and the checks are
+      re-run under the lock; the draft page shows the live profile values;
     - `match_snapshot` (JSON: eligibility result and model hint at submit time), `status`;
     - `submitted_at`, `decided_at`, `decided_by`, `decision_reason`, `created_by` (the student or staff).
   - transitions:
     - `draft` → `submitted` (all required documents uploaded) or `withdrawn`;
     - `submitted` → `under_review` or `withdrawn`;
     - `under_review` → `returned` (needs fixes; reason required), `approved` or `rejected` (reason required);
-    - `returned` → `submitted` or `withdrawn`.
+    - `returned` → `submitted` or `withdrawn`;
+    - `TRANSITIONS` is declared in full, but M7 drives only the student side: start (creates a `draft`), submit
+      (`draft` or `returned` → `submitted`) and withdraw (`draft`, `submitted` or `returned` → `withdrawn`);
+    - resubmitting a returned application keeps the first snapshot and the requested tier, skips the window check
+      (staff asked for fixes) and re-checks the documents only.
   - constraint: at most one *open* application (draft, submitted, under_review or returned) per (`profile`, `program`,
-    `term`), as a partial unique index.
+    `term`), as a partial unique index. A student may hold open applications to several programs (CEAA and LANI) in
+    one term; whether they may hold two awards is §18 Q6, decided at approval in M8.
   - Approved applications are kept: they're the history.
 - **`Document`:**
-  - fields: `requirement` FK `RequiredDocument`; exactly one of `application` FK / `scholar_term` FK (a
-    `CheckConstraint` enforces the XOR); `status` ∈ {pending, approved, declined}; `decline_reason`; `reviewed_by`;
-    `reviewed_at`;
-  - constraints: unique (`requirement`, `application`) and unique (`requirement`, `scholar_term`);
-  - transitions: `pending` → `approved` or `declined`; `declined` → `pending` (re-upload).
+  - fields: `requirement` FK `RequiredDocument`; `application` FK; `status` ∈ {pending, approved, declined};
+    `decline_reason`; `reviewed_by`; `reviewed_at`;
+  - `application` is non-null until M9, which relaxes it, adds `scholar_term` FK and a `CheckConstraint` that exactly
+    one of the two is set;
+  - constraints: unique (`requirement`, `application`); M9 adds unique (`requirement`, `scholar_term`);
+  - transitions: `pending` → `approved` or `declined`; `declined` → `pending` (re-upload);
+  - rules:
+    - documents change only while the application is `draft` or `returned`;
+    - an `approved` document can't be replaced, and re-uploading a `declined` one moves it back to `pending`;
+    - the service checks the requirement's own `accepted_types` and `max_bytes`, because the upload field applies only
+      the purpose-wide limit;
+    - a `StoredFile` backs at most one `DocumentFile`;
+    - students download their own files through `/files/<id>/`; staff access comes in M8.
 - **`DocumentFile`:** `document`, `file` FK `StoredFile`, `version`, `is_current`. A document holds one or more files,
   and re-uploads add a version.
 
@@ -319,7 +343,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 | Health | `/healthz` (database ping, no details) | anyone |
 | Accounts | `/accounts/…` (allauth: signup, login, logout POST, email confirm, password reset, Google), `/accounts/claim/<token>/` | anyone |
 | Student | `/me/` (dashboard), `/me/profile/` (+ `personal/`, `family/`, `family/<id>/` + `…/delete/`, `education/`, `education/<id>/` + `…/delete/`, `photo/`) | student (own records only) |
-| Student | `/me/match/`, `/me/applications/`, `/me/applications/new/<slug>/`, `/me/applications/<id>/` (documents, submit, withdraw) | student (own records only) |
+| Student | `/me/match/`, `/me/applications/`, `/me/applications/new/<slug>/` (GET: confirm page; POST: creates the draft), `/me/applications/<id>/`, `/me/applications/<id>/documents/<requirement>/` (POST), `…/submit/` (POST), `…/withdraw/` | student (own records only) |
 | Student | `/me/scholarships/` (awards, terms, disbursements, schedules), `/me/notifications/` | student |
 | Staff | `/staff/<slug>/` (dashboard) | program staff/head |
 | Staff | `students/` (unclaimed profiles created for this program), `students/new/`, `students/<id>/invite/` | program staff/head |
@@ -409,21 +433,39 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   `img-src` include the storage origin from settings.
 
 ## 8. Matching
-- **Eligibility, deterministic** (`matching.eligibility.evaluate(profile, program, academic)`):
+- **Eligibility, deterministic**
+  (`matching.eligibility.evaluate(profile, program, academic, *, today, term, tiers, allowed_schools)`):
+  - the caller passes the term, the tiers and the allowed schools, so `evaluate` makes no queries; the allowed-schools
+    rule text is built from `allowed_schools`;
   - returns `EligibilityResult(eligible, reasons: list[str], tier_candidates, merit_likely)`;
   - checks the application window, residency years, voter registration, school/type allowlist, minimum units, and GWA
     against the scale-aware threshold;
+  - every rule must be met, and each check is `met`, `unmet` or `missing`; `missing` means the profile lacks the
+    data, and the reason says what to add, with a link to the profile section;
+  - scale rule: a GWA rule that exists for another scale but not the student's is `unmet` ("This program has no grade
+    rule yet for schools that grade on a {scale} scale. Ask the scholarship office."), for example a percent-only
+    program and a student graded 1-5 or on four points; only a program with no GWA rule at all passes every scale;
+  - the term is `application_term(today)`: the term flagged `is_current`, else the term whose dates contain `today`,
+    else `None`, which closes applying with a sentence (the M9 rollover owns the flag);
+  - `tier_candidates` are every tier in force for the program in that term (LANI tier criteria are §18 Q3); the
+    student requests one, and a lone tier is chosen for them; a program with no tiers can't be submitted to;
+    `merit_likely` is `None` unless the program has a merit threshold for the student's scale;
   - every failed check adds a human-readable reason;
-  - this is the only thing that gates applying.
+  - this is the only thing that gates applying. Submitting also needs the "Personal details" completion section done
+    (§16 M7).
 - **Model hint, advisory** (`matching.legacy_model.suggest(...)`):
   - It is a pure-Python port of v1's pickle. `scripts/export_legacy_model.py`, run once in a throwaway sklearn 1.6.1
     environment, exports the scaler means/scales, one-hot categories, coefficients, intercepts and classes to
     `apps/matching/data/legacy_tier_model.json`. Inference is the same transform followed by a softmax.
   - **Inputs:**
-    - `grade = clamp(1 + (gwa_percent − 70) × 0.1, 1, 4)`; only shown when a percent GWA exists;
-    - `income`, now actually collected; its units are undocumented, and the hint is labelled as such;
-    - the exact school name;
+    - `grade = round(clamp(1 + (gwa_percent − 70) × 0.1, 1, 4), 2)` (as v1); only shown when a percent GWA exists;
+    - `income`, now actually collected: the monthly household income in pesos as typed; v1's units are undocumented,
+      so the page says "Suggested by v1's model; advisory, and the model's income units are unknown.";
+    - the school name, matched exactly (v1's one-hot encoder is case-sensitive);
     - school type public/private, with SUC and LCU mapped to public.
+  - **Missing inputs:** the hint appears only with a percent current GWA, a household income, and a known school name
+    and type. Otherwise it says why: "The legacy model only reads percent grades." / "Add your household income to
+    see it."
   - **Output:** a suggested program plus merit (`CEAA_Merit`, …, `NotEligible`) and a probability. It never suggests a
     LANI tier.
   - **Parity test:** about 30 fixture vectors, including unknown schools and edge grades, generated by the export
@@ -450,6 +492,9 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - v1 messages to port: application received, application decided, allowance approved/released, password reset (from
     allauth).
   - New: invite/claim, document declined, application returned.
+  - M7 sends only `application_received`, on submit and on resubmit. Its context whitelist is `full_name`,
+    `program_name` and `application_url` (a name is allowed because the address is verified). The returned and decided
+    emails come with M8; there is no `Notification` model before M11.
 - **Background jobs:** two management commands, run on a loop by the `worker` service (or from any cron or scheduler):
   - `send_outbox` retries `failed` rows, up to 5 attempts, and also picks up `queued` rows older than 5 minutes;
   - `cleanup` runs `clearsessions`, deletes expired invites, and purges `sent` outbox rows and exhausted `failed` rows
@@ -768,6 +813,7 @@ starts, and ends with every acceptance item checked.
 **M7: Matching + student applications**
 - [ ] Eligibility engine; exported legacy model + parity test; `/me/match/`.
 - [ ] Apply flow (documents, submit, withdraw, returned → resubmit); status page; emails.
+- [ ] Submitting needs the personal details section complete ("Finish your personal details before you submit.").
 - [ ] Extend the demo loader for this milestone's screens.
 
 **M8: Application review**
