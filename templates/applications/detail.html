@@ -1,0 +1,60 @@
+{% extends "layouts/student.html" %}{% load ui uploads %}
+{% block title %}{{ application.program.name }} application{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div>
+      <h1>{{ application.program.name }} application</h1>
+      <p class="page-header__meta">{{ application.term }} · {{ application.get_status_display }}</p>
+    </div>
+  </div>
+  {% if application.status == "returned" %}
+  <div class="banner banner--warning"><div><p>Staff returned this application: {{ application.decision_reason }}</p></div></div>
+  {% endif %}
+  <div class="stack">
+    <section class="card" aria-labelledby="academic-title">
+      <h2 class="card__title" id="academic-title">Your school and grades</h2>
+      {% if academic %}
+      <ul class="list">
+        <li><p>School: {{ academic.school }}</p></li>
+        <li><p>Course: {{ academic.course|default:"Not given" }}</p></li>
+        <li><p>Year level: {{ academic.year_level|default_if_none:"Not given" }}</p></li>
+        <li><p>General weighted average: {{ academic.gwa|default_if_none:"Not given" }}</p></li>
+        <li><p>Units: {{ academic.units|default_if_none:"Not given" }}</p></li>
+      </ul>
+      {% else %}
+      <p>No current school on your profile yet.</p>
+      {% endif %}
+      {% if academic.live or not academic %}
+      <p class="text-sm">These come from your profile and are copied when you submit. <a href="{{ education_url }}">Edit in your profile</a></p>
+      {% endif %}
+    </section>
+    <section class="card" aria-labelledby="documents-title">
+      <h2 class="card__title" id="documents-title">Documents</h2>
+      <p>{{ uploaded_count }} of {{ required_count }} required documents uploaded</p>
+      <ul class="stack">{% for card in cards %}
+        <li id="{{ card.anchor }}">
+          {% if card.row.current %}
+          {% if not card.editable %}<p><strong>{{ card.row.requirement.label }}</strong></p>{% endif %}
+          <p class="text-sm">Current file: <a href="{% url 'files:download' card.row.current.id %}">{{ card.row.current.original_name }}</a>
+            {% if card.row.document.status == "declined" %}{% status card.tone "Declined: "|add:card.row.document.decline_reason %}
+            {% elif card.row.document.status == "approved" %}{% status card.tone "Approved" %}
+            {% else %}{% status card.tone "Waiting for review" %}{% endif %}</p>
+          {% elif not card.editable %}
+          <p><strong>{{ card.row.requirement.label }}</strong></p>
+          <p class="text-sm">No file uploaded.</p>
+          {% endif %}
+          {% if card.editable %}
+          <form method="post" action="{% url 'applications:document' application.pk card.row.requirement.pk %}" novalidate>
+            {% csrf_token %}
+            {% upload_field "document" card.field_id "file" card.row.requirement.label card.row.requirement.help_text card.error %}
+            <div class="btn-row"><button type="submit" class="btn btn--secondary">Save document</button></div>
+          </form>
+          {% else %}
+          {% if card.row.requirement.help_text %}<p class="text-sm">{{ card.row.requirement.help_text }}</p>{% endif %}
+          {% if card.error %}<p class="field__error"><span>{{ card.error }}</span></p>{% endif %}
+          {% endif %}
+        </li>{% endfor %}
+      </ul>
+    </section>
+  </div>
+{% endblock %}

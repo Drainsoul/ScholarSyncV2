@@ -1,0 +1,23 @@
+{% extends "layouts/student.html" %}{% load ui %}
+{% block title %}Your applications{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div><h1>Your applications</h1></div>
+  </div>
+  {% if rows %}
+  <div class="table-wrap" role="region" aria-label="Your applications" tabindex="0">
+    <table class="table">
+      <thead><tr><th scope="col">Program</th><th scope="col">Term</th><th scope="col">Status</th><th scope="col">Submitted</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+      <tbody>{% for row in rows %}<tr>
+        <th scope="row">{{ row.application.program.name }}</th>
+        <td>{{ row.application.term }}</td>
+        <td>{% status row.tone row.application.get_status_display %}</td>
+        <td>{% if row.application.submitted_at %}{{ row.application.submitted_at|date:"j M Y" }}{% else %}Not submitted{% endif %}</td>
+        <td><a class="btn btn--secondary" href="{% url 'applications:detail' row.application.pk %}">Open<span class="visually-hidden"> {{ row.application.program.name }} application</span></a></td>
+      </tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% else %}
+  {% include "components/empty_state.html" with title="No applications yet." action_url=match_url action_label="Find scholarships" %}
+  {% endif %}
+{% endblock %}

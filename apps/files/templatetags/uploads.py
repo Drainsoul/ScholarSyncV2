@@ -12,7 +12,9 @@ register = template.Library()
 
 
 @register.inclusion_tag("components/file_input.html")
-def upload_field(purpose: str, id: str, name: str, label: str, help: str = "") -> dict[str, Any]:
+def upload_field(
+    purpose: str, id: str, name: str, label: str, help: str = "", error: str = ""
+) -> dict[str, Any]:
     rule = policy.RULES.get(purpose)
     if rule is None:
         raise TemplateSyntaxError(f"upload_field: unknown purpose {purpose!r}")
@@ -21,7 +23,8 @@ def upload_field(purpose: str, id: str, name: str, label: str, help: str = "") -
         "name": name,
         "label": label,
         "help": help or policy.help_text(purpose),
-        "state": "idle",
+        "state": "error" if error else "idle",
+        "error": error,
         "upload": {
             "purpose": purpose,
             "accept": ",".join(rule.types),

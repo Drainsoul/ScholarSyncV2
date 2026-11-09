@@ -22,9 +22,9 @@
     <p class="text-sm">Allowance tiers: {% for tier in card.match.result.tier_candidates %}{{ tier.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
     {% endif %}
     {% if card.match.open_application_id %}
-    <div class="btn-row"><a class="btn btn--secondary" href="/me/applications/{{ card.match.open_application_id }}/">Continue your application</a></div>
+    <div class="btn-row"><a class="btn btn--secondary" href="{% url 'applications:detail' card.match.open_application_id %}">Continue your application</a></div>
     {% elif card.match.result.eligible %}
-    <div class="btn-row"><a class="btn btn--primary" href="/me/applications/new/{{ card.match.program.slug }}/">Apply</a></div>
+    <div class="btn-row"><a class="btn btn--primary" href="{% url 'applications:new' card.match.program.slug %}">Apply</a></div>
     {% endif %}
   </section>
   {% endfor %}

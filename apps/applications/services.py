@@ -11,6 +11,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Max
 from django.http import Http404, HttpRequest
+from django.urls import reverse
 from django.utils import timezone
 
 from apps.accounts.models import User
@@ -238,7 +239,7 @@ def _choose_tier(result: EligibilityResult, tier: BenefitTier | None) -> Benefit
 
 
 def application_url(application: Application) -> str:
-    return settings.SITE_URL + f"/me/applications/{application.pk}/"
+    return settings.SITE_URL + reverse("applications:detail", args=[application.pk])
 
 
 @transaction.atomic

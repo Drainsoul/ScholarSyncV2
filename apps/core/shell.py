@@ -31,7 +31,7 @@ def shell_context(
         home, label, icon = reverse("students:home"), "Home", "house"
         profile = reverse("students:profile")
         match = reverse("matching:match")
-        applications = "/me/applications/"  # swapped for reverse() later
+        applications = reverse("applications:list")
         path = request.path
         nav = [
             {"label": label, "url": home, "current": path == home, "count": 0, "icon": icon},

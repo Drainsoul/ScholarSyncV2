@@ -1,0 +1,27 @@
+{% extends "layouts/student.html" %}
+{% block title %}Apply to {{ program.name }}{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div>
+      <h1>Apply to {{ program.name }}</h1>
+      <p class="page-header__meta">{% if program.applications_close_on %}Applications close on {{ program.applications_close_on|date:"j M Y" }}{% else %}No closing date{% endif %}</p>
+    </div>
+  </div>
+  {% if error %}
+  <div class="banner banner--danger" role="alert"><div><p>{{ error }}</p></div></div>
+  {% endif %}
+  {% if not has_profile %}
+    {% include "components/empty_state.html" with title="Start your profile first" body="We check the scholarship rules against your profile." action_url=profile_url action_label="Go to your profile" %}
+  {% else %}
+  <section class="card" aria-labelledby="checklist-title">
+    <h2 class="card__title" id="checklist-title">Can you apply?</h2>
+    {% include "components/checklist.html" with items=items %}
+    {% if eligible %}
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="btn-row"><button type="submit" class="btn btn--primary">Start application</button></div>
+    </form>
+    {% endif %}
+  </section>
+  {% endif %}
+{% endblock %}
