@@ -1,0 +1,3 @@
+{% extends "emails/base.txt" %}
+{% block body %}Hi {{ full_name }}, we received your application to {{ program_name }}. Staff will review it and email you when it's decided. You can follow it here: {{ application_url }}
+{% endblock %}
