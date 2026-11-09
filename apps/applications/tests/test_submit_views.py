@@ -14,6 +14,7 @@ from apps.applications.tests.factories import (
     DocumentFileFactory,
 )
 from apps.applications.tests.test_views import ready_file, signed_in, text
+from apps.core.models import AuditEvent
 from apps.programs.models import School
 from apps.programs.tests.factories import (
     AcademicTermFactory,
@@ -127,6 +128,10 @@ def test_submit_other_student_404(client, world):
     other = UserFactory.create(verified=True)
     response = signed_in(client, other).post(submit_url(application), {"declaration": "on"})
     assert response.status_code == 404
+    application.refresh_from_db()
+    assert application.status == Application.Status.DRAFT
+    assert not AuditEvent.objects.exists()
+    assert not EmailOutbox.objects.exists()
 
 
 def test_submit_get_not_allowed(client, world):
@@ -142,6 +147,8 @@ def test_double_submit_second_shows_sentence(client, world):
     assert second.status_code == 400
     assert "banner--danger" in second.content.decode()
     assert "already" in text(second).lower()
+    assert "Submit application" not in text(second)
+    assert "I declare that" not in text(second)
     assert EmailOutbox.objects.count() == 1
 
 
@@ -150,6 +157,8 @@ def test_submit_withdrawn_shows_banner_400(client, world):
     response = signed_in(client, world["user"]).post(submit_url(application), {"declaration": "on"})
     assert response.status_code == 400
     assert "banner--danger" in response.content.decode()
+    assert "Submit application" not in text(response)
+    assert "I declare that" not in text(response)
 
 
 def test_resubmit_returned(client, world):
@@ -251,3 +260,6 @@ def test_withdraw_other_student_404(client, world):
     signed_in(client, other)
     assert client.get(withdraw_url(application)).status_code == 404
     assert client.post(withdraw_url(application)).status_code == 404
+    application.refresh_from_db()
+    assert application.status == Application.Status.DRAFT
+    assert not AuditEvent.objects.exists()

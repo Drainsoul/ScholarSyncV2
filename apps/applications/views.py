@@ -207,7 +207,9 @@ def render_detail(
             )
         )
     required = [row for row in rows if row.requirement.is_required]
-    if application.is_editable and submit_form is None:
+    if not application.is_editable:
+        submit_form = None
+    elif submit_form is None:
         submit_form = _submit_form(_student(request), application)
     context = {
         "submit_form": submit_form,
