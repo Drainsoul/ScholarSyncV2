@@ -1,6 +1,8 @@
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 import pytest
+import time_machine
 
 from apps.accounts.models import User
 from apps.accounts.tests.factories import UserFactory
@@ -18,6 +20,14 @@ from apps.students.tests.factories import EducationRecordFactory, FullProfileFac
 pytestmark = pytest.mark.django_db
 
 TODAY = date(2026, 10, 15)
+
+
+@pytest.fixture(autouse=True)
+def frozen_today():
+    with time_machine.travel(
+        datetime(2026, 10, 15, 12, 0, tzinfo=ZoneInfo("Asia/Manila")), tick=False
+    ):
+        yield
 
 
 def user_of(profile: StudentProfile) -> User:
