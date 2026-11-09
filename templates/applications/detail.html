@@ -7,6 +7,9 @@
       <p class="page-header__meta">{{ application.term }} · {{ application.get_status_display }}</p>
     </div>
   </div>
+  {% if banner %}
+  <div class="banner banner--danger" role="alert"><div><p>{{ banner }}</p></div></div>
+  {% endif %}
   {% if application.status == "returned" %}
   <div class="banner banner--warning"><div><p>Staff returned this application: {{ application.decision_reason }}</p></div></div>
   {% endif %}
@@ -56,5 +59,21 @@
         </li>{% endfor %}
       </ul>
     </section>
+    {% if submit_form %}
+    <section class="card" aria-labelledby="submit-title">
+      <h2 class="card__title" id="submit-title">Submit</h2>
+      <form method="post" action="{% url 'applications:submit' application.pk %}" novalidate>
+        {% csrf_token %}
+        {% include "components/form_errors.html" with form=submit_form %}
+        {% if "tier" in submit_form.fields %}{% field submit_form.tier %}
+        {% elif submit_form.candidates %}<p>Allowance tier: {{ submit_form.candidates.0.name }}</p>{% endif %}
+        {% field submit_form.declaration %}
+        <div class="btn-row"><button type="submit" class="btn btn--primary">{% if application.status == "returned" %}Resubmit application{% else %}Submit application{% endif %}</button></div>
+      </form>
+    </section>
+    {% endif %}
+    {% if can_withdraw %}
+    <p><a class="btn btn--secondary" href="{% url 'applications:withdraw' application.pk %}">Withdraw application</a></p>
+    {% endif %}
   </div>
 {% endblock %}

@@ -1,0 +1,16 @@
+{% extends "layouts/student.html" %}{% load ui %}
+{% block title %}Withdraw your {{ application.program.name }} application{% endblock %}
+{% block content %}
+  <div class="page-header"><div><h1>Withdraw your {{ application.program.name }} application?</h1></div></div>
+  <section class="card" aria-labelledby="withdraw-title">
+    <h2 class="card__title" id="withdraw-title">Are you sure?</h2>
+    <p>You can apply again while applications are open.</p>
+    <form method="post">
+      {% csrf_token %}
+      <div class="btn-row">
+        <button type="submit" class="btn btn--danger">{% icon "x" %}Withdraw application</button>
+        <a class="btn btn--secondary" href="{{ cancel_url }}">Cancel</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

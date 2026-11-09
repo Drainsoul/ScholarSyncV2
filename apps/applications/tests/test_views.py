@@ -262,8 +262,8 @@ def test_detail_header_and_documents(client, world):
     assert "Front and back." in body
     assert f'id="doc-{world["requirement"].pk}"' in body
     assert "Save document" in body
-    assert "Submit application" not in body
-    assert "Withdraw application" not in body
+    assert "Submit application" in body
+    assert "Withdraw application" in body
 
 
 def test_detail_declined_document_shows_reason(client, world):

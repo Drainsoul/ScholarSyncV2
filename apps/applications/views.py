@@ -3,7 +3,7 @@ from typing import Any
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, QueryDict
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -12,7 +12,7 @@ from django.views.generic import TemplateView
 
 from apps.accounts.models import User
 from apps.applications import services
-from apps.applications.forms import DocumentForm
+from apps.applications.forms import DocumentForm, SubmitForm
 from apps.applications.models import Application, Document
 from apps.applications.selectors import (
     DocumentRow,
@@ -25,7 +25,7 @@ from apps.core.permissions import StudentRequiredMixin
 from apps.core.shell import shell_context
 from apps.matching.checklist import checklist_items
 from apps.matching.selectors import eligibility_for
-from apps.programs.models import Program, RequiredDocument
+from apps.programs.models import BenefitTier, Program, RequiredDocument
 from apps.programs.selectors import application_term
 from apps.students.selectors import current_education, profile_for
 
@@ -154,6 +154,28 @@ def _academic(application: Application, user: User) -> dict[str, Any] | None:
     }
 
 
+WITHDRAWABLE = (
+    Application.Status.DRAFT,
+    Application.Status.SUBMITTED,
+    Application.Status.RETURNED,
+)
+
+
+def _candidates(user: User, application: Application) -> list[BenefitTier]:
+    """The tiers the student can pick: live for a draft, the requested one once returned."""
+    if application.status != Application.Status.DRAFT:
+        return [application.requested_tier] if application.requested_tier is not None else []
+    profile = profile_for(user)
+    if profile is None:
+        return []
+    result = eligibility_for(profile, application.program, today=timezone.localdate())
+    return list(result.tier_candidates)
+
+
+def _submit_form(user: User, application: Application, data: QueryDict | None = None) -> SubmitForm:
+    return SubmitForm(data, candidates=_candidates(user, application))
+
+
 def render_detail(
     request: HttpRequest,
     application: Application,
@@ -161,8 +183,13 @@ def render_detail(
     error_for: RequiredDocument | None = None,
     error: str = "",
     status: int = 200,
+    submit_form: SubmitForm | None = None,
+    banner: str = "",
 ) -> HttpResponse:
-    """The application page; `error` shows on the row of `error_for` only."""
+    """The application page; `error` shows on the row of `error_for` only.
+
+    `submit_form` is a bound form from a failed submit; `banner` is a service sentence.
+    """
     rows = document_rows(application)
     cards = []
     for row in rows:
@@ -180,7 +207,12 @@ def render_detail(
             )
         )
     required = [row for row in rows if row.requirement.is_required]
+    if application.is_editable and submit_form is None:
+        submit_form = _submit_form(_student(request), application)
     context = {
+        "submit_form": submit_form,
+        "banner": banner,
+        "can_withdraw": application.status in WITHDRAWABLE,
         **shell_context(request, area="student"),
         "application": application,
         "status_tone": APPLICATION_TONES[application.status],
@@ -196,6 +228,53 @@ def render_detail(
 class DetailView(StudentRequiredMixin, View):
     def get(self, request: HttpRequest, pk: int) -> HttpResponse:
         return render_detail(request, own_application(_student(request), pk))
+
+
+class SubmitView(StudentRequiredMixin, View):
+    http_method_names = ["post", "options"]
+
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        user = _student(request)
+        application = own_application(user, pk)
+        form = _submit_form(user, application, request.POST)
+        if not form.is_valid():
+            return render_detail(request, application, submit_form=form, status=400)
+        try:
+            services.submit_application(
+                user=user,
+                application=application,
+                tier=form.cleaned_data.get("tier"),
+                request=request,
+            )
+        except ValidationError as error:
+            return render_detail(
+                request, application, submit_form=form, banner=_error_text(error), status=400
+            )
+        messages.success(request, "Application submitted. We've emailed you a copy.")
+        return redirect("applications:detail", pk=application.pk)
+
+
+class WithdrawView(StudentRequiredMixin, View):
+    def get(self, request: HttpRequest, pk: int) -> HttpResponse:
+        application = own_application(_student(request), pk)
+        context = {
+            **shell_context(request, area="student"),
+            "application": application,
+            "cancel_url": reverse("applications:detail", args=[application.pk]),
+        }
+        return render(request, "applications/withdraw.html", context)
+
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        application = own_application(_student(request), pk)
+        try:
+            services.withdraw_application(
+                user=_student(request), application=application, request=request
+            )
+        except ValidationError as error:
+            messages.error(request, _error_text(error))
+            return redirect("applications:detail", pk=application.pk)
+        messages.success(request, "Application withdrawn.")
+        return redirect("applications:list")
 
 
 class DocumentView(StudentRequiredMixin, View):
