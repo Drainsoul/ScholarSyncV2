@@ -54,6 +54,8 @@ STARTER_PROGRAMS: list[dict[str, Any]] = [
         ),
         "rules": {
             "min_gwa_percent": Decimal("75"),
+            # Pending §18 Q3/Q4: 3.00 is the 1-5 passing mark, as 75% is on the percent scale.
+            "max_gwa_one_to_five": Decimal("3.00"),
             "renewal_max_gwa_one_to_five": Decimal("2.50"),
             "renewal_min_units": 15,
             "renewal_no_failing_grades": True,

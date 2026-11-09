@@ -157,3 +157,14 @@ def test_seed_survives_a_tier_with_history(db):
     before = BenefitTier.objects.count()
     call_command("seed_programs")
     assert BenefitTier.objects.count() == before
+
+
+def test_seed_lani_has_one_to_five_rule(db):
+    call_command("seed_programs")
+    assert Program.objects.get(slug="lani").max_gwa_one_to_five == Decimal("3.00")
+
+
+def test_lani_public_page_lists_one_to_five_rule(db, client):
+    call_command("seed_programs")
+    response = client.get("/programs/lani/")
+    assert "A GWA of 3.00 or better (schools that grade 1 to 5)." in response.content.decode()

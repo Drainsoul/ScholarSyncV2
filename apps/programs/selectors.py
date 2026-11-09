@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Literal
 
 from django.db.models import QuerySet
@@ -28,6 +29,23 @@ def membership_for(user: User, program: Program) -> ProgramMembership | None:
 
 def current_term() -> AcademicTerm | None:
     return AcademicTerm.objects.filter(is_current=True).first()
+
+
+def application_term(today: date) -> AcademicTerm | None:
+    """The flagged term (even if its dates exclude today), else the term containing today."""
+    flagged = current_term()
+    if flagged is not None:
+        return flagged
+    return AcademicTerm.objects.filter(starts_on__lte=today, ends_on__gte=today).first()
+
+
+def window_state(program: Program, today: date) -> Literal["open", "not_yet", "closed"]:
+    """Both ends inclusive; a missing end is unbounded."""
+    if program.applications_open_on is not None and today < program.applications_open_on:
+        return "not_yet"
+    if program.applications_close_on is not None and today > program.applications_close_on:
+        return "closed"
+    return "open"
 
 
 def tiers_in_force(program: Program, term: AcademicTerm) -> list[BenefitTier]:
