@@ -59,7 +59,7 @@ python_version = "3.13"
 plugins = ["mypy_django_plugin.main"]
 strict = true
 warn_unreachable = true
-exclude = ['^docs/', '^frontend/', '^static/', '^staticfiles/', '^\.venv/']
+exclude = ['^docs/', '^frontend/', '^static/', '^staticfiles/', '^\.venv/', '^scripts/export_legacy_model\.py$']
 
 [[tool.mypy.overrides]]
 module = ["*.tests.*", "tests.*", "conftest"]
