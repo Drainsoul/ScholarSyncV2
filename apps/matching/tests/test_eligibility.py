@@ -363,3 +363,14 @@ def test_from_record_uses_listed_school() -> None:
     assert academic.school_name == school.name
     assert academic.school_type == "suc"
     assert academic.gwa_scale == "one_to_five"
+
+
+def test_no_academic_reasons_are_not_repeated() -> None:
+    allowed = School(name="TUP", type="suc", grading_scale="percent")
+    result = run(make_program(), no_academic=True, allowed_schools=(allowed,))
+    assert result.reasons == [
+        "Add your current school to your profile.",
+        "Add your school's type to your profile.",
+        "Add your units this term to your profile.",
+        "Add your GWA and grading scale to your profile.",
+    ]

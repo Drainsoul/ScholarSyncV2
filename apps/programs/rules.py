@@ -2,7 +2,7 @@
 
 from collections.abc import Sequence
 
-from django.utils.dateformat import format
+from django.utils.dateformat import format as format_date
 
 from apps.programs.models import Program, School
 
@@ -72,7 +72,7 @@ def rule_sentence(
     if code == "window":
         if program.applications_close_on is None:
             return "Applications are open."
-        return f"Applications are open until {format(program.applications_close_on, 'j F Y')}."
+        return f"Applications are open until {format_date(program.applications_close_on, 'j F Y')}."
     if code == "school":
         return "You have a current school in your profile."
     raise ValueError(f"Unknown rule code: {code}")

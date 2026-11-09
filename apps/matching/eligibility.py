@@ -70,7 +70,7 @@ class EligibilityResult:
 
     @property
     def reasons(self) -> list[str]:
-        return [check.reason for check in self.checks if check.reason]
+        return list(dict.fromkeys(check.reason for check in self.checks if check.reason))
 
 
 def _date(value: date | None) -> str:
