@@ -28,7 +28,7 @@ from apps.programs.models import BenefitTier, Program, RequiredDocument
 from apps.programs.selectors import application_term
 from apps.students.completion import completion
 from apps.students.models import EducationRecord, StudentProfile
-from apps.students.selectors import current_education
+from apps.students.selectors import current_education, effective_school_type
 from apps.workspace.emails import enqueue
 
 UPLOAD_AGAIN = "Upload the file again."
@@ -221,11 +221,15 @@ def _snapshot(
 
 
 def _copy_academics(application: Application, record: EducationRecord) -> None:
-    """Freeze the current school and grades. A listed school replaces the typed name and type."""
+    """Freeze the current school and grades.
+
+    A listed school replaces the typed name; its type and grading scale are copied as they are
+    today, so a later edit of the school list doesn't change what was applied with.
+    """
     school = record.school
     application.school = school
     application.school_name = "" if school is not None else record.school_name
-    application.school_type = "" if school is not None else record.school_type
+    application.school_type = effective_school_type(record)
     application.gwa_scale = school.grading_scale if school is not None else record.gwa_scale
     application.course = record.course
     application.year_level = record.year_level

@@ -482,6 +482,7 @@ def test_submit_happy_path_snapshots_and_emails(world: World) -> None:
     assert submitted.requested_tier == world.tier
     assert submitted.school == world.school
     assert submitted.school_name == ""
+    assert submitted.school_type == School.Type.PRIVATE  # frozen like gwa_scale
     assert submitted.gwa == Decimal("90.00")
     assert submitted.gwa_scale == School.Scale.PERCENT
     assert submitted.units == 18
