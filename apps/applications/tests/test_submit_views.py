@@ -126,7 +126,7 @@ def test_submit_service_error_banner_400(client, world):
 
 def test_failed_submit_rerenders_from_the_database(client, world, monkeypatch):
     """Another tab submitted while this request waited: the page shows the row as it is now."""
-    from apps.applications import views
+    from apps.applications import services
     from apps.applications.services import ALREADY_SUBMITTED
 
     application = make_application(world)
@@ -137,7 +137,7 @@ def test_failed_submit_rerenders_from_the_database(client, world, monkeypatch):
         )
         raise ValidationError(ALREADY_SUBMITTED)
 
-    monkeypatch.setattr(views.services, "submit_application", raced)
+    monkeypatch.setattr(services, "submit_application", raced)  # views call services.<name>
     response = signed_in(client, world["user"]).post(submit_url(application), {"declaration": "on"})
     assert response.status_code == 400
     body = text(response)
