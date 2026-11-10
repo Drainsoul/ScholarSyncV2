@@ -97,6 +97,15 @@ class Application(models.Model):
                 condition=Q(school__isnull=True) | Q(school_name=""),
                 name="applications_one_school_source",
             ),
+            # Submitting freezes the school, so every row past draft has one (a draft withdrawn
+            # before it was ever submitted has no snapshot).
+            models.CheckConstraint(
+                condition=Q(status="draft")
+                | Q(status="withdrawn", submitted_at__isnull=True)
+                | Q(school__isnull=False)
+                | ~Q(school_name=""),
+                name="applications_submitted_has_school",
+            ),
             models.UniqueConstraint(
                 fields=["profile", "program", "term"],
                 condition=Q(status__in=["draft", "submitted", "under_review", "returned"]),

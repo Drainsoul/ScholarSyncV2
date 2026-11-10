@@ -1,6 +1,7 @@
 import pytest
 from django.core.management import call_command
 from django.db import IntegrityError, transaction
+from django.utils import timezone
 
 from apps.applications.models import Application, Document
 from apps.applications.tests.factories import (
@@ -19,7 +20,7 @@ def test_one_open_application_per_profile_program_term() -> None:
         ApplicationFactory.create(profile=first.profile, program=first.program, term=first.term)
     for closed in (Application.Status.WITHDRAWN, Application.Status.REJECTED):
         Application.objects.filter(profile=first.profile, status=Application.Status.DRAFT).update(
-            status=closed
+            status=closed, school_name="Somewhere"
         )
         ApplicationFactory.create(profile=first.profile, program=first.program, term=first.term)
 
@@ -35,6 +36,21 @@ def test_status_and_kind_check_constraints() -> None:
 def test_school_and_school_name_not_both() -> None:
     with pytest.raises(IntegrityError), transaction.atomic():
         ApplicationFactory.create(school=SchoolFactory(), school_name="Somewhere")
+
+
+def test_submitted_application_has_a_school() -> None:
+    """Exactly one school source once submitted; drafts and never-submitted withdrawals have none."""
+    app = ApplicationFactory.create()
+    for status in ("submitted", "under_review", "returned", "approved", "rejected"):
+        with pytest.raises(IntegrityError), transaction.atomic():
+            Application.objects.filter(pk=app.pk).update(status=status)
+    with pytest.raises(IntegrityError), transaction.atomic():
+        Application.objects.filter(pk=app.pk).update(
+            status="withdrawn", submitted_at=timezone.now()
+        )
+    Application.objects.filter(pk=app.pk).update(status="withdrawn")
+    Application.objects.filter(pk=app.pk).update(status="submitted", school_name="Somewhere")
+    Application.objects.filter(pk=app.pk).update(school=SchoolFactory.create(), school_name="")
 
 
 def test_one_document_per_requirement_per_application() -> None:

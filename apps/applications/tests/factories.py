@@ -20,6 +20,18 @@ class ApplicationFactory(factory.django.DjangoModelFactory[Application]):
     term = factory.declarations.SubFactory(AcademicTermFactory)
     kind = Application.Kind.NEW
     status = Application.Status.DRAFT
+    school = None
+    # Rows past draft hold a frozen school (applications_submitted_has_school): a typed name here.
+    school_name = factory.declarations.LazyAttribute(
+        lambda o: (
+            ""
+            if o.school is not None
+            or o.status == Application.Status.DRAFT
+            or (o.status == Application.Status.WITHDRAWN and o.submitted_at is None)
+            else "Factory College"
+        )
+    )
+    submitted_at = None
 
 
 class DocumentFactory(factory.django.DjangoModelFactory[Document]):

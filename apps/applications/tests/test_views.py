@@ -303,6 +303,7 @@ def test_detail_shows_live_education_for_draft_and_snapshot_after_submit(client,
     assert "Edit in your profile" in body
     Application.objects.filter(pk=application.pk).update(
         status=Application.Status.SUBMITTED,
+        school=world["education"].school,
         course="BS Nursing",
         gwa=Decimal("91.50"),
         year_level=2,

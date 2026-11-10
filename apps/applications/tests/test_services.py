@@ -401,7 +401,9 @@ def test_attach_to_other_students_application_404(world: World) -> None:
 
 def test_attach_after_submit_refused(world: World) -> None:
     application = draft_for(world)
-    Application.objects.filter(pk=application.pk).update(status=Application.Status.SUBMITTED)
+    Application.objects.filter(pk=application.pk).update(
+        status=Application.Status.SUBMITTED, school=world.school
+    )
     assert_refused(
         lambda: attach_document(
             user=world.user,
