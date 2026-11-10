@@ -1,29 +1,17 @@
-import base64
-
 import pytest
-from playwright.sync_api import FilePayload, Page, expect
+from playwright.sync_api import Page, expect
 
-from apps.accounts.tests.factories import DEFAULT_PASSWORD, UserFactory
+from apps.accounts.tests.factories import UserFactory
+from tests.e2e.flows import PNG, log_in, payload
 
 pytestmark = pytest.mark.e2e
 
 PHOTO_URL = "/me/profile/photo/"
-# A 20x20 solid PNG.
-PNG = base64.b64decode(
-    "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAIAAAAC64paAAAAGklEQVR4nGMQaDhANmIY1TyqeVTzqOaB1QwANQINH6BXGBYAAAAASUVORK5CYII="
-)
-
-
-def payload(name: str, mime_type: str, buffer: bytes) -> FilePayload:
-    return {"name": name, "mimeType": mime_type, "buffer": buffer}
 
 
 def test_upload_a_profile_photo(page: Page, live_server, vite_build, e2e_storage, console_errors):
     user = UserFactory.create(verified=True)
-    page.goto(f"{live_server.url}/accounts/login/?next={PHOTO_URL}")
-    page.locator("#login-form input[name=login]").fill(user.email)
-    page.locator("#login-form input[name=password]").fill(DEFAULT_PASSWORD)
-    page.get_by_role("button", name="Log in").click()
+    log_in(page, live_server.url, user.email, PHOTO_URL)
     expect(page.get_by_role("heading", level=1)).to_have_text("Profile photo")
 
     page.get_by_label("Photo", exact=True).set_input_files(

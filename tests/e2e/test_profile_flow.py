@@ -2,7 +2,8 @@ import pytest
 from django.core.management import call_command
 from playwright.sync_api import Page, expect
 
-from apps.accounts.tests.factories import DEFAULT_PASSWORD, UserFactory
+from apps.accounts.tests.factories import UserFactory
+from tests.e2e.flows import fill_personal_details, log_in
 
 pytestmark = pytest.mark.e2e
 
@@ -22,25 +23,10 @@ def test_a_new_student_fills_in_the_profile(page: Page, live_server, vite_build,
     call_command("seed_programs")
     user = UserFactory.create(verified=True)
     base = live_server.url
-    page.goto(f"{base}/accounts/login/?next=/me/")
-    page.locator("#login-form input[name=login]").fill(user.email)
-    page.locator("#login-form input[name=password]").fill(DEFAULT_PASSWORD)
-    page.get_by_role("button", name="Log in").click()
+    log_in(page, base, user.email)
     expect(page.locator(".profile-figure")).to_contain_text("0% complete")
 
-    page.goto(f"{base}/me/profile/personal/")
-    page.get_by_label("First name").fill("Carolyn")
-    page.get_by_label("Last name").fill("Hawkins")
-    page.get_by_label("Birth date").fill("2006-03-14")
-    page.get_by_label("Sex (as on your birth certificate)").select_option("female")
-    page.get_by_label("Phone").fill("0917 123 4567")
-    page.get_by_label("Address line").fill("12 Mabini Street")
-    page.get_by_label("Barangay").select_option("ususan")
-    page.get_by_label("Living in Taguig since (year)").fill("2012")
-    page.get_by_label("Yes", exact=True).check()
-    page.get_by_label("Monthly household income").fill("18,000.00")
-    page.get_by_role("button", name="Save").click()
-    expect(page.get_by_text("Personal details saved.")).to_be_visible()
+    fill_personal_details(page, base)
 
     page.goto(f"{base}/me/profile/family/add/")
     page.get_by_label("Relation").select_option("guardian")

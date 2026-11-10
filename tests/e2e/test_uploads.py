@@ -1,28 +1,21 @@
 from pathlib import Path
 
 import pytest
-from playwright.sync_api import FilePayload, Locator, Page, Request, expect
+from playwright.sync_api import Locator, Page, Request, expect
 
-from apps.accounts.tests.factories import DEFAULT_PASSWORD, UserFactory
+from apps.accounts.tests.factories import UserFactory
+from tests.e2e.flows import log_in, one_kb_pdf, payload
 
 pytestmark = pytest.mark.e2e
 
 KIT_UPLOAD = "/_kit/demo/upload/"
-PDF = b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF\n"
 MB = 1024 * 1024
 CONFIRM_400 = "Failed to load resource: the server responded with a status of 400"
 
 
-def one_kb_pdf() -> bytes:
-    return PDF + b"%" + b"0" * (1024 - len(PDF) - 2) + b"\n"
-
-
 def sign_in_to_the_upload_page(page: Page, live_server) -> None:
     user = UserFactory.create(verified=True)
-    page.goto(f"{live_server.url}/accounts/login/?next={KIT_UPLOAD}")
-    page.locator("#login-form input[name=login]").fill(user.email)
-    page.locator("#login-form input[name=password]").fill(DEFAULT_PASSWORD)
-    page.get_by_role("button", name="Log in").click()
+    log_in(page, live_server.url, user.email, KIT_UPLOAD)
     expect(page.get_by_role("heading", level=1)).to_have_text("Try uploads")
 
 
@@ -43,10 +36,6 @@ def document_control(page: Page) -> Locator:
 
 def document_field(page: Page) -> Locator:
     return page.locator(".file-input").filter(has=document_control(page))
-
-
-def payload(name: str, mime_type: str, buffer: bytes) -> FilePayload:
-    return {"name": name, "mimeType": mime_type, "buffer": buffer}
 
 
 def test_upload_pdf_then_download(page: Page, live_server, vite_build, e2e_storage, console_errors):
