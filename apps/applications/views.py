@@ -186,26 +186,30 @@ def render_detail(
     submit_form: SubmitForm | None = None,
     banner: str = "",
 ) -> HttpResponse:
-    """The application page; `error` shows on the row of `error_for` only.
+    """The application page; `error` shows on the row of `error_for`, and a banner points there.
 
     `submit_form` is a bound form from a failed submit; `banner` is a service sentence.
     """
     rows = document_rows(application)
     cards = []
+    error_card: DocumentCard | None = None
     for row in rows:
         document = row.document
         approved = document is not None and document.status == Document.Status.APPROVED
         has_error = error_for is not None and error_for.pk == row.requirement.pk
-        cards.append(
-            DocumentCard(
-                row=row,
-                anchor=f"doc-{row.requirement.pk}",
-                field_id=f"doc-{row.requirement.pk}-file",
-                editable=application.is_editable and not approved,
-                tone=DOCUMENT_TONES[document.status] if document is not None else "info",
-                error=error if has_error else "",
-            )
+        card = DocumentCard(
+            row=row,
+            anchor=f"doc-{row.requirement.pk}",
+            field_id=f"doc-{row.requirement.pk}-file",
+            editable=application.is_editable and not approved,
+            tone=DOCUMENT_TONES[document.status] if document is not None else "info",
+            error=error if has_error else "",
         )
+        cards.append(card)
+        if has_error:
+            error_card = card
+    if error and error_card is None and not banner:
+        banner = error  # no row to show it on: say it at the top instead
     required = [row for row in rows if row.requirement.is_required]
     if not application.is_editable:
         submit_form = None
@@ -214,6 +218,7 @@ def render_detail(
     context = {
         "submit_form": submit_form,
         "banner": banner,
+        "error_card": error_card,
         "can_withdraw": application.status in WITHDRAWABLE,
         **shell_context(request, area="student"),
         "application": application,

@@ -381,6 +381,37 @@ def test_document_post_bad_file_shows_row_error_400(client, world):
     assert not Document.objects.exists()
 
 
+def test_document_post_error_has_a_banner_linking_to_the_row(client, world):
+    """Keyboard and screen-reader users land on the alert, which points at the row."""
+    world["requirement"].accepted_types = [PDF]
+    world["requirement"].save()
+    application = draft(world)
+    wrong = ready_file(world["user"], sniffed_type=PNG)
+    response = signed_in(client, world["user"]).post(
+        doc_url(application, world["requirement"]), {"file": str(wrong.pk)}
+    )
+    assert response.status_code == 400
+    body = response.content.decode()
+    pk = world["requirement"].pk
+    banner = body.index("banner--danger")
+    assert banner < body.index(f'id="doc-{pk}"')
+    assert f'<a href="#doc-{pk}">Grades document</a>' in body[banner:]
+    assert "Check the Grades document below." in text(response).replace(
+        f'<a href="#doc-{pk}">Grades document</a>', "Grades document"
+    )
+
+
+def test_document_post_error_without_a_row_shows_in_the_banner(client, world):
+    application = draft(world)
+    elsewhere = RequiredDocumentFactory.create(label="Elsewhere")  # another program's document
+    response = signed_in(client, world["user"]).post(doc_url(application, elsewhere), {"file": ""})
+    assert response.status_code == 400
+    body = response.content.decode()
+    assert "banner--danger" in body
+    assert "Upload a file first." in text(response)
+    assert "Elsewhere" not in body
+
+
 def test_document_post_empty_file_shows_row_error(client, world):
     application = draft(world)
     response = signed_in(client, world["user"]).post(

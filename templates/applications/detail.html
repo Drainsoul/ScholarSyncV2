@@ -10,6 +10,9 @@
   {% if banner %}
   <div class="banner banner--danger" role="alert"><div><p>{{ banner }}</p></div></div>
   {% endif %}
+  {% if error_card %}
+  <div class="banner banner--danger" role="alert"><div><p>Check the <a href="#{{ error_card.anchor }}">{{ error_card.row.requirement.label }} document</a> below.</p></div></div>
+  {% endif %}
   {% if application.status == "returned" %}
   <div class="banner banner--warning"><div><p>Staff returned this application: {{ application.decision_reason }}</p></div></div>
   {% endif %}
