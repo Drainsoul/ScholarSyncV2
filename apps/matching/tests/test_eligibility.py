@@ -341,11 +341,12 @@ def test_rule_sentences_unchanged() -> None:
 
 
 def test_window_rule_sentence() -> None:
+    """Neutral: the same text sits on a met row and next to "Applications closed on ..."."""
     assert rule_sentence(make_program(applications_close_on=None), "window") == (
-        "Applications are open."
+        "Applications must be open."
     )
     assert rule_sentence(make_program(), "window") == (
-        "Applications are open until 31 December 2026."
+        "Applications must be open (they close on 31 December 2026)."
     )
 
 

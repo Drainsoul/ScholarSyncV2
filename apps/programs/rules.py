@@ -70,9 +70,11 @@ def rule_sentence(
         labels = [TYPE_WORDS[School.Type(value)] for value in program.allowed_school_types]
         return f"Studying at a {join_or(labels)} school."
     if code == "window":
+        # Neutral wording: it also heads the unmet row ("Applications closed on ...").
         if program.applications_close_on is None:
-            return "Applications are open."
-        return f"Applications are open until {format_date(program.applications_close_on, 'j F Y')}."
+            return "Applications must be open."
+        closes = format_date(program.applications_close_on, "j F Y")
+        return f"Applications must be open (they close on {closes})."
     if code == "school":
         return "You have a current school in your profile."
     raise ValueError(f"Unknown rule code: {code}")
