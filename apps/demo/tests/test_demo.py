@@ -1,7 +1,10 @@
 import subprocess
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pytest
+import time_machine
 from allauth.account.models import EmailAddress
 from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
@@ -10,10 +13,13 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.template import Context, Template
 from django.template.utils import get_app_template_dirs
+from django.utils import timezone
 
 from apps.accounts.models import User
+from apps.applications.models import Application
 from apps.demo import loader
 from apps.demo.accounts import ACCOUNTS, PASSWORD
+from apps.matching.selectors import match_page
 from apps.students.models import ProfileInvite, StudentProfile
 from apps.students.selectors import profile_page
 
@@ -115,6 +121,42 @@ def test_demo_student_profile_is_92_percent_complete_without_a_photo(demo_app, s
     current = profile.education.get(is_current=True)
     assert current.school is not None
     assert current.school.name == "Taguig City University"
+
+
+@pytest.fixture
+def frozen_today():
+    with time_machine.travel(
+        datetime(2026, 10, 15, 12, 0, tzinfo=ZoneInfo("Asia/Manila")), tick=False
+    ):
+        yield
+
+
+@pytest.mark.django_db
+def test_load_gives_test_student_a_lani_draft(demo_app, settings, frozen_today):
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    application = Application.objects.get(profile__user__email="student@scholarsync.test")
+    assert application.program.slug == "lani"
+    assert application.status == Application.Status.DRAFT
+
+
+@pytest.mark.django_db
+def test_load_twice_keeps_one_draft(demo_app, settings, frozen_today):
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    loader.load()
+    assert Application.objects.filter(profile__user__email="student@scholarsync.test").count() == 1
+
+
+@pytest.mark.django_db
+def test_test_student_qualifies_for_both_programs(demo_app, settings, frozen_today):
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    page = match_page(
+        User.objects.get(email="student@scholarsync.test"), today=timezone.localdate()
+    )
+    assert len(page.matches) == 2
+    assert all(m.result.eligible for m in page.matches)
 
 
 def test_password_passes_the_validators():

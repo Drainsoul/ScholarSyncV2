@@ -4,11 +4,14 @@ from datetime import date
 from decimal import Decimal
 
 from allauth.account.models import EmailAddress
+from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.db import transaction
+from django.http import Http404
 
 from apps.accounts.models import User
 from apps.accounts.services import create_staff_user, record_consent
+from apps.applications.services import start_application
 from apps.demo.accounts import ACCOUNTS, PASSWORD, DemoAccount
 from apps.programs.models import Program, School
 from apps.programs.services import add_membership
@@ -94,6 +97,17 @@ def _give_student_a_profile(email: str) -> None:
     )
 
 
+def _give_student_a_draft(email: str, program_slug: str) -> None:
+    """Carolyn's draft application (idempotent: reuses the open one)."""
+    try:
+        start_application(
+            user=User.objects.get(email__iexact=email),
+            program=Program.objects.get(slug=program_slug),
+        )
+    except (ValidationError, Http404):
+        pass  # No application term applies today; the demo loads without a draft.
+
+
 def _create_unclaimed_profile(*, staff_email: str, program_slug: str, email: str) -> None:
     """Paolo's staff-created profile and invite (mail goes to Mailpit). Skipped if invited."""
     if ProfileInvite.objects.filter(email=email).exists():
@@ -121,6 +135,7 @@ def load() -> int:
             _create(account)
             created += 1
         _give_student_a_profile("student@scholarsync.test")
+        _give_student_a_draft("student@scholarsync.test", "lani")
         _create_unclaimed_profile(
             staff_email="staff@scholarsync.test",
             program_slug="tcu-ceaa",
