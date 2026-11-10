@@ -249,8 +249,10 @@ class SubmitView(StudentRequiredMixin, View):
                 request=request,
             )
         except ValidationError as error:
+            # The service read the row under a lock; show it as it is now, not as we first saw it.
+            fresh = own_application(user, pk)
             return render_detail(
-                request, application, submit_form=form, banner=_error_text(error), status=400
+                request, fresh, submit_form=form, banner=_error_text(error), status=400
             )
         messages.success(request, "Application submitted. We've emailed you a copy.")
         return redirect("applications:detail", pk=application.pk)

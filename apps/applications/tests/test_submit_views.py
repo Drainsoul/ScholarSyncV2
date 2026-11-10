@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 import time_machine
+from django.core.exceptions import ValidationError
 from django.urls import reverse
 
 from apps.accounts.tests.factories import UserFactory
@@ -121,6 +122,28 @@ def test_submit_service_error_banner_400(client, world):
     assert "Upload Grades before you submit." in text(response)
     application.refresh_from_db()
     assert application.status == Application.Status.DRAFT
+
+
+def test_failed_submit_rerenders_from_the_database(client, world, monkeypatch):
+    """Another tab submitted while this request waited: the page shows the row as it is now."""
+    from apps.applications import views
+    from apps.applications.services import ALREADY_SUBMITTED
+
+    application = make_application(world)
+
+    def raced(*, application, **kwargs):
+        Application.objects.filter(pk=application.pk).update(
+            status=Application.Status.SUBMITTED, school_name="Somewhere"
+        )
+        raise ValidationError(ALREADY_SUBMITTED)
+
+    monkeypatch.setattr(views.services, "submit_application", raced)
+    response = signed_in(client, world["user"]).post(submit_url(application), {"declaration": "on"})
+    assert response.status_code == 400
+    body = text(response)
+    assert ALREADY_SUBMITTED in body
+    assert "Submitted</p>" in body
+    assert "Submit application" not in body
 
 
 def test_submit_other_student_404(client, world):
