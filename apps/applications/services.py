@@ -23,7 +23,7 @@ from apps.files.policy import MB, join_types
 from apps.files.selectors import usable_file
 from apps.matching.eligibility import Academic, EligibilityResult
 from apps.matching.legacy_model import Hint, hint_for
-from apps.matching.selectors import eligibility_for
+from apps.matching.selectors import eligibility_for, eligibility_with
 from apps.programs.models import BenefitTier, Program, RequiredDocument
 from apps.programs.selectors import application_term
 from apps.students.completion import completion
@@ -194,9 +194,8 @@ def _hint_data(hint: Hint | str) -> dict[str, Any]:
 
 
 def _snapshot(
-    profile: StudentProfile, record: EducationRecord | None, result: EligibilityResult, today: date
+    profile: StudentProfile, academic: Academic, result: EligibilityResult, today: date
 ) -> dict[str, Any]:
-    academic = Academic.from_record(record) if record is not None else None
     return {
         "version": SNAPSHOT_VERSION,
         "evaluated_on": today.isoformat(),
@@ -276,15 +275,17 @@ def submit_application(
         sections = completion(profile, family=[], education=[]).sections
         if not next(section for section in sections if section.key == "personal").done:
             raise ValidationError("Finish your personal details before you submit.")
-        result = eligibility_for(profile, locked.program, today=today)
+        # Read the school and grades once: what is evaluated is exactly what is frozen.
+        record = current_education(profile)
+        academic = Academic.from_record(record) if record is not None else None
+        result = eligibility_with(profile, locked.program, academic, today=today)
         if not result.eligible:
             raise ValidationError(_first_reason(result))
         chosen = _choose_tier(result, tier)
-        record = current_education(profile)
-        assert record is not None  # eligibility needs a current school
+        assert record is not None and academic is not None  # eligibility needs a current school
         _copy_academics(locked, record)
         locked.requested_tier = chosen
-        locked.match_snapshot = _snapshot(profile, record, result, today)
+        locked.match_snapshot = _snapshot(profile, academic, result, today)
         update_fields += [
             "school",
             "school_name",

@@ -53,7 +53,14 @@ def _evaluate(
 
 def eligibility_for(profile: StudentProfile, program: Program, *, today: date) -> EligibilityResult:
     """Run the rules for one program, loading what `evaluate` needs (term, tiers, schools)."""
-    return _evaluate(profile, program, _academic(profile), application_term(today), today)
+    return eligibility_with(profile, program, _academic(profile), today=today)
+
+
+def eligibility_with(
+    profile: StudentProfile, program: Program, academic: Academic | None, *, today: date
+) -> EligibilityResult:
+    """`eligibility_for` on school and grades the caller already read (None: no current school)."""
+    return _evaluate(profile, program, academic, application_term(today), today)
 
 
 def match_page(user: User, *, today: date) -> MatchPage:

@@ -780,3 +780,35 @@ def test_services_lock_without_trusting_profile_owner(world: World) -> None:
     assert user_of(other) != world.user
     with pytest.raises(Http404):
         withdraw_application(user=user_of(other), application=application)
+
+
+def test_submit_evaluates_and_freezes_the_same_record(
+    world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A profile edit between reads must not freeze grades that were never evaluated."""
+    from apps.matching import selectors as matching_selectors
+    from apps.students.selectors import current_education as real
+
+    application = with_documents(draft_for(world))
+    edited = EducationRecordFactory.build(
+        profile=world.profile,
+        school=world.school,
+        gwa=Decimal("80.00"),
+        gwa_scale=School.Scale.PERCENT,
+        units=18,
+        course="BS Biology",
+        year_level=2,
+    )
+    calls: list[int] = []
+
+    def racing(profile: StudentProfile) -> EducationRecord | None:
+        calls.append(1)
+        return real(profile) if len(calls) == 1 else edited
+
+    monkeypatch.setattr(services, "current_education", racing)
+    monkeypatch.setattr(matching_selectors, "current_education", racing)
+    submit_application(user=world.user, application=application, tier=None)
+    application.refresh_from_db()
+    assert len(calls) == 1
+    assert application.gwa == Decimal("90.00")
+    assert application.course == "BS Nursing"
