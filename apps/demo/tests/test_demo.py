@@ -1,3 +1,4 @@
+import logging
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -9,6 +10,7 @@ from allauth.account.models import EmailAddress
 from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.core.checks import run_checks
+from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.template import Context, Template
@@ -146,6 +148,25 @@ def test_load_without_a_term_skips_the_draft(demo_app, settings, frozen_today, m
     monkeypatch.setattr(loader, "application_term", lambda today: None)
     loader.load()
     assert not Application.objects.exists()
+
+
+@pytest.mark.django_db
+def test_skipped_draft_log_holds_no_profile_values(
+    demo_app, settings, frozen_today, monkeypatch, caplog
+):
+    settings.DEMO_ACTIVE = True
+
+    def refuse(**kwargs):
+        raise ValidationError("Your GWA of 80.00 doesn't meet this program's minimum of 85%.")
+
+    monkeypatch.setattr(loader, "start_application", refuse)
+    with caplog.at_level(logging.WARNING, logger="apps.demo.loader"):
+        loader.load()
+    assert not Application.objects.exists()
+    logged = " ".join(record.getMessage() for record in caplog.records)
+    assert "Demo draft application skipped (ValidationError)." in logged
+    assert "80.00" not in logged
+    assert "85" not in logged
 
 
 @pytest.mark.django_db

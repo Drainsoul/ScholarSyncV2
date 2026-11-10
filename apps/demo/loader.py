@@ -112,9 +112,9 @@ def _give_student_a_draft(email: str, program_slug: str) -> None:
             program=Program.objects.get(slug=program_slug),
         )
     except (ValidationError, Http404) as error:
-        # Never crash the loader, but say why (the service's sentence holds no personal data).
-        reason = "; ".join(error.messages) if isinstance(error, ValidationError) else str(error)
-        logger.warning("Demo draft application skipped: %s", reason)
+        # Never crash the loader. Log only the error class: the service's sentence can hold
+        # profile values (GWA, units, residency years), and logs never hold those.
+        logger.warning("Demo draft application skipped (%s).", type(error).__name__)
 
 
 def _create_unclaimed_profile(*, staff_email: str, program_slug: str, email: str) -> None:
