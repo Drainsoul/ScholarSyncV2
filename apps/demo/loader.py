@@ -1,5 +1,6 @@
 """Demo data loader: four verified test accounts plus sample profiles, all idempotent."""
 
+import logging
 from datetime import date
 from decimal import Decimal
 
@@ -8,15 +9,19 @@ from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.db import transaction
 from django.http import Http404
+from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.accounts.services import create_staff_user, record_consent
 from apps.applications.services import start_application
 from apps.demo.accounts import ACCOUNTS, PASSWORD, DemoAccount
 from apps.programs.models import Program, School
+from apps.programs.selectors import application_term
 from apps.programs.services import add_membership
 from apps.students import services as students
 from apps.students.models import EducationRecord, FamilyMember, ProfileInvite, StudentProfile
+
+logger = logging.getLogger(__name__)
 
 
 def _create(account: DemoAccount) -> None:
@@ -99,13 +104,17 @@ def _give_student_a_profile(email: str) -> None:
 
 def _give_student_a_draft(email: str, program_slug: str) -> None:
     """Carolyn's draft application (idempotent: reuses the open one)."""
+    if application_term(timezone.localdate()) is None:
+        return  # No term applies today: load without a draft.
     try:
         start_application(
             user=User.objects.get(email__iexact=email),
             program=Program.objects.get(slug=program_slug),
         )
-    except (ValidationError, Http404):
-        pass  # No application term applies today; the demo loads without a draft.
+    except (ValidationError, Http404) as error:
+        # Never crash the loader, but say why (the service's sentence holds no personal data).
+        reason = "; ".join(error.messages) if isinstance(error, ValidationError) else str(error)
+        logger.warning("Demo draft application skipped: %s", reason)
 
 
 def _create_unclaimed_profile(*, staff_email: str, program_slug: str, email: str) -> None:

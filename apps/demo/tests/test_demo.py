@@ -141,6 +141,14 @@ def test_load_gives_test_student_a_lani_draft(demo_app, settings, frozen_today):
 
 
 @pytest.mark.django_db
+def test_load_without_a_term_skips_the_draft(demo_app, settings, frozen_today, monkeypatch):
+    settings.DEMO_ACTIVE = True
+    monkeypatch.setattr(loader, "application_term", lambda today: None)
+    loader.load()
+    assert not Application.objects.exists()
+
+
+@pytest.mark.django_db
 def test_load_twice_keeps_one_draft(demo_app, settings, frozen_today):
     settings.DEMO_ACTIVE = True
     loader.load()
