@@ -171,7 +171,16 @@ def attach_document(
     last = document.files.aggregate(last=Max("version"))["last"] or 0
     document.files.filter(is_current=True).update(is_current=False, updated_at=timezone.now())
     version = last + 1
-    DocumentFile.objects.create(document=document, file=file, version=version, is_current=True)
+    try:
+        with transaction.atomic():
+            DocumentFile.objects.create(
+                document=document, file=file, version=version, is_current=True
+            )
+    except IntegrityError:
+        # Another attach of this file committed after our check: the unique index caught it.
+        if not DocumentFile.objects.filter(file=file).exists():
+            raise
+        raise ValidationError(UPLOAD_AGAIN) from None
     audit.record(
         actor=user,
         action="document.uploaded",

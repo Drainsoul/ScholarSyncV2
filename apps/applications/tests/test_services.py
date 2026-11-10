@@ -842,3 +842,35 @@ def test_resubmit_returned_allowed_on_inactive_program(world: World) -> None:
     application.refresh_from_db()
     assert application.status == Application.Status.SUBMITTED
     assert actions() == ["application.resubmitted"]
+
+
+def test_attach_race_on_the_same_file_says_upload_again(
+    world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Another attach of the same file commits after our check: a sentence, not a 500."""
+    application = draft_for(world)
+    first = ready_file(world.user)
+    attach_document(
+        user=world.user, application=application, requirement=world.requirement, file_id=first.pk
+    )
+    second = ready_file(world.user, sha256="c" * 64)
+    other = ApplicationFactory.create(profile=world.profile, term=world.term)
+    real = Document.objects.get_or_create
+
+    def racing(**kwargs: Any) -> tuple[Document, bool]:
+        DocumentFileFactory.create(document__application=other, file=second)
+        return real(**kwargs)
+
+    monkeypatch.setattr(Document.objects, "get_or_create", racing)
+    assert_refused(
+        lambda: attach_document(
+            user=world.user,
+            application=application,
+            requirement=world.requirement,
+            file_id=second.pk,
+        ),
+        AGAIN,
+    )
+    current = DocumentFile.objects.get(document__application=application, is_current=True)
+    assert current.file == first
+    assert actions() == ["document.uploaded"]
