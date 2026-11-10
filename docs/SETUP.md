@@ -159,6 +159,12 @@ Notes:
 - `docker compose down -v` deletes the development database. Use `docker compose down` to keep it.
 - A database created before M4 has Django's default user table and must be reset before `migrate`: `docker compose down -v`, or drop and recreate the development database.
 
+### Re-exporting the legacy model (never needed for normal use)
+`apps/matching/data/legacy_tier_model.json` is committed. Only if you must rebuild it from the legacy `.pkl`, run
+`python -m uv run --script scripts/export_legacy_model.py <pkl> <model-json> <parity-json>`. The script's docstring has
+the `gh api` command that fetches the pickle. It is one-off, PEP 723 (it brings its own dependencies) and is never
+imported by the app.
+
 ### Checks (the same commands CI runs)
 ```powershell
 python -m uv run ruff check .

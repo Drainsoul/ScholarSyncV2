@@ -811,8 +811,10 @@ starts, and ends with every acceptance item checked.
 - [ ] Extend the demo loader for this milestone's screens.
 
 **M7: Matching + student applications**
-- [ ] Eligibility engine; exported legacy model + parity test; `/me/match/`.
-- [ ] Apply flow (documents, submit, withdraw, returned → resubmit); status page; emails.
+- [ ] Eligibility engine; legacy model exported to JSON parameters (`apps/matching/data/`, advisory hint only) + parity
+  test; `/me/match/`.
+- [ ] Apply flow at `/me/applications/` (documents, submit with `match_snapshot`, withdraw, returned → resubmit); status
+  page; `application_received` email on submit and resubmit.
 - [ ] Submitting needs the personal details section complete ("Finish your personal details before you submit.").
 - [ ] Extend the demo loader for this milestone's screens.
 
