@@ -33,6 +33,7 @@ from apps.workspace.emails import enqueue
 
 UPLOAD_AGAIN = "Upload the file again."
 ALREADY_SUBMITTED = "This application has already been submitted."
+INACTIVE_PROGRAM = "This program isn't taking applications any more. Withdraw this application."
 SNAPSHOT_VERSION = 1
 
 
@@ -260,6 +261,8 @@ def submit_application(
     from_draft = locked.status == Application.Status.DRAFT
     today = timezone.localdate()
     if from_draft:
+        if not locked.program.is_active:  # a returned application may still be resubmitted
+            raise ValidationError(INACTIVE_PROGRAM)
         term = application_term(today)
         if term is None or locked.term_id != term.pk:
             raise ValidationError(

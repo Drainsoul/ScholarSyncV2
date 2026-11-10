@@ -812,3 +812,33 @@ def test_submit_evaluates_and_freezes_the_same_record(
     assert len(calls) == 1
     assert application.gwa == Decimal("90.00")
     assert application.course == "BS Nursing"
+
+
+INACTIVE = "This program isn't taking applications any more. Withdraw this application."
+
+
+def test_submit_inactive_program_refused(world: World) -> None:
+    application = draft_for(world)  # no documents: the inactive sentence still comes first
+    Program.objects.filter(pk=world.program.pk).update(is_active=False)
+    assert_refused(
+        lambda: submit_application(user=world.user, application=application, tier=None),
+        INACTIVE,
+    )
+    application.refresh_from_db()
+    assert application.status == Application.Status.DRAFT
+    assert actions() == []
+    assert EmailOutbox.objects.count() == 0
+    withdraw_application(user=world.user, application=application)
+    application.refresh_from_db()
+    assert application.status == Application.Status.WITHDRAWN
+
+
+def test_resubmit_returned_allowed_on_inactive_program(world: World) -> None:
+    application = with_documents(
+        draft_for(world, status=Application.Status.RETURNED, requested_tier=world.tier)
+    )
+    Program.objects.filter(pk=world.program.pk).update(is_active=False)
+    submit_application(user=world.user, application=application, tier=None)
+    application.refresh_from_db()
+    assert application.status == Application.Status.SUBMITTED
+    assert actions() == ["application.resubmitted"]
