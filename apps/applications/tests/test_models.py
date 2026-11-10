@@ -39,7 +39,7 @@ def test_school_and_school_name_not_both() -> None:
 
 
 def test_submitted_application_has_a_school() -> None:
-    """Exactly one school source once submitted; drafts and never-submitted withdrawals have none."""
+    """One school source once submitted; drafts and never-submitted withdrawals have none."""
     app = ApplicationFactory.create()
     for status in ("submitted", "under_review", "returned", "approved", "rejected"):
         with pytest.raises(IntegrityError), transaction.atomic():
