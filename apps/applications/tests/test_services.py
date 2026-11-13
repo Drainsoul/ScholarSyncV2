@@ -697,6 +697,32 @@ def test_submit_withdrawn_refused(world: World) -> None:
     assert actions() == []
 
 
+def test_first_submit_sets_first_submitted_at(world: World) -> None:
+    application = with_documents(draft_for(world))
+    assert application.first_submitted_at is None
+    submit_application(user=world.user, application=application, tier=None)
+    application.refresh_from_db()
+    assert application.first_submitted_at == application.submitted_at
+    assert application.first_submitted_at == datetime(
+        2026, 10, 15, 12, 0, tzinfo=ZoneInfo("Asia/Manila")
+    )
+
+
+def test_resubmit_keeps_first_submitted_at(world: World) -> None:
+    application = with_documents(draft_for(world))
+    submit_application(user=world.user, application=application, tier=None)
+    application.refresh_from_db()
+    first = application.first_submitted_at
+    Application.objects.filter(pk=application.pk).update(status=Application.Status.RETURNED)
+    application.refresh_from_db()
+    later = datetime(2026, 10, 20, 9, 0, tzinfo=ZoneInfo("Asia/Manila"))
+    with time_machine.travel(later, tick=False):
+        submit_application(user=world.user, application=application, tier=None)
+    application.refresh_from_db()
+    assert application.first_submitted_at == first
+    assert application.submitted_at == later
+
+
 def test_submit_other_students_application_404(world: World) -> None:
     theirs = with_documents(ApplicationFactory.create(program=world.program, term=world.term))
     with pytest.raises(Http404):

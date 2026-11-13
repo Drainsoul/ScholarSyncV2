@@ -146,6 +146,7 @@ INSTALLED_APPS = [
     "apps.files",
     "apps.students",
     "apps.applications",
+    "apps.awards",
     "apps.matching",
     "apps.workspace",
     "apps.office",

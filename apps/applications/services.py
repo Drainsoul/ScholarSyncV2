@@ -319,6 +319,9 @@ def submit_application(
         action = "application.resubmitted"
     locked.status = Application.Status.SUBMITTED
     locked.submitted_at = timezone.now()
+    if locked.first_submitted_at is None:
+        locked.first_submitted_at = locked.submitted_at
+        update_fields.append("first_submitted_at")
     locked.save(update_fields=update_fields)
     audit.record(
         actor=user,

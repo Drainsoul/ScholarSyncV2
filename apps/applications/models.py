@@ -55,6 +55,7 @@ class Application(models.Model):
     match_snapshot = models.JSONField(default=dict)
     status = models.CharField(max_length=12, choices=Status, default=Status.DRAFT)
     submitted_at = models.DateTimeField(null=True, blank=True)
+    first_submitted_at = models.DateTimeField(null=True, blank=True)
     decided_at = models.DateTimeField(null=True, blank=True)
     decided_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

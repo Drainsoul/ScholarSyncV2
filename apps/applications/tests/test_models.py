@@ -1,6 +1,10 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 import pytest
 from django.core.management import call_command
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, connection, transaction
+from django.db.migrations.executor import MigrationExecutor
 from django.utils import timezone
 
 from apps.applications.models import Application, Document
@@ -100,3 +104,47 @@ def test_is_editable() -> None:
 def test_cleanup_runs_with_document_files() -> None:
     DocumentFileFactory.create()
     call_command("cleanup")
+
+
+@pytest.mark.django_db(transaction=True)
+def test_first_submitted_at_backfill() -> None:
+    before = [("applications", "0002_submitted_has_school")]
+    after = [("applications", "0003_first_submitted_at")]
+    try:
+        executor = MigrationExecutor(connection)
+        executor.migrate(before)
+        old = executor.loader.project_state(before).apps
+        profile = old.get_model("students", "StudentProfile").objects.create()
+        program = old.get_model("programs", "Program").objects.create(
+            slug="backfill", name="Backfill"
+        )
+        term = old.get_model("programs", "AcademicTerm").objects.create(
+            school_year_start=2026, term=1, starts_on="2026-08-01", ends_on="2026-12-31"
+        )
+        old_application = old.get_model("applications", "Application")
+        stamp = datetime(2026, 10, 1, 9, 0, tzinfo=ZoneInfo("Asia/Manila"))
+        submitted = old_application.objects.create(
+            profile=profile,
+            program=program,
+            term=term,
+            status="submitted",
+            school_name="Old College",
+            submitted_at=stamp,
+        )
+        other_term = old.get_model("programs", "AcademicTerm").objects.create(
+            school_year_start=2025, term=1, starts_on="2025-08-01", ends_on="2025-12-31"
+        )
+        draft = old_application.objects.create(
+            profile=profile, program=program, term=other_term, status="draft"
+        )
+
+        executor = MigrationExecutor(connection)
+        executor.migrate(after)
+        new_application = executor.loader.project_state(after).apps.get_model(
+            "applications", "Application"
+        )
+        assert new_application.objects.get(pk=submitted.pk).first_submitted_at == stamp
+        assert new_application.objects.get(pk=draft.pk).first_submitted_at is None
+    finally:
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
