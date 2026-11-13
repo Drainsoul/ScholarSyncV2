@@ -15,6 +15,8 @@
 - **Revision:** 8 (2026-11-06): M5 decisions: files (§4.4, §7, §14, §16).
 - **Revision:** 9 (2026-11-08): M6 decisions: reference data and student profile (§4.1, §4.2, §4.3, §5, §16).
 - **Revision:** 10 (2026-11-10): M7 decisions: matching and student applications (§4.2, §4.5, §5, §8, §9, §16).
+- **Revision:** 11 (2026-11-13): M8 decisions: application review, awards created on approval, M8b on-behalf (§4.5,
+  §4.6, §5, §6, §7, §9, §16, §18).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -246,19 +248,33 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
     - the academic snapshot is copied from the current education record at submit, not at start, and the checks are
       re-run under the lock; the draft page shows the live profile values;
     - `match_snapshot` (JSON: eligibility result and model hint at submit time), `status`;
-    - `submitted_at`, `decided_at`, `decided_by`, `decision_reason`, `created_by` (the student or staff).
+    - `submitted_at`, `first_submitted_at` (nullable; the first submit sets it and a resubmit leaves it, backfilled
+      from `submitted_at`; the staff queue sorts by it, oldest first, so a returned application keeps its place),
+      `decided_at`, `decided_by`, `decision_reason`, `created_by` (the student or staff);
+    - `decision_reason` keeps the latest reason only. Return sets it and nothing else, since it isn't a decision;
+      reject also sets `decided_at` and `decided_by`. Reasons are free text, so they stay out of audit `data`.
   - transitions:
     - `draft` → `submitted` (all required documents uploaded) or `withdrawn`;
     - `submitted` → `under_review` or `withdrawn`;
     - `under_review` → `returned` (needs fixes; reason required), `approved` or `rejected` (reason required);
     - `returned` → `submitted` or `withdrawn`;
-    - `TRANSITIONS` is declared in full, but M7 drives only the student side: start (creates a `draft`), submit
-      (`draft` or `returned` → `submitted`) and withdraw (`draft`, `submitted` or `returned` → `withdrawn`);
+    - `TRANSITIONS` is declared in full. The student drives start (creates a `draft`), submit (`draft` or `returned`
+      → `submitted`) and withdraw (`draft`, `submitted` or `returned` → `withdrawn`);
+    - staff drive start review (`submitted` → `under_review`, an explicit POST; the student can't withdraw after it),
+      return, approve and reject. Return and reject need `under_review` and a reason of at most 1,000 characters;
+    - approval needs:
+      - `under_review`;
+      - every required document `approved` (none `pending` or `declined`; a declined document means staff return
+        the application);
+      - a tier in force for the application's term (the requested tier is preselected);
+      - no active `Award` for the same profile and program;
+    - starting an application is refused ("You already hold this scholarship.") when the profile has an `approved`
+      application for the program in that term, or an active award in the program;
     - resubmitting a returned application keeps the first snapshot and the requested tier, skips the window check
       (staff asked for fixes) and re-checks the documents only.
   - constraint: at most one *open* application (draft, submitted, under_review or returned) per (`profile`, `program`,
     `term`), as a partial unique index. A student may hold open applications to several programs (CEAA and LANI) in
-    one term; whether they may hold two awards is §18 Q6, decided at approval in M8.
+    one term; one student may hold awards in two programs at once (§18 Q6).
   - Approved applications are kept: they're the history.
 - **`Document`:**
   - fields: `requirement` FK `RequiredDocument`; `application` FK; `status` ∈ {pending, approved, declined};
@@ -269,29 +285,40 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - transitions: `pending` → `approved` or `declined`; `declined` → `pending` (re-upload);
   - rules:
     - documents change only while the application is `draft` or `returned`;
+    - staff decide a document only while the application is `under_review`. A decline needs a reason of at most 500
+      characters, an approved document stays approved, and a declined one reaches the student through the return;
     - an `approved` document can't be replaced, and re-uploading a `declined` one moves it back to `pending`;
     - the service checks the requirement's own `accepted_types` and `max_bytes`, because the upload field applies only
       the purpose-wide limit;
     - a `StoredFile` backs at most one `DocumentFile`;
-    - students download their own files through `/files/<id>/`; staff access comes in M8.
+    - students download their own files through `/files/<id>/`; staff access is in §7.
 - **`DocumentFile`:** `document`, `file` FK `StoredFile`, `version`, `is_current`. A document holds one or more files,
   and re-uploads add a version.
 
 ### 4.6 awards
 - **`Award`** (a scholar in a program):
   - fields: `profile`, `program`, `tier`, `student_number`, `status` ∈ {active, suspended, inactive, graduated},
-    `source` ∈ {applied, imported, manual}, `source_application` (nullable), `started_term`, `ended_term`, `notes`;
-  - constraint: at most one active award per (`profile`, `program`);
-  - whether a student can hold CEAA and LANI at once is an open question (§18).
+    `source` ∈ {applied, imported, manual}, `source_application` (nullable one-to-one), `started_term`, `ended_term`,
+    `notes`;
+  - constraint: at most one active award per (`profile`, `program`). A student may hold awards in two programs at
+    once (§18 Q6); the review screen notes it.
 - **`ScholarTerm`:**
   - fields: `award`, `term`, `year_level`, `course`, `school`, `gwa`, `gwa_scale`, `units`, `merit` (bool),
     `merit_confirmed_by`, `compliance` ∈ {incomplete, complete};
+  - the school fallback matches `Application`: `school` (nullable FK), `school_name` and `school_type`, with exactly
+    one source set;
   - constraint: unique (`award`, `term`);
   - `merit` is proposed by the program's merit rule and confirmed by staff;
   - `compliance` is recomputed when documents change: complete only when every required renewal document is
     approved.
 - **Lifecycle:**
-  - An approved new application creates an `Award` (`source=applied`) and the first `ScholarTerm`.
+  - An approved new application creates an `Award` (`source=applied`, `status=active`, the tier staff chose,
+    `started_term` = the application's term, `source_application`) and the first `ScholarTerm`.
+    - The `ScholarTerm` copies the frozen academics from the application.
+    - `merit` is `True` only when the snapshot's `merit_likely` is `True`; `merit_confirmed_by` stays empty until M9
+      confirms it.
+    - `compliance` is `complete`, because every document was approved.
+    - An optional approval note goes in `decision_reason`.
   - An approved renewal application creates the next `ScholarTerm`.
   - Import or manual creation makes an `Award` + `ScholarTerm` with `source=imported` or `source=manual`.
 - **At-risk** is derived, never stored: `awards.selectors.at_risk()` flags awards whose latest `ScholarTerm` GWA misses
@@ -347,7 +374,8 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 | Student | `/me/scholarships/` (awards, terms, disbursements, schedules), `/me/notifications/` | student |
 | Staff | `/staff/<slug>/` (dashboard) | program staff/head |
 | Staff | `students/` (unclaimed profiles created for this program), `students/new/`, `students/<id>/invite/` | program staff/head |
-| Staff | `applications/`, `applications/new/` (on behalf), `applications/<id>/` (review, documents, decide) | program staff/head |
+| Staff | `applications/` (queue), `applications/<id>/` (review), `applications/<id>/start/`, `applications/<id>/documents/<document>/approve/`, `applications/<id>/documents/<document>/decline/`, `applications/<id>/decide/` (approve, return or reject), `applications/bulk/` (start review, approve; POST) | program staff/head |
+| Staff | `applications/new/` (on behalf; M8b) | program staff/head |
 | Staff | `scholars/`, `scholars/<award>/`, `scholars/import/`, `scholars/export/`, `terms/` (rollover) | program staff/head |
 | Staff | `schedules/`, `disbursements/`, `disbursements/<schedule>/`, `budget/` | program staff/head (see §6) |
 | Staff | `reports/`, `tasks/`, `settings/` (tiers, documents, rules, window) | staff; `settings/` is head only |
@@ -419,8 +447,10 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 - **Download:** `GET /files/<id>/` checks access, writes an `AuditEvent` (`file.viewed`), and 302s to a presigned GET
   valid for 5 minutes with `ResponseContentDisposition=attachment; filename=…` and the sniffed `ResponseContentType`.
   Files are never served inline from the app origin.
-  - In M5 the uploader and the super admin may download. Later milestones widen access in the selector (documents:
-    staff of the owning program, M7/M8). No access answers 404.
+  - In M5 the uploader and the super admin may download. Later milestones widen access in the selector. No access
+    answers 404.
+  - From M8, active staff of an application's program can download every version of every document on a submitted
+    application, and so can the office. Anyone else gets 404.
   - The redirect carries `Cache-Control: no-store`.
   - Names are cleaned (no path parts or control characters, at most 255 characters) and sent as an ASCII fallback plus
     RFC 6266 `filename*`. The extension follows the sniffed type.
@@ -491,10 +521,17 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 - **Templates:** `templates/emails/<kind>.{html,txt}`, autoescaped.
   - v1 messages to port: application received, application decided, allowance approved/released, password reset (from
     allauth).
-  - New: invite/claim, document declined, application returned.
+  - New: invite/claim, application returned.
   - M7 sends only `application_received`, on submit and on resubmit. Its context whitelist is `full_name`,
-    `program_name` and `application_url` (a name is allowed because the address is verified). The returned and decided
-    emails come with M8; there is no `Notification` model before M11.
+    `program_name` and `application_url` (a name is allowed because the address is verified). There is no `Notification`
+    model before M11.
+  - M8 adds:
+    - `application_returned`, whose whitelist is `full_name`, `program_name` and `application_url`;
+    - `application_decided`, the same keys plus `outcome` ∈ {`approved`, `not approved`}.
+  - The staff reason is never in the email (free text; the student reads it signed in). A profile with no user gets no
+    email.
+  - There is no separate "document declined" email: the student can't re-upload until the application is returned, so
+    the return covers it.
 - **Background jobs:** two management commands, run on a loop by the `worker` service (or from any cron or scheduler):
   - `send_outbox` retries `failed` rows, up to 5 attempts, and also picks up `queued` rows older than 5 minutes;
   - `cleanup` runs `clearsessions`, deletes expired invites, and purges `sent` outbox rows and exhausted `failed` rows
@@ -820,7 +857,12 @@ starts, and ends with every acceptance item checked.
 
 **M8: Application review**
 - [ ] Staff queue (filters, sorting, pagination), review screen, document approve/decline, return, approve → `Award` +
-  first `ScholarTerm`, reject, bulk, on-behalf applications.
+  first `ScholarTerm`, reject, bulk start review and approve.
+- [ ] Extend the demo loader for this milestone's screens.
+
+**M8b: On-behalf applications**
+- [ ] Staff form with academics, rule override with a required reason, staff document uploads and submit, student
+  read-only view.
 - [ ] Extend the demo loader for this milestone's screens.
 
 **M9: Scholars, terms and renewals**
@@ -877,7 +919,8 @@ starts, and ends with every acceptance item checked.
 3. What qualifies a student for each LANI tier (honors, premier, priority, basic plus, basic, SUC/LCU, review, lead)?
 4. Renewal criteria: is CEAA's "GWA ≥ 80%, ≥ 15 units" right? What scale is LANI's "SWA not lower than 2.5" on?
 5. Definition of at-risk.
-6. Can one student hold CEAA and LANI at the same time?
+6. Can one student hold CEAA and LANI at the same time? Decided 2026-11-13 (M8): yes, one active award per program
+   (v1 never checked across programs). The maintainer to confirm.
 7. Head vs staff powers (§6 proposal).
 8. Maximum terms per program; graduation rules.
 9. Budget figures; confirm the City fiscal year (January–December) as the budget period.
