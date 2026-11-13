@@ -4,6 +4,7 @@ from django.db.models import QuerySet
 from django.http import Http404
 
 from apps.accounts.models import User
+from apps.applications.selectors import staff_can_download
 
 from .models import StoredFile
 
@@ -27,11 +28,10 @@ def usable_file(user: User, file_id: object, purpose: str) -> StoredFile | None:
 
 
 def downloadable_file(user: User, file_id: uuid.UUID) -> StoredFile:
-    """A ready file the user uploaded (or any, for the scholarship office); else Http404."""
-    queryset = StoredFile.objects.filter(pk=file_id, status=StoredFile.Status.READY)
-    if not user.is_super_admin:
-        queryset = queryset.filter(uploaded_by=user)
-    file = queryset.first()
+    """A ready file the user uploaded, any for the office, or a submitted document for its staff."""
+    file = StoredFile.objects.filter(pk=file_id, status=StoredFile.Status.READY).first()
     if file is None:
         raise Http404("No such file.")
-    return file
+    if user.is_super_admin or file.uploaded_by_id == user.pk or staff_can_download(user, file):
+        return file
+    raise Http404("No such file.")

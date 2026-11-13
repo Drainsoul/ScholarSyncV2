@@ -15,9 +15,9 @@ from django.utils import timezone
 from apps.accounts.models import User
 from apps.accounts.services import record_consent
 from apps.core import audit
+from apps.core.permissions import require_program_staff
 from apps.files.models import StoredFile
 from apps.programs.models import Program
-from apps.programs.selectors import membership_for
 from apps.students.models import EducationRecord, FamilyMember, ProfileInvite, StudentProfile
 from apps.students.selectors import INVALID_LINK, claim_problem, find_invite, hash_token
 from apps.workspace.emails import enqueue
@@ -234,17 +234,6 @@ def remove_photo(*, user: User) -> StudentProfile:
     return profile
 
 
-def _require_program_staff(actor: User, program: Program | None) -> None:
-    """The office, or staff or head of this program. Nobody else, whatever their role says."""
-    if not actor.is_active:
-        raise PermissionDenied("Not allowed.")
-    if actor.is_super_admin:
-        return
-    if program is not None and actor.is_program_staff and membership_for(actor, program):
-        return
-    raise PermissionDenied("Only this program's staff can do that.")
-
-
 def _clean_email(email: str) -> str:
     cleaned = email.strip().lower()
     try:
@@ -272,7 +261,7 @@ def create_staff_profile(
     birth_date: date,
     email: str,
 ) -> tuple[StudentProfile, ProfileInvite]:
-    _require_program_staff(actor, program)
+    require_program_staff(actor, program)
     cleaned = _clean_email(email)
     profile = StudentProfile.objects.create(
         first_name=first_name,
@@ -292,7 +281,7 @@ def issue_invite(
     *, actor: User, profile: StudentProfile, email: str | None = None
 ) -> ProfileInvite:
     """Send a fresh claim link; every older unclaimed link of this profile stops working."""
-    _require_program_staff(actor, profile.created_for)
+    require_program_staff(actor, profile.created_for)
     locked = StudentProfile.objects.select_for_update().get(pk=profile.pk)
     if locked.user_id is not None:
         raise ValidationError("This profile has already been claimed.")

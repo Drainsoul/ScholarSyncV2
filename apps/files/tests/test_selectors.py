@@ -1,8 +1,19 @@
+from typing import Any
+
 import pytest
+from django.http import Http404
+from django.utils import timezone
 
 from apps.accounts.tests.factories import UserFactory
-from apps.files.selectors import usable_file
+from apps.applications.selectors import staff_can_download
+from apps.applications.tests.factories import (
+    ApplicationFactory,
+    DocumentFactory,
+    DocumentFileFactory,
+)
+from apps.files.selectors import downloadable_file, usable_file
 from apps.files.tests.factories import StoredFileFactory
+from apps.programs.tests.factories import MembershipFactory
 
 READY = {"status": "ready", "sha256": "a" * 64, "sniffed_type": "image/png"}
 
@@ -26,3 +37,72 @@ def test_usable_file_rules() -> None:
 def test_usable_file_never_raises(junk: object) -> None:
     me = UserFactory.create(verified=True)
     assert usable_file(me, junk, "photo") is None
+
+
+def _submitted_file(version_count: int = 1) -> tuple[Any, list[Any]]:
+    application = ApplicationFactory.create(
+        status="submitted", submitted_at=timezone.now(), school_name="Some College"
+    )
+    document = DocumentFactory.create(application=application)
+    rows = []
+    for number in range(1, version_count + 1):
+        rows.append(
+            DocumentFileFactory.create(
+                document=document, version=number, is_current=number == version_count
+            )
+        )
+    return application, [row.file for row in rows]
+
+
+@pytest.mark.django_db
+def test_staff_of_the_program_can_download_a_submitted_document() -> None:
+    application, (file,) = _submitted_file()
+    staff = MembershipFactory.create(program=application.program).user
+    assert downloadable_file(staff, file.id) == file
+    assert staff_can_download(staff, file)
+
+
+@pytest.mark.django_db
+def test_staff_cannot_download_a_draft_document() -> None:
+    application = ApplicationFactory.create()
+    file = DocumentFileFactory.create(document=DocumentFactory.create(application=application)).file
+    staff = MembershipFactory.create(program=application.program).user
+    assert not staff_can_download(staff, file)
+    with pytest.raises(Http404):
+        downloadable_file(staff, file.id)
+
+
+@pytest.mark.django_db
+def test_other_program_staff_get_404() -> None:
+    _, (file,) = _submitted_file()
+    other = MembershipFactory.create().user
+    assert not staff_can_download(other, file)
+    with pytest.raises(Http404):
+        downloadable_file(other, file.id)
+    with pytest.raises(Http404):
+        downloadable_file(UserFactory.create(verified=True), file.id)
+
+
+@pytest.mark.django_db
+def test_old_versions_are_downloadable_by_staff() -> None:
+    application, files = _submitted_file(version_count=3)
+    staff = MembershipFactory.create(program=application.program).user
+    for file in files:
+        assert downloadable_file(staff, file.id) == file
+
+
+@pytest.mark.django_db
+def test_staff_cannot_download_a_photo() -> None:
+    staff = MembershipFactory.create().user
+    photo = StoredFileFactory.create(purpose="photo", **READY)
+    assert not staff_can_download(staff, photo)
+    with pytest.raises(Http404):
+        downloadable_file(staff, photo.id)
+
+
+@pytest.mark.django_db
+def test_uploader_and_office_keep_their_access() -> None:
+    _, (file,) = _submitted_file()
+    assert downloadable_file(file.uploaded_by, file.id) == file
+    office = UserFactory.create(role="super_admin")
+    assert downloadable_file(office, file.id) == file

@@ -10,6 +10,24 @@ from apps.programs.models import Program, ProgramMembership
 from apps.programs.selectors import membership_for
 
 
+def require_program_staff(actor: User, program: Program | None) -> None:
+    """The office, or staff or head of an active program. Nobody else, whatever their role says.
+
+    With a program given, an inactive program refuses everyone, the office included. The office
+    passes with `None`; staff never do.
+    """
+    if actor.is_active:
+        if program is None:
+            if actor.is_super_admin:
+                return
+        elif program.is_active and (
+            actor.is_super_admin
+            or (actor.is_program_staff and membership_for(actor, program) is not None)
+        ):
+            return
+    raise PermissionDenied("Only this program's staff can do that.")
+
+
 class _RoleRequiredMixin:
     """Anonymous visitors go to sign in; the wrong role gets the 403 page."""
 

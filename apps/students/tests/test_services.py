@@ -307,3 +307,26 @@ def test_undated_education_sorts_after_dated() -> None:
     undated = EducationRecordFactory.create(profile=profile, is_current=False, year_from=None)
     dated = EducationRecordFactory.create(profile=profile, is_current=False, year_from=2015)
     assert list(selectors.education_for(profile)) == [dated, undated]
+
+
+def test_create_staff_profile_refused_for_inactive_program(db: Any) -> None:
+    from datetime import date
+
+    from apps.programs.tests.factories import MembershipFactory, ProgramFactory
+
+    program = ProgramFactory.create(is_active=False)
+    staff = MembershipFactory.create(program=program).user
+    office = UserFactory.create(role=User.Role.SUPER_ADMIN)
+    for actor in (staff, office):
+        with pytest.raises(PermissionDenied):
+            services.create_staff_profile(
+                actor=actor,
+                program=program,
+                first_name="Paolo",
+                middle_name="",
+                last_name="Villanueva",
+                suffix="",
+                birth_date=date(2007, 5, 1),
+                email="paolo@example.com",
+            )
+    assert not StudentProfile.objects.filter(created_for=program).exists()

@@ -118,3 +118,56 @@ def test_head_of_one_program_is_only_staff_in_another(rf: Any, db: Any) -> None:
     assert _HeadOnly.as_view()(request, program=program_a.slug).status_code == 200
     with pytest.raises(PermissionDenied):
         _HeadOnly.as_view()(request, program=program_b.slug)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("case", "allowed"),
+    [
+        ("member", True),
+        ("head", True),
+        ("other_program_staff", False),
+        ("inactive_actor", False),
+        ("inactive_program_member", False),
+        ("inactive_program_office", False),
+        ("office_none", True),
+        ("office_active_program", True),
+        ("student", False),
+        ("staff_none", False),
+    ],
+)
+def test_require_program_staff(case: str, allowed: bool) -> None:
+    from apps.core.permissions import require_program_staff
+
+    program = ProgramFactory.create(
+        is_active=case not in {"inactive_program_member", "inactive_program_office"}
+    )
+    other = ProgramFactory.create()
+    target: Any = program
+    if case == "member":
+        actor = MembershipFactory.create(program=program).user
+    elif case == "head":
+        actor = MembershipFactory.create(program=program, level=ProgramMembership.Level.HEAD).user
+    elif case == "other_program_staff":
+        actor = MembershipFactory.create(program=other).user
+    elif case == "inactive_actor":
+        actor = MembershipFactory.create(program=program).user
+        actor.is_active = False
+        actor.save()
+    elif case == "inactive_program_member":
+        actor = MembershipFactory.create(program=program).user
+    elif case in {"inactive_program_office", "office_active_program"}:
+        actor = UserFactory.create(role=User.Role.SUPER_ADMIN)
+    elif case == "office_none":
+        actor = UserFactory.create(role=User.Role.SUPER_ADMIN)
+        target = None
+    elif case == "staff_none":
+        actor = MembershipFactory.create(program=program).user
+        target = None
+    else:
+        actor = UserFactory.create()
+    if allowed:
+        require_program_staff(actor, target)
+    else:
+        with pytest.raises(PermissionDenied, match="Only this program's staff can do that."):
+            require_program_staff(actor, target)

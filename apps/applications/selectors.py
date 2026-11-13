@@ -1,11 +1,13 @@
 from dataclasses import dataclass
 from typing import Literal, cast
 
+from django.core.exceptions import PermissionDenied
 from django.db.models import QuerySet
 from django.http import Http404
 
 from apps.accounts.models import User
 from apps.applications.models import Application, Document, DocumentFile
+from apps.core.permissions import require_program_staff
 from apps.files.models import StoredFile
 from apps.programs.models import AcademicTerm, Program, RequiredDocument
 from apps.programs.selectors import required_documents_for
@@ -76,6 +78,23 @@ def document_rows(application: Application) -> list[DocumentRow]:
             )
         )
     return rows
+
+
+def staff_can_download(user: User, file: StoredFile) -> bool:
+    """True when the file backs any version of a submitted application's document, and the user
+    is staff of that application's program (or the office). One query."""
+    row = (
+        DocumentFile.objects.filter(file=file, document__application__submitted_at__isnull=False)
+        .select_related("document__application__program")
+        .first()
+    )
+    if row is None:
+        return False
+    try:
+        require_program_staff(user, row.document.application.program)
+    except PermissionDenied:
+        return False
+    return True
 
 
 def missing_documents(application: Application) -> list[RequiredDocument]:
