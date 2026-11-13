@@ -175,3 +175,28 @@ def test_waiting_count_counts_submitted_only() -> None:
     submitted(ProgramFactory.create())
     ApplicationFactory.create(program=program, status=S.DRAFT)
     assert waiting_count(program) == 2
+
+
+def test_parse_queue_filters_strips_nul_bytes_and_queue_still_runs() -> None:
+    filters = parse_queue_filters(QueryDict("q=%00ab%00"))
+    assert filters.q == "ab"
+    program = ProgramFactory.create()
+    assert list(queue(program, filters)) == []
+    assert list(queue(program, parse_queue_filters(QueryDict("q=%00")))) == []
+
+
+def test_queue_term_filter() -> None:
+    program = ProgramFactory.create()
+    a = submitted(program)
+    submitted(program)
+    assert ids(queue(program, QueueFilters(term_id=a.term_id))) == [a.pk]
+
+
+def test_descending_submitted_sort_puts_null_first_submission_last() -> None:
+    program = ProgramFactory.create()
+    now = timezone.now()
+    dated = submitted(program, first_submitted_at=now)
+    undated = submitted(program, first_submitted_at=None)
+    for sort in ("submitted", "-submitted"):
+        assert ids(queue(program, QueueFilters(sort=sort)))[-1] == undated.pk
+    assert dated.pk in ids(queue(program, QueueFilters(sort="-submitted")))

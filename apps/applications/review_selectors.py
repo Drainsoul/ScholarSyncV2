@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from django.db.models import Q, QuerySet
+from django.db.models import F, OrderBy, Q, QuerySet
 from django.http import Http404, QueryDict
 
 from apps.applications.models import Application, Document
@@ -86,13 +86,16 @@ def parse_queue_filters(params: QueryDict) -> QueueFilters:
     sort = params.get("sort", "")
     if sort.removeprefix("-") not in SORTS:
         sort = DEFAULT_SORT
-    return QueueFilters(status=status, term_id=term_id, q=params.get("q", "").strip(), sort=sort)
+    return QueueFilters(
+        status=status, term_id=term_id, q=params.get("q", "").replace("\x00", "").strip(), sort=sort
+    )
 
 
-def _order_fields(sort: str) -> list[str]:
+def _order_fields(sort: str) -> list[OrderBy | str]:
     fields = SORTS[sort.removeprefix("-")]
     if sort.startswith("-"):
-        return [f"-{field}" for field in fields]
+        # Nulls last in both directions, so asc and desc agree on rows with no first submission.
+        return [F(field).desc(nulls_last=True) for field in fields]
     return list(fields)
 
 
