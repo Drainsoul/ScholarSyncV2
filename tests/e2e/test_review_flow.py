@@ -76,7 +76,9 @@ def test_decline_in_dialog_then_return_then_student_resubmits(
 
     # The student signs in, sees the return and the reason, re-uploads and resubmits.
     page.context.clear_cookies()
-    log_in(page, base, application.profile.user.email, f"/me/applications/{application.pk}/")
+    student = application.profile.user
+    assert student is not None
+    log_in(page, base, student.email, f"/me/applications/{application.pk}/")
     expect(
         page.get_by_text("Staff returned this application: Please upload a clearer Document 1.")
     ).to_be_visible()
