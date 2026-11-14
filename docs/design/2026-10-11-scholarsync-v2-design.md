@@ -20,6 +20,8 @@
 - **Revision:** 12 (2026-11-14): M8 follow-up: bulk, queue, review-screen and head/staff decisions;
   a rejection stands for its term; the "Returned earlier" banner; the match page's held and rejected sentences (§4.5,
   §5, §6, §8, §12).
+- **Revision:** 13 (2026-11-14): M8b decisions: on-behalf applications, rule override, staff uploads, read-only
+  student view (§4.5, §5, §6, §7, §9, §16, §18).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -295,6 +297,39 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
     `term`), as a partial unique index. A student may hold open applications to several programs (CEAA and LANI) in
     one term; one student may hold awards in two programs at once (§18 Q6).
   - Approved applications are kept: they're the history.
+  - **On behalf (M8b, decided 2026-11-14):**
+    - two more fields: `on_behalf` (bool; `created_by` is then the staff member) and `override_reason` (text, at most
+      1,000 characters), with constraint `applications_override_only_on_behalf`: a reason is stored only on an
+      on-behalf row;
+    - staff file only for profiles created for their program (`created_for=program`), claimed or not. Finding a
+      self-registered student by the exact email of their account is not built (§18 Q16);
+    - staff drive the whole application: start (a `draft`), school and grades (draft only), documents (draft or
+      returned, with the student-side rules), submit and resubmit (a resubmit keeps the snapshot and tier and
+      re-checks the documents only), and withdraw (draft or returned). After submit it goes through the unchanged M8
+      review, and the staff member who filed it may also review it (separation of duties waits for §18 Q7);
+    - **academics** live on the application only: staff never write the student's profile. A staff form fills them on
+      the draft and they freeze at submit, as for students. The form requires a school (a listed one, or a typed name
+      with its type and grading scale), because `applications_submitted_has_school` would refuse the submit
+      otherwise; course, year level, GWA and units are optional, and a blank one shows as a missing check;
+    - **override:** staff see the live checklist. When any check is `unmet` or `missing`, submitting needs a reason
+      ("This student doesn't meet every rule. Say why you're filing anyway."). Every check is overridable, including
+      the window; the school check is always met. No current term is never overridable ("Applications aren't open: the
+      scholarship office hasn't set up the current school term."). The reason is free text, so it stays out of audit
+      `data`, which (like the snapshot) holds only the overridden check codes; an eligible application stores no
+      reason. Submitting on behalf skips the "personal details" completion check, since staff are the contact;
+    - **tier:** it comes from `tiers_in_force(program, term)`, never from `result.tier_candidates` (empty when a rule
+      fails). One tier is chosen automatically, otherwise staff pick; a program with no tiers can't be filed for ("This
+      program has no allowance tiers set up yet.");
+    - **start refusals,** checked under the profile lock: the program isn't active (404); the student holds the
+      scholarship; rejected this term ("This student's application wasn't approved for {term}. They can apply again
+      next term."); the student's own open application for the program and term ("This student already has an
+      application for {program} this term. They need to finish or withdraw it."). An open on-behalf application is
+      returned, not duplicated, and a race with a student start is caught on `applications_one_open_per_term`;
+    - **the student's view is read-only**: a student who has claimed the profile sees it in
+      `/me/applications/` with "{program} staff filed this application for you.", with upload, submit and withdraw
+      hidden. The student services refuse an on-behalf row whatever the template shows ("The scholarship office filed
+      this application for you. Contact them to change it."), and starting from `/me/applications/new/<slug>/` while
+      an on-behalf one is open lands on it.
 - **`Document`:**
   - fields: `requirement` FK `RequiredDocument`; `application` FK; `status` ∈ {pending, approved, declined};
     `decline_reason`; `reviewed_by`; `reviewed_at`;
@@ -394,7 +429,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 | Staff | `/staff/<slug>/` (dashboard) | program staff/head |
 | Staff | `students/` (unclaimed profiles created for this program), `students/new/`, `students/<id>/invite/` | program staff/head |
 | Staff | `applications/` (queue), `applications/<id>/` (review), `applications/<id>/start/`, `applications/<id>/documents/<document>/approve/`, `applications/<id>/documents/<document>/decline/`, `applications/<id>/decide/` (approve, return or reject), `applications/bulk/` (start review, approve; POST) | program staff/head |
-| Staff | `applications/new/` (on behalf; M8b) | program staff/head |
+| Staff | `applications/new/` (in progress + profile picker; POST starts), `applications/behalf/<id>/` (filing page), `…/academics/`, `…/documents/<requirement>/`, `…/submit/`, `…/withdraw/` (POST) | program staff/head |
 | Staff | `scholars/`, `scholars/<award>/`, `scholars/import/`, `scholars/export/`, `terms/` (rollover) | program staff/head |
 | Staff | `schedules/`, `disbursements/`, `disbursements/<schedule>/`, `budget/` | program staff/head (see §6) |
 | Staff | `reports/`, `tasks/`, `settings/` (tiers, documents, rules, window) | staff; `settings/` is head only |
@@ -409,7 +444,16 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - also a term filter and a name search, where every word must match the first or last name;
   - sorts: `submitted` (`first_submitted_at`, oldest first; the default) and `name`;
   - 25 rows per page; unknown values fall back to the defaults, never an error;
-  - the staff nav item "Applications" counts `submitted` applications only (the ones nobody has started).
+  - the staff nav item "Applications" counts `submitted` applications only (the ones nobody has started);
+  - the queue header has a "File for a student" button, which opens `applications/new/` (M8b).
+- **Filing on behalf** (M8b):
+  - `applications/new/` lists "In progress" (the program's on-behalf applications that are draft or returned), then a
+    searchable list of the program's profiles with a "File an application" button (POST starts); the students list
+    has the same button on each row;
+  - `applications/behalf/<id>/` is the filing page. A returned on-behalf application's review screen links to it with
+    "Fix and resubmit", and the filing page redirects to the review screen for any other status;
+  - the review screen shows "Filed by {staff name} for the student." and lists overridden checks under "Overridden by
+    staff" with the reason.
 
 ## 6. Authorization
 - **Roles:** `User.role` decides which area a user can enter. Staff powers come from `ProgramMembership`, and a super
@@ -431,7 +475,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 |---|---|---|---|---|
 | Own profile, applications, scholarships | ✓ | — | — | view |
 | Review applications and documents, return/approve/reject | — | ✓ | ✓ | ✓ |
-| Create applications or scholars on a student's behalf, import | — | ✓ | ✓ | ✓ |
+| Create applications or scholars on a student's behalf, import (M8b: applications only for profiles created for the staff member's program) | — | ✓ | ✓ | ✓ |
 | Edit scholars, terms, merit confirmation | — | ✓ | ✓ | ✓ |
 | Generate and approve disbursements | — | prepare | approve | ✓ |
 | Release and revert disbursements (reauth) | — | — | ✓ | ✓ |
@@ -473,7 +517,8 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   | `photo`    | JPEG, PNG      | 5 MB    | any role              |
   | `report`   | PDF            | 20 MB   | staff and office only |
 
-  A user may start at most 20 uploads per hour.
+  A student may start at most 20 uploads per hour. Staff may start 100 (`STAFF_STARTS_PER_HOUR`), since five documents
+  for each of five walk-ins would otherwise hit the limit (M8b).
 - **Download:** `GET /files/<id>/` checks access, writes an `AuditEvent` (`file.viewed`), and 302s to a presigned GET
   valid for 5 minutes with `ResponseContentDisposition=attachment; filename=…` and the sniffed `ResponseContentType`.
   Files are never served inline from the app origin.
@@ -481,6 +526,9 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
     answers 404.
   - From M8, active staff of an application's program can download every version of every document on a submitted
     application, and so can the office. Anyone else gets 404.
+  - From M8b, active staff of the program can also download every version of an on-behalf application's
+    documents before it is submitted, and a student can download the files of their own applications, including files
+    staff uploaded for them.
   - The redirect carries `Cache-Control: no-store`.
   - Names are cleaned (no path parts or control characters, at most 255 characters) and sent as an ASCII fallback plus
     RFC 6266 `filename*`. The extension follows the sniffed type.
@@ -557,6 +605,10 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - v1 messages to port: application received, application decided, allowance approved/released, password reset (from
     allauth).
   - New: invite/claim, application returned.
+  - **On-behalf applications (M8b):** emails go only to `profile.user.email`, and only when the profile
+    has a user. `application_received` goes out on submit and resubmit, and `application_decided` on approve or reject
+    (unchanged). There is no `application_returned` for an on-behalf application, because staff fix it, not the
+    student.
   - M7 sends only `application_received`, on submit and on resubmit. Its context whitelist is `full_name`,
     `program_name` and `application_url` (a name is allowed because the address is verified). There is no `Notification`
     model before M11.
@@ -911,7 +963,9 @@ starts, and ends with every acceptance item checked.
 **M8b: On-behalf applications**
 - [ ] Staff form with academics, rule override with a required reason, staff document uploads and submit, student
   read-only view.
-- [ ] Extend the demo loader for this milestone's screens.
+- [ ] Extend the demo loader for this milestone's screens (a walk-in profile with an overridden on-behalf application
+  and a staff draft).
+- Profiles created for the program only; the email lookup waits for the maintainer (§18 Q16).
 
 **M9: Scholars, terms and renewals**
 - [ ] Scholar list and detail, edit, status changes, `ScholarTerm` history, merit by rule + confirmation, at-risk
@@ -977,6 +1031,8 @@ starts, and ends with every acceptance item checked.
 12. ~~Vercel plan~~ Obsolete (revision 5): nobody hosts an official copy.
 13. ~~Domain and sender domain~~ Obsolete (revision 5): each self-hoster chooses their own.
 14. Is v1 still used by the City, and is there a cut-over date?
+16. Can staff file for a self-registered student found by the exact email of their account? (M8b; not
+    built.) It reaches students who never touched the program and tells staff whether an address has an account.
 
 ## 19. Decisions (2026-10-11 → 2026-10-30)
 | Decision | Why |
