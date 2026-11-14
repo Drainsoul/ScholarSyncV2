@@ -1,3 +1,5 @@
+from collections.abc import Callable
+from decimal import Decimal
 from unittest.mock import Mock, patch
 
 import pytest
@@ -9,15 +11,26 @@ from apps.accounts.models import User
 from apps.accounts.tests.factories import UserFactory
 from apps.applications import review, services
 from apps.applications.models import Application, Document
+from apps.applications.selectors import undecided_documents
 from apps.applications.tests.factories import (
     ApplicationFactory,
     DocumentFactory,
     DocumentFileFactory,
 )
+from apps.awards.models import Award, ScholarTerm
+from apps.awards.tests.factories import AwardFactory
 from apps.core.models import AuditEvent
 from apps.core.transitions import InvalidTransition
-from apps.programs.models import Program
-from apps.programs.tests.factories import MembershipFactory, ProgramFactory
+from apps.files.models import StoredFile
+from apps.files.tests.factories import StoredFileFactory
+from apps.programs.models import BenefitTier, Program, School
+from apps.programs.tests.factories import (
+    BenefitTierFactory,
+    MembershipFactory,
+    ProgramFactory,
+    RequiredDocumentFactory,
+    SchoolFactory,
+)
 from apps.students.models import StudentProfile
 from apps.students.tests.factories import ProfileFactory
 from apps.workspace.emails import KINDS, _render
@@ -603,3 +616,416 @@ def test_emails_render_both_outcomes() -> None:
         assert "Open your application" in html
         assert context["application_url"] in text and context["application_url"] in html
         assert ("good news" in text) == (extra.get("outcome") == "approved")
+
+
+# approve
+
+NOTE = "Strong grades, approved quickly with secret-note-text."
+NOT_DECIDED = "Approve or decline every document first: {}."
+TIER_GONE = "The requested tier is no longer offered. Choose another tier."
+FOREIGN_TIER = "Choose one of this program's allowance tiers."
+HOLDS_AWARD = "This student already holds an active {} award."
+
+
+def approvable(program: Program, **kwargs: object) -> Application:
+    """Under review, with a requested tier in force and every document approved."""
+    application = under_review(program, **kwargs)
+    application.requested_tier = BenefitTierFactory.create(
+        program=program, effective_from=application.term
+    )
+    application.save(update_fields=["requested_tier"])
+    document_with_file(application, D.APPROVED)
+    return application
+
+
+def assert_not_approved(application: Application, message: str, call: Callable[[], object]) -> None:
+    before = audit_count()
+    with pytest.raises(ValidationError) as exc:
+        call()
+    assert not isinstance(exc.value, InvalidTransition)
+    assert exc.value.messages == [message]
+    status = application.status
+    application.refresh_from_db()
+    assert application.status == status
+    assert application.decided_at is None
+    assert audit_count() == before
+    assert not Award.objects.filter(source_application=application).exists()
+    assert not EmailOutbox.objects.exists()
+
+
+@pytest.mark.parametrize("listed", [True, False])
+def test_approve_creates_award_and_first_term(listed: bool) -> None:
+    program = ProgramFactory.create()
+    actor = staff_of(program)
+    school = SchoolFactory.create(type=School.Type.PUBLIC) if listed else None
+    application = approvable(
+        program,
+        school=school,
+        school_name="" if listed else "Unlisted Polytechnic",
+        school_type="" if listed else School.Type.PRIVATE,
+        course="BS Nursing",
+        year_level=3,
+        gwa=Decimal("1.75"),
+        gwa_scale=School.Scale.ONE_TO_FIVE,
+        units=24,
+        match_snapshot={"merit_likely": True},
+    )
+    before = timezone.now()
+    award = review.approve_application(
+        actor=actor, program=program, application=application, tier=None, note=f"  {NOTE} "
+    )
+    application.refresh_from_db()
+    assert application.status == S.APPROVED
+    assert application.decided_by == actor
+    assert application.decided_at is not None and application.decided_at >= before
+    assert application.decision_reason == NOTE
+    assert award == Award.objects.get()
+    assert (award.profile, award.program, award.tier, award.started_term) == (
+        application.profile,
+        program,
+        application.requested_tier,
+        application.term,
+    )
+    assert (award.status, award.source, award.source_application) == (
+        Award.Status.ACTIVE,
+        Award.Source.APPLIED,
+        application,
+    )
+    term = ScholarTerm.objects.get(award=award)
+    assert term.term == application.term
+    assert (term.school, term.school_name, term.school_type) == (
+        application.school,
+        application.school_name,
+        application.school_type,
+    )
+    assert (term.course, term.year_level, term.gwa, term.gwa_scale, term.units) == (
+        "BS Nursing",
+        3,
+        Decimal("1.75"),
+        School.Scale.ONE_TO_FIVE,
+        24,
+    )
+    assert term.compliance == ScholarTerm.Compliance.COMPLETE
+    assert term.merit is True
+    assert term.merit_confirmed_by is None
+    approved = AuditEvent.objects.get(action="application.approved")
+    assert approved.actor == actor
+    assert approved.program == program
+    assert approved.target_id == str(application.pk)
+    assert approved.data == {"tier": award.tier.code, "award": award.pk}
+    created = AuditEvent.objects.get(action="award.created")
+    assert created.program == program
+    assert created.data == {
+        "source": "applied",
+        "application": application.pk,
+        "tier": award.tier.code,
+    }
+    assert "secret-note-text" not in str(approved.data) + str(created.data)
+
+
+def test_approve_with_an_explicit_tier_and_no_merit() -> None:
+    program = ProgramFactory.create()
+    application = approvable(program, match_snapshot={"merit_likely": None})
+    other = BenefitTierFactory.create(program=program, effective_from=application.term)
+    award = review.approve_application(
+        actor=staff_of(program), program=program, application=application, tier=other
+    )
+    assert award.tier == other
+    assert award.terms.get().merit is False
+    application.refresh_from_db()
+    assert application.decision_reason == ""
+
+
+@pytest.mark.parametrize("case", ["pending", "declined", "missing"])
+def test_approve_refused_until_every_document_is_decided(case: str) -> None:
+    program = ProgramFactory.create()
+    application = approvable(program)
+    if case == "missing":
+        requirement = RequiredDocumentFactory.create(program=program, sort_order=5)
+    else:
+        requirement = document_with_file(application, case).requirement
+    assert_not_approved(
+        application,
+        NOT_DECIDED.format(requirement.label),
+        lambda: review.approve_application(
+            actor=staff_of(program), program=program, application=application, tier=None
+        ),
+    )
+
+
+def test_undecided_documents_in_requirement_order() -> None:
+    program = ProgramFactory.create()
+    application = approvable(program)
+    late = document_with_file(application, D.PENDING)
+    late.requirement.sort_order = 9
+    late.requirement.save()
+    early = RequiredDocumentFactory.create(program=program, sort_order=1)
+    optional = RequiredDocumentFactory.create(program=program, sort_order=0, is_required=False)
+    declined_optional = document_with_file(application, D.DECLINED)
+    declined_optional.requirement.is_required = False
+    declined_optional.requirement.sort_order = 10
+    declined_optional.requirement.save()
+    rows = undecided_documents(application)
+    assert rows == [early, late.requirement, declined_optional.requirement]
+    assert optional not in rows
+
+
+def test_approve_after_resubmit_with_a_new_pending_file_is_refused() -> None:
+    program = ProgramFactory.create()
+    actor = staff_of(program)
+    application = approvable(program)
+    document = document_with_file(application, D.PENDING)
+    review.decline_document(
+        actor=actor,
+        program=program,
+        application=application,
+        document_id=document.pk,
+        reason=REASON,
+    )
+    review.return_application(actor=actor, program=program, application=application, reason=REASON)
+    user = application.profile.user
+    assert user is not None
+    file = StoredFileFactory.create(
+        uploaded_by=user,
+        status=StoredFile.Status.READY,
+        purpose=StoredFile.Purpose.DOCUMENT,
+        sniffed_type="application/pdf",
+        sha256="c" * 64,
+    )
+    services.attach_document(
+        user=user, application=application, requirement=document.requirement, file_id=file.pk
+    )
+    services.submit_application(user=user, application=application, tier=None)
+    review.start_review(actor=actor, program=program, application=application)
+    document.refresh_from_db()
+    assert document.status == D.PENDING
+    application.refresh_from_db()
+    EmailOutbox.objects.all().delete()
+    assert_not_approved(
+        application,
+        NOT_DECIDED.format(document.requirement.label),
+        lambda: review.approve_application(
+            actor=actor, program=program, application=application, tier=None
+        ),
+    )
+
+
+def test_approve_with_deactivated_requested_tier_needs_another() -> None:
+    program = ProgramFactory.create()
+    actor = staff_of(program)
+    application = approvable(program)
+    assert application.requested_tier is not None
+    BenefitTier.objects.filter(pk=application.requested_tier.pk).update(is_active=False)
+    assert_not_approved(
+        application,
+        TIER_GONE,
+        lambda: review.approve_application(
+            actor=actor, program=program, application=application, tier=None
+        ),
+    )
+    replacement = BenefitTierFactory.create(program=program, effective_from=application.term)
+    award = review.approve_application(
+        actor=actor, program=program, application=application, tier=replacement
+    )
+    assert award.tier == replacement
+
+
+def test_approve_without_a_requested_tier_needs_one() -> None:
+    program = ProgramFactory.create()
+    application = approvable(program)
+    Application.objects.filter(pk=application.pk).update(requested_tier=None)
+    application.refresh_from_db()
+    assert_not_approved(
+        application,
+        TIER_GONE,
+        lambda: review.approve_application(
+            actor=staff_of(program), program=program, application=application, tier=None
+        ),
+    )
+
+
+def test_approve_with_a_foreign_retired_or_future_tier_is_refused() -> None:
+    program = ProgramFactory.create()
+    actor = staff_of(program)
+    application = approvable(program)
+    foreign = BenefitTierFactory.create(effective_from=application.term)  # another program
+    future = BenefitTierFactory.create(program=program)  # effective after the term
+    retired = BenefitTierFactory.create(
+        program=program, effective_from=application.term, is_active=False
+    )
+    for tier in (foreign, future, retired):
+        assert_not_approved(
+            application,
+            FOREIGN_TIER,
+            lambda tier=tier: review.approve_application(  # type: ignore[misc]
+                actor=actor, program=program, application=application, tier=tier
+            ),
+        )
+
+
+def test_approve_refused_when_student_holds_award_in_this_program() -> None:
+    program = ProgramFactory.create()
+    application = approvable(program)
+    AwardFactory.create(
+        source_application=ApplicationFactory.create(
+            profile=application.profile, program=program, status=S.APPROVED
+        )
+    )
+    assert_not_approved(
+        application,
+        HOLDS_AWARD.format(program.name),
+        lambda: review.approve_application(
+            actor=staff_of(program), program=program, application=application, tier=None
+        ),
+    )
+
+
+def test_approve_allowed_with_award_in_another_program() -> None:
+    program = ProgramFactory.create()
+    application = approvable(program)
+    elsewhere = AwardFactory.create(
+        source_application=ApplicationFactory.create(
+            profile=application.profile, program=ProgramFactory.create(), status=S.APPROVED
+        )
+    )
+    award = review.approve_application(
+        actor=staff_of(program), program=program, application=application, tier=None
+    )
+    assert award.program == program
+    assert set(Award.objects.filter(profile=application.profile)) == {elsewhere, award}
+
+
+def test_approve_note_is_at_most_1000_characters() -> None:
+    program = ProgramFactory.create()
+    actor = staff_of(program)
+    application = approvable(program)
+    assert_not_approved(
+        application,
+        REASON_TOO_LONG_1000,
+        lambda: review.approve_application(
+            actor=actor, program=program, application=application, tier=None, note="x" * 1001
+        ),
+    )
+    review.approve_application(
+        actor=actor, program=program, application=application, tier=None, note="x" * 1000
+    )
+    application.refresh_from_db()
+    assert application.decision_reason == "x" * 1000
+
+
+@pytest.mark.parametrize("status", [S.SUBMITTED, S.RETURNED, S.APPROVED, S.REJECTED, S.WITHDRAWN])
+def test_approve_needs_under_review(status: str) -> None:
+    program = ProgramFactory.create()
+    application = approvable(program)
+    Application.objects.filter(pk=application.pk).update(status=status)
+    application.refresh_from_db()
+    before = audit_count()
+    with pytest.raises(InvalidTransition):
+        review.approve_application(
+            actor=staff_of(program), program=program, application=application, tier=None
+        )
+    application.refresh_from_db()
+    assert application.status == status
+    assert not Award.objects.exists()
+    assert audit_count() == before
+
+
+def test_approve_scoped_to_program() -> None:
+    tcu = ProgramFactory.create()
+    lani = ProgramFactory.create()
+    application = approvable(tcu)
+    before = audit_count()
+    with pytest.raises(PermissionDenied):
+        review.approve_application(
+            actor=staff_of(lani), program=tcu, application=application, tier=None
+        )
+    with pytest.raises(Http404):
+        review.approve_application(
+            actor=staff_of(lani), program=lani, application=application, tier=None
+        )
+    application.refresh_from_db()
+    assert application.status == S.UNDER_REVIEW
+    assert not Award.objects.exists()
+    assert audit_count() == before
+
+
+def test_double_approve_makes_one_award() -> None:
+    program = ProgramFactory.create()
+    application = approvable(program)
+    review.approve_application(
+        actor=staff_of(program), program=program, application=application, tier=None
+    )
+    # The second post still holds the stale in-memory row that says "under review".
+    stale = Application.objects.get(pk=application.pk)
+    stale.status = S.UNDER_REVIEW
+    with pytest.raises(InvalidTransition):
+        review.approve_application(
+            actor=staff_of(program), program=program, application=stale, tier=None
+        )
+    assert Award.objects.count() == 1
+    assert ScholarTerm.objects.count() == 1
+    assert AuditEvent.objects.filter(action="application.approved").count() == 1
+    assert AuditEvent.objects.filter(action="award.created").count() == 1
+    assert EmailOutbox.objects.count() == 1
+
+
+def test_approve_emails_approved_outcome() -> None:
+    program = ProgramFactory.create()
+    application = approvable(program)
+    review.approve_application(
+        actor=staff_of(program), program=program, application=application, tier=None, note=NOTE
+    )
+    row = EmailOutbox.objects.get()
+    assert row.kind == "application_decided"
+    assert application.profile.user is not None
+    assert row.to == application.profile.user.email
+    assert set(row.context) == KINDS["application_decided"]
+    assert row.context["outcome"] == "approved"
+    assert row.context["full_name"] == application.profile.full_name
+    assert row.context["program_name"] == program.name
+    assert row.context["application_url"] == services.application_url(application)
+    assert "secret-note-text" not in str(row.context)
+    subject, text, html = _render(row)
+    assert subject == f"Your {program.name} application was approved"
+    assert "secret-note-text" not in text + html
+
+
+def test_approve_without_a_user_sends_no_email() -> None:
+    program = ProgramFactory.create()
+    application = under_review(program, profile=ProfileFactory.create(user=None))
+    application.requested_tier = BenefitTierFactory.create(
+        program=program, effective_from=application.term
+    )
+    application.save(update_fields=["requested_tier"])
+    DocumentFileFactory.create(  # a staff-created profile: staff uploaded its documents
+        document=DocumentFactory.create(application=application, status=D.APPROVED),
+        file__uploaded_by=UserFactory.create(),
+    )
+    review.approve_application(
+        actor=staff_of(program), program=program, application=application, tier=None
+    )
+    assert Award.objects.count() == 1
+    assert not EmailOutbox.objects.exists()
+
+
+def test_approve_locks_profile_before_application() -> None:
+    program = ProgramFactory.create()
+    actor = staff_of(program)
+    application = approvable(program)
+    calls = Mock()
+    with (
+        patch.object(
+            StudentProfile.objects,
+            "select_for_update",
+            wraps=StudentProfile.objects.select_for_update,
+        ) as profile_lock,
+        patch.object(
+            Application.objects,
+            "select_for_update",
+            wraps=Application.objects.select_for_update,
+        ) as application_lock,
+    ):
+        calls.attach_mock(profile_lock, "profile")
+        calls.attach_mock(application_lock, "application")
+        review.approve_application(actor=actor, program=program, application=application, tier=None)
+    assert [call[0] for call in calls.mock_calls] == ["profile", "application"]

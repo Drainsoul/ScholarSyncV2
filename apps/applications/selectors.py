@@ -113,3 +113,20 @@ def missing_documents(application: Application) -> list[RequiredDocument]:
         if (row.requirement.is_required and row.current is None)
         or (row.document is not None and row.document.status == Document.Status.DECLINED)
     ]
+
+
+def undecided_documents(application: Application) -> list[RequiredDocument]:
+    """What still stands between the application and approval, in requirement order: a required
+    requirement with no approved document, and any document still pending or declined."""
+    return [
+        row.requirement
+        for row in document_rows(application)
+        if (
+            row.requirement.is_required
+            and (row.document is None or row.document.status != Document.Status.APPROVED)
+        )
+        or (
+            row.document is not None
+            and row.document.status in (Document.Status.PENDING, Document.Status.DECLINED)
+        )
+    ]

@@ -15,11 +15,16 @@ from django.utils import timezone
 from apps.accounts.models import User
 from apps.applications.models import Application, Document
 from apps.applications.review_selectors import applications_for_program
+from apps.applications.selectors import undecided_documents
 from apps.applications.services import application_url
+from apps.awards.models import Award
+from apps.awards.selectors import holds_active_award
+from apps.awards.services import already_holds, award_from_application
 from apps.core import audit
 from apps.core.permissions import require_program_staff
 from apps.core.transitions import assert_transition
-from apps.programs.models import Program
+from apps.programs.models import BenefitTier, Program
+from apps.programs.selectors import tiers_in_force
 from apps.students.models import StudentProfile
 from apps.workspace.emails import enqueue
 
@@ -33,6 +38,12 @@ NEED_RETURN_REASON = "Say what the student needs to fix."
 NEED_REJECT_REASON = "Say why the application is not approved."
 DECISION_REASON_TOO_LONG = "Keep the reason under 1,000 characters."
 MAX_DECISION_REASON = 1000
+NOT_DECIDED = "Approve or decline every document first: {label}."
+TIER_GONE = "The requested tier is no longer offered. Choose another tier."
+FOREIGN_TIER = "Choose one of this program's allowance tiers."
+# The application_decided email template branches on these exact values.
+OUTCOME_APPROVED = "approved"
+OUTCOME_NOT_APPROVED = "not approved"
 
 
 def _lock_for_staff(actor: User, program: Program, pk: int) -> tuple[StudentProfile, Application]:
@@ -173,6 +184,22 @@ def decline_document(
     )
 
 
+def _email(
+    profile: StudentProfile, application: Application, *, kind: str, outcome: str | None
+) -> None:
+    """The student's email. Reasons and notes are free text: they stay out of it."""
+    if profile.user is None:
+        return
+    context = {
+        "full_name": profile.full_name,
+        "program_name": application.program.name,
+        "application_url": application_url(application),
+    }
+    if outcome is not None:
+        context["outcome"] = outcome
+    enqueue(to=profile.user.email, kind=kind, context=context)
+
+
 def _finish(
     *,
     actor: User,
@@ -209,15 +236,7 @@ def _finish(
         program=locked.program,
         request=request,
     )
-    if profile.user is not None:  # the reason is free text: it stays out of the email
-        context = {
-            "full_name": profile.full_name,
-            "program_name": locked.program.name,
-            "application_url": application_url(locked),
-        }
-        if outcome is not None:
-            context["outcome"] = outcome
-        enqueue(to=profile.user.email, kind=kind, context=context)
+    _email(profile, locked, kind=kind, outcome=outcome)
     return locked
 
 
@@ -262,6 +281,60 @@ def reject_application(
         status=Application.Status.REJECTED,
         action="application.rejected",
         kind="application_decided",
-        outcome="not approved",
+        outcome=OUTCOME_NOT_APPROVED,
         request=request,
     )
+
+
+def _approval_tier(locked: Application, tier: BenefitTier | None) -> BenefitTier:
+    """The chosen tier, or the requested one, if in force for the application's term."""
+    in_force = {row.pk: row for row in tiers_in_force(locked.program, locked.term)}
+    if tier is not None:
+        if tier.pk not in in_force:
+            raise ValidationError(FOREIGN_TIER)
+        return in_force[tier.pk]
+    if locked.requested_tier_id is None or locked.requested_tier_id not in in_force:
+        raise ValidationError(TIER_GONE)
+    return in_force[locked.requested_tier_id]
+
+
+@transaction.atomic
+def approve_application(
+    *,
+    actor: User,
+    program: Program,
+    application: Application,
+    tier: BenefitTier | None,
+    note: str = "",
+    request: HttpRequest | None = None,
+) -> Award:
+    """Approve under the locks, creating the award and its first scholar term."""
+    profile, locked = _lock_for_staff(actor, program, application.pk)
+    assert_transition(locked, Application.Status.APPROVED)
+    undecided = undecided_documents(locked)
+    if undecided:
+        raise ValidationError(NOT_DECIDED.format(label=undecided[0].label))
+    chosen = _approval_tier(locked, tier)
+    if holds_active_award(profile, locked.program):
+        raise ValidationError(already_holds(locked.program))
+    note = note.strip()
+    if len(note) > MAX_DECISION_REASON:
+        raise ValidationError(DECISION_REASON_TOO_LONG)
+    locked.status = Application.Status.APPROVED
+    locked.decided_at = timezone.now()
+    locked.decided_by = actor
+    locked.decision_reason = note
+    locked.save(
+        update_fields=["status", "decided_at", "decided_by", "decision_reason", "updated_at"]
+    )
+    award = award_from_application(actor=actor, application=locked, tier=chosen, request=request)
+    audit.record(
+        actor=actor,
+        action="application.approved",
+        target=locked,
+        program=locked.program,
+        request=request,
+        data={"tier": chosen.code, "award": award.pk},
+    )
+    _email(profile, locked, kind="application_decided", outcome=OUTCOME_APPROVED)
+    return award
