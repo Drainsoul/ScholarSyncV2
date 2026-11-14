@@ -32,6 +32,7 @@
     {% if rows %}
     <form method="post" action="{% url 'review:bulk' program=program.slug %}" hx-post="{% url 'review:bulk' program=program.slug %}" hx-boost="false" hx-swap="none" hx-push-url="false" data-bulk>
       {% csrf_token %}
+      <input type="hidden" name="next_query" value="{{ next_query }}">
       <div class="bulk-bar" data-bulk-bar>
         <p class="bulk-bar__count" data-bulk-count aria-live="polite">Select applications, then choose an action.</p>
         <div class="btn-row">

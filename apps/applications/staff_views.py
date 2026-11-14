@@ -4,7 +4,7 @@ from typing import Any
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.http import Http404, HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse, HttpResponseRedirect, QueryDict
 from django.shortcuts import redirect, render
 from django.template.response import TemplateResponse
 from django.urls import reverse
@@ -43,7 +43,19 @@ from apps.programs.models import AcademicTerm, Program
 
 PAGE_SIZE = 25
 TABLE_ID = "queue-table"
-BULK_APPROVE_FILTERS = frozenset({"waiting", "submitted", "under_review"})
+BULK_APPROVE_FILTERS = frozenset({"waiting", "under_review"})  # approval needs a review
+QUEUE_KEYS = ("status", "term", "q", "sort", "page")
+MAX_QUEUE_VALUE = 200
+
+
+def queue_query(params: QueryDict) -> str:
+    """The queue's own filter parameters, re-encoded: unknown keys and anything else are dropped."""
+    kept = QueryDict(mutable=True)
+    for key in QUEUE_KEYS:
+        value = params.get(key, "")
+        if value:
+            kept[key] = value[:MAX_QUEUE_VALUE]
+    return kept.urlencode()
 
 
 class QueueView(ProgramStaffRequiredMixin, TemplateView):
@@ -75,6 +87,8 @@ class QueueView(ProgramStaffRequiredMixin, TemplateView):
             "sort": filters.sort if self.request.GET.get("sort") == filters.sort else "",
             "clear_url": reverse("review:queue", kwargs={"program": self.program.slug}),
             "can_approve": filters.status in BULK_APPROVE_FILTERS,
+            # The no-JS bulk form posts this back, so its redirect lands on the same filters.
+            "next_query": queue_query(self.request.GET),
         }
 
     def render_to_response(self, context: dict[str, Any], **response_kwargs: Any) -> HttpResponse:
@@ -343,11 +357,19 @@ class BulkView(ProgramStaffRequiredMixin, View):
     request: HtmxHttpRequest
     http_method_names = ["post", "options"]
 
+    def _back(self, request: HtmxHttpRequest) -> HttpResponse:
+        """The queue, with the filters the form came from. The posted value is parsed as a
+        querystring and only the queue's keys are re-encoded, so it can never name another URL."""
+        url = reverse("review:queue", kwargs={"program": self.program.slug})
+        posted = request.POST.get("next_query", "")[: len(QUEUE_KEYS) * (MAX_QUEUE_VALUE + 16)]
+        query = queue_query(QueryDict(posted))
+        return HttpResponseRedirect(f"{url}?{query}" if query else url)
+
     def _warn(self, request: HtmxHttpRequest, text: str) -> HttpResponse:
         if request.htmx:  # nothing reloads, so a toast survives
             return toast(HttpResponse(status=204), text, "warning")
         messages.warning(request, text)
-        return redirect("review:queue", program=self.program.slug)
+        return self._back(request)
 
     def post(self, request: HtmxHttpRequest, program: str) -> HttpResponse:
         form = BulkForm(request.POST)
@@ -378,4 +400,4 @@ class BulkView(ProgramStaffRequiredMixin, View):
             response = HttpResponse(status=204)
             response["HX-Refresh"] = "true"
             return response
-        return redirect("review:queue", program=self.program.slug)
+        return self._back(request)

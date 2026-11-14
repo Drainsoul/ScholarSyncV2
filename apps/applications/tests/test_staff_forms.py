@@ -71,6 +71,27 @@ def test_decline_form_reason_is_required_and_capped() -> None:
     assert DeclineForm({"reason": "x" * 500}).is_valid()
 
 
+def test_decline_form_too_long_uses_the_service_sentence() -> None:
+    form = DeclineForm({"reason": "x" * 501})
+    assert not form.is_valid()
+    assert form.errors["reason"] == ["Keep the reason under 500 characters."]
+
+
+def test_decision_form_too_long_uses_the_service_sentence() -> None:
+    application = _application()
+    form = _form(application, decision="return", reason="x" * 1001)
+    assert not form.is_valid()
+    assert form.errors["reason"] == ["Keep the reason under 1,000 characters."]
+    assert _form(application, decision="return", reason="x" * 1000).is_valid()
+
+
+def test_decision_form_reason_help_text() -> None:
+    assert DecisionForm.base_fields["reason"].help_text == (
+        "The student reads the reason for a return or a rejection. "
+        "An approval note is for staff only."
+    )
+
+
 def test_decline_form_ids_do_not_clash_with_the_decision_form() -> None:
     from apps.applications.staff_forms import DeclineForm
 

@@ -627,6 +627,33 @@ def test_bulk_view_full_page_redirects_with_messages(client: Any) -> None:
     assert row.status == S.APPROVED
 
 
+def test_bulk_view_full_page_redirect_keeps_the_queue_filters(client: Any) -> None:
+    membership = _staff()
+    row = _row(membership.program, profile=ProfileFactory.create(first_name="Ana"))
+    client.force_login(membership.user)
+    body = client.get(_url(), {"status": "submitted", "q": "Ana", "evil": "x"}).content.decode()
+    assert 'name="next_query" value="status=submitted&amp;q=Ana"' in body
+    response = client.post(
+        _bulk_url(),
+        {"ids": [row.pk], "action": "start_review", "next_query": "status=submitted&q=Ana&x=1"},
+    )
+    assert response.status_code == 302
+    assert response["Location"] == _url() + "?status=submitted&q=Ana"
+    refused = client.post(_bulk_url(), {"action": "approve", "next_query": "q=Ana"})
+    assert refused["Location"] == _url() + "?q=Ana"
+
+
+def test_bulk_view_next_query_is_never_a_url(client: Any) -> None:
+    membership = _staff()
+    row = _row(membership.program)
+    client.force_login(membership.user)
+    for hostile in ("https://evil.example/", "//evil.example", "/admin/?q=x", "\evil"):
+        response = client.post(
+            _bulk_url(), {"ids": [row.pk], "action": "start_review", "next_query": hostile}
+        )
+        assert response["Location"] == _url(), hostile
+
+
 def test_bulk_view_needs_a_selection_and_an_action(client: Any) -> None:
     membership = _staff()
     row = _row(membership.program)
@@ -665,3 +692,8 @@ def test_queue_offers_bulk_form_and_approve_only_when_waiting(client: Any) -> No
     approved = client.get(_url(), {"status": "approved"}).content.decode()
     assert 'value="approve"' not in approved
     assert 'value="start_review"' in approved
+    submitted = client.get(_url(), {"status": "submitted"}).content.decode()
+    assert 'value="approve"' not in submitted  # approval needs a review first
+    _row(membership.program, S.UNDER_REVIEW)
+    reviewing = client.get(_url(), {"status": "under_review"}).content.decode()
+    assert 'value="approve"' in reviewing

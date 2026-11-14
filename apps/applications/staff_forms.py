@@ -4,6 +4,8 @@ from django import forms
 
 from apps.applications.models import Application
 from apps.applications.review import (
+    DECISION_REASON_TOO_LONG,
+    DECLINE_REASON_TOO_LONG,
     MAX_DECISION_REASON,
     MAX_DECLINE_REASON,
     NEED_REJECT_REASON,
@@ -26,7 +28,10 @@ class DeclineForm(forms.Form):
         label="Reason",
         max_length=MAX_DECLINE_REASON,
         widget=forms.Textarea(attrs={"rows": 4}),
-        error_messages={"required": "Say why you're declining this document."},
+        error_messages={
+            "required": "Say why you're declining this document.",
+            "max_length": DECLINE_REASON_TOO_LONG,
+        },
         help_text="The student reads this when you return the application.",
     )
 
@@ -59,7 +64,11 @@ class DecisionForm(forms.Form):
         max_length=MAX_DECISION_REASON,
         required=False,
         widget=forms.Textarea(attrs={"rows": 4}),
-        help_text="Required to return or not approve. The student reads it when signed in.",
+        error_messages={"max_length": DECISION_REASON_TOO_LONG},
+        help_text=(
+            "The student reads the reason for a return or a rejection. "
+            "An approval note is for staff only."
+        ),
     )
 
     def __init__(self, *args: object, program: Program, application: Application, **kwargs: object):
