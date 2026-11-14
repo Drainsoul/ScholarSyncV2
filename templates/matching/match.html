@@ -25,6 +25,8 @@
     <div class="btn-row"><a class="btn btn--secondary" href="{% url 'applications:detail' card.match.open_application_id %}">Continue your application</a></div>
     {% elif card.match.held %}
     <p>You already hold this scholarship.</p>
+    {% elif card.match.rejected %}
+    <p>This application wasn't approved for {{ page.term }}. You can apply again next term.</p>
     {% elif card.match.result.eligible %}
     <div class="btn-row"><a class="btn btn--primary" href="{% url 'applications:new' card.match.program.slug %}">Apply</a></div>
     {% endif %}

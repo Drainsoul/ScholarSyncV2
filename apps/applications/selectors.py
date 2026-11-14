@@ -58,6 +58,13 @@ def holds_scholarship(profile: StudentProfile, program: Program, term: AcademicT
     ).exists() or holds_active_award(profile, program)
 
 
+def rejected_this_term(profile: StudentProfile, program: Program, term: AcademicTerm) -> bool:
+    """A rejected application for this program and term: the rejection stands until next term."""
+    return Application.objects.filter(
+        profile=profile, program=program, term=term, status=Application.Status.REJECTED
+    ).exists()
+
+
 def document_rows(application: Application) -> list[DocumentRow]:
     """One row per requirement for the application's kind, in order. Three queries."""
     requirements = list(

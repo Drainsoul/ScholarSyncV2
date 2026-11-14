@@ -21,6 +21,7 @@ from apps.applications.selectors import (
     missing_documents,
     open_application,
     own_applications,
+    rejected_this_term,
 )
 from apps.core import audit
 from apps.core.transitions import InvalidTransition, assert_transition
@@ -40,6 +41,7 @@ UPLOAD_AGAIN = "Upload the file again."
 ALREADY_SUBMITTED = "This application has already been submitted."
 INACTIVE_PROGRAM = "This program isn't taking applications any more. Withdraw this application."
 HELD = "You already hold this scholarship."
+REJECTED_THIS_TERM = "This application wasn't approved for {term}. You can apply again next term."
 SNAPSHOT_VERSION = 1
 
 
@@ -101,6 +103,8 @@ def start_application(
         raise ValidationError(_first_reason(eligibility_for(profile, active, today=today)))
     if holds_scholarship(profile, active, term):
         raise ValidationError(HELD)
+    if rejected_this_term(profile, active, term):
+        raise ValidationError(REJECTED_THIS_TERM.format(term=term))
     existing = open_application(profile, active, term)
     if existing is not None:
         return existing

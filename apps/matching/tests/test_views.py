@@ -195,3 +195,34 @@ def test_match_page_shows_held_instead_of_apply(client, term, django_assert_max_
     assert ">Apply<" not in body
     assert len(after) <= len(before) + 1
     assert Application.objects.count() == 2
+
+
+REJECTED = "This application wasn't approved for {}. You can apply again next term."
+
+
+def test_match_page_shows_rejected_instead_of_apply(client, term, django_assert_max_num_queries):
+    program, profile = _held_world(term)
+    get(client, profile.user)
+    with CaptureQueriesContext(connection) as before:
+        body = text(client.get(reverse("matching:match")))
+    assert REJECTED.format(term) not in body
+    assert reverse("applications:new", args=[program.slug]) in body
+    ApplicationFactory.create(
+        profile=profile, program=program, term=term, status=Application.Status.REJECTED
+    )
+    with CaptureQueriesContext(connection) as after:
+        body = text(client.get(reverse("matching:match")))
+    assert REJECTED.format(term) in body
+    assert reverse("applications:new", args=[program.slug]) not in body
+    assert len(after) <= len(before)
+
+
+def test_match_page_open_application_wins_over_rejected(client, term):
+    program, profile = _held_world(term)
+    ApplicationFactory.create(
+        profile=profile, program=program, term=term, status=Application.Status.REJECTED
+    )
+    open_one = ApplicationFactory.create(profile=profile, program=program, term=term)
+    body = text(get(client, profile.user))
+    assert reverse("applications:detail", args=[open_one.pk]) in body
+    assert REJECTED.format(term) not in body

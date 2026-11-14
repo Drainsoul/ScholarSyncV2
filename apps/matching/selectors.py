@@ -20,6 +20,7 @@ class ProgramMatch:
     result: EligibilityResult
     open_application_id: int | None  # the student's open application for this program and term
     held: bool = False  # an approved application this term, or an active award
+    rejected: bool = False  # a rejected application this term: no new one until next term
 
 
 @dataclass(frozen=True)
@@ -92,9 +93,21 @@ def match_page(user: User, *, today: date) -> MatchPage:
                 )
             )
         )
+    flags: dict[str, Q] = {"held": held}
+    if term is not None:  # no term, nothing rejected this term
+        flags["rejected"] = Q(
+            Exists(
+                Application.objects.filter(
+                    profile=profile,
+                    program=OuterRef("pk"),
+                    term=term,
+                    status=Application.Status.REJECTED,
+                )
+            )
+        )
     programs = list(
         Program.objects.filter(is_active=True)
-        .annotate(held=held)
+        .annotate(**flags)
         .prefetch_related("allowed_schools")
         .order_by("name")
     )
@@ -111,6 +124,7 @@ def match_page(user: User, *, today: date) -> MatchPage:
             result=_evaluate(profile, program, academic, term, today),
             open_application_id=open_ids.get(program.pk),
             held=bool(getattr(program, "held", False)),
+            rejected=bool(getattr(program, "rejected", False)),
         )
         for program in programs
     ]

@@ -928,3 +928,20 @@ def test_start_refused_when_holding_the_scholarship(world: World) -> None:
     )
     assert Application.objects.count() == before
     assert "application.started" not in actions()
+
+
+def test_start_refused_after_a_rejection_this_term(world: World) -> None:
+    draft_for(world, status=Application.Status.REJECTED)
+    before = Application.objects.count()
+    assert_refused(
+        lambda: start_application(user=world.user, program=world.program),
+        f"This application wasn't approved for {world.term}. You can apply again next term.",
+    )
+    assert Application.objects.count() == before
+    assert "application.started" not in actions()
+
+
+def test_start_allowed_after_a_rejection_in_another_term(world: World) -> None:
+    draft_for(world, status=Application.Status.REJECTED, term=AcademicTermFactory.create())
+    application = start_application(user=world.user, program=world.program)
+    assert application.status == Application.Status.DRAFT
