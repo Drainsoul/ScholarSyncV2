@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 from typing import Any
 
 import pytest
@@ -9,10 +10,12 @@ from apps.accounts.models import User
 from apps.accounts.tests.factories import UserFactory
 from apps.applications import behalf
 from apps.applications.behalf import (
+    ACADEMICS_FROZEN,
     NO_TERM,
     STAFF_HELD,
     STAFF_REJECTED,
     STUDENT_OPEN,
+    set_academics,
     start_on_behalf,
     withdraw_on_behalf,
 )
@@ -21,8 +24,13 @@ from apps.applications.review_selectors import behalf_application
 from apps.applications.selectors import open_application
 from apps.applications.tests.factories import ApplicationFactory
 from apps.core.models import AuditEvent
-from apps.programs.models import AcademicTerm, Program
-from apps.programs.tests.factories import AcademicTermFactory, MembershipFactory, ProgramFactory
+from apps.programs.models import AcademicTerm, Program, School
+from apps.programs.tests.factories import (
+    AcademicTermFactory,
+    MembershipFactory,
+    ProgramFactory,
+    SchoolFactory,
+)
 from apps.students.models import StudentProfile
 from apps.students.tests.factories import ProfileFactory
 
@@ -195,16 +203,119 @@ def test_behalf_application_404_for_student_application_and_other_program(world:
             behalf_application(world.program, pk)
 
 
-# Tests for set_academics and attach_on_behalf come later.
-WRITES = [withdraw_on_behalf]
+# Tests for attach_on_behalf come later.
+WRITES = [withdraw_on_behalf, set_academics]
 
 
 @pytest.mark.parametrize("write", WRITES)
 def test_writes_404_for_foreign_ids(world: World, write: Any) -> None:
     student = ApplicationFactory.create(program=world.program)
     foreign = ApplicationFactory.create(on_behalf=True)
+    extra: dict[str, Any] = {"data": {}} if write is set_academics else {}
     for pk in (student.pk, foreign.pk):
         with pytest.raises(Http404):
-            write(actor=world.actor, program=world.program, pk=pk)
+            write(actor=world.actor, program=world.program, pk=pk, **extra)
     assert set(Application.objects.values_list("status", flat=True)) == {S.DRAFT}
     assert actions() == []
+
+
+TYPED = {
+    "school": None,
+    "school_name": "Taguig Tech",
+    "school_type": School.Type.PRIVATE,
+    "gwa_scale": School.Scale.PERCENT,
+    "course": "BS Biology",
+    "year_level": 2,
+    "gwa": Decimal("88.50"),
+    "units": 21,
+}
+
+
+def draft(world: World, **kwargs: Any) -> Application:
+    return ApplicationFactory.create(
+        profile=world.profile,
+        program=world.program,
+        term=world.term,
+        on_behalf=True,
+        created_by=world.actor,
+        **kwargs,
+    )
+
+
+def academics(world: World, application: Application, data: dict[str, Any]) -> Application:
+    return set_academics(actor=world.actor, program=world.program, pk=application.pk, data=data)
+
+
+def test_set_academics_on_draft(world: World) -> None:
+    application = draft(world)
+    academics(world, application, TYPED)
+    application.refresh_from_db()
+    assert application.school is None
+    assert application.school_name == "Taguig Tech"
+    assert application.school_type == School.Type.PRIVATE
+    assert application.gwa_scale == School.Scale.PERCENT
+    assert application.course == "BS Biology"
+    assert application.year_level == 2
+    assert application.gwa == Decimal("88.50")
+    assert application.units == 21
+    assert actions() == ["application.academics_set"]
+
+
+def test_set_academics_listed_school_copies_type_and_scale(world: World) -> None:
+    school = SchoolFactory.create(type=School.Type.PUBLIC, grading_scale=School.Scale.ONE_TO_FIVE)
+    application = draft(world)
+    data = {
+        **TYPED,
+        "school": school,
+        "school_name": "Ignored",
+        "school_type": School.Type.PRIVATE,
+        "gwa_scale": School.Scale.PERCENT,
+        "gwa": Decimal("1.75"),
+    }
+    academics(world, application, data)
+    application.refresh_from_db()
+    assert application.school == school
+    assert application.school_name == ""
+    assert application.school_type == School.Type.PUBLIC
+    assert application.gwa_scale == School.Scale.ONE_TO_FIVE
+
+
+@pytest.mark.parametrize("status", [S.SUBMITTED, S.RETURNED])
+def test_set_academics_refused_after_submit(world: World, status: str) -> None:
+    application = draft(world, status=status)
+    with pytest.raises(ValidationError) as caught:
+        academics(world, application, TYPED)
+    assert caught.value.messages == [ACADEMICS_FROZEN]
+    assert ACADEMICS_FROZEN == "The school and grades are frozen once the application is submitted."
+    application.refresh_from_db()
+    assert application.course == ""
+    assert actions() == []
+
+
+def test_set_academics_audit_names_fields_not_values(world: World) -> None:
+    application = draft(world)
+    academics(world, application, TYPED)
+    event = AuditEvent.objects.get()
+    assert event.target_id == str(application.pk)
+    assert event.program == world.program
+    assert event.data == {
+        "fields": [
+            "course",
+            "gwa",
+            "gwa_scale",
+            "school_name",
+            "school_type",
+            "units",
+            "year_level",
+        ]
+    }
+    text = str(event.data)
+    for value in ("Taguig Tech", "BS Biology", "88.5"):
+        assert value not in text
+
+
+def test_set_academics_no_change_no_audit(world: World) -> None:
+    application = draft(world)
+    academics(world, application, TYPED)
+    academics(world, application, TYPED)
+    assert actions() == ["application.academics_set"]

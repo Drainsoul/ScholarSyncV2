@@ -4,6 +4,8 @@ Lock order: the StudentProfile row, then the Application row, as the student and
 Every lookup is scoped to the program: another program's profile or application is a 404.
 """
 
+from collections.abc import Mapping
+
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.http import Http404, HttpRequest
@@ -29,6 +31,17 @@ STUDENT_OPEN = (
 )
 NO_TERM = "Applications aren't open: the scholarship office hasn't set up the current school term."
 WITH_REVIEWERS = "This application is with the reviewers now."
+ACADEMICS_FROZEN = "The school and grades are frozen once the application is submitted."
+ACADEMIC_FIELDS = (
+    "school",
+    "school_name",
+    "school_type",
+    "gwa_scale",
+    "course",
+    "year_level",
+    "gwa",
+    "units",
+)
 
 
 def _lock_behalf(actor: User, program: Program, pk: int) -> tuple[StudentProfile, Application]:
@@ -133,5 +146,42 @@ def withdraw_on_behalf(
         target=locked,
         program=locked.program,
         request=request,
+    )
+    return locked
+
+
+@transaction.atomic
+def set_academics(
+    *,
+    actor: User,
+    program: Program,
+    pk: int,
+    data: Mapping[str, object],
+    request: HttpRequest | None = None,
+) -> Application:
+    """Write the student's school and grades onto the draft (never onto the profile)."""
+    _, locked = _lock_behalf(actor, program, pk)
+    if locked.status != Application.Status.DRAFT:
+        raise ValidationError(ACADEMICS_FROZEN)
+    before = {name: getattr(locked, name) for name in ACADEMIC_FIELDS}
+    for name in ACADEMIC_FIELDS:
+        if name in data:
+            setattr(locked, name, data[name])
+    school = locked.school
+    if school is not None:  # a listed school supplies its type and scale, as at submit
+        locked.school_name = ""
+        locked.school_type = school.type
+        locked.gwa_scale = school.grading_scale
+    changed = sorted(name for name, value in before.items() if getattr(locked, name) != value)
+    if not changed:
+        return locked
+    locked.save(update_fields=[*changed, "updated_at"])
+    audit.record(
+        actor=actor,
+        action="application.academics_set",
+        target=locked,
+        program=locked.program,
+        request=request,
+        data={"fields": changed},
     )
     return locked

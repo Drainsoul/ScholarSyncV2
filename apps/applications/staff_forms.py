@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Any
 
 from django import forms
@@ -11,8 +12,9 @@ from apps.applications.review import (
     NEED_REJECT_REASON,
     NEED_RETURN_REASON,
 )
-from apps.programs.models import BenefitTier, Program
+from apps.programs.models import BenefitTier, Program, School
 from apps.programs.selectors import tiers_in_force
+from apps.students.forms import GWA_RANGES
 
 APPROVE = "approve"
 RETURN = "return"
@@ -112,3 +114,52 @@ class BulkForm(forms.Form):
         choices=[(START_REVIEW, "Start review"), (APPROVE, "Approve")],
         error_messages={"required": NEED_ACTION, "invalid_choice": NEED_ACTION},
     )
+
+
+class AcademicsForm(forms.Form):
+    """The student's school and grades, entered by staff onto an on-behalf draft."""
+
+    school = forms.ModelChoiceField(
+        queryset=School.objects.all(), required=False, empty_label="Not listed"
+    )
+    school_name = forms.CharField(label="School name", max_length=200, required=False)
+    school_type = forms.ChoiceField(
+        label="School type", choices=[("", "---------"), *School.Type.choices], required=False
+    )
+    gwa_scale = forms.ChoiceField(
+        label="Grading scale", choices=[("", "---------"), *School.Scale.choices], required=False
+    )
+    course = forms.CharField(max_length=200, required=False)
+    year_level = forms.IntegerField(label="Year level", min_value=1, max_value=10, required=False)
+    gwa = forms.DecimalField(
+        label="GWA", max_digits=5, decimal_places=2, required=False, localize=False
+    )
+    units = forms.IntegerField(min_value=0, max_value=1000, required=False)
+
+    def clean(self) -> dict[str, Any]:
+        cleaned = super().clean() or {}
+        school = cleaned.get("school")
+        name = (cleaned.get("school_name") or "").strip()
+        cleaned["school_name"] = name
+        if school is None and not name:
+            if "school" not in self.errors:
+                raise forms.ValidationError("Choose the student's school or type its name.")
+        elif school is not None and name:
+            raise forms.ValidationError("Choose a school from the list or type a name, not both.")
+
+        if school is None and name:
+            for field in ("school_type", "gwa_scale"):
+                if not cleaned.get(field) and field not in self.errors:
+                    self.add_error(field, "This field is required.")
+        scale = school.grading_scale if school is not None else cleaned.get("gwa_scale")
+
+        gwa: Decimal | None = cleaned.get("gwa")
+        if gwa is not None and "gwa" not in self.errors:
+            if not scale:
+                if "gwa_scale" not in self.errors:
+                    self.add_error("gwa_scale", "Choose the grading scale for the GWA.")
+            else:
+                low, high, message = GWA_RANGES[School.Scale(scale)]
+                if not low <= gwa <= high:
+                    self.add_error("gwa", message)
+        return cleaned

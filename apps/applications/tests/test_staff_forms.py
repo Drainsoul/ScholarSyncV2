@@ -2,9 +2,10 @@ import pytest
 
 from apps.applications.models import Application
 from apps.applications.review import NEED_REJECT_REASON, NEED_RETURN_REASON
-from apps.applications.staff_forms import DecisionForm, DeclineForm
+from apps.applications.staff_forms import AcademicsForm, DecisionForm, DeclineForm
 from apps.applications.tests.factories import ApplicationFactory
-from apps.programs.tests.factories import BenefitTierFactory, ProgramFactory
+from apps.programs.models import School
+from apps.programs.tests.factories import BenefitTierFactory, ProgramFactory, SchoolFactory
 
 pytestmark = pytest.mark.django_db
 
@@ -96,3 +97,46 @@ def test_decline_form_ids_do_not_clash_with_the_decision_form() -> None:
     from apps.applications.staff_forms import DeclineForm
 
     assert DeclineForm()["reason"].id_for_label == "decline_reason"
+
+
+def _academics(**data: object) -> AcademicsForm:
+    base = {"course": "BS Biology", "year_level": "2", "gwa": "88.5", "units": "21"}
+    return AcademicsForm({**base, **data})
+
+
+def test_academics_form_needs_a_school() -> None:
+    form = _academics()
+    assert not form.is_valid()
+    assert form.non_field_errors() == ["Choose the student's school or type its name."]
+
+
+def test_academics_form_not_both() -> None:
+    school = SchoolFactory.create()
+    form = _academics(school=school.pk, school_name="Elsewhere")
+    assert not form.is_valid()
+    assert form.non_field_errors() == ["Choose a school from the list or type a name, not both."]
+
+
+def test_academics_form_typed_school_needs_type_and_scale() -> None:
+    form = _academics(school_name="Taguig Tech")
+    assert not form.is_valid()
+    assert "school_type" in form.errors
+    assert "gwa_scale" in form.errors
+    form = _academics(school_name="Taguig Tech", school_type="private", gwa_scale="percent")
+    assert form.is_valid(), form.errors
+
+
+def test_academics_form_gwa_range_by_scale() -> None:
+    form = _academics(
+        school_name="Taguig Tech", school_type="private", gwa_scale="one_to_five", gwa="95"
+    )
+    assert not form.is_valid()
+    assert form.errors["gwa"] == ["Enter a GWA from 1.00 to 5.00."]
+
+
+def test_academics_form_listed_school_uses_its_scale() -> None:
+    school = SchoolFactory.create(grading_scale=School.Scale.ONE_TO_FIVE)
+    assert not _academics(school=school.pk, gwa="95").is_valid()
+    form = _academics(school=school.pk, gwa="1.75")
+    assert form.is_valid(), form.errors
+    assert form.cleaned_data["school"] == school
