@@ -36,7 +36,7 @@
         <div><dt>School</dt><dd>{% if application.school %}{{ application.school.name }}{% else %}{{ application.school_name }}{% endif %}</dd></div>
         <div><dt>Course and year</dt><dd>{{ application.course }}{% if application.year_level %}, year {{ application.year_level }}{% endif %}</dd></div>
         <div><dt>GWA</dt><dd class="num">{% if application.gwa is not None %}{{ application.gwa }} ({{ application.get_gwa_scale_display }}){% else %}Not given{% endif %}</dd></div>
-        <div><dt>Household income</dt><dd class="num">{{ profile.monthly_household_income|peso }} a month</dd></div>
+        <div><dt>Household income</dt><dd class="num">{% if profile.monthly_household_income is None %}Not given{% else %}{{ profile.monthly_household_income|peso }} a month{% endif %}</dd></div>
         <div><dt>Barangay</dt><dd>{{ profile.get_barangay_display|default:"Not given" }}</dd></div>
         <div><dt>Phone</dt><dd class="num">{{ profile.phone|default:"Not given" }}</dd></div>
         {% if profile.user %}<div><dt>Email</dt><dd>{{ profile.user.email }}</dd></div>{% endif %}

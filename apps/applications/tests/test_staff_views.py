@@ -1,3 +1,4 @@
+import re
 from datetime import timedelta
 from decimal import Decimal
 from typing import Any
@@ -183,8 +184,13 @@ def test_review_page_shows_snapshot_documents_and_history(client: Any) -> None:
     assert "1 of 2 documents approved" in body
     assert "version 2" in body
     assert reverse("files:download", args=[document.files.get(is_current=True).file_id]) in body
-    assert "Submitted" in body and "by Student" in body
-    assert "approved" in body and membership.user.full_name in body
+    timeline = body.split('class="timeline"', 1)[1]
+    assert re.search(r'timeline__what">Submitted</p>\s*<p[^>]*>.*?by Student', timeline, re.S)
+    assert re.search(
+        rf'timeline__what">[^<]* approved</p>\s*<p[^>]*>.*?by {membership.user.full_name}',
+        timeline,
+        re.S,
+    )
     assert response.context["position"].position == 1
 
 
@@ -266,3 +272,13 @@ def test_review_page_other_program_is_404(client: Any) -> None:
     client.force_login(membership.user)
     assert client.get(_detail_url(other.pk)).status_code == 404
     assert client.get(_detail_url(other.pk, "lani")).status_code == 403
+
+
+def test_review_page_without_user_hides_email_and_income_is_not_given(client: Any) -> None:
+    membership = _staff()
+    profile = ProfileFactory.create(user=None, monthly_household_income=None)
+    application = _row(membership.program, profile=profile)
+    client.force_login(membership.user)
+    body = client.get(_detail_url(application.pk)).content.decode()
+    assert "<dt>Email</dt>" not in body
+    assert "Not given" in body and "— a month" not in body
