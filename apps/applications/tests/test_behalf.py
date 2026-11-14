@@ -1,16 +1,19 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
 import pytest
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import Http404
+from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.accounts.tests.factories import UserFactory
-from apps.applications import behalf
+from apps.applications import behalf, review
 from apps.applications.behalf import (
     ACADEMICS_FROZEN,
+    NEED_OVERRIDE,
+    NO_ACADEMICS,
     NO_TERM,
     STAFF_HELD,
     STAFF_REJECTED,
@@ -18,6 +21,7 @@ from apps.applications.behalf import (
     attach_on_behalf,
     set_academics,
     start_on_behalf,
+    submit_on_behalf,
     withdraw_on_behalf,
 )
 from apps.applications.models import Application, Document
@@ -32,9 +36,10 @@ from apps.core.models import AuditEvent
 from apps.files.models import StoredFile
 from apps.files.policy import MB, PDF, PNG
 from apps.files.tests.factories import StoredFileFactory
-from apps.programs.models import AcademicTerm, Program, RequiredDocument, School
+from apps.programs.models import AcademicTerm, BenefitTier, Program, RequiredDocument, School
 from apps.programs.tests.factories import (
     AcademicTermFactory,
+    BenefitTierFactory,
     MembershipFactory,
     ProgramFactory,
     RequiredDocumentFactory,
@@ -42,6 +47,7 @@ from apps.programs.tests.factories import (
 )
 from apps.students.models import StudentProfile
 from apps.students.tests.factories import ProfileFactory
+from apps.workspace.models import EmailOutbox
 
 pytestmark = pytest.mark.django_db
 
@@ -419,3 +425,238 @@ def test_staff_attach_wrong_type_and_size(world: World) -> None:
         attach(world, application, req, staff_file(world.actor, size=1 * MB + 1, sha256="c" * 64))
     assert caught.value.messages == ["This file is larger than 1 MB."]
     assert actions() == []
+
+
+# --- submit on behalf ----------------------------------------------------------------------
+
+
+def tier_for(world: World, code: str = "full") -> BenefitTier:
+    return BenefitTierFactory.create(program=world.program, effective_from=world.term, code=code)
+
+
+def ready_draft(world: World, data: dict[str, Any] | None = None) -> Application:
+    """An on-behalf draft with typed school and grades."""
+    application = draft(world)
+    return academics(world, application, TYPED if data is None else data)
+
+
+def submit(
+    world: World,
+    application: Application,
+    *,
+    tier: BenefitTier | None = None,
+    reason: str = "",
+) -> Application:
+    return submit_on_behalf(
+        actor=world.actor,
+        program=world.program,
+        pk=application.pk,
+        tier=tier,
+        override_reason=reason,
+    )
+
+
+def assert_submit_refused(
+    world: World, application: Application, message: str, **kwargs: Any
+) -> None:
+    with pytest.raises(ValidationError) as caught:
+        submit(world, application, **kwargs)
+    assert caught.value.messages == [message]
+    application.refresh_from_db()
+    assert application.status == S.DRAFT
+    assert "application.submitted" not in actions()
+    assert EmailOutbox.objects.count() == 0
+
+
+def needs_residency_and_voter(world: World) -> None:
+    Program.objects.filter(pk=world.program.pk).update(
+        min_residency_years=3, requires_registered_voter=True
+    )
+    world.program.refresh_from_db()
+
+
+def test_submit_eligible_on_behalf(world: World) -> None:
+    tier = tier_for(world)
+    application = ready_draft(world)
+    submitted = submit(world, application, reason="Typed anyway")
+    submitted.refresh_from_db()
+    assert submitted.status == S.SUBMITTED
+    assert submitted.submitted_at is not None
+    assert submitted.first_submitted_at == submitted.submitted_at
+    assert submitted.requested_tier == tier
+    assert submitted.override_reason == ""
+    snapshot = submitted.match_snapshot
+    assert snapshot["filed_by_staff"] is True
+    assert snapshot["override"] == []
+    assert snapshot["eligible"] is True
+    event = AuditEvent.objects.get(action="application.submitted")
+    assert event.actor == world.actor
+    assert event.data == {"tier": "full", "on_behalf": True, "overridden": []}
+    row = EmailOutbox.objects.get()
+    assert row.kind == "application_received"
+    assert world.profile.user is not None
+    assert row.to == world.profile.user.email
+
+
+@pytest.mark.parametrize(
+    ("reason", "message"),
+    [
+        ("", NEED_OVERRIDE),
+        ("   ", NEED_OVERRIDE),
+        ("x" * 1001, review.DECISION_REASON_TOO_LONG),
+    ],
+)
+def test_submit_ineligible_needs_reason(world: World, reason: str, message: str) -> None:
+    needs_residency_and_voter(world)
+    tier_for(world)
+    application = ready_draft(world)
+    assert NEED_OVERRIDE == "This student doesn't meet every rule. Say why you're filing anyway."
+    assert_submit_refused(world, application, message, reason=reason)
+
+
+def test_submit_override_stores_reason_and_codes(world: World) -> None:
+    needs_residency_and_voter(world)
+    tier_for(world)
+    application = ready_draft(world)
+    submit(world, application, reason="  Walk-in, secret-override-text  ")
+    application.refresh_from_db()
+    assert application.status == S.SUBMITTED
+    assert application.override_reason == "Walk-in, secret-override-text"
+    assert application.match_snapshot["override"] == ["residency", "voter"]
+    assert application.match_snapshot["filed_by_staff"] is True
+    assert application.match_snapshot["eligible"] is False
+    event = AuditEvent.objects.get(action="application.submitted")
+    assert event.data == {"tier": "full", "on_behalf": True, "overridden": ["residency", "voter"]}
+    assert "secret-override-text" not in str(event.data)
+
+
+def test_submit_override_window_closed(world: World) -> None:
+    tier_for(world)
+    application = ready_draft(world)
+    yesterday = timezone.localdate() - timedelta(days=1)
+    Program.objects.filter(pk=world.program.pk).update(applications_close_on=yesterday)
+    assert_submit_refused(world, application, NEED_OVERRIDE)
+    submit(world, application, reason="Late walk-in")
+    application.refresh_from_db()
+    assert application.status == S.SUBMITTED
+    assert application.match_snapshot["override"] == ["window"]
+
+
+def test_submit_tier_when_ineligible(world: World) -> None:
+    needs_residency_and_voter(world)
+    full = tier_for(world, "full")
+    application = ready_draft(world)
+    tier_for(world, "half")
+    assert_submit_refused(world, application, "Choose an allowance tier.", reason="Walk-in")
+    BenefitTier.objects.filter(code="half").update(is_active=False)
+    submit(world, application, reason="Walk-in")
+    application.refresh_from_db()
+    assert application.requested_tier == full
+
+
+def test_submit_no_tiers(world: World) -> None:
+    application = ready_draft(world)
+    assert_submit_refused(world, application, "This program has no allowance tiers set up yet.")
+
+
+def test_submit_needs_academics(world: World) -> None:
+    tier_for(world)
+    application = draft(world)
+    assert NO_ACADEMICS == "Add the student's school and grades first."
+    assert_submit_refused(world, application, NO_ACADEMICS)
+
+
+def test_submit_refreezes_listed_school_scale(world: World) -> None:
+    Program.objects.filter(pk=world.program.pk).update(
+        min_gwa_percent=Decimal("85.00"), max_gwa_one_to_five=Decimal("2.00")
+    )
+    tier_for(world)
+    school = SchoolFactory.create(grading_scale=School.Scale.PERCENT)
+    application = ready_draft(world, {**TYPED, "school": school, "gwa": Decimal("1.75")})
+    application.refresh_from_db()
+    assert application.gwa_scale == School.Scale.PERCENT
+    School.objects.filter(pk=school.pk).update(grading_scale=School.Scale.ONE_TO_FIVE)
+    submit(world, application)
+    application.refresh_from_db()
+    assert application.gwa_scale == School.Scale.ONE_TO_FIVE
+    gwa = next(c for c in application.match_snapshot["checks"] if c["code"] == "gwa")
+    assert gwa["state"] == "met"
+    assert application.match_snapshot["override"] == []
+
+
+def test_submit_other_program_or_student_application_404(world: World) -> None:
+    tier_for(world)
+    student = ApplicationFactory.create(program=world.program)
+    foreign = ApplicationFactory.create(on_behalf=True)
+    for pk in (student.pk, foreign.pk):
+        with pytest.raises(Http404):
+            submit_on_behalf(
+                actor=world.actor,
+                program=world.program,
+                pk=pk,
+                tier=None,
+                override_reason="",
+            )
+    assert set(Application.objects.values_list("status", flat=True)) == {S.DRAFT}
+    assert actions() == []
+
+
+def test_submit_skips_personal_details(world: World) -> None:
+    StudentProfile.objects.filter(pk=world.profile.pk).update(birth_date=date(2006, 3, 14))
+    tier_for(world)
+    application = ready_draft(world)
+    submit(world, application)
+    application.refresh_from_db()
+    assert application.status == S.SUBMITTED
+
+
+def test_submit_unclaimed_profile_sends_no_email(world: World) -> None:
+    StudentProfile.objects.filter(pk=world.profile.pk).update(user=None)
+    tier_for(world)
+    application = ready_draft(world)
+    submit(world, application)
+    application.refresh_from_db()
+    assert application.status == S.SUBMITTED
+    assert EmailOutbox.objects.count() == 0
+
+
+def test_resubmit_on_behalf_keeps_snapshot(world: World) -> None:
+    tier = tier_for(world)
+    req = requirement(world)
+    application = ready_draft(world)
+    attach(world, application, req, staff_file(world.actor))
+    submit(world, application)
+    application.refresh_from_db()
+    snapshot = application.match_snapshot
+    review.start_review(actor=world.actor, program=world.program, application=application)
+    document = Document.objects.get(application=application)
+    review.decline_document(
+        actor=world.actor,
+        program=world.program,
+        application=application,
+        document_id=document.pk,
+        reason="Blurry",
+    )
+    review.return_application(
+        actor=world.actor, program=world.program, application=application, reason="Fix it"
+    )
+    attach(world, application, req, staff_file(world.actor, sha256="c" * 64))
+    tier_for(world, "half")  # a second tier now in force changes nothing on resubmit
+    submit(world, application)
+    application.refresh_from_db()
+    assert application.status == S.SUBMITTED
+    assert application.match_snapshot == snapshot
+    assert application.requested_tier == tier
+    assert actions()[-1] == "application.resubmitted"
+    assert AuditEvent.objects.get(action="application.resubmitted").data == {}
+    kinds = list(EmailOutbox.objects.order_by("pk").values_list("kind", flat=True))
+    assert kinds == ["application_received", "application_received"]
+
+
+def test_submit_without_current_term_is_never_overridden(world: World) -> None:
+    tier_for(world)
+    application = ready_draft(world)
+    AcademicTerm.objects.filter(pk=world.term.pk).update(
+        is_current=False, starts_on=date(2020, 8, 1), ends_on=date(2020, 12, 1)
+    )
+    assert_submit_refused(world, application, NO_TERM, reason="Walk-in")

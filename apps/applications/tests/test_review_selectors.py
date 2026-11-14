@@ -168,6 +168,20 @@ def test_history_labels_actor_and_order() -> None:
     assert entries == sorted(entries, key=lambda e: e.at)
 
 
+def test_history_labels_on_behalf_events() -> None:
+    program = ProgramFactory.create()
+    application = submitted(program, on_behalf=True)
+    staff = UserFactory.create(full_name="Staff Person", role="staff")
+    audit.record(actor=staff, action="application.started_on_behalf", target=application)
+    audit.record(actor=staff, action="application.academics_set", target=application)
+    audit.record(actor=staff, action="application.submitted", target=application)
+    assert [(e.what, e.who) for e in history(application)] == [
+        ("Application started by staff", "Staff Person"),
+        ("School and grades entered", "Staff Person"),
+        ("Submitted", "Staff Person"),
+    ]
+
+
 def test_waiting_count_counts_submitted_only() -> None:
     program = ProgramFactory.create()
     submitted(program)

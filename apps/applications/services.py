@@ -3,6 +3,7 @@
 Lock order: the StudentProfile row, then the Application row. Opposite orders deadlock.
 """
 
+from collections.abc import Sequence
 from datetime import date
 from typing import Any
 
@@ -234,10 +235,16 @@ def _hint_data(hint: Hint | str) -> dict[str, Any]:
     }
 
 
-def _snapshot(
-    profile: StudentProfile, academic: Academic, result: EligibilityResult, today: date
+def build_snapshot(
+    profile: StudentProfile,
+    academic: Academic,
+    result: EligibilityResult,
+    today: date,
+    *,
+    override: Sequence[str] | None = None,
 ) -> dict[str, Any]:
-    return {
+    """What was evaluated at submit. Staff filing adds the codes of the checks they overrode."""
+    snapshot: dict[str, Any] = {
         "version": SNAPSHOT_VERSION,
         "evaluated_on": today.isoformat(),
         "eligible": result.eligible,
@@ -249,6 +256,10 @@ def _snapshot(
         "merit_likely": result.merit_likely,
         "hint": _hint_data(hint_for(profile, academic)),
     }
+    if override is not None:
+        snapshot["filed_by_staff"] = True
+        snapshot["override"] = list(override)
+    return snapshot
 
 
 def _copy_academics(application: Application, record: EducationRecord) -> None:
@@ -268,8 +279,8 @@ def _copy_academics(application: Application, record: EducationRecord) -> None:
     application.units = record.units
 
 
-def _choose_tier(result: EligibilityResult, tier: BenefitTier | None) -> BenefitTier:
-    candidates = list(result.tier_candidates)
+def choose_tier(candidates: Sequence[BenefitTier], tier: BenefitTier | None) -> BenefitTier:
+    candidates = list(candidates)
     if not candidates:
         raise ValidationError("This program has no allowance tiers set up yet.")
     if tier is None:
@@ -284,6 +295,21 @@ def _choose_tier(result: EligibilityResult, tier: BenefitTier | None) -> Benefit
 
 def application_url(application: Application) -> str:
     return settings.SITE_URL + reverse("applications:detail", args=[application.pk])
+
+
+def received_email(profile: StudentProfile, application: Application) -> None:
+    """Tell the student the application is in; a profile nobody has claimed gets no email."""
+    if profile.user is None:
+        return
+    enqueue(
+        to=profile.user.email,
+        kind="application_received",
+        context={
+            "full_name": profile.full_name,
+            "program_name": application.program.name,
+            "application_url": application_url(application),
+        },
+    )
 
 
 @transaction.atomic
@@ -330,11 +356,11 @@ def submit_application(
         result = eligibility_with(profile, locked.program, academic, today=today)
         if not result.eligible:
             raise ValidationError(_first_reason(result))
-        chosen = _choose_tier(result, tier)
+        chosen = choose_tier(result.tier_candidates, tier)
         assert record is not None and academic is not None  # eligibility needs a current school
         _copy_academics(locked, record)
         locked.requested_tier = chosen
-        locked.match_snapshot = _snapshot(profile, academic, result, today)
+        locked.match_snapshot = build_snapshot(profile, academic, result, today)
         update_fields += [
             "school",
             "school_name",
@@ -364,15 +390,7 @@ def submit_application(
         request=request,
         data=data,
     )
-    enqueue(
-        to=user.email,
-        kind="application_received",
-        context={
-            "full_name": profile.full_name,
-            "program_name": locked.program.name,
-            "application_url": application_url(locked),
-        },
-    )
+    received_email(profile, locked)
     return locked
 
 

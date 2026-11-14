@@ -458,6 +458,25 @@ def test_return_sets_reason_and_emails_student() -> None:
     assert all("secret-reason-text" not in part for part in _render(row))
 
 
+def test_return_on_behalf_sends_no_email() -> None:
+    program = ProgramFactory.create()
+    actor = staff_of(program)
+    application = under_review(program, on_behalf=True, created_by=actor)
+    review.return_application(actor=actor, program=program, application=application, reason=REASON)
+    application.refresh_from_db()
+    assert application.status == S.RETURNED
+    assert AuditEvent.objects.filter(action="application.returned").count() == 1
+    assert EmailOutbox.objects.count() == 0
+
+
+def test_reject_on_behalf_still_emails_the_decision() -> None:
+    program = ProgramFactory.create()
+    actor = staff_of(program)
+    application = under_review(program, on_behalf=True, created_by=actor)
+    review.reject_application(actor=actor, program=program, application=application, reason=REASON)
+    assert EmailOutbox.objects.get().kind == "application_decided"
+
+
 def test_reject_sets_decided_fields_and_emails_not_approved() -> None:
     program = ProgramFactory.create()
     actor = staff_of(program)

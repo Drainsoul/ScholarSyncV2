@@ -220,7 +220,10 @@ def _finish(
     outcome: str | None,
     request: HttpRequest | None,
 ) -> Application:
-    """Return or reject: under the locks, check the state and the reason, save, audit, email."""
+    """Return or reject: under the locks, check the state and the reason, save, audit, email.
+
+    An on-behalf application is returned to the staff who filed it, so the student gets no email.
+    """
     profile, locked = _lock_for_staff(actor, program, application.pk)
     assert_transition(locked, status)
     reason = reason.strip()
@@ -243,7 +246,8 @@ def _finish(
         program=locked.program,
         request=request,
     )
-    _email(profile, locked, kind=kind, outcome=outcome)
+    if not (locked.on_behalf and kind == "application_returned"):  # staff fix on-behalf rows
+        _email(profile, locked, kind=kind, outcome=outcome)
     return locked
 
 

@@ -13,13 +13,28 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.applications.models import Application, Document
-from apps.applications.selectors import holds_scholarship, open_application, rejected_this_term
-from apps.applications.services import _attach_file
+from apps.applications.review import DECISION_REASON_TOO_LONG, MAX_DECISION_REASON
+from apps.applications.selectors import (
+    holds_scholarship,
+    missing_documents,
+    open_application,
+    rejected_this_term,
+)
+from apps.applications.services import (
+    ALREADY_SUBMITTED,
+    INACTIVE_PROGRAM,
+    _attach_file,
+    build_snapshot,
+    choose_tier,
+    received_email,
+)
 from apps.core import audit
 from apps.core.permissions import require_program_staff
-from apps.core.transitions import assert_transition
-from apps.programs.models import Program, RequiredDocument
-from apps.programs.selectors import application_term
+from apps.core.transitions import InvalidTransition, assert_transition
+from apps.matching.eligibility import Academic, CheckState
+from apps.matching.selectors import eligibility_with
+from apps.programs.models import BenefitTier, Program, RequiredDocument
+from apps.programs.selectors import application_term, tiers_in_force
 from apps.students.models import StudentProfile
 
 STAFF_HELD = "This student already holds this scholarship."
@@ -33,6 +48,8 @@ STUDENT_OPEN = (
 NO_TERM = "Applications aren't open: the scholarship office hasn't set up the current school term."
 WITH_REVIEWERS = "This application is with the reviewers now."
 ACADEMICS_FROZEN = "The school and grades are frozen once the application is submitted."
+NO_ACADEMICS = "Add the student's school and grades first."
+NEED_OVERRIDE = "This student doesn't meet every rule. Say why you're filing anyway."
 ACADEMIC_FIELDS = (
     "school",
     "school_name",
@@ -203,3 +220,88 @@ def attach_on_behalf(
     return _attach_file(
         actor=actor, locked=locked, requirement=requirement, file_id=file_id, request=request
     )
+
+
+@transaction.atomic
+def submit_on_behalf(
+    *,
+    actor: User,
+    program: Program,
+    pk: int,
+    tier: BenefitTier | None,
+    override_reason: str,
+    request: HttpRequest | None = None,
+) -> Application:
+    """Submit (or resubmit) for the student. Unmet rules need a reason; the codes are recorded."""
+    profile, locked = _lock_behalf(actor, program, pk)
+    try:
+        assert_transition(locked, Application.Status.SUBMITTED)
+    except InvalidTransition:
+        if locked.status in (Application.Status.SUBMITTED, Application.Status.UNDER_REVIEW):
+            raise ValidationError(ALREADY_SUBMITTED) from None
+        raise
+    from_draft = locked.status == Application.Status.DRAFT
+    today = timezone.localdate()
+    update_fields = ["status", "submitted_at", "updated_at"]
+    academic: Academic | None = None
+    if from_draft:
+        if not locked.program.is_active:  # a returned application may still be resubmitted
+            raise ValidationError(INACTIVE_PROGRAM)
+        term = application_term(today)
+        if term is None:  # never overridable
+            raise ValidationError(NO_TERM)
+        if locked.term_id != term.pk:
+            raise ValidationError(
+                f"This application was for {locked.term}, which has ended. "
+                "Withdraw it and start a new one."
+            )
+        school = locked.school
+        if school is not None:  # freeze the listed school as it is now: evaluated == frozen
+            locked.school_type = school.type
+            locked.gwa_scale = school.grading_scale
+            update_fields += ["school_type", "gwa_scale"]
+        academic = Academic.from_application(locked)
+        if academic is None:
+            raise ValidationError(NO_ACADEMICS)
+    missing = missing_documents(locked)
+    if missing:
+        raise ValidationError(f"Upload {missing[0].label} before you submit.")
+    data: dict[str, object] = {}
+    if from_draft:
+        assert academic is not None
+        result = eligibility_with(profile, locked.program, academic, today=today)
+        overridden = [check.code for check in result.checks if check.state != CheckState.MET]
+        reason = ""
+        if overridden:
+            reason = override_reason.strip()
+            if not reason:
+                raise ValidationError(NEED_OVERRIDE)
+            if len(reason) > MAX_DECISION_REASON:
+                raise ValidationError(DECISION_REASON_TOO_LONG)
+        chosen = choose_tier(tiers_in_force(locked.program, locked.term), tier)
+        locked.override_reason = reason
+        locked.requested_tier = chosen
+        locked.match_snapshot = build_snapshot(
+            profile, academic, result, today, override=overridden
+        )
+        update_fields += ["override_reason", "requested_tier", "match_snapshot"]
+        action = "application.submitted"
+        data = {"tier": chosen.code, "on_behalf": True, "overridden": overridden}
+    else:
+        action = "application.resubmitted"
+    locked.status = Application.Status.SUBMITTED
+    locked.submitted_at = timezone.now()
+    if locked.first_submitted_at is None:
+        locked.first_submitted_at = locked.submitted_at
+        update_fields.append("first_submitted_at")
+    locked.save(update_fields=update_fields)
+    audit.record(
+        actor=actor,
+        action=action,
+        target=locked,
+        program=locked.program,
+        request=request,
+        data=data,
+    )
+    received_email(profile, locked)
+    return locked
