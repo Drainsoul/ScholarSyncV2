@@ -28,7 +28,7 @@ from apps.applications.selectors import document_rows
 from apps.applications.staff_forms import APPROVE, RETURN, DecisionForm, DeclineForm
 from apps.applications.views import APPLICATION_TONES, DOCUMENT_TONES
 from apps.awards.selectors import other_active_awards
-from apps.core.htmx import HtmxHttpRequest, close_dialog, toast
+from apps.core.htmx import HtmxHttpRequest, close_dialog
 from apps.core.permissions import ProgramStaffRequiredMixin
 from apps.core.shell import shell_context
 from apps.matching.checklist import snapshot_items
@@ -226,7 +226,15 @@ class DecideView(ReviewActionView):
         application = staff_application(self.program, pk)
         form = DecisionForm(request.POST, program=self.program, application=application)
         if not form.is_valid():
-            return render_review(request, self.program, application, decision_form=form, status=400)
+            moved = application.status != Application.Status.UNDER_REVIEW
+            return render_review(
+                request,
+                self.program,
+                application,
+                decision_form=form,
+                error="This application is no longer under review." if moved else "",
+                status=400,
+            )
         decision = form.cleaned_data["decision"]
         reason = form.cleaned_data["reason"]
         common: dict[str, Any] = {
@@ -307,7 +315,9 @@ class DeclineDocumentView(ProgramStaffRequiredMixin, View):
                 form.add_error(None, _error_text(error))
             else:
                 if request.htmx:
-                    response = close_dialog(toast(HttpResponse(status=204), "Document declined."))
+                    # The reload below would destroy a toast; the queued message shows after it.
+                    messages.success(request, "Document declined.")
+                    response = close_dialog(HttpResponse(status=204))
                     response["HX-Refresh"] = "true"
                     return response
                 return _done(request, self.program, pk, "Document declined.")

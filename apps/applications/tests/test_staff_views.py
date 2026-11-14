@@ -338,7 +338,9 @@ def test_review_page_posts_to_the_action_urls(client: Any) -> None:
     assert reverse("review:document-approve", args=["tcu-ceaa", reviewing.pk, document.pk]) in body
     assert reverse("review:document-decline", args=["tcu-ceaa", reviewing.pk, document.pk]) in body
     assert reverse("review:decide", args=["tcu-ceaa", reviewing.pk]) in body
-    assert " disabled" not in body
+    decision = body.split('id="decision-title"')[1].split("</section>")[0]
+    assert "disabled" not in decision
+    assert "disabled" not in body.split("<tbody>")[1].split("</tbody>")[0]
 
 
 def test_second_start_review_shows_error_with_400(client: Any) -> None:
@@ -485,9 +487,8 @@ def test_decline_dialog_htmx_and_full_page(client: Any) -> None:
     ok = client.post(url, {"reason": "Blurry."}, HTTP_HX_REQUEST="true")
     assert ok.status_code == 204
     assert ok["HX-Refresh"] == "true"
-    trigger = json.loads(ok["HX-Trigger"])
-    assert trigger["toast"]["message"] == "Document declined."
-    assert "closeDialog" in trigger
+    assert "closeDialog" in json.loads(ok["HX-Trigger"])
+    assert _shown(ok) == ["Document declined."]
     document.refresh_from_db()
     assert document.status == "declined" and document.decline_reason == "Blurry."
 
@@ -551,3 +552,19 @@ def test_actions_on_another_programs_application_404_and_change_nothing(client: 
     mine_doc.refresh_from_db()
     assert foreign_doc.status == mine_doc.status == "pending"
     assert AuditEvent.objects.count() == before
+
+
+def test_decide_invalid_form_after_colleague_moved_it_explains(client: Any) -> None:
+    membership = _staff()
+    colleague = MembershipFactory.create(program=membership.program, user__verified=True)
+    application = _row(membership.program, S.UNDER_REVIEW)
+    review.return_application(
+        actor=colleague.user,
+        program=membership.program,
+        application=application,
+        reason="Missing page.",
+    )
+    client.force_login(membership.user)
+    response = _post(client, "decide", application, decision="reject", reason="")
+    assert response.status_code == 400
+    assert "This application is no longer under review." in response.content.decode()
