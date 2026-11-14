@@ -12,12 +12,13 @@ from django.http import Http404, HttpRequest
 from django.utils import timezone
 
 from apps.accounts.models import User
-from apps.applications.models import Application
+from apps.applications.models import Application, Document
 from apps.applications.selectors import holds_scholarship, open_application, rejected_this_term
+from apps.applications.services import _attach_file
 from apps.core import audit
 from apps.core.permissions import require_program_staff
 from apps.core.transitions import assert_transition
-from apps.programs.models import Program
+from apps.programs.models import Program, RequiredDocument
 from apps.programs.selectors import application_term
 from apps.students.models import StudentProfile
 
@@ -185,3 +186,20 @@ def set_academics(
         data={"fields": changed},
     )
     return locked
+
+
+@transaction.atomic
+def attach_on_behalf(
+    *,
+    actor: User,
+    program: Program,
+    pk: int,
+    requirement: RequiredDocument,
+    file_id: object,
+    request: HttpRequest | None = None,
+) -> Document:
+    """Attach a file the staff member uploaded to the on-behalf application."""
+    _, locked = _lock_behalf(actor, program, pk)
+    return _attach_file(
+        actor=actor, locked=locked, requirement=requirement, file_id=file_id, request=request
+    )

@@ -165,12 +165,26 @@ def attach_document(
     locked = _locked_application(user, application.pk)
     if locked.on_behalf:
         raise ValidationError(ON_BEHALF_LOCKED)
+    return _attach_file(
+        actor=user, locked=locked, requirement=requirement, file_id=file_id, request=request
+    )
+
+
+def _attach_file(
+    *,
+    actor: User,
+    locked: Application,
+    requirement: RequiredDocument,
+    file_id: object,
+    request: HttpRequest | None,
+) -> Document:
+    """Attach the actor's uploaded file to a locked application; the caller holds the lock."""
     if not locked.is_editable:
         raise ValidationError("You can't change documents after submitting.")
     fresh = RequiredDocument.objects.filter(pk=requirement.pk).first()
     if fresh is None or not _applies(fresh, locked):
         raise Http404("No such document.")
-    file = usable_file(user, file_id, "document")
+    file = usable_file(actor, file_id, "document")
     if file is None or DocumentFile.objects.filter(file=file).exists():
         raise ValidationError(UPLOAD_AGAIN)
     if file.sniffed_type not in fresh.accepted_types:
@@ -199,7 +213,7 @@ def attach_document(
             raise
         raise ValidationError(UPLOAD_AGAIN) from None
     audit.record(
-        actor=user,
+        actor=actor,
         action="document.uploaded",
         target=document,
         program=locked.program,

@@ -15,20 +15,29 @@ from apps.applications.behalf import (
     STAFF_HELD,
     STAFF_REJECTED,
     STUDENT_OPEN,
+    attach_on_behalf,
     set_academics,
     start_on_behalf,
     withdraw_on_behalf,
 )
-from apps.applications.models import Application
+from apps.applications.models import Application, Document
 from apps.applications.review_selectors import behalf_application
 from apps.applications.selectors import open_application
-from apps.applications.tests.factories import ApplicationFactory
+from apps.applications.tests.factories import (
+    ApplicationFactory,
+    DocumentFactory,
+    DocumentFileFactory,
+)
 from apps.core.models import AuditEvent
-from apps.programs.models import AcademicTerm, Program, School
+from apps.files.models import StoredFile
+from apps.files.policy import MB, PDF, PNG
+from apps.files.tests.factories import StoredFileFactory
+from apps.programs.models import AcademicTerm, Program, RequiredDocument, School
 from apps.programs.tests.factories import (
     AcademicTermFactory,
     MembershipFactory,
     ProgramFactory,
+    RequiredDocumentFactory,
     SchoolFactory,
 )
 from apps.students.models import StudentProfile
@@ -203,15 +212,21 @@ def test_behalf_application_404_for_student_application_and_other_program(world:
             behalf_application(world.program, pk)
 
 
-# Tests for attach_on_behalf come later.
-WRITES = [withdraw_on_behalf, set_academics]
+WRITES = [withdraw_on_behalf, set_academics, attach_on_behalf]
 
 
 @pytest.mark.parametrize("write", WRITES)
 def test_writes_404_for_foreign_ids(world: World, write: Any) -> None:
     student = ApplicationFactory.create(program=world.program)
     foreign = ApplicationFactory.create(on_behalf=True)
-    extra: dict[str, Any] = {"data": {}} if write is set_academics else {}
+    extra: dict[str, Any] = {}
+    if write is set_academics:
+        extra = {"data": {}}
+    elif write is attach_on_behalf:
+        extra = {
+            "requirement": RequiredDocumentFactory.create(program=world.program),
+            "file_id": staff_file(world.actor).pk,
+        }
     for pk in (student.pk, foreign.pk):
         with pytest.raises(Http404):
             write(actor=world.actor, program=world.program, pk=pk, **extra)
@@ -319,3 +334,88 @@ def test_set_academics_no_change_no_audit(world: World) -> None:
     academics(world, application, TYPED)
     academics(world, application, TYPED)
     assert actions() == ["application.academics_set"]
+
+
+def staff_file(user: User, **extra: Any) -> StoredFile:
+    values: dict[str, Any] = {
+        "uploaded_by": user,
+        "status": StoredFile.Status.READY,
+        "purpose": StoredFile.Purpose.DOCUMENT,
+        "sniffed_type": PDF,
+        "sha256": "b" * 64,
+    }
+    values.update(extra)
+    return StoredFileFactory.create(**values)
+
+
+def requirement(world: World) -> RequiredDocument:
+    return RequiredDocumentFactory.create(program=world.program, code="grades", label="Grades")
+
+
+def attach(world: World, application: Application, req: RequiredDocument, file: StoredFile) -> Any:
+    return attach_on_behalf(
+        actor=world.actor,
+        program=world.program,
+        pk=application.pk,
+        requirement=req,
+        file_id=file.pk,
+    )
+
+
+def test_staff_attach_to_on_behalf_draft(world: World) -> None:
+    application = draft(world)
+    req = requirement(world)
+    file = staff_file(world.actor)
+    document = attach(world, application, req, file)
+    assert document.files.get(is_current=True).version == 1
+    event = AuditEvent.objects.get(action="document.uploaded")
+    assert event.data == {"requirement": "grades", "version": 1}
+    assert event.actor == world.actor
+
+
+def test_staff_attach_replaces_declined_on_returned(world: World) -> None:
+    application = draft(world, status=S.RETURNED)
+    req = requirement(world)
+    document = DocumentFactory.create(
+        application=application,
+        requirement=req,
+        status=Document.Status.DECLINED,
+        decline_reason="Blurry",
+    )
+    DocumentFileFactory.create(document=document)
+    attach(world, application, req, staff_file(world.actor))
+    document.refresh_from_db()
+    assert document.status == Document.Status.PENDING
+    assert document.decline_reason == ""
+    assert document.files.get(is_current=True).version == 2
+
+
+def test_staff_attach_refused_after_submit(world: World) -> None:
+    application = draft(world, status=S.SUBMITTED)
+    with pytest.raises(ValidationError) as caught:
+        attach(world, application, requirement(world), staff_file(world.actor))
+    assert caught.value.messages == ["You can't change documents after submitting."]
+    assert actions() == []
+
+
+def test_staff_attach_refuses_colleagues_file(world: World) -> None:
+    application = draft(world)
+    colleague = MembershipFactory.create(program=world.program).user
+    with pytest.raises(ValidationError) as caught:
+        attach(world, application, requirement(world), staff_file(colleague))
+    assert caught.value.messages == ["Upload the file again."]
+    assert actions() == []
+
+
+def test_staff_attach_wrong_type_and_size(world: World) -> None:
+    application = draft(world)
+    req = requirement(world)
+    RequiredDocument.objects.filter(pk=req.pk).update(accepted_types=[PDF], max_bytes=1 * MB)
+    req.refresh_from_db()
+    with pytest.raises(ValidationError) as caught:
+        attach(world, application, req, staff_file(world.actor, sniffed_type=PNG))
+    assert caught.value.messages == ["This document must be a PDF file."]
+    with pytest.raises(ValidationError) as caught:
+        attach(world, application, req, staff_file(world.actor, size=1 * MB + 1, sha256="c" * 64))
+    assert caught.value.messages == ["This file is larger than 1 MB."]
+    assert actions() == []
