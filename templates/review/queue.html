@@ -30,13 +30,27 @@
     {# Belongs to the filter form (form=), so filtering keeps the column sort, with or without JS. #}
     {% if sort %}<input type="hidden" name="sort" value="{{ sort }}" form="queue-filters">{% endif %}
     {% if rows %}
+    <form method="post" action="{% url 'review:bulk' program=program.slug %}" hx-post="{% url 'review:bulk' program=program.slug %}" hx-boost="false" hx-swap="none" hx-push-url="false" data-bulk>
+      {% csrf_token %}
+      <div class="bulk-bar" data-bulk-bar>
+        <p class="bulk-bar__count" data-bulk-count aria-live="polite">Select applications, then choose an action.</p>
+        <div class="btn-row">
+          <label class="visually-hidden" for="bulk-action">Action for the selected applications</label>
+          <select class="input" id="bulk-action" name="action">
+            <option value="start_review">Start review</option>
+            {% if can_approve %}<option value="approve">Approve</option>{% endif %}
+          </select>
+          <button class="btn btn--primary" type="submit">Apply to selected</button>
+        </div>
+      </div>
     <div class="table-wrap" role="region" aria-labelledby="queue-caption" tabindex="0">
       <table class="table">
         <caption id="queue-caption" class="visually-hidden">Applications</caption>
-        <thead><tr>{% sort_th "Applicant" "name" %}<th scope="col">School</th><th scope="col">Requested tier</th>{% sort_th "Submitted" "submitted" %}<th scope="col">Status</th></tr></thead>
+        <thead><tr><th scope="col" class="select"><input type="checkbox" data-bulk-all aria-label="Select all applications on this page"></th>{% sort_th "Applicant" "name" %}<th scope="col">School</th><th scope="col">Requested tier</th>{% sort_th "Submitted" "submitted" %}<th scope="col">Status</th></tr></thead>
         <tbody>
           {% for row in rows %}
           <tr>
+            <td class="select"><input type="checkbox" name="ids" value="{{ row.application.pk }}" data-bulk-item aria-label="Select {{ row.application.profile.full_name }}"></td>
             <th scope="row"><a href="{% url 'review:detail' program=program.slug pk=row.application.pk %}">{{ row.application.profile.full_name }}</a></th>
             <td>{% if row.application.school %}{{ row.application.school.name }}{% else %}{{ row.application.school_name }}{% endif %}</td>
             <td>{{ row.application.requested_tier.name|default:"" }}</td>
@@ -47,6 +61,7 @@
         </tbody>
       </table>
     </div>
+    </form>
     {% pagination page %}
     {% else %}
     {% include "components/empty_state.html" with title="No applications match these filters" body="Try another status or name." action_url=clear_url action_label="Clear filters" action_reload=True %}

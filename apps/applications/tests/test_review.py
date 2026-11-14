@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from decimal import Decimal
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -1029,3 +1030,116 @@ def test_approve_locks_profile_before_application() -> None:
         calls.attach_mock(application_lock, "application")
         review.approve_application(actor=actor, program=program, application=application, tier=None)
     assert [call[0] for call in calls.mock_calls] == ["profile", "application"]
+
+
+# bulk_action
+
+
+def _bulk(actor: User, program: Program, action: str, rows: list[Application]) -> review.BulkResult:
+    return review.bulk_action(
+        actor=actor,
+        program=program,
+        action=action,  # type: ignore[arg-type]
+        ids=[row.pk for row in rows],
+    )
+
+
+def test_bulk_start_review_and_approve_counts_and_skips() -> None:
+    program = ProgramFactory.create()
+    actor = staff_of(program)
+    requirement = RequiredDocumentFactory.create(program=program)  # one requirement for all five
+
+    def with_document(application: Application, status: str) -> Application:
+        document = DocumentFactory.create(
+            application=application, requirement=requirement, status=status
+        )
+        DocumentFileFactory.create(document=document)
+        return application
+
+    def ready_row() -> Application:
+        application = under_review(program)
+        application.requested_tier = BenefitTierFactory.create(
+            program=program, effective_from=application.term
+        )
+        application.save(update_fields=["requested_tier"])
+        return with_document(application, D.APPROVED)
+
+    waiting = [submitted(program), submitted(program)]
+    ready = [ready_row(), ready_row()]
+    blocked = with_document(under_review(program), D.PENDING)
+    rows = [*waiting, *ready, blocked]
+
+    started = _bulk(actor, program, "start_review", rows)
+    assert started.done == 2
+    assert len(started.skipped) == 3
+    assert {reason for _, reason in started.skipped} == {ALREADY_STARTED}
+    assert {name for name, _ in started.skipped} == {
+        row.profile.full_name for row in (*ready, blocked)
+    }
+
+    approved = _bulk(actor, program, "approve", rows)
+    assert approved.done == 2
+    assert len(approved.skipped) == 3
+    reasons = dict(approved.skipped)
+    assert any("Approve or decline every document first" in reason for reason in reasons.values())
+    for row in ready:
+        row.refresh_from_db()
+        assert row.status == S.APPROVED
+    for row in (*waiting, blocked):
+        row.refresh_from_db()
+        assert row.status == S.UNDER_REVIEW
+
+
+def test_bulk_ignores_other_program_ids() -> None:
+    program = ProgramFactory.create()
+    other = ProgramFactory.create()
+    actor = staff_of(program)
+    mine = submitted(program)
+    foreign = submitted(other)
+    before = audit_count()
+    result = review.bulk_action(
+        actor=actor, program=program, action="start_review", ids=[mine.pk, foreign.pk, 999999]
+    )
+    assert result.done == 1
+    assert sorted(result.skipped) == [("", "Not found."), ("", "Not found.")]
+    foreign.refresh_from_db()
+    assert foreign.status == S.SUBMITTED
+    assert audit_count() == before + 1
+
+
+def test_bulk_refuses_over_100() -> None:
+    program = ProgramFactory.create()
+    actor = staff_of(program)
+    with pytest.raises(ValidationError) as exc:
+        review.bulk_action(
+            actor=actor, program=program, action="start_review", ids=list(range(1, 102))
+        )
+    assert exc.value.messages == ["Choose at most 100 applications at a time."]
+    review.bulk_action(actor=actor, program=program, action="start_review", ids=list(range(1, 101)))
+
+
+def test_bulk_locks_in_profile_order() -> None:
+    program = ProgramFactory.create()
+    actor = staff_of(program)
+    first, second = ProfileFactory.create(), ProfileFactory.create()
+    assert first.pk < second.pk
+    a = submitted(program, profile=second)
+    b = submitted(program, profile=first)
+    calls: list[int] = []
+
+    def record_call(**kwargs: Any) -> None:
+        calls.append(kwargs["application"].pk)
+
+    with patch.object(review, "start_review", side_effect=record_call):
+        review.bulk_action(actor=actor, program=program, action="start_review", ids=[a.pk, b.pk])
+    assert calls == [b.pk, a.pk]
+
+
+def test_bulk_lets_permission_denied_through() -> None:
+    program = ProgramFactory.create()
+    stranger = staff_of(ProgramFactory.create())
+    row = submitted(program)
+    with pytest.raises(PermissionDenied):
+        review.bulk_action(actor=stranger, program=program, action="start_review", ids=[row.pk])
+    row.refresh_from_db()
+    assert row.status == S.SUBMITTED

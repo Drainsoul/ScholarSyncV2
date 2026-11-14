@@ -14,6 +14,9 @@ APPROVE = "approve"
 RETURN = "return"
 REJECT = "reject"
 NEED_TIER = "Choose the allowance tier."
+NEED_SELECTION = "Select at least one application first."
+NEED_ACTION = "Choose an action for the selected applications."
+START_REVIEW = "start_review"
 
 
 class DeclineForm(forms.Form):
@@ -74,3 +77,21 @@ class DecisionForm(forms.Form):
         elif decision == REJECT and not reason and "reason" not in self.errors:
             self.add_error("reason", NEED_REJECT_REASON)
         return cleaned
+
+
+class _IdsField(forms.MultipleChoiceField):
+    """Application ids as ints; whether they exist is the service's business (it reports them)."""
+
+    def valid_value(self, value: str) -> bool:
+        return value.isascii() and value.isdigit() and len(value) <= 9
+
+    def clean(self, value: object) -> list[int]:
+        return [int(item) for item in super().clean(value)]
+
+
+class BulkForm(forms.Form):
+    ids = _IdsField(error_messages={"required": NEED_SELECTION, "invalid_choice": NEED_SELECTION})
+    action = forms.ChoiceField(
+        choices=[(START_REVIEW, "Start review"), (APPROVE, "Approve")],
+        error_messages={"required": NEED_ACTION, "invalid_choice": NEED_ACTION},
+    )

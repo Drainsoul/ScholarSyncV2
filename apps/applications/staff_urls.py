@@ -6,6 +6,7 @@ app_name = "review"
 
 urlpatterns = [
     path("", staff_views.QueueView.as_view(), name="queue"),
+    path("bulk/", staff_views.BulkView.as_view(), name="bulk"),
     path("<int:pk>/", staff_views.ReviewView.as_view(), name="detail"),
     path("<int:pk>/start/", staff_views.StartReviewView.as_view(), name="start"),
     path(

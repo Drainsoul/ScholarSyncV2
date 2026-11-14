@@ -568,3 +568,87 @@ def test_decide_invalid_form_after_colleague_moved_it_explains(client: Any) -> N
     response = _post(client, "decide", application, decision="reject", reason="")
     assert response.status_code == 400
     assert "This application is no longer under review." in response.content.decode()
+
+
+# bulk
+
+
+def _bulk_url(slug: str = "tcu-ceaa") -> str:
+    return reverse("review:bulk", kwargs={"program": slug})
+
+
+def test_bulk_view_htmx_refreshes_and_queues_messages(client: Any) -> None:
+    membership = _staff()
+    program = membership.program
+    waiting = [_row(program, profile=ProfileFactory.create()) for _ in range(2)]
+    started = _row(program, S.UNDER_REVIEW, profile=ProfileFactory.create(first_name="Already"))
+    client.force_login(membership.user)
+    response = client.post(
+        _bulk_url(),
+        {"ids": [r.pk for r in (*waiting, started)], "action": "start_review"},
+        HTTP_HX_REQUEST="true",
+    )
+    assert response.status_code == 204
+    assert response["HX-Refresh"] == "true"
+    assert "HX-Trigger" not in response
+    texts = _shown(response)
+    assert texts[0] == "Started review of 2 applications. Skipped 1."
+    assert (
+        texts[1]
+        == f"{started.profile.full_name}: Someone has already started reviewing this application."
+    )
+    for row in waiting:
+        row.refresh_from_db()
+        assert row.status == S.UNDER_REVIEW
+
+
+def test_bulk_view_full_page_redirects_with_messages(client: Any) -> None:
+    membership = _staff()
+    row = _approvable(membership.program)
+    client.force_login(membership.user)
+    response = client.post(_bulk_url(), {"ids": [row.pk], "action": "approve"})
+    assert response.status_code == 302
+    assert response["Location"] == _url()
+    assert _shown(response) == ["Approved 1 application."]
+    row.refresh_from_db()
+    assert row.status == S.APPROVED
+
+
+def test_bulk_view_needs_a_selection_and_an_action(client: Any) -> None:
+    membership = _staff()
+    row = _row(membership.program)
+    client.force_login(membership.user)
+    none = client.post(_bulk_url(), {"action": "approve"})
+    assert _shown(none) == ["Select at least one application first."]
+    client.get(_url())  # shows (and so clears) the queued message
+    no_action = client.post(_bulk_url(), {"ids": [row.pk]})
+    assert _shown(no_action) == ["Choose an action for the selected applications."]
+    client.get(_url())
+    htmx = client.post(_bulk_url(), {"action": "approve"}, HTTP_HX_REQUEST="true")
+    assert htmx.status_code == 204 and "HX-Refresh" not in htmx
+    assert json.loads(htmx["HX-Trigger"])["toast"] == {
+        "message": "Select at least one application first.",
+        "tone": "warning",
+    }
+    row.refresh_from_db()
+    assert row.status == S.SUBMITTED
+
+
+def test_bulk_view_over_100_is_refused(client: Any) -> None:
+    membership = _staff()
+    client.force_login(membership.user)
+    response = client.post(_bulk_url(), {"ids": list(range(1, 102)), "action": "start_review"})
+    assert _shown(response) == ["Choose at most 100 applications at a time."]
+
+
+def test_queue_offers_bulk_form_and_approve_only_when_waiting(client: Any) -> None:
+    membership = _staff()
+    _row(membership.program)
+    _row(membership.program, S.APPROVED)
+    client.force_login(membership.user)
+    body = client.get(_url()).content.decode()
+    assert "data-bulk" in body and 'name="ids"' in body
+    assert 'value="approve"' in body
+    approved = client.get(_url(), {"status": "approved"}).content.decode()
+    assert 'value="approve"' not in approved
+    assert 'value="start_review"' in approved

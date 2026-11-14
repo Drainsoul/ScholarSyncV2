@@ -7,6 +7,9 @@ Every lookup goes through `applications_for_program(program)`: another program's
 nothing changes or is audited.
 """
 
+from dataclasses import dataclass
+from typing import Literal
+
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.http import Http404, HttpRequest
@@ -41,6 +44,9 @@ MAX_DECISION_REASON = 1000
 NOT_DECIDED = "Approve or decline every document first: {label}."
 TIER_GONE = "The requested tier is no longer offered. Choose another tier."
 FOREIGN_TIER = "Choose one of this program's allowance tiers."
+MAX_BULK = 100
+BULK_TOO_MANY = "Choose at most 100 applications at a time."
+BULK_NOT_FOUND = "Not found."
 # The application_decided email template branches on these exact values.
 OUTCOME_APPROVED = "approved"
 OUTCOME_NOT_APPROVED = "not approved"
@@ -338,3 +344,50 @@ def approve_application(
     )
     _email(profile, locked, kind="application_decided", outcome=OUTCOME_APPROVED)
     return award
+
+
+@dataclass(frozen=True)
+class BulkResult:
+    done: int
+    skipped: list[tuple[str, str]]  # (applicant name, sentence)
+
+
+def bulk_action(
+    *,
+    actor: User,
+    program: Program,
+    action: Literal["start_review", "approve"],
+    ids: list[int],
+    request: HttpRequest | None = None,
+) -> BulkResult:
+    """Run one single-row service per application, each in its own transaction.
+
+    Not atomic as a whole: a refused row is skipped and the rest go on. Rows run in (profile, pk)
+    order so two staff members bulk-acting on overlapping sets lock profiles in the same order.
+    """
+    require_program_staff(actor, program)  # a PermissionDenied is not a per-row skip
+    wanted = list(dict.fromkeys(ids))
+    if len(wanted) > MAX_BULK:
+        raise ValidationError(BULK_TOO_MANY)
+    found = {
+        row.pk: row
+        for row in applications_for_program(program).filter(pk__in=wanted).select_related("profile")
+    }
+    skipped: list[tuple[str, str]] = []
+    done = 0
+    for row in sorted(found.values(), key=lambda row: (row.profile_id, row.pk)):
+        try:
+            with transaction.atomic():
+                if action == "start_review":
+                    start_review(actor=actor, program=program, application=row, request=request)
+                else:
+                    approve_application(
+                        actor=actor, program=program, application=row, tier=None, request=request
+                    )
+        except (ValidationError, Http404) as error:  # InvalidTransition is a ValidationError
+            reason = " ".join(error.messages) if isinstance(error, ValidationError) else str(error)
+            skipped.append((row.profile.full_name, reason))
+        else:
+            done += 1
+    skipped.extend(("", BULK_NOT_FOUND) for pk in wanted if pk not in found)
+    return BulkResult(done=done, skipped=skipped)

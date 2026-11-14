@@ -25,10 +25,17 @@ from apps.applications.review_selectors import (
     staff_application,
 )
 from apps.applications.selectors import document_rows
-from apps.applications.staff_forms import APPROVE, RETURN, DecisionForm, DeclineForm
+from apps.applications.staff_forms import (
+    APPROVE,
+    RETURN,
+    START_REVIEW,
+    BulkForm,
+    DecisionForm,
+    DeclineForm,
+)
 from apps.applications.views import APPLICATION_TONES, DOCUMENT_TONES
 from apps.awards.selectors import other_active_awards
-from apps.core.htmx import HtmxHttpRequest, close_dialog
+from apps.core.htmx import HtmxHttpRequest, close_dialog, toast
 from apps.core.permissions import ProgramStaffRequiredMixin
 from apps.core.shell import shell_context
 from apps.matching.checklist import snapshot_items
@@ -36,6 +43,7 @@ from apps.programs.models import AcademicTerm, Program
 
 PAGE_SIZE = 25
 TABLE_ID = "queue-table"
+BULK_APPROVE_FILTERS = frozenset({"waiting", "submitted", "under_review"})
 
 
 class QueueView(ProgramStaffRequiredMixin, TemplateView):
@@ -66,6 +74,7 @@ class QueueView(ProgramStaffRequiredMixin, TemplateView):
             # A valid ?sort= rides along with filter requests; the default needs no parameter.
             "sort": filters.sort if self.request.GET.get("sort") == filters.sort else "",
             "clear_url": reverse("review:queue", kwargs={"program": self.program.slug}),
+            "can_approve": filters.status in BULK_APPROVE_FILTERS,
         }
 
     def render_to_response(self, context: dict[str, Any], **response_kwargs: Any) -> HttpResponse:
@@ -322,3 +331,51 @@ class DeclineDocumentView(ProgramStaffRequiredMixin, View):
                     return response
                 return _done(request, self.program, pk, "Document declined.")
         return self._render(request, application, found, form)
+
+
+def _plural(count: int) -> str:
+    return f"{count} application{'s' if count != 1 else ''}"
+
+
+class BulkView(ProgramStaffRequiredMixin, View):
+    """Start review of, or approve, the ticked rows; refused rows are reported, not fatal."""
+
+    request: HtmxHttpRequest
+    http_method_names = ["post", "options"]
+
+    def _warn(self, request: HtmxHttpRequest, text: str) -> HttpResponse:
+        if request.htmx:  # nothing reloads, so a toast survives
+            return toast(HttpResponse(status=204), text, "warning")
+        messages.warning(request, text)
+        return redirect("review:queue", program=self.program.slug)
+
+    def post(self, request: HtmxHttpRequest, program: str) -> HttpResponse:
+        form = BulkForm(request.POST)
+        if not form.is_valid():
+            return self._warn(request, str(next(iter(form.errors.values()))[0]))
+        action = form.cleaned_data["action"]
+        try:
+            result = review.bulk_action(
+                actor=_actor(request),
+                program=self.program,
+                action="start_review" if action == START_REVIEW else "approve",
+                ids=form.cleaned_data["ids"],
+                request=request,
+            )
+        except ValidationError as error:
+            return self._warn(request, _error_text(error))
+        verb = "Started review of" if action == START_REVIEW else "Approved"
+        text = f"{verb} {_plural(result.done)}."
+        if result.skipped:
+            text += f" Skipped {len(result.skipped)}."
+            messages.warning(request, text)
+        else:
+            messages.success(request, text)
+        for name, reason in result.skipped:
+            messages.warning(request, f"{name}: {reason}" if name else reason)
+        if request.htmx:
+            # Queued, not toasted: the reload would destroy a toast; base.html shows these after it.
+            response = HttpResponse(status=204)
+            response["HX-Refresh"] = "true"
+            return response
+        return redirect("review:queue", program=self.program.slug)
