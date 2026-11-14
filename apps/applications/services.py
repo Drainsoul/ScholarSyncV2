@@ -42,6 +42,9 @@ ALREADY_SUBMITTED = "This application has already been submitted."
 INACTIVE_PROGRAM = "This program isn't taking applications any more. Withdraw this application."
 HELD = "You already hold this scholarship."
 REJECTED_THIS_TERM = "This application wasn't approved for {term}. You can apply again next term."
+ON_BEHALF_LOCKED = (
+    "The scholarship office filed this application for you. Contact them to change it."
+)
 SNAPSHOT_VERSION = 1
 
 
@@ -160,6 +163,8 @@ def attach_document(
 ) -> Document:
     _require_student(user)
     locked = _locked_application(user, application.pk)
+    if locked.on_behalf:
+        raise ValidationError(ON_BEHALF_LOCKED)
     if not locked.is_editable:
         raise ValidationError("You can't change documents after submitting.")
     fresh = RequiredDocument.objects.filter(pk=requirement.pk).first()
@@ -277,6 +282,8 @@ def submit_application(
 ) -> Application:
     _require_student(user)
     profile, locked = _lock_profile_then_application(user, application)
+    if locked.on_behalf:
+        raise ValidationError(ON_BEHALF_LOCKED)
     try:
         assert_transition(locked, Application.Status.SUBMITTED)
     except InvalidTransition:
@@ -361,6 +368,8 @@ def withdraw_application(
 ) -> Application:
     _require_student(user)
     _, locked = _lock_profile_then_application(user, application)
+    if locked.on_behalf:
+        raise ValidationError(ON_BEHALF_LOCKED)
     try:
         assert_transition(locked, Application.Status.WITHDRAWN)
     except InvalidTransition:

@@ -7,6 +7,9 @@
       <p class="page-header__meta">{{ application.term }} · {{ application.get_status_display }}</p>
     </div>
   </div>
+  {% if application.on_behalf %}
+  <div class="banner banner--info"><div><p>{{ application.program.name }} staff filed this application for you.</p></div></div>
+  {% endif %}
   {% if banner %}
   <div class="banner banner--danger" role="alert"><div><p>{{ banner }}</p></div></div>
   {% endif %}
@@ -37,7 +40,7 @@
       {% else %}
       <p>No current school on your profile yet.</p>
       {% endif %}
-      {% if academic.live or not academic %}
+      {% if not application.on_behalf and academic.live or not application.on_behalf and not academic %}
       <p class="text-sm">These come from your profile and are copied when you submit. <a href="{{ education_url }}">Edit in your profile</a></p>
       {% endif %}
     </section>

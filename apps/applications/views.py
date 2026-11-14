@@ -24,6 +24,7 @@ from apps.applications.selectors import (
 from apps.core.permissions import StudentRequiredMixin
 from apps.core.shell import shell_context
 from apps.matching.checklist import checklist_items
+from apps.matching.eligibility import Academic
 from apps.matching.selectors import eligibility_for
 from apps.programs.models import BenefitTier, Program, RequiredDocument
 from apps.programs.selectors import application_term
@@ -128,7 +129,22 @@ class DocumentCard:
 
 
 def _academic(application: Application, user: User) -> dict[str, Any] | None:
-    """The live current school and grades for a draft, the frozen copy for anything else."""
+    """The live current school and grades for a draft, the frozen copy for anything else.
+
+    An on-behalf application always shows its own fields: staff filled them in, not the profile.
+    """
+    if application.on_behalf:
+        academic = Academic.from_application(application)
+        if academic is None:
+            return None
+        return {
+            "school": academic.school_name,
+            "course": academic.course,
+            "year_level": academic.year_level,
+            "gwa": academic.gwa,
+            "units": academic.units,
+            "live": False,
+        }
     if application.status == Application.Status.DRAFT:
         profile = profile_for(user)
         record = current_education(profile) if profile is not None else None
@@ -190,6 +206,7 @@ def render_detail(
 
     `submit_form` is a bound form from a failed submit; `banner` is a service sentence.
     """
+    editable = application.is_editable and not application.on_behalf
     rows = document_rows(application)
     cards = []
     error_card: DocumentCard | None = None
@@ -201,7 +218,7 @@ def render_detail(
             row=row,
             anchor=f"doc-{row.requirement.pk}",
             field_id=f"doc-{row.requirement.pk}-file",
-            editable=application.is_editable and not approved,
+            editable=editable and not approved,
             tone=DOCUMENT_TONES[document.status] if document is not None else "info",
             error=error if has_error else "",
         )
@@ -211,7 +228,7 @@ def render_detail(
     if error and error_card is None and not banner:
         banner = error  # no row to show it on: say it at the top instead
     required = [row for row in rows if row.requirement.is_required]
-    if not application.is_editable:
+    if not editable:
         submit_form = None
     elif submit_form is None:
         submit_form = _submit_form(_student(request), application)
@@ -219,7 +236,7 @@ def render_detail(
         "submit_form": submit_form,
         "banner": banner,
         "error_card": error_card,
-        "can_withdraw": application.status in WITHDRAWABLE,
+        "can_withdraw": application.status in WITHDRAWABLE and not application.on_behalf,
         **shell_context(request, area="student"),
         "application": application,
         "status_tone": APPLICATION_TONES[application.status],

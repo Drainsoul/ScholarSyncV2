@@ -11,7 +11,7 @@
       <tbody>{% for row in rows %}<tr>
         <th scope="row">{{ row.application.program.name }}</th>
         <td>{{ row.application.term }}</td>
-        <td>{% status row.tone row.application.get_status_display %}</td>
+        <td>{% status row.tone row.application.get_status_display %}{% if row.application.on_behalf %} <span class="text-sm">Filed by staff</span>{% endif %}</td>
         <td>{% if row.application.submitted_at %}{{ row.application.submitted_at|date:"j M Y" }}{% else %}Not submitted{% endif %}</td>
         <td><a class="btn btn--secondary" href="{% url 'applications:detail' row.application.pk %}">Open<span class="visually-hidden"> {{ row.application.program.name }} application</span></a></td>
       </tr>{% endfor %}</tbody>

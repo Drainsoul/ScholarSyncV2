@@ -945,3 +945,62 @@ def test_start_allowed_after_a_rejection_in_another_term(world: World) -> None:
     draft_for(world, status=Application.Status.REJECTED, term=AcademicTermFactory.create())
     application = start_application(user=world.user, program=world.program)
     assert application.status == Application.Status.DRAFT
+
+
+# --- on-behalf applications are read-only for the student -----------------------------------
+
+LOCKED_STATUSES = [Application.Status.DRAFT, Application.Status.RETURNED]
+
+
+def on_behalf_for(world: World, status: str) -> Application:
+    return draft_for(world, on_behalf=True, status=status)
+
+
+@pytest.mark.parametrize("status", LOCKED_STATUSES)
+def test_student_cannot_attach_to_on_behalf_application(world: World, status: str) -> None:
+    application = on_behalf_for(world, status)
+    file = ready_file(world.user)
+    before = AuditEvent.objects.count()
+    assert_refused(
+        lambda: attach_document(
+            user=world.user,
+            application=application,
+            requirement=world.requirement,
+            file_id=file.pk,
+        ),
+        services.ON_BEHALF_LOCKED,
+    )
+    application.refresh_from_db()
+    assert application.status == status
+    assert not Document.objects.filter(application=application).exists()
+    assert AuditEvent.objects.count() == before
+
+
+@pytest.mark.parametrize("status", LOCKED_STATUSES)
+def test_student_cannot_submit_on_behalf_application(world: World, status: str) -> None:
+    application = with_documents(on_behalf_for(world, status))
+    before = AuditEvent.objects.count()
+    documents = Document.objects.filter(application=application).count()
+    assert_refused(
+        lambda: submit_application(user=world.user, application=application, tier=world.tier),
+        services.ON_BEHALF_LOCKED,
+    )
+    application.refresh_from_db()
+    assert application.status == status
+    assert Document.objects.filter(application=application).count() == documents
+    assert AuditEvent.objects.count() == before
+
+
+@pytest.mark.parametrize("status", LOCKED_STATUSES)
+def test_student_cannot_withdraw_on_behalf_application(world: World, status: str) -> None:
+    application = with_documents(on_behalf_for(world, status))
+    before = AuditEvent.objects.count()
+    documents = Document.objects.filter(application=application).count()
+    assert_refused(
+        lambda: withdraw_application(user=world.user, application=application),
+        services.ON_BEHALF_LOCKED,
+    )
+    application.refresh_from_db()
+    assert application.status == status
+    assert Document.objects.filter(application=application).count() == documents
+    assert AuditEvent.objects.count() == before

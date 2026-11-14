@@ -10,6 +10,7 @@ from django.core.exceptions import ValidationError
 from django.urls import reverse
 
 from apps.accounts.tests.factories import UserFactory
+from apps.applications import services
 from apps.applications.models import Application, Document, DocumentFile
 from apps.applications.tests.factories import (
     ApplicationFactory,
@@ -479,3 +480,59 @@ def test_failed_upload_rerenders_the_locked_state(client, world):
     assert "Save document" not in body
     assert 'data-upload-purpose="document"' not in body
     assert "Staff are reviewing this application." in body
+
+
+# --- on-behalf applications are read-only for the student -----------------------------------
+
+
+def on_behalf(world, **extra) -> Application:
+    world["program"].name = "TCU CEAA"
+    world["program"].save(update_fields=["name"])
+    return draft(world, on_behalf=True, **extra)
+
+
+def test_on_behalf_detail_is_read_only(client, world):
+    application = on_behalf(
+        world,
+        school=None,
+        school_name="Frozen University",
+        course="BS Frozen Studies",
+        year_level=3,
+        gwa=Decimal("88.00"),
+        units=21,
+    )
+    body = detail_body(client, world, application)
+    assert "TCU CEAA staff filed this application for you." in body
+    assert 'type="file"' not in body and 'name="file"' not in body
+    assert reverse("applications:submit", args=[application.pk]) not in body
+    assert reverse("applications:withdraw", args=[application.pk]) not in body
+    assert "Frozen University" in body and "BS Frozen Studies" in body
+    assert world["education"].course not in body
+    assert "Edit in your profile" not in body
+
+
+def test_student_post_to_on_behalf_upload_view_shows_sentence(client, world):
+    application = on_behalf(world)
+    file = ready_file(world["user"])
+    response = signed_in(client, world["user"]).post(
+        doc_url(application, world["requirement"]), {"file": str(file.pk)}
+    )
+    assert response.status_code == 400
+    assert services.ON_BEHALF_LOCKED in text(response)
+    assert not DocumentFile.objects.filter(file=file).exists()
+
+
+def test_list_marks_on_behalf(client, world):
+    on_behalf(world)
+    body = text(signed_in(client, world["user"]).get(reverse("applications:list")))
+    assert "Filed by staff" in body
+
+
+def test_start_lands_on_open_on_behalf_application(client, world):
+    application = on_behalf(world)
+    response = signed_in(client, world["user"]).post(
+        reverse("applications:new", args=[world["program"].slug])
+    )
+    assert response.status_code == 302
+    assert response.url == reverse("applications:detail", args=[application.pk])
+    assert Application.objects.count() == 1
