@@ -19,8 +19,10 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.applications.models import Application
+from apps.awards.models import Award
 from apps.demo import loader
 from apps.demo.accounts import ACCOUNTS, PASSWORD
+from apps.files.models import StoredFile
 from apps.matching.selectors import match_page
 from apps.students.models import ProfileInvite, StudentProfile
 from apps.students.selectors import profile_page
@@ -229,3 +231,116 @@ def test_nothing_outside_the_demo_imports_it():
         if "apps.demo" in text or "from apps import demo" in text:
             offenders.append(rel)
     assert offenders == []
+
+
+@pytest.fixture
+def stored(monkeypatch):
+    """Storage looks configured and records what is put, so no network is touched."""
+    puts: list[tuple[str, bytes, str]] = []
+    monkeypatch.setattr("apps.files.storage.is_configured", lambda: True)
+    monkeypatch.setattr(
+        "apps.files.storage.put",
+        lambda *, key, body, content_type: puts.append((key, body, content_type)),
+    )
+    return puts
+
+
+def _statuses() -> dict[str, str]:
+    return {
+        str(a.profile.user.email if a.profile.user else ""): a.status
+        for a in Application.objects.filter(
+            profile__user__email__startswith="applicant"
+        ).select_related("profile__user")
+    }
+
+
+@pytest.mark.django_db
+def test_loader_builds_the_review_queue(demo_app, settings, frozen_today, stored, client):
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    assert _statuses() == {
+        "applicant1@scholarsync.test": "submitted",
+        "applicant2@scholarsync.test": "submitted",
+        "applicant3@scholarsync.test": "under_review",
+        "applicant4@scholarsync.test": "returned",
+        "applicant5@scholarsync.test": "approved",
+    }
+    assert Award.objects.count() == 1
+    returned = Application.objects.get(profile__user__email="applicant4@scholarsync.test")
+    declined = returned.documents.get(status="declined")
+    assert declined.decline_reason == "The scan is too dark to read."
+    assert returned.decision_reason == "Upload a clearer copy of your certificate of registration."
+    under_review = Application.objects.get(profile__user__email="applicant3@scholarsync.test")
+    assert under_review.documents.filter(status="approved").count() == 1
+    for file in StoredFile.objects.filter(uploaded_by__email__startswith="applicant"):
+        assert file.status == "ready"
+        assert file.key == f"files/document/{file.id}"
+        assert file.sha256
+    assert {content_type for _, _, content_type in stored} == {"application/pdf", "image/png"}
+    assert not User.objects.get(email="applicant1@scholarsync.test").has_usable_password()
+    client.force_login(User.objects.get(email="staff@scholarsync.test"))
+    waiting = client.get("/staff/tcu-ceaa/applications/")
+    assert [a.status for a in waiting.context["page"].object_list].count("returned") == 0
+    assert waiting.context["total"] == 3  # the default filter is Waiting: submitted + under review
+    everything = client.get("/staff/tcu-ceaa/applications/?status=all")
+    assert everything.context["total"] == 5
+    returned_only = client.get("/staff/tcu-ceaa/applications/?status=returned")
+    assert returned_only.context["total"] == 1
+
+
+@pytest.mark.django_db
+def test_loader_is_idempotent_with_samples(demo_app, settings, frozen_today, stored):
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    counts = (
+        User.objects.count(),
+        Application.objects.count(),
+        StoredFile.objects.count(),
+        Award.objects.count(),
+        len(stored),
+    )
+    assert loader.load() == 0
+    assert counts == (
+        User.objects.count(),
+        Application.objects.count(),
+        StoredFile.objects.count(),
+        Award.objects.count(),
+        len(stored),
+    )
+
+
+@pytest.mark.django_db
+def test_loader_skips_samples_without_storage(
+    demo_app, settings, frozen_today, monkeypatch, caplog
+):
+    settings.DEMO_ACTIVE = True
+    monkeypatch.setattr("apps.files.storage.is_configured", lambda: False)
+    with caplog.at_level(logging.WARNING, logger="apps.demo.loader"):
+        loader.load()
+    assert not User.objects.filter(email__startswith="applicant").exists()
+    logged = " ".join(record.getMessage() for record in caplog.records)
+    assert "Demo review samples skipped (StorageNotConfigured)." in logged
+    assert "Carolyn" not in logged
+    assert Application.objects.get(profile__user__email="student@scholarsync.test")
+
+
+@pytest.mark.django_db
+def test_loader_rolls_back_samples_when_storage_fails(
+    demo_app, settings, frozen_today, monkeypatch, caplog
+):
+    from apps.files.storage import StorageUnavailable
+
+    settings.DEMO_ACTIVE = True
+    monkeypatch.setattr("apps.files.storage.is_configured", lambda: True)
+
+    def fail(**kwargs):
+        raise StorageUnavailable("Object storage request failed (EndpointConnectionError).")
+
+    monkeypatch.setattr("apps.files.storage.put", fail)
+    with caplog.at_level(logging.WARNING, logger="apps.demo.loader"):
+        loader.load()
+    assert not User.objects.filter(email__startswith="applicant").exists()
+    assert "Demo review samples skipped (StorageUnavailable)." in " ".join(
+        record.getMessage() for record in caplog.records
+    )
+    assert Application.objects.filter(profile__user__email="student@scholarsync.test").exists()
