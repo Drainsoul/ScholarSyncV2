@@ -16,7 +16,12 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.applications.models import Application, Document, DocumentFile
-from apps.applications.selectors import missing_documents, open_application, own_applications
+from apps.applications.selectors import (
+    holds_scholarship,
+    missing_documents,
+    open_application,
+    own_applications,
+)
 from apps.core import audit
 from apps.core.transitions import InvalidTransition, assert_transition
 from apps.files.policy import MB, join_types
@@ -34,6 +39,7 @@ from apps.workspace.emails import enqueue
 UPLOAD_AGAIN = "Upload the file again."
 ALREADY_SUBMITTED = "This application has already been submitted."
 INACTIVE_PROGRAM = "This program isn't taking applications any more. Withdraw this application."
+HELD = "You already hold this scholarship."
 SNAPSHOT_VERSION = 1
 
 
@@ -93,6 +99,8 @@ def start_application(
     term = application_term(today)
     if term is None:
         raise ValidationError(_first_reason(eligibility_for(profile, active, today=today)))
+    if holds_scholarship(profile, active, term):
+        raise ValidationError(HELD)
     existing = open_application(profile, active, term)
     if existing is not None:
         return existing

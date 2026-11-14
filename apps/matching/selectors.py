@@ -1,8 +1,11 @@
 from dataclasses import dataclass
 from datetime import date
 
+from django.db.models import Exists, OuterRef, Q
+
 from apps.accounts.models import User
 from apps.applications.models import Application
+from apps.awards.models import Award
 from apps.matching.eligibility import Academic, EligibilityResult, evaluate
 from apps.matching.legacy_model import Hint, hint_for
 from apps.programs.models import AcademicTerm, Program
@@ -16,6 +19,7 @@ class ProgramMatch:
     program: Program
     result: EligibilityResult
     open_application_id: int | None  # the student's open application for this program and term
+    held: bool = False  # an approved application this term, or an active award
 
 
 @dataclass(frozen=True)
@@ -70,8 +74,29 @@ def match_page(user: User, *, today: date) -> MatchPage:
     if profile is None:
         return MatchPage(profile=None, academic=None, term=term, matches=[], hint=None)
     academic = _academic(profile)
+    held = Q(
+        Exists(
+            Award.objects.filter(
+                profile=profile, program=OuterRef("pk"), status=Award.Status.ACTIVE
+            )
+        )
+    )
+    if term is not None:
+        held |= Q(
+            Exists(
+                Application.objects.filter(
+                    profile=profile,
+                    program=OuterRef("pk"),
+                    term=term,
+                    status=Application.Status.APPROVED,
+                )
+            )
+        )
     programs = list(
-        Program.objects.filter(is_active=True).prefetch_related("allowed_schools").order_by("name")
+        Program.objects.filter(is_active=True)
+        .annotate(held=held)
+        .prefetch_related("allowed_schools")
+        .order_by("name")
     )
     open_ids: dict[int, int] = {}
     if term is not None:
@@ -85,6 +110,7 @@ def match_page(user: User, *, today: date) -> MatchPage:
             program=program,
             result=_evaluate(profile, program, academic, term, today),
             open_application_id=open_ids.get(program.pk),
+            held=bool(getattr(program, "held", False)),
         )
         for program in programs
     ]

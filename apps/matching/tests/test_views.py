@@ -5,11 +5,14 @@ from zoneinfo import ZoneInfo
 
 import pytest
 import time_machine
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from apps.accounts.tests.factories import UserFactory
 from apps.applications.models import Application
 from apps.applications.tests.factories import ApplicationFactory
+from apps.awards.tests.factories import AwardFactory
 from apps.programs.models import School
 from apps.programs.tests.factories import (
     AcademicTermFactory,
@@ -157,3 +160,38 @@ def test_match_page_view_query_budget(client, term, django_assert_max_num_querie
     client.force_login(profile.user)
     with django_assert_max_num_queries(BUDGET):
         assert client.get(reverse("matching:match")).status_code == 200
+
+
+def _held_world(term):
+    program = ProgramFactory.create(name="Alpha")
+    BenefitTierFactory.create(program=program, effective_from=term, name="Standard")
+    profile = FullProfileFactory.create()
+    EducationRecordFactory.create(profile=profile)
+    return program, profile
+
+
+def test_match_page_shows_held_instead_of_apply(client, term, django_assert_max_num_queries):
+    program, profile = _held_world(term)
+    other = ProgramFactory.create(name="Bravo")
+    get(client, profile.user)
+    with CaptureQueriesContext(connection) as before:
+        body = text(client.get(reverse("matching:match")))
+    assert "You already hold this scholarship." not in body
+    AwardFactory.create(
+        profile=profile,
+        program=program,
+        source_application=ApplicationFactory.create(
+            profile=profile, program=program, term=term, status=Application.Status.APPROVED
+        ),
+    )
+    ApplicationFactory.create(
+        profile=profile, program=other, term=term, status=Application.Status.APPROVED
+    )
+    with CaptureQueriesContext(connection) as after:
+        response = client.get(reverse("matching:match"))
+    body = text(response)
+    assert body.count("You already hold this scholarship.") == 2
+    assert reverse("applications:new", args=[program.slug]) not in body
+    assert ">Apply<" not in body
+    assert len(after) <= len(before) + 1
+    assert Application.objects.count() == 2

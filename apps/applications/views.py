@@ -305,8 +305,10 @@ class DocumentView(StudentRequiredMixin, View):
                 request=request,
             )
         except ValidationError as error:
+            # The service may have raced a staff action: show the row as it is now.
+            fresh = own_application(user, pk)
             return render_detail(
-                request, application, error_for=required, error=_error_text(error), status=400
+                request, fresh, error_for=required, error=_error_text(error), status=400
             )
         messages.success(request, "Document saved.")
         target = reverse("applications:detail", args=[application.pk])

@@ -1,10 +1,12 @@
 import html
 from datetime import date, datetime
 from decimal import Decimal
+from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
 import pytest
 import time_machine
+from django.core.exceptions import ValidationError
 from django.urls import reverse
 
 from apps.accounts.tests.factories import UserFactory
@@ -435,3 +437,45 @@ def test_document_get_405(client, world):
     application = draft(world)
     response = signed_in(client, world["user"]).get(doc_url(application, world["requirement"]))
     assert response.status_code == 405
+
+
+# --- decisions shown and the stale re-render -----------------------------------------------
+
+
+def test_detail_banner_by_status(client, world):
+    reviewing = draft(world, status=Application.Status.UNDER_REVIEW)
+    assert "Staff are reviewing this application." in detail_body(client, world, reviewing)
+    reviewing.delete()
+    approved = draft(
+        world,
+        status=Application.Status.APPROVED,
+        decided_at=datetime(2026, 10, 9, 9, 0, tzinfo=ZoneInfo("Asia/Manila")),
+    )
+    assert "Approved on 9 October 2026." in detail_body(client, world, approved)
+    approved.delete()
+    rejected = draft(
+        world, status=Application.Status.REJECTED, decision_reason="Income is over the limit."
+    )
+    assert "Not approved: Income is over the limit." in detail_body(client, world, rejected)
+
+
+def test_failed_upload_rerenders_the_locked_state(client, world):
+    application = draft(world, status=Application.Status.RETURNED)
+    signed_in(client, world["user"])
+    page = client.get(reverse("applications:detail", args=[application.pk]))
+    assert "Save document" in text(page)
+
+    def staff_started_the_review(**kwargs):
+        Application.objects.filter(pk=application.pk).update(status=Application.Status.UNDER_REVIEW)
+        raise ValidationError("This application can't take documents now.")
+
+    file = ready_file(world["user"])
+    with patch(
+        "apps.applications.views.services.attach_document", side_effect=staff_started_the_review
+    ):
+        response = client.post(doc_url(application, world["requirement"]), {"file": str(file.pk)})
+    assert response.status_code == 400
+    body = text(response)
+    assert "Save document" not in body
+    assert 'data-upload-purpose="document"' not in body
+    assert "Staff are reviewing this application." in body

@@ -27,6 +27,7 @@ from apps.applications.tests.factories import (
     DocumentFactory,
     DocumentFileFactory,
 )
+from apps.awards.tests.factories import AwardFactory
 from apps.core.models import AuditEvent
 from apps.files.models import StoredFile
 from apps.files.policy import MB, PDF, PNG
@@ -903,3 +904,27 @@ def test_attach_race_on_the_same_file_says_upload_again(
     current = DocumentFile.objects.get(document__application=application, is_current=True)
     assert current.file == first
     assert actions() == ["document.uploaded"]
+
+
+def test_start_refused_when_holding_the_scholarship(world: World) -> None:
+    approved = draft_for(world, status=Application.Status.APPROVED)
+    before = Application.objects.count()
+    assert_refused(
+        lambda: start_application(user=world.user, program=world.program),
+        "You already hold this scholarship.",
+    )
+    approved.delete()
+    AwardFactory.create(
+        profile=world.profile,
+        program=world.program,
+        source_application=draft_for(
+            world, status=Application.Status.APPROVED, term=AcademicTermFactory.create()
+        ),
+    )
+    before = Application.objects.count()
+    assert_refused(
+        lambda: start_application(user=world.user, program=world.program),
+        "You already hold this scholarship.",
+    )
+    assert Application.objects.count() == before
+    assert "application.started" not in actions()

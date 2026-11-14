@@ -13,6 +13,13 @@
   {% if error_card %}
   <div class="banner banner--danger" role="alert"><div><p>Check the <a href="#{{ error_card.anchor }}">{{ error_card.row.requirement.label }} document</a> below.</p></div></div>
   {% endif %}
+  {% if application.status == "under_review" %}
+  <div class="banner banner--info"><div><p>Staff are reviewing this application.</p></div></div>
+  {% elif application.status == "approved" %}
+  <div class="banner banner--success"><div><p>Approved{% if application.decided_at %} on {{ application.decided_at|date:"j F Y" }}{% endif %}.</p></div></div>
+  {% elif application.status == "rejected" %}
+  <div class="banner banner--warning"><div><p>Not approved: {{ application.decision_reason }}</p></div></div>
+  {% endif %}
   {% if application.status == "returned" %}
   <div class="banner banner--warning"><div><p>Staff returned this application: {{ application.decision_reason }}</p></div></div>
   {% endif %}
