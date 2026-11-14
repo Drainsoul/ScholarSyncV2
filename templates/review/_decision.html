@@ -1,5 +1,8 @@
 <section class="card" aria-labelledby="decision-title">
   <h2 class="card__title" id="decision-title">Decision</h2>
+  {% if application.decision_reason and application.status == "submitted" or application.decision_reason and application.status == "under_review" %}
+  <div class="banner banner--warning" role="note"><div><p>Returned earlier: {{ application.decision_reason }}</p></div></div>
+  {% endif %}
   {% if application.status == "submitted" %}
   <p>Start the review before you check documents.</p>
   <form method="post" action="{% url 'review:start' program=program.slug pk=application.pk %}">{% csrf_token %}<button class="btn btn--primary" type="submit">Start review</button></form>

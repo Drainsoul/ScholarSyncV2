@@ -249,6 +249,19 @@ def test_review_page_buttons_follow_status(client: Any) -> None:
     assert "Withdrawn by the student" in client.get(_detail_url(withdrawn.pk)).content.decode()
 
 
+def test_review_page_shows_earlier_return_reason_on_a_resubmission(client: Any) -> None:
+    membership = _staff()
+    program = membership.program
+    client.force_login(membership.user)
+    first = _row(program, S.SUBMITTED)
+    assert "Returned earlier" not in client.get(_detail_url(first.pk)).content.decode()
+    for status in (S.SUBMITTED, S.UNDER_REVIEW):
+        again = _row(program, status, decision_reason="Scan is <blurry>")
+        body = client.get(_detail_url(again.pk)).content.decode()
+        assert "Returned earlier: Scan is &lt;blurry&gt;" in body
+        assert "<blurry>" not in body
+
+
 def test_review_page_query_budget(client: Any, django_assert_max_num_queries: Any) -> None:
     membership = _staff()
     application = _row(membership.program, S.UNDER_REVIEW, match_snapshot=_snapshot())
