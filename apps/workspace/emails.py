@@ -46,6 +46,8 @@ KINDS: dict[str, frozenset[str]] = {
     "profile_invite": frozenset({"claim_url"}),
     # Sent to the student's own (verified) address, so the name is fine.
     "application_received": frozenset({"full_name", "program_name", "application_url"}),
+    "application_returned": frozenset({"full_name", "program_name", "application_url"}),
+    "application_decided": frozenset({"full_name", "program_name", "application_url", "outcome"}),
 }
 
 

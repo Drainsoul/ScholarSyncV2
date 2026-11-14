@@ -1,0 +1,5 @@
+{% extends "emails/base.html" %}
+{% block body %}
+    <p>Hi {{ full_name }}, staff reviewed your {{ program_name }} application and returned it for changes. Sign in to see what to fix, then submit it again.</p>
+    <p><a href="{{ application_url }}">Open your application</a></p>
+{% endblock %}

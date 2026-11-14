@@ -15,11 +15,13 @@ from django.utils import timezone
 from apps.accounts.models import User
 from apps.applications.models import Application, Document
 from apps.applications.review_selectors import applications_for_program
+from apps.applications.services import application_url
 from apps.core import audit
 from apps.core.permissions import require_program_staff
 from apps.core.transitions import assert_transition
 from apps.programs.models import Program
 from apps.students.models import StudentProfile
+from apps.workspace.emails import enqueue
 
 ALREADY_STARTED = "Someone has already started reviewing this application."
 START_FIRST = "Start the review before you check documents."
@@ -27,6 +29,10 @@ NO_CURRENT_FILE = "This document has no file to check."
 NEED_DECLINE_REASON = "Say why you're declining this document."
 DECLINE_REASON_TOO_LONG = "Keep the reason under 500 characters."
 MAX_DECLINE_REASON = 500
+NEED_RETURN_REASON = "Say what the student needs to fix."
+NEED_REJECT_REASON = "Say why the application is not approved."
+DECISION_REASON_TOO_LONG = "Keep the reason under 1,000 characters."
+MAX_DECISION_REASON = 1000
 
 
 def _lock_for_staff(actor: User, program: Program, pk: int) -> tuple[StudentProfile, Application]:
@@ -163,5 +169,99 @@ def decline_document(
         status=Document.Status.DECLINED,
         action="document.declined",
         reason=reason,
+        request=request,
+    )
+
+
+def _finish(
+    *,
+    actor: User,
+    program: Program,
+    application: Application,
+    reason: str,
+    need_reason: str,
+    status: Application.Status,
+    action: str,
+    kind: str,
+    outcome: str | None,
+    request: HttpRequest | None,
+) -> Application:
+    """Return or reject: under the locks, check the state and the reason, save, audit, email."""
+    profile, locked = _lock_for_staff(actor, program, application.pk)
+    assert_transition(locked, status)
+    reason = reason.strip()
+    if not reason:
+        raise ValidationError(need_reason)
+    if len(reason) > MAX_DECISION_REASON:
+        raise ValidationError(DECISION_REASON_TOO_LONG)
+    update_fields = ["status", "decision_reason", "updated_at"]
+    if status == Application.Status.REJECTED:  # a return is not a decision
+        locked.decided_at = timezone.now()
+        locked.decided_by = actor
+        update_fields += ["decided_at", "decided_by"]
+    locked.status = status
+    locked.decision_reason = reason
+    locked.save(update_fields=update_fields)
+    audit.record(
+        actor=actor,
+        action=action,
+        target=locked,
+        program=locked.program,
+        request=request,
+    )
+    if profile.user is not None:  # the reason is free text: it stays out of the email
+        context = {
+            "full_name": profile.full_name,
+            "program_name": locked.program.name,
+            "application_url": application_url(locked),
+        }
+        if outcome is not None:
+            context["outcome"] = outcome
+        enqueue(to=profile.user.email, kind=kind, context=context)
+    return locked
+
+
+@transaction.atomic
+def return_application(
+    *,
+    actor: User,
+    program: Program,
+    application: Application,
+    reason: str,
+    request: HttpRequest | None = None,
+) -> Application:
+    return _finish(
+        actor=actor,
+        program=program,
+        application=application,
+        reason=reason,
+        need_reason=NEED_RETURN_REASON,
+        status=Application.Status.RETURNED,
+        action="application.returned",
+        kind="application_returned",
+        outcome=None,
+        request=request,
+    )
+
+
+@transaction.atomic
+def reject_application(
+    *,
+    actor: User,
+    program: Program,
+    application: Application,
+    reason: str,
+    request: HttpRequest | None = None,
+) -> Application:
+    return _finish(
+        actor=actor,
+        program=program,
+        application=application,
+        reason=reason,
+        need_reason=NEED_REJECT_REASON,
+        status=Application.Status.REJECTED,
+        action="application.rejected",
+        kind="application_decided",
+        outcome="not approved",
         request=request,
     )

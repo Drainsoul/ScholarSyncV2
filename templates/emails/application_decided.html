@@ -1,0 +1,9 @@
+{% extends "emails/base.html" %}
+{% block body %}
+    {% if outcome == "approved" %}
+    <p>Hi {{ full_name }}, good news: your {{ program_name }} application was approved.</p>
+    {% else %}
+    <p>Hi {{ full_name }}, your {{ program_name }} application was not approved. Sign in to read the reason.</p>
+    {% endif %}
+    <p><a href="{{ application_url }}">Open your application</a></p>
+{% endblock %}

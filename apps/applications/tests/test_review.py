@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.accounts.tests.factories import UserFactory
-from apps.applications import review
+from apps.applications import review, services
 from apps.applications.models import Application, Document
 from apps.applications.tests.factories import (
     ApplicationFactory,
@@ -19,6 +19,9 @@ from apps.core.transitions import InvalidTransition
 from apps.programs.models import Program
 from apps.programs.tests.factories import MembershipFactory, ProgramFactory
 from apps.students.models import StudentProfile
+from apps.students.tests.factories import ProfileFactory
+from apps.workspace.emails import KINDS, _render
+from apps.workspace.models import EmailOutbox
 
 pytestmark = pytest.mark.django_db
 
@@ -397,3 +400,206 @@ def test_lock_for_staff_returns_the_profile_and_the_locked_application() -> None
     assert profile.pk == application.profile_id
     assert locked.pk == application.pk
     assert locked is not application
+
+
+# return and reject
+
+NEED_RETURN_REASON = "Say what the student needs to fix."
+NEED_REJECT_REASON = "Say why the application is not approved."
+REASON_TOO_LONG_1000 = "Keep the reason under 1,000 characters."
+REASON = "Your grades slip is blurry and secret-reason-text."
+
+
+def under_review(program: Program, **kwargs: object) -> Application:
+    return submitted(program, S.UNDER_REVIEW, **kwargs)
+
+
+def test_return_sets_reason_and_emails_student() -> None:
+    program = ProgramFactory.create()
+    actor = staff_of(program)
+    application = under_review(program)
+    result = review.return_application(
+        actor=actor, program=program, application=application, reason=f"  {REASON}  "
+    )
+    assert result.status == S.RETURNED
+    application.refresh_from_db()
+    assert application.status == S.RETURNED
+    assert application.decision_reason == REASON
+    assert application.decided_at is None
+    assert application.decided_by is None
+    event = AuditEvent.objects.get(action="application.returned")
+    assert event.actor == actor
+    assert event.program == program
+    assert event.target_id == str(application.pk)
+    assert event.data == {}
+    row = EmailOutbox.objects.get()
+    assert row.kind == "application_returned"
+    assert application.profile.user is not None
+    assert row.to == application.profile.user.email
+    assert set(row.context) == KINDS["application_returned"]
+    assert row.context["full_name"] == application.profile.full_name
+    assert row.context["program_name"] == program.name
+    assert row.context["application_url"] == services.application_url(application)
+    assert "secret-reason-text" not in str(row.context)
+    assert all("secret-reason-text" not in part for part in _render(row))
+
+
+def test_reject_sets_decided_fields_and_emails_not_approved() -> None:
+    program = ProgramFactory.create()
+    actor = staff_of(program)
+    application = under_review(program)
+    before = timezone.now()
+    result = review.reject_application(
+        actor=actor, program=program, application=application, reason=REASON
+    )
+    assert result.status == S.REJECTED
+    application.refresh_from_db()
+    assert application.status == S.REJECTED
+    assert application.decision_reason == REASON
+    assert application.decided_by == actor
+    assert application.decided_at is not None and application.decided_at >= before
+    event = AuditEvent.objects.get(action="application.rejected")
+    assert event.program == program
+    assert event.data == {}
+    row = EmailOutbox.objects.get()
+    assert row.kind == "application_decided"
+    assert set(row.context) == KINDS["application_decided"]
+    assert row.context["outcome"] == "not approved"
+    assert "secret-reason-text" not in str(row.context)
+    subject, text, html = _render(row)
+    assert subject == f"Your {program.name} application was not approved"
+    assert "secret-reason-text" not in text + html
+
+
+@pytest.mark.parametrize(
+    ("name", "message"),
+    [
+        ("return_application", NEED_RETURN_REASON),
+        ("reject_application", NEED_REJECT_REASON),
+    ],
+)
+@pytest.mark.parametrize("reason", ["", "   \n ", "x" * 1001])
+def test_return_and_reject_need_a_reason(name: str, message: str, reason: str) -> None:
+    program = ProgramFactory.create()
+    actor = staff_of(program)
+    application = under_review(program)
+    before = audit_count()
+    with pytest.raises(ValidationError) as exc:
+        getattr(review, name)(actor=actor, program=program, application=application, reason=reason)
+    expected = REASON_TOO_LONG_1000 if len(reason) > 1000 else message
+    assert exc.value.messages == [expected]
+    application.refresh_from_db()
+    assert application.status == S.UNDER_REVIEW
+    assert application.decision_reason == ""
+    assert audit_count() == before
+    assert not EmailOutbox.objects.exists()
+
+
+def test_reason_of_exactly_1000_characters_is_accepted() -> None:
+    program = ProgramFactory.create()
+    application = under_review(program)
+    review.return_application(
+        actor=staff_of(program), program=program, application=application, reason="x" * 1000
+    )
+    application.refresh_from_db()
+    assert application.status == S.RETURNED
+
+
+@pytest.mark.parametrize("status", [S.SUBMITTED, S.RETURNED, S.APPROVED, S.REJECTED, S.WITHDRAWN])
+@pytest.mark.parametrize("name", ["return_application", "reject_application"])
+def test_return_and_reject_need_under_review(status: str, name: str) -> None:
+    program = ProgramFactory.create()
+    application = submitted(program, status)
+    before = audit_count()
+    with pytest.raises(InvalidTransition):
+        getattr(review, name)(
+            actor=staff_of(program), program=program, application=application, reason=REASON
+        )
+    application.refresh_from_db()
+    assert application.status == status
+    assert audit_count() == before
+    assert not EmailOutbox.objects.exists()
+
+
+@pytest.mark.parametrize("name", ["return_application", "reject_application"])
+def test_return_and_reject_scoped_to_program(name: str) -> None:
+    tcu = ProgramFactory.create()
+    lani = ProgramFactory.create()
+    application = under_review(tcu)
+    with pytest.raises(PermissionDenied):
+        getattr(review, name)(
+            actor=staff_of(lani), program=tcu, application=application, reason=REASON
+        )
+    with pytest.raises(Http404):
+        getattr(review, name)(
+            actor=staff_of(lani), program=lani, application=application, reason=REASON
+        )
+    application.refresh_from_db()
+    assert application.status == S.UNDER_REVIEW
+    assert audit_count() == 0
+
+
+def test_profile_without_user_gets_no_email() -> None:
+    program = ProgramFactory.create()
+    application = under_review(program, profile=ProfileFactory.create(user=None))
+    review.return_application(
+        actor=staff_of(program), program=program, application=application, reason=REASON
+    )
+    other = under_review(program, profile=ProfileFactory.create(user=None))
+    review.reject_application(
+        actor=staff_of(program), program=program, application=other, reason=REASON
+    )
+    assert not EmailOutbox.objects.exists()
+    assert AuditEvent.objects.filter(action="application.returned").count() == 1
+    assert AuditEvent.objects.filter(action="application.rejected").count() == 1
+
+
+def test_student_can_resubmit_after_return() -> None:
+    program = ProgramFactory.create()
+    application = under_review(program)
+    document_with_file(application)
+    review.return_application(
+        actor=staff_of(program), program=program, application=application, reason=REASON
+    )
+    user = application.profile.user
+    assert user is not None
+    services.submit_application(user=user, application=application, tier=None)
+    application.refresh_from_db()
+    assert application.status == S.SUBMITTED
+
+
+def test_emails_render_both_outcomes() -> None:
+    context = {
+        "full_name": "Ana Reyes",
+        "program_name": "TCU CEAA",
+        "application_url": "https://x.example/me/applications/1/",
+    }
+    cases = [
+        (
+            "application_returned",
+            {},
+            "Your TCU CEAA application needs changes",
+            "returned it for changes. Sign in to see what to fix, then submit it again.",
+        ),
+        (
+            "application_decided",
+            {"outcome": "approved"},
+            "Your TCU CEAA application was approved",
+            "Hi Ana Reyes, good news: your TCU CEAA application was approved.",
+        ),
+        (
+            "application_decided",
+            {"outcome": "not approved"},
+            "Your TCU CEAA application was not approved",
+            "Hi Ana Reyes, your TCU CEAA application was not approved. Sign in to read the reason.",
+        ),
+    ]
+    for kind, extra, subject, sentence in cases:
+        row = EmailOutbox.objects.create(to="a@example.com", kind=kind, context=context | extra)
+        got_subject, text, html = _render(row)
+        assert got_subject == subject
+        assert "\n" not in got_subject
+        assert sentence in text and sentence in html
+        assert "Open your application" in html
+        assert context["application_url"] in text and context["application_url"] in html
+        assert ("good news" in text) == (extra.get("outcome") == "approved")

@@ -1,0 +1,5 @@
+{% extends "emails/base.txt" %}
+{% block body %}{% if outcome == "approved" %}Hi {{ full_name }}, good news: your {{ program_name }} application was approved.{% else %}Hi {{ full_name }}, your {{ program_name }} application was not approved. Sign in to read the reason.{% endif %}
+
+Open your application: {{ application_url }}
+{% endblock %}
