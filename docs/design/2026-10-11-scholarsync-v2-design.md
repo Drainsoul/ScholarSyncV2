@@ -17,6 +17,9 @@
 - **Revision:** 10 (2026-11-10): M7 decisions: matching and student applications (§4.2, §4.5, §5, §8, §9, §16).
 - **Revision:** 11 (2026-11-13): M8 decisions: application review, awards created on approval, M8b on-behalf (§4.5,
   §4.6, §5, §6, §7, §9, §16, §18).
+- **Revision:** 12 (2026-11-14): M8 follow-up: bulk, queue, review-screen and head/staff decisions;
+  a rejection stands for its term; the "Returned earlier" banner; the match page's held and rejected sentences (§4.5,
+  §5, §6, §8, §12).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -270,6 +273,22 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
       - no active `Award` for the same profile and program;
     - starting an application is refused ("You already hold this scholarship.") when the profile has an `approved`
       application for the program in that term, or an active award in the program;
+    - a rejection stands for its term: starting is also refused ("This application wasn't approved for {term}. You
+      can apply again next term.") when the profile has a `rejected` application for the program in that term. The
+      check runs under the profile lock, beside the held check. Decided 2026-11-14 (M8); the maintainer to
+      confirm;
+    - an approval refused for a document names it: "{label} was never uploaded. Return the application so the
+      student can add it." when a required document has no upload at all (named first, since deciding the others
+      can't help), otherwise "Approve or decline every document first: {label}.";
+    - **bulk actions** are "Start review" and "Approve" only, because return and reject need a reason per student:
+      - each selected row runs the single-row service in its own transaction, in `profile_id` order, so every
+        precondition is re-checked under that row's locks; bulk approve uses each application's requested tier;
+      - at most 100 rows per request ("Choose at most 100 applications at a time.");
+      - a row that fails is skipped with its reason: the summary reads "Approved 3 applications. Skipped 2." (or
+        "Started review of …"), then one "{name}: {reason}" message per skipped row;
+      - with HTMX the page reloads and the messages show after the reload (a toast would die with the page); without
+        JS the POST redirects back to the queue with its filters kept;
+      - "Approve" is offered only under the Waiting and Under review filters, since approval needs `under_review`;
     - resubmitting a returned application keeps the first snapshot and the requested tier, skips the window check
       (staff asked for fixes) and re-checks the documents only.
   - constraint: at most one *open* application (draft, submitted, under_review or returned) per (`profile`, `program`,
@@ -383,6 +402,15 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 | Files | `POST /files/uploads/` (intent), `POST /files/uploads/<id>/confirm/`, `GET /files/<id>/` (authorize → 302) | owner or authorized staff |
 | Django admin | `/_admin/` | technical superuser only |
 
+- **The staff queue** (`applications/`, M8):
+  - it lists only applications with `submitted_at` set, so drafts the student hasn't submitted stay private;
+  - status filter: **Waiting** (submitted + under review; the default), then Submitted, Under review, Returned,
+    Approved, Rejected, Withdrawn, and All;
+  - also a term filter and a name search, where every word must match the first or last name;
+  - sorts: `submitted` (`first_submitted_at`, oldest first; the default) and `name`;
+  - 25 rows per page; unknown values fall back to the defaults, never an error;
+  - the staff nav item "Applications" counts `submitted` applications only (the ones nobody has started).
+
 ## 6. Authorization
 - **Roles:** `User.role` decides which area a user can enter. Staff powers come from `ProgramMembership`, and a super
   admin can do everything in `/office/` and act in any program.
@@ -412,6 +440,8 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 | Programs, staff accounts, memberships, schools, terms | — | — | — | ✓ |
 | Audit log | — | — | own program | all |
 
+- **M8:** head and staff may both do everything in application review (queue, review, document
+  decisions, return, approve, reject, bulk), as the table above proposes. The split stays open (§18 Q7).
 - **Permission-matrix test:** `tests/test_permission_matrix.py` enumerates `get_resolver()` and checks each URL name
   against an expected-access table for anonymous, student, other-student, staff, other-program staff, head and super
   admin. A new URL fails the test until it's added to the table.
@@ -503,6 +533,11 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 - **Match page:** `/me/match/` lists every active program with ✓/✗, the reasons, the tier candidates, and the hint
   ("Suggested by the legacy model; advisory"). The student applies only to eligible programs and requests a tier; staff
   confirm the tier on approval. The result is saved in `Application.match_snapshot` at submit time.
+  - A card's action, in order: "Continue your application" when an open application exists; else "You already hold
+    this scholarship." when the profile holds it (an approved application this term or an active award); else "This
+    application wasn't approved for {term}. You can apply again next term." when it was rejected this term (§4.5);
+    else "Apply" when eligible. The held and rejected flags come from `Exists` annotations on the page's one program
+    query, so they add no queries.
 
 ## 9. Email, notifications, background jobs
 - **Sending email:**
@@ -699,6 +734,19 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
   - toasts come from `HX-Trigger: {"toast": …}`, read by `toast.ts` into an `aria-live` region;
   - bulk actions are a form with checkboxes;
   - every form also works as a normal POST without JS.
+- **Staff review screens (M8):**
+  - the queue (§5) is a filter toolbar over a table with a checkbox column; the bulk form wraps the table, and the
+    count above it is a live region outside the swapped partial;
+  - the review screen follows the approved mockup (`kit/mockups/application_review.html`), with these changes:
+    - **removed:** the tabs, because every section fits on one page; the "review checks" bar, which becomes "{n} of
+      {m} documents approved";
+    - **corrected:** income is "a month", because the field is `monthly_household_income`;
+    - **header:** a pager shows "{n} of {m} waiting" with previous and next links, over the Waiting set in queue
+      order;
+    - **eligibility card:** the frozen snapshot, "As checked on {date}", plus the advisory hint;
+    - **decision card**, by status: submitted shows "Start review"; under review shows the decision form; otherwise
+      a decision summary. On a resubmission (submitted or under review with an earlier reason) a warning banner
+      above it reads "Returned earlier: {decision_reason}", autoescaped, so the reviewer sees what was asked.
 - **TypeScript modules:**
   - `main.ts`: imports and configures htmx;
   - `dialog.ts`, `toast.ts`, `upload.ts` (presigned PUT + confirm), `bulk.ts` (select-all, count);
