@@ -148,3 +148,22 @@ def test_first_submitted_at_backfill() -> None:
     finally:
         executor = MigrationExecutor(connection)
         executor.migrate(executor.loader.graph.leaf_nodes())
+
+
+def test_on_behalf_defaults_false() -> None:
+    application = ApplicationFactory.create()
+    assert application.on_behalf is False
+    assert application.override_reason == ""
+
+
+def test_override_reason_needs_on_behalf() -> None:
+    with pytest.raises(IntegrityError), transaction.atomic():
+        ApplicationFactory.create(override_reason="x")
+    assert ApplicationFactory.create(on_behalf=True, override_reason="x").pk
+
+
+def test_on_behalf_trait_sets_staff_creator() -> None:
+    application = ApplicationFactory.create(on_behalf=True)
+    assert application.on_behalf is True
+    assert application.created_by is not None
+    assert application.program.memberships.filter(user=application.created_by).exists()

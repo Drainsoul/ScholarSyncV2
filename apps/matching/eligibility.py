@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from django.utils.dateformat import format as format_date
 
@@ -14,6 +15,9 @@ from apps.programs.selectors import window_state
 from apps.students.barangays import OUTSIDE_TAGUIG
 from apps.students.models import EducationRecord, StudentProfile
 from apps.students.selectors import effective_school_type
+
+if TYPE_CHECKING:
+    from apps.applications.models import Application
 
 EDUCATION_FIX = "students:profile-education"
 PERSONAL_FIX = "students:profile-personal"
@@ -58,6 +62,22 @@ class Academic:
             units=record.units,
             course=record.course,
             year_level=record.year_level,
+        )
+
+    @classmethod
+    def from_application(cls, application: "Application") -> "Academic | None":
+        school = application.school
+        if school is None and not application.school_name:
+            return None
+        return cls(
+            school=school,
+            school_name=school.name if school is not None else application.school_name,
+            school_type=school.type if school is not None else application.school_type,
+            gwa_scale=school.grading_scale if school is not None else application.gwa_scale,
+            gwa=application.gwa,
+            units=application.units,
+            course=application.course,
+            year_level=application.year_level,
         )
 
 

@@ -65,6 +65,8 @@ class Application(models.Model):
         related_name="+",
     )
     decision_reason = models.TextField(blank=True)
+    on_behalf = models.BooleanField(default=False)
+    override_reason = models.TextField(blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
@@ -106,6 +108,10 @@ class Application(models.Model):
                 | Q(school__isnull=False)
                 | ~Q(school_name=""),
                 name="applications_submitted_has_school",
+            ),
+            models.CheckConstraint(
+                condition=Q(on_behalf=True) | Q(override_reason=""),
+                name="applications_override_only_on_behalf",
             ),
             models.UniqueConstraint(
                 fields=["profile", "program", "term"],

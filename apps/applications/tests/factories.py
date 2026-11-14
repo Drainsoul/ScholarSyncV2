@@ -5,6 +5,7 @@ from apps.files.models import StoredFile
 from apps.files.tests.factories import StoredFileFactory
 from apps.programs.tests.factories import (
     AcademicTermFactory,
+    MembershipFactory,
     ProgramFactory,
     RequiredDocumentFactory,
 )
@@ -32,6 +33,13 @@ class ApplicationFactory(factory.django.DjangoModelFactory[Application]):
         )
     )
     submitted_at = None
+
+    on_behalf = False
+    # on_behalf=True is filed by a staff member of the application's own program. (Not a Trait:
+    # factory_boy rejects a trait that shares its name with the field it sets.)
+    created_by = factory.declarations.LazyAttribute(
+        lambda o: MembershipFactory.create(program=o.program).user if o.on_behalf else None
+    )
 
 
 class DocumentFactory(factory.django.DjangoModelFactory[Document]):

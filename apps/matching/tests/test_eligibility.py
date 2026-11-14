@@ -375,3 +375,51 @@ def test_no_academic_reasons_are_not_repeated() -> None:
         "Add your units this term to your profile.",
         "Add your GWA and grading scale to your profile.",
     ]
+
+
+@pytest.mark.django_db
+def test_academic_from_application_listed_school() -> None:
+    from apps.applications.tests.factories import ApplicationFactory
+    from apps.programs.tests.factories import SchoolFactory
+
+    school = SchoolFactory.create(type=School.Type.PUBLIC, grading_scale=School.Scale.PERCENT)
+    application = ApplicationFactory.create(school=school, school_type="", gwa_scale="")
+    academic = Academic.from_application(application)
+    assert academic is not None
+    assert academic.school == school
+    assert academic.school_name == school.name
+    assert academic.school_type == "public"
+    assert academic.gwa_scale == "percent"
+
+
+@pytest.mark.django_db
+def test_academic_from_application_typed_school() -> None:
+    from apps.applications.tests.factories import ApplicationFactory
+
+    application = ApplicationFactory.create(
+        school_name="Typed College",
+        school_type=School.Type.PRIVATE,
+        gwa_scale=School.Scale.ONE_TO_FIVE,
+        gwa=Decimal("1.75"),
+        units=21,
+        course="BSIT",
+        year_level=2,
+    )
+    academic = Academic.from_application(application)
+    assert academic == Academic(
+        school=None,
+        school_name="Typed College",
+        school_type="private",
+        gwa_scale="one_to_five",
+        gwa=Decimal("1.75"),
+        units=21,
+        course="BSIT",
+        year_level=2,
+    )
+
+
+@pytest.mark.django_db
+def test_academic_from_application_none_without_school() -> None:
+    from apps.applications.tests.factories import ApplicationFactory
+
+    assert Academic.from_application(ApplicationFactory.create()) is None
