@@ -474,3 +474,38 @@ def test_download_of_a_document_file_audits_its_program(monkeypatch, student):
     event = AuditEvent.objects.get(action="file.viewed", target_id=str(row.file.id))
     assert event.program == row.document.application.program
     assert event.data == {}
+
+
+def _fill_recent(user: User, count: int) -> None:
+    StoredFile.objects.bulk_create(
+        [
+            StoredFile(
+                uploaded_by=user,
+                purpose="document",
+                original_name="a.pdf",
+                declared_type="application/pdf",
+                size=1,
+                key=f"k/{uuid.uuid4()}",
+            )
+            for _ in range(count)
+        ]
+    )
+
+
+def test_staff_upload_rate_is_100_an_hour(s3):
+    staff = UserFactory.create(verified=True, role=User.Role.STAFF)
+    _fill_recent(staff, 20)
+    start(staff, b"x" * 10)
+    _fill_recent(staff, 100 - 21)
+    assert StoredFile.objects.filter(uploaded_by=staff).count() == 100
+    with pytest.raises(UploadRejected) as excinfo:
+        start(staff, b"x" * 10)
+    assert excinfo.value.status == 429
+    assert policy.STAFF_STARTS_PER_HOUR == 100
+
+
+def test_student_upload_rate_still_20(s3, student):
+    _fill_recent(student, 20)
+    with pytest.raises(UploadRejected) as excinfo:
+        start(student, b"x" * 10)
+    assert excinfo.value.status == 429

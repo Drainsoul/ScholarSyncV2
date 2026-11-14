@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Literal, cast
 
 from django.core.exceptions import PermissionDenied
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 from django.http import Http404
 
 from apps.accounts.models import User
@@ -96,11 +96,16 @@ def document_rows(application: Application) -> list[DocumentRow]:
 
 
 def staff_can_download(user: User, file: StoredFile) -> bool:
-    """True when the file backs any version of a submitted application's document, and the user
-    is staff of that application's program (or the office). Two queries: the document row with
-    its application and program, then (for staff, not the office) the membership."""
+    """True when the file backs any version of a document on a submitted application, or on an
+    on-behalf application whatever its status, and the user is staff of that application's
+    program (or the office). Two queries: the document row with its application and program,
+    then (for staff, not the office) the membership."""
     row = (
-        DocumentFile.objects.filter(file=file, document__application__submitted_at__isnull=False)
+        DocumentFile.objects.filter(
+            Q(document__application__submitted_at__isnull=False)
+            | Q(document__application__on_behalf=True),
+            file=file,
+        )
         .select_related("document__application__program")
         .first()
     )
@@ -111,6 +116,13 @@ def staff_can_download(user: User, file: StoredFile) -> bool:
     except PermissionDenied:
         return False
     return True
+
+
+def student_can_download(user: User, file: StoredFile) -> bool:
+    """True when the file backs a document on one of the student's own applications. One query."""
+    return DocumentFile.objects.filter(
+        file=file, document__application__profile__user=user
+    ).exists()
 
 
 def missing_documents(application: Application) -> list[RequiredDocument]:

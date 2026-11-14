@@ -8,6 +8,7 @@ from apps.accounts.models import User
 MB = 1024 * 1024
 
 STARTS_PER_HOUR = 20
+STAFF_STARTS_PER_HOUR = 100
 SNIFF_BYTES = 4096
 MAX_IMAGE_PIXELS = 40_000_000
 

@@ -5,7 +5,7 @@ from django.http import Http404
 from django.utils import timezone
 
 from apps.accounts.tests.factories import UserFactory
-from apps.applications.selectors import staff_can_download
+from apps.applications.selectors import staff_can_download, student_can_download
 from apps.applications.tests.factories import (
     ApplicationFactory,
     DocumentFactory,
@@ -106,3 +106,59 @@ def test_uploader_and_office_keep_their_access() -> None:
     assert downloadable_file(file.uploaded_by, file.id) == file
     office = UserFactory.create(role="super_admin")
     assert downloadable_file(office, file.id) == file
+
+
+def _on_behalf_file() -> tuple[Any, Any]:
+    application = ApplicationFactory.create(on_behalf=True)
+    row = DocumentFileFactory.create(
+        document=DocumentFactory.create(application=application),
+        file__uploaded_by=application.created_by,
+    )
+    return application, row.file
+
+
+@pytest.mark.django_db
+def test_staff_can_download_on_behalf_draft_document() -> None:
+    application, file = _on_behalf_file()
+    colleague = MembershipFactory.create(program=application.program).user
+    assert staff_can_download(colleague, file)
+    assert downloadable_file(colleague, file.id) == file
+
+
+@pytest.mark.django_db
+def test_other_program_staff_cannot_download_on_behalf_draft() -> None:
+    _, file = _on_behalf_file()
+    other = MembershipFactory.create().user
+    assert not staff_can_download(other, file)
+    with pytest.raises(Http404):
+        downloadable_file(other, file.id)
+
+
+@pytest.mark.django_db
+def test_staff_still_cannot_download_student_draft_document() -> None:
+    application = ApplicationFactory.create(on_behalf=False)
+    file = DocumentFileFactory.create(document=DocumentFactory.create(application=application)).file
+    staff = MembershipFactory.create(program=application.program).user
+    assert not staff_can_download(staff, file)
+    with pytest.raises(Http404):
+        downloadable_file(staff, file.id)
+
+
+@pytest.mark.django_db
+def test_student_can_download_staff_uploaded_file_on_own_application(
+    django_assert_num_queries,
+) -> None:
+    application, file = _on_behalf_file()
+    student = application.profile.user
+    with django_assert_num_queries(1):
+        assert student_can_download(student, file)
+    assert downloadable_file(student, file.id) == file
+
+
+@pytest.mark.django_db
+def test_student_cannot_download_another_students_document() -> None:
+    _, file = _on_behalf_file()
+    other = UserFactory.create(verified=True)
+    assert not student_can_download(other, file)
+    with pytest.raises(Http404):
+        downloadable_file(other, file.id)

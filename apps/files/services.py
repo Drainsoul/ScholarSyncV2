@@ -88,7 +88,10 @@ def _check_start(*, user: User, purpose: str, content_type: str, size: int) -> N
         )
     since = timezone.now() - timedelta(hours=1)
     recent = StoredFile.objects.filter(uploaded_by=user, created_at__gt=since).count()
-    if recent >= policy.STARTS_PER_HOUR:
+    limit = (
+        policy.STARTS_PER_HOUR if user.role == User.Role.STUDENT else policy.STAFF_STARTS_PER_HOUR
+    )
+    if recent >= limit:
         raise UploadRejected(
             "You've started too many uploads in the last hour. Try again later.", 429
         )
