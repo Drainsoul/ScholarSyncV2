@@ -2,6 +2,7 @@ from django.http import HttpRequest
 from django.urls import reverse
 
 from apps.accounts.models import User
+from apps.applications.review_selectors import waiting_count
 from apps.programs.models import Program
 from apps.programs.selectors import programs_for
 
@@ -67,9 +68,17 @@ def shell_context(
             home, label, icon = reverse("workspace:no_programs"), "Dashboard", "layout-dashboard"
         if area == "staff" and program is not None:
             students = reverse("workspace:students", kwargs={"program": program.slug})
+            queue = reverse("review:queue", kwargs={"program": program.slug})
             path = request.path
             nav = [
                 {"label": label, "url": home, "current": path == home, "count": 0, "icon": icon},
+                {
+                    "label": "Applications",
+                    "url": queue,
+                    "current": path.startswith(queue),
+                    "count": waiting_count(program),
+                    "icon": "file-text",
+                },
                 {
                     "label": "Students",
                     "url": students,

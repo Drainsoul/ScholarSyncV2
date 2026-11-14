@@ -1,0 +1,55 @@
+{% extends "layouts/staff.html" %}
+{% load ui partials %}
+{% block title %}Applications{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div><h1>Applications</h1><p class="page-header__meta">Submitted applications to {{ program.name }}.</p></div>
+  </div>
+  <form id="queue-filters" class="table-toolbar" method="get" action="{% url 'review:queue' program=program.slug %}" role="search" aria-label="Filter applications"
+    hx-get="{% url 'review:queue' program=program.slug %}" hx-target="#queue-table" hx-swap="outerHTML" hx-push-url="true"
+    hx-sync="this:replace" hx-trigger="submit, input delay:300ms, change">
+    <div class="table-toolbar__search">
+      <label class="visually-hidden" for="filter-q">Name</label>
+      {% icon "search" %}<input class="input" type="search" id="filter-q" name="q" value="{{ filters.q }}" placeholder="Search by name">
+    </div>
+    <label class="visually-hidden" for="filter-status">Status</label>
+    <select class="input" id="filter-status" name="status">
+      {% for key, label in status_choices %}<option value="{{ key }}"{% if filters.status == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <label class="visually-hidden" for="filter-term">Term</label>
+    <select class="input" id="filter-term" name="term">
+      <option value="">Any term</option>
+      {% for term in terms %}<option value="{{ term.pk }}"{% if filters.term_id == term.pk %} selected{% endif %}>{{ term }}</option>{% endfor %}
+    </select>
+    <button class="btn btn--secondary" type="submit">Apply filters</button>
+  </form>
+  {# The count is a live region outside the swap target, so screen readers hear each new result. #}
+  <p id="queue-count" class="table-count" role="status">{{ total }} application{{ total|pluralize }}</p>
+  {% partialdef queue_table inline %}<div id="queue-table" hx-boost="true" hx-target="#queue-table" hx-swap="outerHTML" hx-push-url="true">
+    {% if count_oob %}<p id="queue-count" hx-swap-oob="innerHTML">{{ total }} application{{ total|pluralize }}</p>{% endif %}
+    {# Belongs to the filter form (form=), so filtering keeps the column sort, with or without JS. #}
+    {% if sort %}<input type="hidden" name="sort" value="{{ sort }}" form="queue-filters">{% endif %}
+    {% if rows %}
+    <div class="table-wrap" role="region" aria-labelledby="queue-caption" tabindex="0">
+      <table class="table">
+        <caption id="queue-caption" class="visually-hidden">Applications</caption>
+        <thead><tr>{% sort_th "Applicant" "name" %}<th scope="col">School</th><th scope="col">Requested tier</th>{% sort_th "Submitted" "submitted" %}<th scope="col">Status</th></tr></thead>
+        <tbody>
+          {% for row in rows %}
+          <tr>
+            <th scope="row">{{ row.application.profile.full_name }}</th>
+            <td>{% if row.application.school %}{{ row.application.school.name }}{% else %}{{ row.application.school_name }}{% endif %}</td>
+            <td>{{ row.application.requested_tier.name|default:"" }}</td>
+            <td>{% if row.application.first_submitted_at %}{{ row.application.first_submitted_at|date:"j M Y" }}{% endif %}</td>
+            <td>{% status row.tone row.application.get_status_display %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% pagination page %}
+    {% else %}
+    {% include "components/empty_state.html" with title="No applications match these filters" body="Try another status or name." action_url=clear_url action_label="Clear filters" action_reload=True %}
+    {% endif %}
+  </div>{% endpartialdef %}
+{% endblock %}

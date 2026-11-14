@@ -6,6 +6,7 @@ urlpatterns = [
     path("me/match/", include("apps.matching.urls")),
     path("me/applications/", include("apps.applications.urls")),
     path("me/", include("apps.students.urls")),
+    path("staff/<slug:program>/applications/", include("apps.applications.staff_urls")),
     path("staff/", include("apps.workspace.urls")),
     path("office/", include("apps.office.urls")),
     path("files/", include("apps.files.urls")),

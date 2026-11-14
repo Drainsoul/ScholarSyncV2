@@ -57,6 +57,16 @@ RULES: dict[str, dict[str, Any]] = {
         "head": 200,
         "office": 200,
     },
+    # A program's application by id: the guards run first, then an id outside it is a 404.
+    "staff_object": {
+        "anonymous": LOGIN,
+        "student": 403,
+        "other_student": 403,
+        "staff": 404,
+        "other_staff": 403,
+        "head": 404,
+        "office": 404,
+    },
     # A staff action that only answers POST: the guards run first, then a GET is 405.
     "staff_post_only": {
         "anonymous": LOGIN,
@@ -140,6 +150,7 @@ URLS: dict[str, str] = {
     "workspace:students": "staff",
     "workspace:students-new": "staff",
     "workspace:students-invite": "staff_post_only",
+    "review:queue": "staff",
     "office:home": "office",
     "account_login": "guest_only",
     "account_signup": "guest_only",
@@ -180,6 +191,7 @@ URLS: dict[str, str] = {
 URL_KWARGS: dict[str, dict[str, str]] = {
     "workspace:dashboard": {"program": "tcu-ceaa"},
     "workspace:students": {"program": "tcu-ceaa"},
+    "review:queue": {"program": "tcu-ceaa"},
     "workspace:students-new": {"program": "tcu-ceaa"},
     "workspace:students-invite": {"program": "tcu-ceaa", "profile_id": "999999"},
     "programs:detail": {"slug": "tcu-ceaa"},
