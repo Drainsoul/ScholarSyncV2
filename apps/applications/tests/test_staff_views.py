@@ -1,22 +1,26 @@
+import json
 import re
 from datetime import timedelta
 from decimal import Decimal
 from typing import Any
 
 import pytest
+from django.contrib.messages import get_messages
 from django.urls import reverse
 from django.utils import timezone
 
+from apps.applications import review
 from apps.applications.models import Application
 from apps.applications.tests.factories import (
     ApplicationFactory,
     DocumentFactory,
     DocumentFileFactory,
 )
+from apps.awards.models import Award
 from apps.awards.tests.factories import AwardFactory
 from apps.core.audit import record
 from apps.core.models import AuditEvent
-from apps.programs.tests.factories import MembershipFactory, ProgramFactory
+from apps.programs.tests.factories import BenefitTierFactory, MembershipFactory, ProgramFactory
 from apps.students.tests.factories import FullProfileFactory, ProfileFactory
 
 pytestmark = pytest.mark.django_db
@@ -282,3 +286,268 @@ def test_review_page_without_user_hides_email_and_income_is_not_given(client: An
     body = client.get(_detail_url(application.pk)).content.decode()
     assert "<dt>Email</dt>" not in body
     assert "Not given" in body and "— a month" not in body
+
+
+# review actions
+
+
+def _approvable(program: Any) -> Application:
+    application = _row(program, S.UNDER_REVIEW)
+    application.requested_tier = BenefitTierFactory.create(
+        program=program, effective_from=application.term
+    )
+    application.save(update_fields=["requested_tier"])
+    _with_document(application, "approved")
+    return application
+
+
+def _shown(response: Any) -> list[str]:
+    return [str(m) for m in get_messages(response.wsgi_request)]
+
+
+def _post(client: Any, name: str, application: Application, **extra: Any) -> Any:
+    kwargs: dict[str, Any] = {"program": "tcu-ceaa", "pk": application.pk}
+    if "document" in extra:
+        kwargs["document"] = extra.pop("document")
+    return client.post(reverse(f"review:{name}", kwargs=kwargs), extra)
+
+
+def test_start_review_succeeds_with_message(client: Any) -> None:
+    membership = _staff()
+    application = _row(membership.program)
+    client.force_login(membership.user)
+    response = _post(client, "start", application)
+    assert response.status_code == 302
+    assert response["Location"] == _detail_url(application.pk)
+    assert _shown(response) == ["Review started."]
+    application.refresh_from_db()
+    assert application.status == S.UNDER_REVIEW
+    assert AuditEvent.objects.filter(action="application.review_started").count() == 1
+
+
+def test_review_page_posts_to_the_action_urls(client: Any) -> None:
+    membership = _staff()
+    submitted = _row(membership.program)
+    reviewing = _row(membership.program, S.UNDER_REVIEW)
+    document = _with_document(reviewing)
+    client.force_login(membership.user)
+    body = client.get(_detail_url(submitted.pk)).content.decode()
+    assert reverse("review:start", args=["tcu-ceaa", submitted.pk]) in body
+    response = client.get(_detail_url(reviewing.pk))
+    body = response.content.decode()
+    assert reverse("review:document-approve", args=["tcu-ceaa", reviewing.pk, document.pk]) in body
+    assert reverse("review:document-decline", args=["tcu-ceaa", reviewing.pk, document.pk]) in body
+    assert reverse("review:decide", args=["tcu-ceaa", reviewing.pk]) in body
+    assert " disabled" not in body
+
+
+def test_second_start_review_shows_error_with_400(client: Any) -> None:
+    membership = _staff()
+    application = _row(membership.program, S.UNDER_REVIEW)
+    client.force_login(membership.user)
+    response = _post(client, "start", application)
+    assert response.status_code == 400
+    body = response.content.decode()
+    assert "Someone has already started reviewing this application." in body
+    assert "banner--danger" in body
+
+
+def test_approve_document_succeeds_with_message(client: Any) -> None:
+    membership = _staff()
+    application = _row(membership.program, S.UNDER_REVIEW)
+    document = _with_document(application)
+    client.force_login(membership.user)
+    response = _post(client, "document-approve", application, document=document.pk)
+    assert response.status_code == 302
+    assert _shown(response) == ["Document approved."]
+    document.refresh_from_db()
+    assert document.status == "approved"
+    again = _post(client, "document-approve", application, document=document.pk)
+    assert again.status_code == 400  # a double click is refused with a sentence
+
+
+def test_decide_approve_creates_award(client: Any) -> None:
+    membership = _staff()
+    application = _approvable(membership.program)
+    client.force_login(membership.user)
+    page = client.get(_detail_url(application.pk))
+    assert page.context["decision_form"].fields["tier"].initial == application.requested_tier_id
+    response = _post(
+        client, "decide", application, decision="approve", tier=application.requested_tier_id
+    )
+    assert response.status_code == 302
+    assert _shown(response) == ["Application approved. The award has been created."]
+    application.refresh_from_db()
+    assert application.status == S.APPROVED
+    assert Award.objects.filter(source_application=application).count() == 1
+
+
+def test_decide_approve_with_a_tier_not_in_force_shows_form_error(client: Any) -> None:
+    membership = _staff()
+    application = _approvable(membership.program)
+    tier = application.requested_tier
+    assert tier is not None
+    other = BenefitTierFactory.create(program=membership.program, effective_from=application.term)
+    tier.is_active = False
+    tier.save()
+    client.force_login(membership.user)
+    response = _post(client, "decide", application, decision="approve", tier=tier.pk)
+    assert response.status_code == 400
+    assert "tier" in response.context["decision_form"].errors
+    ok = _post(client, "decide", application, decision="approve", tier=other.pk)
+    assert ok.status_code == 302
+
+
+def test_decide_approve_with_undecided_document_shows_service_error(client: Any) -> None:
+    membership = _staff()
+    application = _approvable(membership.program)
+    _with_document(application)  # a pending one
+    client.force_login(membership.user)
+    response = _post(
+        client, "decide", application, decision="approve", tier=application.requested_tier_id
+    )
+    assert response.status_code == 400
+    assert "Approve or decline every document first" in response.content.decode()
+    application.refresh_from_db()
+    assert application.status == S.UNDER_REVIEW
+
+
+def test_decide_return_and_reject(client: Any) -> None:
+    membership = _staff()
+    returned = _row(membership.program, S.UNDER_REVIEW)
+    rejected = _row(membership.program, S.UNDER_REVIEW)
+    client.force_login(membership.user)
+    response = _post(client, "decide", returned, decision="return", reason="Blurry scan.")
+    assert response.status_code == 302
+    assert _shown(response) == ["Application returned to the student."]
+    response = _post(client, "decide", rejected, decision="reject", reason="Out of area.")
+    assert _shown(response)[-1] == "Application not approved."
+    returned.refresh_from_db()
+    rejected.refresh_from_db()
+    assert (returned.status, rejected.status) == (S.RETURNED, S.REJECTED)
+
+
+def test_decide_without_reason_rerenders_bound_form_with_400(client: Any) -> None:
+    membership = _staff()
+    application = _row(membership.program, S.UNDER_REVIEW)
+    client.force_login(membership.user)
+    response = _post(client, "decide", application, decision="return", reason="")
+    assert response.status_code == 400
+    assert "Say what the student needs to fix." in response.content.decode()
+    application.refresh_from_db()
+    assert application.status == S.UNDER_REVIEW
+
+
+def test_decide_failure_rerenders_with_400_and_fresh_state(client: Any) -> None:
+    membership = _staff()
+    colleague = MembershipFactory.create(program=membership.program, user__verified=True)
+    application = _row(membership.program, S.UNDER_REVIEW)
+    client.force_login(membership.user)
+    assert client.get(_detail_url(application.pk)).status_code == 200  # the form is on screen
+    review.return_application(
+        actor=colleague.user,
+        program=membership.program,
+        application=application,
+        reason="Missing page.",
+    )
+    response = _post(client, "decide", application, decision="reject", reason="Out of area.")
+    assert response.status_code == 400
+    body = response.content.decode()
+    assert "banner--danger" in body
+    assert "Returned: Missing page." in body  # fresh state, not the stale form
+    assert 'name="decision"' not in body
+    application.refresh_from_db()
+    assert application.status == S.RETURNED
+    assert AuditEvent.objects.filter(action="application.rejected").count() == 0
+
+
+def test_decline_dialog_htmx_and_full_page(client: Any) -> None:
+    membership = _staff()
+    application = _row(membership.program, S.UNDER_REVIEW)
+    document = _with_document(application)
+    url = reverse("review:document-decline", args=["tcu-ceaa", application.pk, document.pk])
+    client.force_login(membership.user)
+    fragment = client.get(url, HTTP_HX_REQUEST="true")
+    assert fragment.status_code == 200
+    assert "dialog__header" in fragment.content.decode()
+    assert "<html" not in fragment.content.decode()
+    assert "HX-Request" in fragment["Vary"]
+    page = client.get(url)
+    assert "<html" in page.content.decode() and "dialog__header" not in page.content.decode()
+
+    empty = client.post(url, {"reason": ""}, HTTP_HX_REQUEST="true")
+    assert empty.status_code == 200
+    assert "Say why you&#x27;re declining this document." in empty.content.decode()
+    assert "<html" not in empty.content.decode()
+    document.refresh_from_db()
+    assert document.status == "pending"
+
+    ok = client.post(url, {"reason": "Blurry."}, HTTP_HX_REQUEST="true")
+    assert ok.status_code == 204
+    assert ok["HX-Refresh"] == "true"
+    trigger = json.loads(ok["HX-Trigger"])
+    assert trigger["toast"]["message"] == "Document declined."
+    assert "closeDialog" in trigger
+    document.refresh_from_db()
+    assert document.status == "declined" and document.decline_reason == "Blurry."
+
+
+def test_decline_without_htmx_redirects_with_message(client: Any) -> None:
+    membership = _staff()
+    application = _row(membership.program, S.UNDER_REVIEW)
+    document = _with_document(application)
+    url = reverse("review:document-decline", args=["tcu-ceaa", application.pk, document.pk])
+    client.force_login(membership.user)
+    page = client.post(url, {"reason": ""})
+    assert page.status_code == 200 and "<html" in page.content.decode()
+    response = client.post(url, {"reason": "Blurry."})
+    assert response.status_code == 302
+    assert response["Location"] == _detail_url(application.pk)
+    assert _shown(response) == ["Document declined."]
+
+
+def test_decline_of_approved_document_shows_error_in_dialog(client: Any) -> None:
+    membership = _staff()
+    application = _row(membership.program, S.UNDER_REVIEW)
+    document = _with_document(application, "approved")
+    url = reverse("review:document-decline", args=["tcu-ceaa", application.pk, document.pk])
+    client.force_login(membership.user)
+    response = client.post(url, {"reason": "Changed my mind."}, HTTP_HX_REQUEST="true")
+    assert response.status_code == 200
+    assert "banner--danger" in response.content.decode()
+    document.refresh_from_db()
+    assert document.status == "approved"
+
+
+def test_actions_on_another_programs_application_404_and_change_nothing(client: Any) -> None:
+    membership = _staff()
+    foreign = _row(ProgramFactory.create(slug="lani"), S.UNDER_REVIEW)
+    foreign_doc = _with_document(foreign)
+    mine = _row(membership.program, S.UNDER_REVIEW)
+    mine_doc = _with_document(mine)
+    client.force_login(membership.user)
+    before = AuditEvent.objects.count()
+    slug = "tcu-ceaa"
+    calls = [
+        client.post(reverse("review:start", args=[slug, foreign.pk])),
+        client.post(reverse("review:document-approve", args=[slug, foreign.pk, foreign_doc.pk])),
+        client.post(reverse("review:document-approve", args=[slug, mine.pk, foreign_doc.pk])),
+        client.get(reverse("review:document-decline", args=[slug, foreign.pk, foreign_doc.pk])),
+        client.get(reverse("review:document-decline", args=[slug, mine.pk, foreign_doc.pk])),
+        client.post(
+            reverse("review:document-decline", args=[slug, mine.pk, foreign_doc.pk]),
+            {"reason": "No."},
+        ),
+        client.post(
+            reverse("review:decide", args=[slug, foreign.pk]),
+            {"decision": "reject", "reason": "No."},
+        ),
+    ]
+    assert [r.status_code for r in calls] == [404] * 7
+    for row in (foreign, mine):
+        row.refresh_from_db()
+        assert row.status == S.UNDER_REVIEW
+    foreign_doc.refresh_from_db()
+    mine_doc.refresh_from_db()
+    assert foreign_doc.status == mine_doc.status == "pending"
+    assert AuditEvent.objects.count() == before

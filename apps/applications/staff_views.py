@@ -1,14 +1,18 @@
 from datetime import date
 from typing import Any
 
+from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.http import HttpRequest, HttpResponse
-from django.shortcuts import render
+from django.http import Http404, HttpRequest, HttpResponse
+from django.shortcuts import redirect, render
 from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils.cache import patch_vary_headers
 from django.views.generic import TemplateView, View
 
+from apps.accounts.models import User
+from apps.applications import review
 from apps.applications.models import Application, Document, DocumentFile
 from apps.applications.review_selectors import (
     DEFAULT_SORT,
@@ -21,9 +25,10 @@ from apps.applications.review_selectors import (
     staff_application,
 )
 from apps.applications.selectors import document_rows
+from apps.applications.staff_forms import APPROVE, RETURN, DecisionForm, DeclineForm
 from apps.applications.views import APPLICATION_TONES, DOCUMENT_TONES
 from apps.awards.selectors import other_active_awards
-from apps.core.htmx import HtmxHttpRequest
+from apps.core.htmx import HtmxHttpRequest, close_dialog, toast
 from apps.core.permissions import ProgramStaffRequiredMixin
 from apps.core.shell import shell_context
 from apps.matching.checklist import snapshot_items
@@ -101,6 +106,8 @@ def render_review(
     snapshot = application.match_snapshot if isinstance(application.match_snapshot, dict) else {}
     items = snapshot_items(snapshot)
     under_review = application.status == Application.Status.UNDER_REVIEW
+    if under_review and decision_form is None:
+        decision_form = DecisionForm(program=program, application=application)
     versions = dict(
         DocumentFile.objects.filter(document__application=application, is_current=True).values_list(
             "document_id", "version"
@@ -152,3 +159,156 @@ class ReviewView(ProgramStaffRequiredMixin, View):
 
     def get(self, request: HttpRequest, program: str, pk: int) -> HttpResponse:
         return render_review(request, self.program, staff_application(self.program, pk))
+
+
+def _actor(request: HttpRequest) -> User:
+    user = request.user
+    assert isinstance(user, User)  # the staff mixin has signed them in
+    return user
+
+
+def _error_text(error: ValidationError) -> str:
+    return " ".join(error.messages)
+
+
+def _done(request: HttpRequest, program: Program, pk: int, message: str) -> HttpResponse:
+    messages.success(request, message)
+    return redirect("review:detail", program=program.slug, pk=pk)
+
+
+class ReviewActionView(ProgramStaffRequiredMixin, View):
+    """A POST that changes one application through a service, then goes back to the review page."""
+
+    http_method_names = ["post", "options"]
+    success_message = ""
+
+    def act(self, request: HttpRequest, application: Application, **kwargs: int) -> None:
+        raise NotImplementedError
+
+    def post(self, request: HttpRequest, program: str, pk: int, **kwargs: int) -> HttpResponse:
+        application = staff_application(self.program, pk)  # another program's id is a 404
+        try:
+            self.act(request, application, **kwargs)
+        except ValidationError as error:  # InvalidTransition is one too; Http404 is not caught
+            return self.fail(request, pk, _error_text(error))
+        return _done(request, self.program, pk, self.success_message)
+
+    def fail(self, request: HttpRequest, pk: int, error: str) -> HttpResponse:
+        # A fresh read: the state the staff member sees must be the state that refused them.
+        fresh = staff_application(self.program, pk)
+        return render_review(request, self.program, fresh, error=error, status=400)
+
+
+class StartReviewView(ReviewActionView):
+    success_message = "Review started."
+
+    def act(self, request: HttpRequest, application: Application, **kwargs: int) -> None:
+        review.start_review(
+            actor=_actor(request), program=self.program, application=application, request=request
+        )
+
+
+class ApproveDocumentView(ReviewActionView):
+    success_message = "Document approved."
+
+    def act(self, request: HttpRequest, application: Application, **kwargs: int) -> None:
+        review.approve_document(
+            actor=_actor(request),
+            program=self.program,
+            application=application,
+            document_id=kwargs["document"],
+            request=request,
+        )
+
+
+class DecideView(ReviewActionView):
+    def post(self, request: HttpRequest, program: str, pk: int, **kwargs: int) -> HttpResponse:
+        application = staff_application(self.program, pk)
+        form = DecisionForm(request.POST, program=self.program, application=application)
+        if not form.is_valid():
+            return render_review(request, self.program, application, decision_form=form, status=400)
+        decision = form.cleaned_data["decision"]
+        reason = form.cleaned_data["reason"]
+        common: dict[str, Any] = {
+            "actor": _actor(request),
+            "program": self.program,
+            "application": application,
+            "request": request,
+        }
+        try:
+            if decision == APPROVE:
+                review.approve_application(**common, tier=form.cleaned_data["tier"], note=reason)
+                message = "Application approved. The award has been created."
+            elif decision == RETURN:
+                review.return_application(**common, reason=reason)
+                message = "Application returned to the student."
+            else:
+                review.reject_application(**common, reason=reason)
+                message = "Application not approved."
+        except ValidationError as error:
+            return self.fail(request, pk, _error_text(error))
+        return _done(request, self.program, pk, message)
+
+
+class DeclineDocumentView(ProgramStaffRequiredMixin, View):
+    request: HtmxHttpRequest
+    http_method_names = ["get", "post", "options"]
+
+    def _render(
+        self, request: HtmxHttpRequest, application: Application, document: Document, form: Any
+    ) -> HttpResponse:
+        dialog = bool(request.htmx)
+        response = render(
+            request,
+            "review/decline_dialog.html" if dialog else "review/decline_document.html",
+            {
+                **shell_context(request, area="staff", program=self.program),
+                "program": self.program,
+                "application": application,
+                "document": document,
+                "requirement": document.requirement,
+                "form": form,
+                "dialog": dialog,
+            },
+        )
+        patch_vary_headers(response, ("HX-Request",))
+        return response
+
+    def _document(self, application: Application, document: int) -> Document:
+        found = (
+            Document.objects.select_related("requirement")
+            .filter(pk=document, application=application)
+            .first()
+        )
+        if found is None:
+            raise Http404("No such document.")
+        return found
+
+    def get(self, request: HtmxHttpRequest, program: str, pk: int, document: int) -> HttpResponse:
+        application = staff_application(self.program, pk)
+        found = self._document(application, document)
+        return self._render(request, application, found, DeclineForm())
+
+    def post(self, request: HtmxHttpRequest, program: str, pk: int, document: int) -> HttpResponse:
+        application = staff_application(self.program, pk)
+        found = self._document(application, document)
+        form = DeclineForm(request.POST)
+        if form.is_valid():
+            try:
+                review.decline_document(
+                    actor=_actor(request),
+                    program=self.program,
+                    application=application,
+                    document_id=document,
+                    reason=form.cleaned_data["reason"],
+                    request=request,
+                )
+            except ValidationError as error:
+                form.add_error(None, _error_text(error))
+            else:
+                if request.htmx:
+                    response = close_dialog(toast(HttpResponse(status=204), "Document declined."))
+                    response["HX-Refresh"] = "true"
+                    return response
+                return _done(request, self.program, pk, "Document declined.")
+        return self._render(request, application, found, form)

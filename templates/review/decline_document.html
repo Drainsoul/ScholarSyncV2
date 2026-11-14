@@ -1,0 +1,18 @@
+{% extends "layouts/staff.html" %}{% load ui partials %}
+{% block title %}Decline {{ requirement.label }}{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Decline {{ requirement.label }}</h1></div>
+<div class="card">
+{% partialdef form inline %}
+<form method="post" action="{% url 'review:document-decline' program=program.slug pk=application.pk document=document.pk %}" {% if dialog %}hx-post="{% url 'review:document-decline' program=program.slug pk=application.pk document=document.pk %}" hx-target="#app-dialog-body" hx-swap="innerHTML" hx-disabled-elt="find button[type='submit']" {% endif %}class="stack" novalidate>
+  {% csrf_token %}
+  {% include "components/form_errors.html" %}
+  {% field form.reason %}
+  <div class="btn-row">
+    <button type="submit" class="btn btn--danger">Decline document</button>
+    <a class="btn btn--ghost" href="{% url 'review:detail' program=program.slug pk=application.pk %}" data-dialog-close>Cancel</a>
+  </div>
+</form>
+{% endpartialdef %}
+</div>
+{% endblock %}

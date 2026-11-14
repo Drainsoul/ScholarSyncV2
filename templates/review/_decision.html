@@ -2,7 +2,7 @@
   <h2 class="card__title" id="decision-title">Decision</h2>
   {% if application.status == "submitted" %}
   <p>Start the review before you check documents.</p>
-  <button class="btn btn--primary" type="button" disabled>Start review</button>
+  <form method="post" action="{% url 'review:start' program=program.slug pk=application.pk %}">{% csrf_token %}<button class="btn btn--primary" type="submit">Start review</button></form>
   {% elif application.status == "under_review" %}
   {% if decision_form %}{% include "review/_decision_form.html" %}{% else %}<p>Review in progress.</p>{% endif %}
   {% elif application.status == "approved" %}

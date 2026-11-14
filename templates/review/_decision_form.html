@@ -1,0 +1,9 @@
+{% load ui %}
+<form method="post" action="{% url 'review:decide' program=program.slug pk=application.pk %}" class="stack" novalidate>
+  {% csrf_token %}
+  {% include "components/form_errors.html" with form=decision_form %}
+  {% field decision_form.decision %}
+  {% field decision_form.tier %}
+  {% field decision_form.reason %}
+  <div class="btn-row"><button type="submit" class="btn btn--primary">Save decision</button></div>
+</form>
