@@ -22,6 +22,7 @@ from PIL import Image, ImageOps
 
 from apps.accounts.models import User
 from apps.core.audit import record
+from apps.programs.models import Program
 
 from . import policy, storage
 from .models import StoredFile, pending_key
@@ -258,8 +259,12 @@ def confirm_upload(
 
 @transaction.atomic
 def download_url(*, user: User, file: StoredFile, request: HttpRequest | None = None) -> str:
-    """Audit the view and return a short-lived presigned GET sent as an attachment."""
-    record(actor=user, action="file.viewed", target=file, program=None, request=request)
+    """Audit the view and return a short-lived presigned GET sent as an attachment.
+
+    A file behind an application's document is audited under that application's program (one
+    query); any other file under no program."""
+    program = Program.objects.filter(applications__documents__files__file=file).first()
+    record(actor=user, action="file.viewed", target=file, program=program, request=request)
     return storage.presigned_get(
         key=file.final_key,
         content_type=file.sniffed_type,

@@ -7,7 +7,7 @@ from datetime import date
 from decimal import Decimal
 
 from allauth.account.models import EmailAddress
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ObjectDoesNotExist, PermissionDenied, ValidationError
 from django.core.management import call_command
 from django.db import transaction
 from django.http import Http404
@@ -282,7 +282,14 @@ def _give_staff_a_queue() -> None:
         with transaction.atomic():  # all five or none: a failure leaves no half-built queue
             applications = {a.state: _submit_sample(a, program) for a in SAMPLE_APPLICANTS}
             _decide_samples(applications)
-    except (storage.StorageUnavailable, ValidationError, Http404) as error:
+    except (
+        storage.StorageUnavailable,
+        ValidationError,
+        Http404,
+        PermissionDenied,
+        ObjectDoesNotExist,
+    ) as error:
+        # Explore mode boots through load_demo: a refused sample must never stop it.
         # Log only the error class: service sentences can hold profile values.
         logger.warning("Demo review samples skipped (%s).", type(error).__name__)
 

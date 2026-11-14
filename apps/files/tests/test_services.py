@@ -459,3 +459,18 @@ def test_multi_picture_jpeg_is_accepted(s3, student):
     stored = Image.open(io.BytesIO(storage.read_all(file.final_key)))
     assert stored.format == "JPEG"
     assert stored.size == (20, 10)
+
+
+def test_download_of_a_document_file_audits_its_program(monkeypatch, student):
+    from apps.applications.tests.factories import DocumentFileFactory
+    from apps.files.tests.factories import StoredFileFactory
+
+    monkeypatch.setattr(storage, "presigned_get", lambda **kwargs: "https://s3/x")
+    loose = StoredFileFactory.create(uploaded_by=student)
+    services.download_url(user=student, file=loose)
+    assert AuditEvent.objects.get(action="file.viewed", target_id=str(loose.id)).program is None
+    row = DocumentFileFactory.create(file=StoredFileFactory.create(uploaded_by=student))
+    services.download_url(user=student, file=row.file)
+    event = AuditEvent.objects.get(action="file.viewed", target_id=str(row.file.id))
+    assert event.program == row.document.application.program
+    assert event.data == {}

@@ -344,3 +344,25 @@ def test_loader_rolls_back_samples_when_storage_fails(
         record.getMessage() for record in caplog.records
     )
     assert Application.objects.filter(profile__user__email="student@scholarsync.test").exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("kind", ["PermissionDenied", "ObjectDoesNotExist"])
+def test_loader_skips_samples_when_a_service_refuses_staff(
+    demo_app, settings, frozen_today, stored, monkeypatch, caplog, kind
+):
+    from django.core import exceptions
+
+    settings.DEMO_ACTIVE = True
+
+    def refuse(applications):
+        raise getattr(exceptions, kind)("Carolyn is not staff of this program.")
+
+    monkeypatch.setattr(loader, "_decide_samples", refuse)
+    with caplog.at_level(logging.WARNING, logger="apps.demo.loader"):
+        loader.load()
+    assert not User.objects.filter(email__startswith="applicant").exists()
+    logged = " ".join(record.getMessage() for record in caplog.records)
+    assert f"Demo review samples skipped ({kind})." in logged
+    assert "Carolyn" not in logged
+    assert Application.objects.filter(profile__user__email="student@scholarsync.test").exists()
