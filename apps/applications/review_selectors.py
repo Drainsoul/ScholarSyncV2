@@ -9,6 +9,7 @@ from django.http import Http404, QueryDict
 from apps.applications.models import Application, Document
 from apps.core.models import AuditEvent
 from apps.programs.models import Program
+from apps.students.models import StudentProfile
 
 WAITING_STATUSES = frozenset({Application.Status.SUBMITTED, Application.Status.UNDER_REVIEW})
 
@@ -183,3 +184,40 @@ def history(application: Application) -> list[HistoryEntry]:
             who = event.actor.full_name
         entries.append(HistoryEntry(what=what, at=event.at, who=who))
     return entries
+
+
+def filing_profiles(program: Program, q: str) -> QuerySet[StudentProfile]:
+    """The profiles this program's staff created. Every word of `q` must match a name."""
+    rows = StudentProfile.objects.filter(created_for=program)
+    for word in q.split():
+        rows = rows.filter(Q(first_name__icontains=word) | Q(last_name__icontains=word))
+    return rows.order_by("last_name", "first_name", "pk")
+
+
+def behalf_in_progress(program: Program) -> QuerySet[Application]:
+    """Applications staff are still filling in or that came back for changes, newest first."""
+    return (
+        Application.objects.filter(
+            program=program,
+            on_behalf=True,
+            status__in=(Application.Status.DRAFT, Application.Status.RETURNED),
+        )
+        .select_related("profile", "term")
+        .order_by("-updated_at", "-pk")
+    )
+
+
+def _behalf_rows(program: Program) -> QuerySet[Application]:
+    return Application.objects.filter(program=program, on_behalf=True)
+
+
+def behalf_application(program: Program, pk: int) -> Application:
+    application = (
+        _behalf_rows(program)
+        .select_related("profile", "term", "requested_tier", "school", "program")
+        .filter(pk=pk)
+        .first()
+    )
+    if application is None:
+        raise Http404("No such application.")
+    return application

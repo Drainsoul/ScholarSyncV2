@@ -9,6 +9,8 @@ from apps.applications.models import Application
 from apps.applications.review_selectors import (
     STATUS_FILTERS,
     QueueFilters,
+    behalf_in_progress,
+    filing_profiles,
     history,
     parse_queue_filters,
     queue,
@@ -200,3 +202,26 @@ def test_descending_submitted_sort_puts_null_first_submission_last() -> None:
     for sort in ("submitted", "-submitted"):
         assert ids(queue(program, QueueFilters(sort=sort)))[-1] == undated.pk
     assert dated.pk in ids(queue(program, QueueFilters(sort="-submitted")))
+
+
+def test_filing_profiles_scoped_and_searched() -> None:
+    program = ProgramFactory.create()
+    ana = ProfileFactory.create(created_for=program, first_name="Ana Liza", last_name="Cruz")
+    ben = ProfileFactory.create(created_for=program, first_name="Ben", last_name="Abad")
+    ProfileFactory.create(created_for=ProgramFactory.create(), first_name="Ana", last_name="Cruz")
+    ProfileFactory.create(first_name="Ana", last_name="Cruz")
+    assert ids(filing_profiles(program, "")) == [ben.pk, ana.pk]
+    assert ids(filing_profiles(program, "ana cruz")) == [ana.pk]
+    assert ids(filing_profiles(program, "zzz")) == []
+    assert ids(filing_profiles(program, "%")) == []
+
+
+def test_behalf_in_progress_lists_draft_and_returned_only() -> None:
+    program = ProgramFactory.create()
+    draft = ApplicationFactory.create(program=program, on_behalf=True)
+    returned = ApplicationFactory.create(program=program, on_behalf=True, status=S.RETURNED)
+    ApplicationFactory.create(program=program, on_behalf=True, status=S.WITHDRAWN)
+    ApplicationFactory.create(program=program)  # a student's own draft
+    ApplicationFactory.create(on_behalf=True)  # another program
+    assert set(ids(behalf_in_progress(program))) == {draft.pk, returned.pk}
+    assert ids(behalf_in_progress(program))[0] == returned.pk  # newest update first
