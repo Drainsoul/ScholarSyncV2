@@ -69,3 +69,9 @@ def test_decline_form_reason_is_required_and_capped() -> None:
     assert not DeclineForm({"reason": " "}).is_valid()
     assert not DeclineForm({"reason": "x" * 501}).is_valid()
     assert DeclineForm({"reason": "x" * 500}).is_valid()
+
+
+def test_decline_form_ids_do_not_clash_with_the_decision_form() -> None:
+    from apps.applications.staff_forms import DeclineForm
+
+    assert DeclineForm()["reason"].id_for_label == "decline_reason"

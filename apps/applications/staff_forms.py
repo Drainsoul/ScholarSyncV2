@@ -1,3 +1,5 @@
+from typing import Any
+
 from django import forms
 
 from apps.applications.models import Application
@@ -27,6 +29,12 @@ class DeclineForm(forms.Form):
         error_messages={"required": "Say why you're declining this document."},
         help_text="The student reads this when you return the application.",
     )
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        # The dialog sits on a page whose decision form also has a "reason" field, so its ids
+        # must differ or the label would point at the wrong textarea.
+        kwargs.setdefault("auto_id", "decline_%s")
+        super().__init__(*args, **kwargs)
 
 
 class DecisionForm(forms.Form):
