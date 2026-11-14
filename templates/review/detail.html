@@ -1,0 +1,78 @@
+{% extends "layouts/staff.html" %}{% load ui %}
+{% block title %}{{ profile.full_name }}, application{% endblock %}
+{% block topbar_extra %}
+{% if position.position %}
+<div class="pager">
+  <span class="pager__count num">{{ position.position }} of {{ position.total }} waiting</span>
+  {% if position.previous_id %}<a class="icon-btn pager__btn" href="{% url 'review:detail' program=program.slug pk=position.previous_id %}" aria-label="Previous application">{% icon "chevron-left" %}</a>{% endif %}
+  {% if position.next_id %}<a class="icon-btn pager__btn" href="{% url 'review:detail' program=program.slug pk=position.next_id %}" aria-label="Next application">{% icon "chevron-right" %}</a>{% endif %}
+</div>
+{% endif %}
+{% endblock %}
+{% block content %}
+<div class="card review-head">
+  <div class="page-header">
+    <div class="identity">
+      {% avatar profile.full_name application.pk "lg" %}
+      <div class="identity__text">
+        <div class="review-head__title"><h1>{{ profile.full_name }}</h1>{% status tone application.get_status_display %}</div>
+        <p class="page-header__meta">Application {{ application.pk }} to {{ program.name }}, submitted <time datetime="{{ application.first_submitted_at|date:'Y-m-d' }}">{{ application.first_submitted_at|date:"j F Y" }}</time></p>
+      </div>
+    </div>
+    <div class="review-head__checks">
+      <div class="review-head__figures"><span class="num">{{ documents_approved }} of {{ documents_total }} documents approved</span></div>
+    </div>
+  </div>
+</div>
+{% if error %}<div class="banner banner--danger" role="alert"><div><p>{{ error }}</p></div></div>{% endif %}
+{% for award in other_awards %}
+<div class="banner banner--info" role="note"><div><p>Also holds an active {{ award.program.name }} award.</p></div></div>
+{% endfor %}
+<div class="split">
+  <div class="stack">
+    <section class="card" aria-labelledby="applicant-title">
+      <h2 class="card__title" id="applicant-title">Applicant</h2>
+      <dl class="details details--grid">
+        <div><dt>School</dt><dd>{% if application.school %}{{ application.school.name }}{% else %}{{ application.school_name }}{% endif %}</dd></div>
+        <div><dt>Course and year</dt><dd>{{ application.course }}{% if application.year_level %}, year {{ application.year_level }}{% endif %}</dd></div>
+        <div><dt>GWA</dt><dd class="num">{% if application.gwa is not None %}{{ application.gwa }} ({{ application.get_gwa_scale_display }}){% else %}Not given{% endif %}</dd></div>
+        <div><dt>Household income</dt><dd class="num">{{ profile.monthly_household_income|peso }} a month</dd></div>
+        <div><dt>Barangay</dt><dd>{{ profile.get_barangay_display|default:"Not given" }}</dd></div>
+        <div><dt>Phone</dt><dd class="num">{{ profile.phone|default:"Not given" }}</dd></div>
+        {% if profile.user %}<div><dt>Email</dt><dd>{{ profile.user.email }}</dd></div>{% endif %}
+      </dl>
+    </section>
+    <section class="card" aria-labelledby="documents-title">
+      <div class="card__header">
+        <h2 class="card__title" id="documents-title">Documents</h2>
+        <div class="progress-inline"><progress class="progress progress--success" max="{{ documents_total }}" value="{{ documents_approved }}" aria-label="Documents approved">{{ documents_approved }} of {{ documents_total }}</progress><span class="num">{{ documents_approved }} of {{ documents_total }} approved</span></div>
+      </div>
+      <div class="table-wrap" role="region" aria-labelledby="documents-title" tabindex="0">
+        <table class="table table--stack">
+          <thead><tr><th scope="col">Document</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+          <tbody>{% for item in document_rows %}{% with row=item.row %}<tr>
+            <th scope="row">{{ row.requirement.label }}{% if row.current %}<br><a class="text-sm file-link" href="{% url 'files:download' row.current.id %}">{% icon "download" %}{{ row.current.original_name }}</a>{% if item.version > 1 %} <span class="text-sm text-muted">version {{ item.version }}</span>{% endif %}{% endif %}</th>
+            <td>{% if row.document %}{% status item.tone row.document.get_status_display %}{% if row.document.status == "declined" and row.document.decline_reason %}<p class="text-sm">{{ row.document.decline_reason }}</p>{% endif %}{% else %}{% status "neutral" "Not uploaded" %}{% endif %}</td>
+            <td>{% if under_review and row.document and row.document.status == "pending" %}<div class="btn-row"><button type="button" class="btn btn--primary" disabled>Approve<span class="visually-hidden"> {{ row.requirement.label }}</span></button><button type="button" class="btn btn--danger" disabled>Decline<span class="visually-hidden"> {{ row.requirement.label }}</span></button></div>{% endif %}</td>
+          </tr>{% endwith %}{% endfor %}</tbody>
+        </table>
+      </div>
+    </section>
+    <section class="card" aria-labelledby="eligibility-title">
+      <div class="card__header"><h2 class="card__title" id="eligibility-title">Eligibility</h2><p class="text-sm text-muted num">{{ rules_met }} of {{ rules_total }} rules met</p></div>
+      {% if evaluated_on %}<p class="text-sm text-muted">As checked on {{ evaluated_on|date:"j F Y" }}</p>{% endif %}
+      {% include "components/checklist.html" with items=checks %}
+      {% if hint.label or hint.reason %}
+      <div class="banner" role="note"><div><p class="banner__title">{% if hint.label %}Legacy model suggests: {{ hint.label }}{% else %}{{ hint.reason }}{% endif %}</p><p>Advisory only. The rules above decided who could apply.</p></div></div>
+      {% endif %}
+    </section>
+  </div>
+  <div class="stack">
+    {% include "review/_decision.html" %}
+    <section class="card" aria-labelledby="history-title">
+      <h2 class="card__title" id="history-title">History</h2>
+      <ol class="timeline">{% for event in history %}<li><p class="timeline__what">{{ event.what }}</p><p class="timeline__when"><time datetime="{{ event.at|date:'c' }}">{{ event.at|date:"j M Y, g:i a" }}</time> by {{ event.who }}</p></li>{% endfor %}</ol>
+    </section>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,18 @@
+<section class="card" aria-labelledby="decision-title">
+  <h2 class="card__title" id="decision-title">Decision</h2>
+  {% if application.status == "submitted" %}
+  <p>Start the review before you check documents.</p>
+  <button class="btn btn--primary" type="button" disabled>Start review</button>
+  {% elif application.status == "under_review" %}
+  {% if decision_form %}{% include "review/_decision_form.html" %}{% else %}<p>Review in progress.</p>{% endif %}
+  {% elif application.status == "approved" %}
+  <p>Approved by {{ application.decided_by.full_name|default:"staff" }} on {{ application.decided_at|date:"j F Y" }}</p>
+  {% if application.decision_reason %}<p class="text-sm">{{ application.decision_reason }}</p>{% endif %}
+  {% elif application.status == "returned" %}
+  <p>Returned: {{ application.decision_reason }}</p>
+  {% elif application.status == "rejected" %}
+  <p>Not approved: {{ application.decision_reason }}</p>
+  {% elif application.status == "withdrawn" %}
+  <p>Withdrawn by the student</p>
+  {% endif %}
+</section>

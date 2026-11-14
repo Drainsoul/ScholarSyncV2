@@ -37,7 +37,7 @@
         <tbody>
           {% for row in rows %}
           <tr>
-            <th scope="row">{{ row.application.profile.full_name }}</th>
+            <th scope="row"><a href="{% url 'review:detail' program=program.slug pk=row.application.pk %}">{{ row.application.profile.full_name }}</a></th>
             <td>{% if row.application.school %}{{ row.application.school.name }}{% else %}{{ row.application.school_name }}{% endif %}</td>
             <td>{{ row.application.requested_tier.name|default:"" }}</td>
             <td>{% if row.application.first_submitted_at %}{{ row.application.first_submitted_at|date:"j M Y" }}{% endif %}</td>
