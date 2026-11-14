@@ -623,6 +623,7 @@ def test_emails_render_both_outcomes() -> None:
 
 NOTE = "Strong grades, approved quickly with secret-note-text."
 NOT_DECIDED = "Approve or decline every document first: {}."
+NEVER_UPLOADED = "{} was never uploaded. Return the application so the student can add it."
 TIER_GONE = "The requested tier is no longer offered. Choose another tier."
 FOREIGN_TIER = "Choose one of this program's allowance tiers."
 HOLDS_AWARD = "This student already holds an active {} award."
@@ -745,9 +746,26 @@ def test_approve_refused_until_every_document_is_decided(case: str) -> None:
         requirement = RequiredDocumentFactory.create(program=program, sort_order=5)
     else:
         requirement = document_with_file(application, case).requirement
+    message = NEVER_UPLOADED if case == "missing" else NOT_DECIDED
     assert_not_approved(
         application,
-        NOT_DECIDED.format(requirement.label),
+        message.format(requirement.label),
+        lambda: review.approve_application(
+            actor=staff_of(program), program=program, application=application, tier=None
+        ),
+    )
+
+
+def test_approve_names_a_never_uploaded_document_before_a_pending_one() -> None:
+    program = ProgramFactory.create()
+    application = approvable(program)
+    pending = document_with_file(application, D.PENDING)
+    pending.requirement.sort_order = 1
+    pending.requirement.save()
+    missing = RequiredDocumentFactory.create(program=program, sort_order=5)
+    assert_not_approved(
+        application,
+        NEVER_UPLOADED.format(missing.label),
         lambda: review.approve_application(
             actor=staff_of(program), program=program, application=application, tier=None
         ),

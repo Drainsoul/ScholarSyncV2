@@ -18,7 +18,7 @@ from django.utils import timezone
 from apps.accounts.models import User
 from apps.applications.models import Application, Document
 from apps.applications.review_selectors import applications_for_program
-from apps.applications.selectors import undecided_documents
+from apps.applications.selectors import undecided_rows
 from apps.applications.services import application_url
 from apps.awards.models import Award
 from apps.awards.selectors import holds_active_award
@@ -42,6 +42,7 @@ NEED_REJECT_REASON = "Say why the application is not approved."
 DECISION_REASON_TOO_LONG = "Keep the reason under 1,000 characters."
 MAX_DECISION_REASON = 1000
 NOT_DECIDED = "Approve or decline every document first: {label}."
+NEVER_UPLOADED = "{label} was never uploaded. Return the application so the student can add it."
 TIER_GONE = "The requested tier is no longer offered. Choose another tier."
 FOREIGN_TIER = "Choose one of this program's allowance tiers."
 MAX_BULK = 100
@@ -317,9 +318,13 @@ def approve_application(
     """Approve under the locks, creating the award and its first scholar term."""
     profile, locked = _lock_for_staff(actor, program, application.pk)
     assert_transition(locked, Application.Status.APPROVED)
-    undecided = undecided_documents(locked)
+    undecided = undecided_rows(locked)
+    # Deciding the others can't help while a required document is missing: name that one first.
+    never_uploaded = [row for row in undecided if row.document is None]
+    if never_uploaded:
+        raise ValidationError(NEVER_UPLOADED.format(label=never_uploaded[0].requirement.label))
     if undecided:
-        raise ValidationError(NOT_DECIDED.format(label=undecided[0].label))
+        raise ValidationError(NOT_DECIDED.format(label=undecided[0].requirement.label))
     chosen = _approval_tier(locked, tier)
     if holds_active_award(profile, locked.program):
         raise ValidationError(already_holds(locked.program))

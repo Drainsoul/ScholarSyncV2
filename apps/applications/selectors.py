@@ -97,7 +97,8 @@ def document_rows(application: Application) -> list[DocumentRow]:
 
 def staff_can_download(user: User, file: StoredFile) -> bool:
     """True when the file backs any version of a submitted application's document, and the user
-    is staff of that application's program (or the office). One query."""
+    is staff of that application's program (or the office). Two queries: the document row with
+    its application and program, then (for staff, not the office) the membership."""
     row = (
         DocumentFile.objects.filter(file=file, document__application__submitted_at__isnull=False)
         .select_related("document__application__program")
@@ -122,11 +123,11 @@ def missing_documents(application: Application) -> list[RequiredDocument]:
     ]
 
 
-def undecided_documents(application: Application) -> list[RequiredDocument]:
+def undecided_rows(application: Application) -> list[DocumentRow]:
     """What still stands between the application and approval, in requirement order: a required
     requirement with no approved document, and any document still pending or declined."""
     return [
-        row.requirement
+        row
         for row in document_rows(application)
         if (
             row.requirement.is_required
@@ -137,3 +138,8 @@ def undecided_documents(application: Application) -> list[RequiredDocument]:
             and row.document.status in (Document.Status.PENDING, Document.Status.DECLINED)
         )
     ]
+
+
+def undecided_documents(application: Application) -> list[RequiredDocument]:
+    """`undecided_rows`, as requirements."""
+    return [row.requirement for row in undecided_rows(application)]
