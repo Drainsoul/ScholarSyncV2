@@ -302,13 +302,15 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
       1,000 characters), with constraint `applications_override_only_on_behalf`: a reason is stored only on an
       on-behalf row;
     - staff file only for profiles created for their program (`created_for=program`), claimed or not. Finding a
-      self-registered student by the exact email of their account is not built (§18 Q16);
+      self-registered student by the exact email of their account is not built (§18 Q16). Until the maintainer decides, such a
+      student asks the office, and the office creates a staff profile only for someone with no account;
     - staff drive the whole application: start (a `draft`), school and grades (draft only), documents (draft or
       returned, with the student-side rules), submit and resubmit (a resubmit keeps the snapshot and tier and
       re-checks the documents only), and withdraw (draft or returned). After submit it goes through the unchanged M8
       review, and the staff member who filed it may also review it (separation of duties waits for §18 Q7);
     - **academics** live on the application only: staff never write the student's profile. A staff form fills them on
-      the draft and they freeze at submit, as for students. The form requires a school (a listed one, or a typed name
+      the draft and they freeze at submit, as for students: "The school and grades are frozen once the application is
+      submitted." The form requires a school (a listed one, or a typed name
       with its type and grading scale), because `applications_submitted_has_school` would refuse the submit
       otherwise; course, year level, GWA and units are optional, and a blank one shows as a missing check;
     - **override:** staff see the live checklist. When any check is `unmet` or `missing`, submitting needs a reason
@@ -321,7 +323,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
       fails). One tier is chosen automatically, otherwise staff pick; a program with no tiers can't be filed for ("This
       program has no allowance tiers set up yet.");
     - **start refusals,** checked under the profile lock: the program isn't active (404); the student holds the
-      scholarship; rejected this term ("This student's application wasn't approved for {term}. They can apply again
+      scholarship ("This student already holds this scholarship."); rejected this term ("This student's application wasn't approved for {term}. They can apply again
       next term."); the student's own open application for the program and term ("This student already has an
       application for {program} this term. They need to finish or withdraw it."). An open on-behalf application is
       returned, not duplicated, and a race with a student start is caught on `applications_one_open_per_term`;
