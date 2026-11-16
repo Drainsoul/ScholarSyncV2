@@ -88,6 +88,10 @@ RULES: dict[str, dict[str, Any]] = {
         "office": 403,
     },
     "office": {"anonymous": LOGIN, **{p: 403 for p in PERSONAS[1:6]}, "office": 200},
+    # An office page about one row: the role guard runs first, then an unknown id is a 404.
+    "office_object": {"anonymous": LOGIN, **{p: 403 for p in PERSONAS[1:6]}, "office": 404},
+    # An office action that only answers POST: the role guard runs, then a GET is 405.
+    "office_post_only": {"anonymous": LOGIN, **{p: 403 for p in PERSONAS[1:6]}, "office": 405},
     "kit": {p: 404 for p in PERSONAS},
     # An unknown claim link is a 404 for everyone.
     "claim_unknown": {p: 404 for p in PERSONAS},
@@ -164,6 +168,9 @@ URLS: dict[str, str] = {
     "review:behalf-submit": "staff_post_only",
     "review:behalf-withdraw": "staff_post_only",
     "office:home": "office",
+    "office:terms": "office",
+    "office:terms-add": "office_post_only",
+    "office:terms-current": "office_object",
     "scholarships:list": "student",
     "scholars:list": "staff",
     "scholars:detail": "staff_object",
@@ -214,6 +221,7 @@ URL_KWARGS: dict[str, dict[str, str]] = {
     "workspace:students": {"program": "tcu-ceaa"},
     "scholarships:renew": {"pk": "999999"},
     "scholars:list": {"program": "tcu-ceaa"},
+    "office:terms-current": {"pk": "999999"},
     "scholars:detail": {"program": "tcu-ceaa", "pk": "999999"},
     "scholars:edit": {"program": "tcu-ceaa", "pk": "999999"},
     "scholars:status": {"program": "tcu-ceaa", "pk": "999999"},

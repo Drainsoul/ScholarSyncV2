@@ -1,0 +1,27 @@
+{% extends "layouts/office.html" %}{% load ui %}
+{% block title %}School terms{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>School terms</h1><p class="page-header__meta">The current term decides what students apply and renew for, in every program.</p></div>
+  <form method="post" action="{% url 'office:terms-add' %}">
+    {% csrf_token %}
+    <button type="submit" class="btn btn--primary">{% icon "plus" %}Add school year {{ next_year_label }}</button>
+  </form>
+</div>
+{% if rows %}
+<div class="table-wrap" role="region" aria-label="School terms" tabindex="0">
+  <table class="table">
+    <thead><tr><th scope="col">Term</th><th scope="col">Starts</th><th scope="col">Ends</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+    <tbody>{% for row in rows %}<tr>
+      <th scope="row">{{ row.term }}</th>
+      <td>{{ row.term.starts_on|date:"j M Y" }}</td>
+      <td>{{ row.term.ends_on|date:"j M Y" }}</td>
+      <td>{% if row.term.is_current %}{% status "success" "Current" %}{% endif %}</td>
+      <td>{% if row.can_make_current %}<a class="btn btn--secondary" href="{% url 'office:terms-current' row.term.pk %}">Make current<span class="visually-hidden"> {{ row.term }}</span></a>{% endif %}</td>
+    </tr>{% endfor %}</tbody>
+  </table>
+</div>
+{% else %}
+{% include "components/empty_state.html" with title="No school terms yet." %}
+{% endif %}
+{% endblock %}

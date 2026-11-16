@@ -103,6 +103,19 @@ def shell_context(
                     "icon": "users",
                 },
             ]
+        elif area == "office":
+            terms = reverse("office:terms")
+            path = request.path
+            nav = [
+                {"label": label, "url": home, "current": path == home, "count": 0, "icon": icon},
+                {
+                    "label": "Terms",
+                    "url": terms,
+                    "current": path.startswith(terms),
+                    "count": 0,
+                    "icon": "calendar",
+                },
+            ]
         else:
             nav = [{"label": label, "url": home, "current": True, "count": 0, "icon": icon}]
     context: dict[str, object] = {

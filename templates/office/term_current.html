@@ -1,0 +1,17 @@
+{% extends "layouts/office.html" %}{% load ui %}
+{% block title %}Make {{ term }} current{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><p class="text-sm"><a href="{% url 'office:terms' %}">School terms</a></p><h1>Make {{ term }} the current term</h1></div>
+</div>
+<section class="card">
+  <p>{% if current %}The current term is {{ current }}.{% else %}No term is current yet.{% endif %} Students in every program will apply and renew for {{ term }}.</p>
+  <form method="post">
+    {% csrf_token %}
+    <div class="btn-row">
+      <button type="submit" class="btn btn--primary">Make {{ term }} current</button>
+      <a class="btn btn--secondary" href="{% url 'office:terms' %}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}
