@@ -1,6 +1,7 @@
 """Scholars, renewals and the term change, end to end (M9)."""
 
 from decimal import Decimal
+from typing import Any
 
 import pytest
 from playwright.sync_api import Page, expect
@@ -46,7 +47,7 @@ class World:
         )
         self.staff: User = MembershipFactory.create(program=self.program, user__verified=True).user
 
-    def scholar(self, first_name: str = "Carmela", **fields: object) -> Award:
+    def scholar(self, first_name: str = "Carmela", **fields: Any) -> Award:
         profile = FullProfileFactory.create(first_name=first_name, user__verified=True)
         EducationRecordFactory.create(
             profile=profile,
