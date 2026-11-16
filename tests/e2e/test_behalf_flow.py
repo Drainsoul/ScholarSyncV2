@@ -57,7 +57,7 @@ def _upload_row(page: Page, index: int) -> None:
 
 
 def test_staff_files_for_walk_in(page: Page, live_server, vite_build, e2e_storage, console_errors):
-    _program_, staff = _program()
+    _, staff = _program()
     log_in(page, live_server.url, staff.email, f"/staff/{SLUG}/students/")
 
     page.get_by_role("link", name="New profile").click()
@@ -106,6 +106,7 @@ def test_staff_files_for_walk_in(page: Page, live_server, vite_build, e2e_storag
     assert application.on_behalf
 
     page.goto(f"{live_server.url}/staff/{SLUG}/applications/")
+    expect(page.locator("#filter-status")).to_have_value("waiting")
     expect(page.get_by_role("link", name="Rina Walkin")).to_be_visible()
     # The refused submit without a reason is the one expected 400.
     assert console_errors == [REFUSED_400]
