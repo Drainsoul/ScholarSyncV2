@@ -38,7 +38,7 @@
         <li><p>Units: {{ academic.units|default_if_none:"Not given" }}</p></li>
       </ul>
       {% else %}
-      <p>No current school on your profile yet.</p>
+      <p>{% if application.on_behalf %}The scholarship office hasn't entered your school yet.{% else %}No current school on your profile yet.{% endif %}</p>
       {% endif %}
       {% if not application.on_behalf and academic.live or not application.on_behalf and not academic %}
       <p class="text-sm">These come from your profile and are copied when you submit. <a href="{{ education_url }}">Edit in your profile</a></p>

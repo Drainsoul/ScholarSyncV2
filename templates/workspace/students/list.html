@@ -17,10 +17,17 @@
         <td>{{ profile.invite_email|default:"" }}</td>
         <td>{% if profile.invite_expires_at and profile.invite_expires_at > now %}Sent, expires {{ profile.invite_expires_at|date:"j M Y" }}{% else %}Expired{% endif %}</td>
         <td>
+          <div class="btn-row">
+          <form method="post" action="{% url 'review:behalf-new' program=program.slug %}">
+            {% csrf_token %}
+            <input type="hidden" name="profile" value="{{ profile.pk }}">
+            <button type="submit" class="btn btn--primary">File an application<span class="visually-hidden"> for {{ profile.full_name }}</span></button>
+          </form>
           <form method="post" action="{% url 'workspace:students-invite' program=program.slug profile_id=profile.pk %}">
             {% csrf_token %}
             <button type="submit" class="btn btn--secondary">Send again<span class="visually-hidden"> to {{ profile.full_name }}</span></button>
           </form>
+          </div>
         </td>
       </tr>{% endfor %}</tbody>
     </table>

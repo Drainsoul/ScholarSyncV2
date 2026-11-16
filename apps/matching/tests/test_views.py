@@ -226,3 +226,15 @@ def test_match_page_open_application_wins_over_rejected(client, term):
     body = text(get(client, profile.user))
     assert reverse("applications:detail", args=[open_one.pk]) in body
     assert REJECTED.format(term) not in body
+
+
+def test_view_link_for_on_behalf_open_application(client, term):
+    program = ProgramFactory.create(name="Alpha")
+    profile = FullProfileFactory.create()
+    EducationRecordFactory.create(profile=profile)
+    ApplicationFactory.create(
+        profile=profile, program=program, term=term, on_behalf=True, status=Application.Status.DRAFT
+    )
+    body = text(get(client, profile.user))
+    assert "View your application" in body
+    assert "Continue your application" not in body

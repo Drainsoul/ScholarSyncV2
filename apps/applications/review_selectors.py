@@ -176,6 +176,8 @@ def history(application: Application) -> list[HistoryEntry]:
     entries = []
     for event in events:
         what = HISTORY_LABELS[event.action]
+        if application.on_behalf and event.action == "application.returned":
+            what = "Returned for fixes"
         if event.target_type == "applications.document":
             document = documents.get(int(event.target_id))
             label = document.requirement.label if document is not None else "Document"

@@ -24,6 +24,7 @@ from apps.programs.tests.factories import (
     ProgramFactory,
     RequiredDocumentFactory,
 )
+from apps.students.models import StudentProfile
 from apps.students.tests.factories import ProfileFactory
 
 pytestmark = pytest.mark.django_db
@@ -165,11 +166,15 @@ def test_queue_has_file_for_a_student_button(client: Any) -> None:
 
 def test_students_list_has_file_link(client: Any) -> None:
     membership = _staff()
+    _profile(membership.program)
     client.force_login(membership.user)
     body = client.get(
         reverse("workspace:students", kwargs={"program": "tcu-ceaa"})
     ).content.decode()
     assert _url() in body
+    profile = StudentProfile.objects.get(created_for=membership.program)
+    assert f'<input type="hidden" name="profile" value="{profile.pk}">' in body
+    assert "File an application" in body
 
 
 # --- the filing page -----------------------------------------------------------------------
@@ -558,3 +563,75 @@ def test_filing_page_query_budget(client: Any, django_assert_max_num_queries: An
         response = client.get(filing.url())
     assert response.status_code == 200
     assert len(response.context["cards"]) == 5
+
+
+# --- follow-up fixes -----------------------------------------------------------------------
+
+
+def test_filing_page_uses_staff_wording_for_missing_data(client: Any) -> None:
+    filing = Filing()
+    Program.objects.filter(pk=filing.program.pk).update(
+        min_residency_years=3, requires_registered_voter=True, min_units=15
+    )
+    client.force_login(filing.actor)
+    body = client.get(filing.url()).content.decode()
+    assert "your profile" not in body.lower()
+    assert "Enter this in School and grades above." in body
+    assert "Not on the student&#x27;s profile. Override with a reason, or ask the student." in body
+
+
+def test_filing_page_third_person_for_unmet_gwa(client: Any) -> None:
+    filing = Filing()
+    Program.objects.filter(pk=filing.program.pk).update(min_gwa_percent=Decimal("90.00"))
+    _typed(filing)
+    client.force_login(filing.actor)
+    body = client.get(filing.url()).content.decode()
+    assert "Your GWA" not in body
+    assert "The student&#x27;s GWA of 88.50 doesn&#x27;t meet" in body
+
+
+def test_review_screen_staff_wording_for_on_behalf_snapshot(client: Any) -> None:
+    filing = Filing()
+    Application.objects.filter(pk=filing.application.pk).update(
+        status=S.SUBMITTED,
+        school_name="Frozen College",
+        submitted_at=timezone.now(),
+        first_submitted_at=timezone.now(),
+        match_snapshot={
+            "evaluated_on": "2026-08-10",
+            "checks": [
+                {"code": "units", "state": "missing", "reason": "Add your units this term."},
+                {"code": "voter", "state": "missing", "reason": "Say whether you are a voter."},
+            ],
+        },
+    )
+    client.force_login(filing.actor)
+    body = client.get(filing.review_url()).content.decode()
+    assert "Not entered when the application was filed." in body
+    assert "Not on the student&#x27;s profile." in body
+    assert "Add your units" not in body
+
+
+def test_review_screen_withdrawn_and_history_wording_on_behalf(client: Any) -> None:
+    from apps.core import audit
+
+    filing = Filing()
+    Application.objects.filter(pk=filing.application.pk).update(
+        status=S.WITHDRAWN,
+        school_name="Frozen College",
+        submitted_at=timezone.now(),
+        first_submitted_at=timezone.now(),
+    )
+    audit.record(actor=filing.actor, action="application.returned", target=filing.application)
+    client.force_login(filing.actor)
+    body = client.get(filing.review_url()).content.decode()
+    assert "Withdrawn by staff" in body and "Withdrawn by the student" not in body
+    assert "Returned for fixes" in body and "Returned to the student" not in body
+
+
+def test_bookmarked_filing_url_for_never_submitted_withdrawn_goes_to_new(client: Any) -> None:
+    filing = Filing()
+    Application.objects.filter(pk=filing.application.pk).update(status=S.WITHDRAWN)
+    client.force_login(filing.actor)
+    response = client.get(filing.url())
+    assert response.status_code == 302 and response.url == _url()

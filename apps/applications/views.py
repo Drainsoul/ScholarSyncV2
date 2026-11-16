@@ -283,6 +283,9 @@ class SubmitView(StudentRequiredMixin, View):
 class WithdrawView(StudentRequiredMixin, View):
     def get(self, request: HttpRequest, pk: int) -> HttpResponse:
         application = own_application(_student(request), pk)
+        if application.on_behalf:
+            messages.error(request, services.ON_BEHALF_LOCKED)
+            return redirect("applications:detail", pk=application.pk)
         context = {
             **shell_context(request, area="student"),
             "application": application,

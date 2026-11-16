@@ -536,3 +536,21 @@ def test_start_lands_on_open_on_behalf_application(client, world):
     assert response.status_code == 302
     assert response.url == reverse("applications:detail", args=[application.pk])
     assert Application.objects.count() == 1
+
+
+def test_on_behalf_draft_without_academics_says_office_has_not_entered(client, world):
+    application = on_behalf(world, school=None, school_name="", gwa=None, units=None)
+    body = detail_body(client, world, application)
+    assert "The scholarship office hasn't entered your school yet." in body
+    assert "No current school on your profile" not in body
+
+
+def test_on_behalf_withdraw_page_redirects_with_locked_message(client, world):
+    application = on_behalf(world)
+    response = signed_in(client, world["user"]).get(
+        reverse("applications:withdraw", args=[application.pk])
+    )
+    assert response.status_code == 302
+    assert response.url == reverse("applications:detail", args=[application.pk])
+    followed = signed_in(client, world["user"]).get(response.url)
+    assert services.ON_BEHALF_LOCKED in text(followed)

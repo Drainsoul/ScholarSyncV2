@@ -33,6 +33,7 @@ from apps.applications.staff_forms import (
     DecisionForm,
     DeclineForm,
 )
+from apps.applications.staff_wording import staff_items
 from apps.applications.views import APPLICATION_TONES, DOCUMENT_TONES
 from apps.awards.selectors import other_active_awards
 from apps.core.htmx import HtmxHttpRequest, close_dialog, toast
@@ -128,6 +129,8 @@ def render_review(
     """The review screen. The POST views reuse it to show an error or a bound form."""
     snapshot = application.match_snapshot if isinstance(application.match_snapshot, dict) else {}
     items = snapshot_items(snapshot)
+    if application.on_behalf:
+        items = staff_items(items, form=False)
     under_review = application.status == Application.Status.UNDER_REVIEW
     if under_review and decision_form is None:
         decision_form = DecisionForm(program=program, application=application)

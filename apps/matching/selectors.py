@@ -21,6 +21,9 @@ class ProgramMatch:
     open_application_id: int | None  # the student's open application for this program and term
     held: bool = False  # an approved application this term, or an active award
     rejected: bool = False  # a rejected application this term: no new one until next term
+    open_on_behalf: bool = (
+        False  # the open application was filed by staff: the student only views it
+    )
 
 
 @dataclass(frozen=True)
@@ -112,17 +115,20 @@ def match_page(user: User, *, today: date) -> MatchPage:
         .order_by("name")
     )
     open_ids: dict[int, int] = {}
+    behalf_ids: set[int] = set()
     if term is not None:
-        open_ids = dict(
-            Application.objects.filter(
-                profile=profile, term=term, status__in=Application.OPEN_STATUSES
-            ).values_list("program_id", "pk")
-        )
+        for program_id, pk, on_behalf in Application.objects.filter(
+            profile=profile, term=term, status__in=Application.OPEN_STATUSES
+        ).values_list("program_id", "pk", "on_behalf"):
+            open_ids[program_id] = pk
+            if on_behalf:
+                behalf_ids.add(program_id)
     matches = [
         ProgramMatch(
             program=program,
             result=_evaluate(profile, program, academic, term, today),
             open_application_id=open_ids.get(program.pk),
+            open_on_behalf=program.pk in behalf_ids,
             held=bool(getattr(program, "held", False)),
             rejected=bool(getattr(program, "rejected", False)),
         )

@@ -24,6 +24,7 @@ from apps.applications.review_selectors import (
 from apps.applications.selectors import document_rows
 from apps.applications.staff_forms import AcademicsForm, BehalfSubmitForm
 from apps.applications.staff_views import PAGE_SIZE, _actor, _error_text, _evaluated_on
+from apps.applications.staff_wording import staff_items
 from apps.applications.views import APPLICATION_TONES, DOCUMENT_TONES, DocumentCard
 from apps.core.permissions import ProgramStaffRequiredMixin
 from apps.core.shell import shell_context
@@ -134,7 +135,8 @@ def _live_items(application: Application) -> list[dict[str, str]]:
         Academic.from_application(application),
         today=timezone.localdate(),
     )
-    return [{**item, "url": "", "url_label": ""} for item in checklist_items(result)]
+    items = [{**item, "url": "", "url_label": ""} for item in checklist_items(result)]
+    return staff_items(items, form=True)
 
 
 def _candidates(application: Application) -> list[BenefitTier]:
@@ -163,6 +165,8 @@ def render_filing(
     if application.status not in EDITABLE:
         if banner or error:
             messages.error(request, banner or error)
+        if application.status == Application.Status.WITHDRAWN and application.submitted_at is None:
+            return redirect("review:behalf-new", program=program.slug)  # no review page for it
         return redirect("review:detail", program=program.slug, pk=application.pk)
     draft = application.status == Application.Status.DRAFT
     cards = []
@@ -190,7 +194,7 @@ def render_filing(
         if academics_form is None:
             academics_form = AcademicsForm(initial=_academics_initial(application))
     else:
-        items = snapshot_items(snapshot)
+        items = staff_items(snapshot_items(snapshot), form=False)
         academics_form = None
     if submit_form is None:
         submit_form = BehalfSubmitForm(candidates=_candidates(application))

@@ -24,6 +24,7 @@ def checklist_items(result: EligibilityResult) -> list[dict[str, str]]:
     """Items for components/checklist.html, one per eligibility check."""
     return [
         {
+            "code": check.code,
             "state": check.state.value,
             "icon": CHECK_ICONS[check.state.value],
             "text": check.text,
@@ -48,6 +49,7 @@ def snapshot_items(snapshot: dict[str, Any]) -> list[dict[str, str]]:
         code = str(check.get("code", ""))
         items.append(
             {
+                "code": code,
                 "state": state,
                 "icon": CHECK_ICONS[state],
                 "text": CHECK_LABELS.get(code, code.replace("_", " ").capitalize()),

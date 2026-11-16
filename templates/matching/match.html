@@ -22,7 +22,7 @@
     <p class="text-sm">Allowance tiers: {% for tier in card.match.result.tier_candidates %}{{ tier.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
     {% endif %}
     {% if card.match.open_application_id %}
-    <div class="btn-row"><a class="btn btn--secondary" href="{% url 'applications:detail' card.match.open_application_id %}">Continue your application</a></div>
+    <div class="btn-row"><a class="btn btn--secondary" href="{% url 'applications:detail' card.match.open_application_id %}">{% if card.match.open_on_behalf %}View your application{% else %}Continue your application{% endif %}</a></div>
     {% elif card.match.held %}
     <p>You already hold this scholarship.</p>
     {% elif card.match.rejected %}

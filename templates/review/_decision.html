@@ -17,6 +17,6 @@
   {% elif application.status == "rejected" %}
   <p>Not approved: {{ application.decision_reason }}</p>
   {% elif application.status == "withdrawn" %}
-  <p>Withdrawn by the student</p>
+  <p>Withdrawn by {% if application.on_behalf %}staff{% else %}the student{% endif %}</p>
   {% endif %}
 </section>

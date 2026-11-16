@@ -152,7 +152,8 @@ def withdraw_on_behalf(
     request: HttpRequest | None = None,
 ) -> Application:
     _, locked = _lock_behalf(actor, program, pk)
-    # A submitted row can be withdrawn by its student; staff can't once the reviewers have it.
+    # On-behalf rows are locked to the student, so only staff can withdraw one. Once submitted it
+    # is with the reviewers, who return or reject it.
     if locked.status in (Application.Status.SUBMITTED, Application.Status.UNDER_REVIEW):
         raise ValidationError(WITH_REVIEWERS)
     assert_transition(locked, Application.Status.WITHDRAWN)
