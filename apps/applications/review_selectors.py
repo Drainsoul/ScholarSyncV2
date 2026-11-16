@@ -59,6 +59,7 @@ class HistoryEntry:
 HISTORY_LABELS: dict[str, str] = {
     "application.started": "Application started",
     "application.started_on_behalf": "Application started by staff",
+    "application.renewal_started": "Renewal started",
     "application.academics_set": "School and grades entered",
     "application.submitted": "Submitted",
     "application.resubmitted": "Resubmitted",

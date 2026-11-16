@@ -139,6 +139,11 @@ def _window_check(program: Program, today: date, term: AcademicTerm | None) -> C
     return Check("window", CheckState.UNMET, text, reason, "")
 
 
+def window_reason(program: Program, today: date, term: AcademicTerm | None) -> str:
+    """Why applying is closed today ("" when it is open)."""
+    return _window_check(program, today, term).reason
+
+
 def _school_check(academic: Academic | None) -> Check:
     text = "You have a current school in your profile."
     if academic is None or not academic.school_name:

@@ -1,9 +1,19 @@
 import pytest
 
+from apps.applications.models import Application
 from apps.awards.models import Award
-from apps.awards.selectors import holds_award, other_active_awards
-from apps.awards.tests.factories import AwardFactory
-from apps.programs.tests.factories import ProgramFactory
+from apps.awards.selectors import (
+    RenewalStatus,
+    holds_award,
+    other_active_awards,
+    renewal_due_q,
+    renewal_for,
+    renewal_tier,
+)
+from apps.awards.tests.factories import AwardFactory, RenewalFactory
+from apps.awards.tests.scholars import add_record, make_scholar
+from apps.programs.models import AcademicTerm
+from apps.programs.tests.factories import AcademicTermFactory, BenefitTierFactory, ProgramFactory
 
 pytestmark = pytest.mark.django_db
 
@@ -31,3 +41,97 @@ def test_other_active_awards_excludes_this_program_and_inactive() -> None:
         status=Award.Status.INACTIVE,
     )
     assert other_active_awards(here.profile, here.program) == [other]
+
+
+# --- Renewals (M9) ---
+
+
+def _renewal_world(term_number: int = 1) -> tuple[Award, AcademicTerm, AcademicTerm]:
+    previous = AcademicTermFactory.create(school_year_start=2025, term=2)
+    current = AcademicTermFactory.create(school_year_start=2026, term=term_number, is_current=True)
+    program = ProgramFactory.create()
+    tier = BenefitTierFactory.create(program=program, effective_from=previous, code="standard")
+    return make_scholar(program, tier, [previous]), previous, current
+
+
+def _renewal(award: Award, term: AcademicTerm, status: str) -> Application:
+    return RenewalFactory.create(award=award, term=term, status=status)
+
+
+@pytest.mark.parametrize(
+    ("setup", "expected"),
+    [
+        ("due", RenewalStatus.DUE),
+        ("open", RenewalStatus.OPEN),
+        ("renewed", RenewalStatus.RENEWED),
+        ("approved", RenewalStatus.RENEWED),
+        ("rejected", RenewalStatus.REJECTED),
+        ("withdrawn", RenewalStatus.DUE),
+        ("summer", RenewalStatus.SUMMER),
+        ("no_term", RenewalStatus.NO_TERM),
+        ("not_active", RenewalStatus.NOT_ACTIVE),
+    ],
+)
+def test_renewal_for_each_status(setup: str, expected: RenewalStatus) -> None:
+    award, _, current = _renewal_world(3 if setup == "summer" else 1)
+    term: AcademicTerm | None = current
+    application_id = None
+    if setup == "open":
+        application_id = _renewal(award, current, Application.Status.DRAFT).pk
+    elif setup == "renewed":
+        add_record(award, current)
+    elif setup == "approved":
+        _renewal(award, current, Application.Status.APPROVED)
+    elif setup == "rejected":
+        _renewal(award, current, Application.Status.REJECTED)
+    elif setup == "withdrawn":
+        _renewal(award, current, Application.Status.WITHDRAWN)
+    elif setup == "no_term":
+        term = None
+    elif setup == "not_active":
+        Award.objects.filter(pk=award.pk).update(status=Award.Status.SUSPENDED)
+        award.refresh_from_db()
+    renewal = renewal_for(award, term)
+    assert renewal.status == expected
+    assert renewal.term == term
+    assert renewal.application_id == application_id
+
+
+def test_renewal_due_q_matches_renewal_for() -> None:
+    due, previous, current = _renewal_world()
+    program, tier = due.program, due.tier
+    renewed = make_scholar(program, tier, [previous, current])
+    open_one = make_scholar(program, tier, [previous])
+    _renewal(open_one, current, Application.Status.SUBMITTED)
+    rejected = make_scholar(program, tier, [previous])
+    _renewal(rejected, current, Application.Status.REJECTED)
+    on_hold = make_scholar(program, tier, [previous], status=Award.Status.SUSPENDED)
+    awards = [due, renewed, open_one, rejected, on_hold]
+    expected = {a.pk for a in awards if renewal_for(a, current).status == RenewalStatus.DUE}
+    assert expected == {due.pk}
+    assert (
+        set(Award.objects.filter(renewal_due_q(current)).values_list("pk", flat=True)) == expected
+    )
+
+
+def test_summer_nobody_due() -> None:
+    award, _, current = _renewal_world(3)
+    assert renewal_for(award, current).status == RenewalStatus.SUMMER
+    assert not Award.objects.filter(renewal_due_q(current)).exists()
+
+
+def test_renewal_tier_matches_code_after_reprice() -> None:
+    award, _, current = _renewal_world()
+    repriced = BenefitTierFactory.create(
+        program=award.program, effective_from=current, code="standard"
+    )
+    assert renewal_tier(award, current) == repriced
+    assert renewal_tier(award, AcademicTerm.objects.get(school_year_start=2025)) == award.tier
+
+
+def test_renewal_tier_none_when_code_retired() -> None:
+    award, _, current = _renewal_world()
+    BenefitTierFactory.create(
+        program=award.program, effective_from=current, code="standard", is_active=False
+    )
+    assert renewal_tier(award, current) is None
