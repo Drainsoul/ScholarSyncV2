@@ -6,6 +6,11 @@
 </div>
 <section class="card">
   <p>{% if current %}The current term is {{ current }}.{% else %}No term is current yet.{% endif %} Students in every program will apply and renew for {{ term }}.</p>
+  <ul class="list">
+    <li><p>{% if preview.withdrawn == 1 %}1 unfinished application will be withdrawn.{% else %}{{ preview.withdrawn }} unfinished applications will be withdrawn.{% endif %}</p></li>
+    <li><p>{% if preview.graduated == 1 %}1 scholar will graduate.{% else %}{{ preview.graduated }} scholars will graduate.{% endif %}</p></li>
+  </ul>
+  <p class="text-sm">Drafts and returned applications from earlier terms are withdrawn. Scholars graduate when their program's term limit is reached.</p>
   <form method="post">
     {% csrf_token %}
     <div class="btn-row">

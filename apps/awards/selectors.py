@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import date
 from enum import StrEnum
 
-from django.db.models import Count, Exists, OuterRef, Q, QuerySet, Subquery, Value
+from django.db.models import Count, Exists, F, OuterRef, Q, QuerySet, Subquery, Value
 from django.db.models.functions import Coalesce
 from django.http import Http404, QueryDict
 
@@ -353,3 +353,34 @@ def next_year_level(award: Award, term: AcademicTerm) -> int | None:
     if term.school_year_start > latest.term.school_year_start:
         return latest.year_level + 1
     return latest.year_level
+
+
+@dataclass(frozen=True)
+class RolloverResult:
+    withdrawn: int
+    graduated: int
+
+
+def stale_applications(term: AcademicTerm) -> QuerySet[Application]:
+    """Unfinished applications (draft or returned) of terms before `term`: the rollover withdraws
+    them. Submitted and under-review rows stay for staff to decide."""
+    return Application.objects.filter(
+        status__in=[Application.Status.DRAFT, Application.Status.RETURNED],
+        term__sort_key__lt=term.sort_key,
+    )
+
+
+def graduating_awards() -> QuerySet[Award]:
+    """Held awards whose program has a term limit and that have reached it."""
+    return (
+        Award.objects.filter(status__in=Award.HELD_STATUSES, program__max_terms__isnull=False)
+        .annotate(records=Count("terms"))
+        .filter(records__gte=F("program__max_terms"))
+    )
+
+
+def rollover_preview(term: AcademicTerm) -> RolloverResult:
+    """What making `term` current would do. Counts only."""
+    return RolloverResult(
+        withdrawn=stale_applications(term).count(), graduated=graduating_awards().count()
+    )

@@ -66,6 +66,7 @@ HISTORY_LABELS: dict[str, str] = {
     "application.submitted": "Submitted",
     "application.resubmitted": "Resubmitted",
     "application.withdrawn": "Withdrawn",
+    "application.expired": "Withdrawn when the term ended",
     "application.review_started": "Review started",
     "application.returned": "Returned to the student",
     "application.approved": "Approved",

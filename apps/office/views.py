@@ -9,17 +9,23 @@ from django.views import View
 from django.views.generic import TemplateView
 
 from apps.accounts.models import User
+from apps.awards.selectors import rollover_preview
+from apps.awards.services import start_term
 from apps.core.permissions import SuperAdminRequiredMixin
 from apps.core.shell import shell_context
-from apps.programs import services
 from apps.programs.models import AcademicTerm
 from apps.programs.selectors import current_term
+from apps.programs.services import add_school_year
 
 
 def _actor(request: HttpRequest) -> User:
     user = request.user
     assert isinstance(user, User)
     return user
+
+
+def counted(count: int, one: str, many: str) -> str:
+    return f"{count} {one if count == 1 else many}"
 
 
 def next_school_year() -> int:
@@ -70,7 +76,7 @@ class AddYearView(SuperAdminRequiredMixin, View):
     def post(self, request: HttpRequest) -> HttpResponse:
         start = next_school_year()
         try:
-            services.add_school_year(actor=_actor(request), start=start)
+            add_school_year(actor=_actor(request), start=start)
         except ValidationError as error:
             messages.error(request, " ".join(error.messages))
         else:
@@ -87,15 +93,21 @@ class MakeCurrentView(SuperAdminRequiredMixin, View):
             **shell_context(request, area="office"),
             "term": term,
             "current": current_term(),
+            "preview": rollover_preview(term),
         }
         return render(request, self.template_name, context)
 
     def post(self, request: HttpRequest, pk: int) -> HttpResponse:
         term = get_object_or_404(AcademicTerm, pk=pk)
         try:
-            services.set_current_term(actor=_actor(request), term=term)
+            result = start_term(actor=_actor(request), term=term, request=request)
         except ValidationError as error:
             messages.error(request, " ".join(error.messages))
             return redirect("office:terms")
-        messages.success(request, f"{term} is now the current term.")
+        withdrawn = counted(result.withdrawn, "unfinished application", "unfinished applications")
+        graduated = counted(result.graduated, "scholar", "scholars")
+        messages.success(
+            request,
+            f"{term} is now the current term. Withdrew {withdrawn}. Graduated {graduated}.",
+        )
         return redirect("office:terms")

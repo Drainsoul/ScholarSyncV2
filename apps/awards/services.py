@@ -10,13 +10,19 @@ from django.http import Http404, HttpRequest
 from apps.accounts.models import User
 from apps.applications.models import Application
 from apps.awards.models import Award, ScholarTerm
-from apps.awards.selectors import renewal_tier
+from apps.awards.selectors import (
+    RolloverResult,
+    graduating_awards,
+    renewal_tier,
+    stale_applications,
+)
 from apps.core import audit
 from apps.core.permissions import require_program_staff
 from apps.core.transitions import assert_transition
 from apps.matching.eligibility import Academic, merit_likely
 from apps.programs.models import AcademicTerm, BenefitTier, Program, School
 from apps.programs.selectors import current_term, tiers_in_force
+from apps.programs.services import set_current_term
 from apps.students.models import StudentProfile
 
 ONE_ACTIVE_PER_PROGRAM = "awards_one_active_per_program"
@@ -445,3 +451,75 @@ def confirm_merit(
         data={"merit": merit},
     )
     return record
+
+
+@transaction.atomic
+def rollover(
+    *, actor: User, term: AcademicTerm, request: HttpRequest | None = None
+) -> RolloverResult:
+    """Withdraw stale unfinished applications and graduate awards at their program's term limit.
+
+    Row by row in (profile, pk) order, each locked profile first and re-checked under the lock.
+    Sends no email. Running it again finds nothing more to do."""
+    withdrawn = 0
+    for profile_id, pk in (
+        stale_applications(term).order_by("profile_id", "pk").values_list("profile_id", "pk")
+    ):
+        StudentProfile.objects.select_for_update().get(pk=profile_id)
+        row = (
+            stale_applications(term)
+            .select_for_update(of=("self",))
+            .select_related("program")
+            .filter(pk=pk)
+            .first()
+        )
+        if row is None:
+            continue
+        row.status = Application.Status.WITHDRAWN
+        row.save(update_fields=["status", "updated_at"])
+        audit.record(
+            actor=actor,
+            action="application.expired",
+            target=row,
+            program=row.program,
+            request=request,
+            data={"term": term.pk},
+        )
+        withdrawn += 1
+    graduated = 0
+    for profile_id, pk in (
+        graduating_awards().order_by("profile_id", "pk").values_list("profile_id", "pk")
+    ):
+        StudentProfile.objects.select_for_update().get(pk=profile_id)
+        award = (
+            Award.objects.select_for_update(of=("self",))
+            .select_related("program")
+            .filter(pk__in=graduating_awards().values("pk"), pk=pk)
+            .first()
+        )
+        if award is None:
+            continue
+        previous = award.status
+        latest = award.terms.select_related("term").order_by("-term__sort_key").first()
+        award.status = Award.Status.GRADUATED
+        award.ended_term = latest.term if latest is not None else award.started_term
+        award.save(update_fields=["status", "ended_term", "updated_at"])
+        audit.record(
+            actor=actor,
+            action="award.status_changed",
+            target=award,
+            program=award.program,
+            request=request,
+            data={"from": previous, "to": Award.Status.GRADUATED.value, "by": "rollover"},
+        )
+        graduated += 1
+    return RolloverResult(withdrawn=withdrawn, graduated=graduated)
+
+
+@transaction.atomic
+def start_term(
+    *, actor: User, term: AcademicTerm, request: HttpRequest | None = None
+) -> RolloverResult:
+    """Make `term` current (office only, forward only) and roll every program over, together."""
+    set_current_term(actor=actor, term=term)
+    return rollover(actor=actor, term=term, request=request)
