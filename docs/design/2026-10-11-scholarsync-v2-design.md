@@ -22,6 +22,8 @@
   §5, §6, §8, §12).
 - **Revision:** 13 (2026-11-14): M8b decisions: on-behalf applications, rule override, staff uploads, read-only
   student view (§4.5, §5, §6, §7, §9, §16, §18).
+- **Revision:** 14 (2026-11-16): M9 decisions: scholars, renewals, term change and rollover; import and export split
+  into M9b (§4.5, §4.6, §5, §6, §8, §16, §18).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -244,8 +246,9 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 ### 4.5 applications
 - **`Application`:**
   - fields:
-    - `profile`, `program`, `term`, `kind` ∈ {new, renewal}; `award` (renewal only) arrives with `Award` in M9, as an
-      expand-only addition;
+    - `profile`, `program`, `term`, `kind` ∈ {new, renewal}; `award` (FK `Award`, renewal only; constraint
+      `applications_renewal_has_award`: a new application has no award, a renewal has one), and
+      `declares_no_failing` (nullable bool: the renewal declaration of no failing, incomplete or dropped subjects);
     - `requested_tier` FK `BenefitTier`;
     - academic: `school` (nullable FK), `school_name`, `school_type`, `course`, `year_level`, `gwa`, `gwa_scale`,
       `units`; the school fallback matches `EducationRecord`, and exactly one of the FK or the name is set once
@@ -332,12 +335,31 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
       hidden. The student services refuse an on-behalf row whatever the template shows ("The scholarship office filed
       this application for you. Contact them to change it."), and starting from `/me/applications/new/<slug>/` while
       an on-behalf one is open lands on it.
+  - **Renewals (M9, decided 2026-11-16):**
+    - a renewal is an `Application` with `kind=renewal` and `award` set. It shares
+      `applications_one_open_per_term` with new applications, and reuses the student pages, documents (`applies_to`
+      renewal or both), withdraw, resubmit, emails and the M8 review;
+    - **due** when the award is `active`, a current term exists and is a semester (term 1 or 2), the award has no
+      `ScholarTerm` for it, and no open, approved or rejected renewal of that award exists for it. The summer term
+      never needs a renewal (§18 Q8). Starting needs the program's application window open;
+    - start refusals: "This scholarship isn't active, so it can't be renewed. Contact the scholarship office.",
+      "Scholarships aren't renewed for the summer term.", "Your scholarship is already renewed for {term}.", "Your
+      renewal wasn't approved for {term}. Contact the scholarship office.", "You already have an application for
+      {program} this term. Finish or withdraw it first.", or the window sentence; an open renewal is returned;
+    - submit evaluates the renewal rules (§8) on the current education record and freezes it, as for new
+      applications; the tier is the in-force row with the award's tier code ("Your allowance tier is no longer
+      offered. Contact the scholarship office.");
+    - approval needs the award `active` ("This award is on hold. Reinstate it before approving the renewal." / "This
+      award has ended, so the renewal can't be approved.") and no term record for the term ("This scholar already has
+      a record for {term}."); it creates the next `ScholarTerm` and sets the award's tier to the chosen one;
+    - **holding** includes a `suspended` award: starts, approval and the match page treat an award on hold as held;
+    - **tiers are matched by code:** approval falls back from the requested row to the in-force row with the same
+      code, so a re-price never makes staff re-pick (new applications too).
 - **`Document`:**
   - fields: `requirement` FK `RequiredDocument`; `application` FK; `status` ∈ {pending, approved, declined};
     `decline_reason`; `reviewed_by`; `reviewed_at`;
-  - `application` is non-null until M9, which relaxes it, adds `scholar_term` FK and a `CheckConstraint` that exactly
-    one of the two is set;
-  - constraints: unique (`requirement`, `application`); M9 adds unique (`requirement`, `scholar_term`);
+  - renewal documents live on the renewal application; `Document` has no `scholar_term` (M9);
+  - constraint: unique (`requirement`, `application`);
   - transitions: `pending` → `approved` or `declined`; `declined` → `pending` (re-upload);
   - rules:
     - documents change only while the application is `draft` or `returned`;
@@ -355,18 +377,28 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 - **`Award`** (a scholar in a program):
   - fields: `profile`, `program`, `tier`, `student_number`, `status` ∈ {active, suspended, inactive, graduated},
     `source` ∈ {applied, imported, manual}, `source_application` (nullable one-to-one), `started_term`, `ended_term`,
-    `notes`;
+    `notes`, `status_reason` (the latest hold or end reason; free text, kept out of audit `data`);
+  - transitions: `active` → `suspended`, `inactive` or `graduated`; `suspended` → `active`, `inactive` or `graduated`;
+    `inactive` → `active`; `graduated` is final. Labels: "Put on hold", "Reinstate", "End award", "Mark graduated";
+    hold and end need a reason (at most 1,000 characters); ending or graduating sets `ended_term` to the current
+    term and reinstating clears it; reinstating catches `awards_one_active_per_program`;
   - constraint: at most one active award per (`profile`, `program`). A student may hold awards in two programs at
     once (§18 Q6); the review screen notes it.
 - **`ScholarTerm`:**
   - fields: `award`, `term`, `year_level`, `course`, `school`, `gwa`, `gwa_scale`, `units`, `merit` (bool),
-    `merit_confirmed_by`, `compliance` ∈ {incomplete, complete};
+    `merit_confirmed_by`, `compliance` ∈ {incomplete, complete}, `tier` (FK `BenefitTier`, the tier the term is paid
+    at; backfilled from the award);
   - the school fallback matches `Application`: `school` (nullable FK), `school_name` and `school_type`, with exactly
     one source set;
   - constraint: unique (`award`, `term`);
   - `merit` is proposed by the program's merit rule and confirmed by staff;
-  - `compliance` is recomputed when documents change: complete only when every required renewal document is
-    approved.
+  - `compliance` is `complete` on approval (every document was approved), or set by staff on a term record
+    ("Renewal documents checked");
+  - **term records (M9):** staff add or edit a `ScholarTerm` by hand (walk-ins, terms recorded outside the app): the
+    term has no record and is no later than the current term; the school is required, the rest optional; merit is
+    proposed by the merit rule; a graduated award takes no new record;
+  - **merit confirmation:** shown as Proposed, Confirmed or No; "Confirm merit" and "No merit" set `merit` and
+    `merit_confirmed_by`. M10 pays the merit amount only on confirmed merit.
 - **Lifecycle:**
   - An approved new application creates an `Award` (`source=applied`, `status=active`, the tier staff chose,
     `started_term` = the application's term, `source_application`) and the first `ScholarTerm`.
@@ -377,15 +409,20 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
     - An optional approval note goes in `decision_reason`.
   - An approved renewal application creates the next `ScholarTerm`.
   - Import or manual creation makes an `Award` + `ScholarTerm` with `source=imported` or `source=manual`.
-- **At-risk** is derived, never stored: `awards.selectors.at_risk()` flags awards whose latest `ScholarTerm` GWA misses
-  the renewal threshold, or whose renewal documents are past the application window. The exact definition is an open
-  question.
-- **Term rollover** (`awards.services.rollover(term)`):
-  - creates no records by itself;
-  - opens renewals for active awards;
-  - advances `year_level` on the next `ScholarTerm`;
-  - marks awards `graduated` after `program.max_terms` terms or the final year;
-  - replaces v1's bulk `update_years`.
+- **At-risk** is derived, never stored (a proposal pending §18 Q5): an `active` award is at risk when its latest term
+  record's GWA misses the renewal GWA rule for its scale (no rule for that scale: not flagged), or its units are under
+  `renewal_min_units`, or its renewal is due and the program's window has closed.
+- **Term change and rollover (M9):**
+  - the scholarship office moves the current term on `/office/terms/`: it adds the next school year (three terms, the
+    seed's dates) and makes a later term current ("The current term can only move forward."); the old flag is cleared
+    before the new one is set;
+  - making a term current runs `awards.services.rollover(term)` for every program in the same transaction: `draft`
+    and `returned` applications of earlier terms are withdrawn (`application.expired`; submitted and under-review
+    rows stay for staff); `active` and `suspended` awards with at least `program.max_terms` term records graduate
+    (blank means no limit; "final year" graduation is a manual status change, §18 Q8);
+  - `year_level` is not advanced automatically: a renewal freezes the student's own updated education record, and a
+    staff term record prefills year level + 1 in a later school year;
+  - it replaces v1's bulk `update_years`.
 
 ### 4.7 money
 - **`DistributionSchedule`:** `program`, `term`, `distribution_date`, `claim_location`, `notes`, `frequency_label`,
@@ -427,15 +464,15 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 | Accounts | `/accounts/…` (allauth: signup, login, logout POST, email confirm, password reset, Google), `/accounts/claim/<token>/` | anyone |
 | Student | `/me/` (dashboard), `/me/profile/` (+ `personal/`, `family/`, `family/<id>/` + `…/delete/`, `education/`, `education/<id>/` + `…/delete/`, `photo/`) | student (own records only) |
 | Student | `/me/match/`, `/me/applications/`, `/me/applications/new/<slug>/` (GET: confirm page; POST: creates the draft), `/me/applications/<id>/`, `/me/applications/<id>/documents/<requirement>/` (POST), `…/submit/` (POST), `…/withdraw/` | student (own records only) |
-| Student | `/me/scholarships/` (awards, terms, disbursements, schedules), `/me/notifications/` | student |
+| Student | `/me/scholarships/` (awards, terms, renewals; disbursements and schedules in M10), `/me/scholarships/<award>/renew/` (POST), `/me/notifications/` | student |
 | Staff | `/staff/<slug>/` (dashboard) | program staff/head |
 | Staff | `students/` (unclaimed profiles created for this program), `students/new/`, `students/<id>/invite/` | program staff/head |
 | Staff | `applications/` (queue), `applications/<id>/` (review), `applications/<id>/start/`, `applications/<id>/documents/<document>/approve/`, `applications/<id>/documents/<document>/decline/`, `applications/<id>/decide/` (approve, return or reject), `applications/bulk/` (start review, approve; POST) | program staff/head |
 | Staff | `applications/new/` (in progress + profile picker; POST starts), `applications/behalf/<id>/` (filing page), `…/academics/`, `…/documents/<requirement>/`, `…/submit/`, `…/withdraw/` (POST) | program staff/head |
-| Staff | `scholars/`, `scholars/<award>/`, `scholars/import/`, `scholars/export/`, `terms/` (rollover) | program staff/head |
+| Staff | `scholars/`, `scholars/<award>/`, `…/edit/`, `…/status/`, `…/terms/new/`, `…/terms/<term>/`, `…/terms/<term>/merit/` (POST); `scholars/import/`, `scholars/export/` (M9b) | program staff/head |
 | Staff | `schedules/`, `disbursements/`, `disbursements/<schedule>/`, `budget/` | program staff/head (see §6) |
 | Staff | `reports/`, `tasks/`, `settings/` (tiers, documents, rules, window) | staff; `settings/` is head only |
-| Office | `/office/` (dashboard), `programs/`, `staff/`, `scholars/`, `reports/`, `analytics/`, `audit/`, `schools/`, `terms/` | super admin |
+| Office | `/office/` (dashboard), `programs/`, `staff/`, `scholars/`, `reports/`, `analytics/`, `audit/`, `schools/`, `terms/` (M9: list, `add/` POST, `<term>/current/`) | super admin |
 | Files | `POST /files/uploads/` (intent), `POST /files/uploads/<id>/confirm/`, `GET /files/<id>/` (authorize → 302) | owner or authorized staff |
 | Django admin | `/_admin/` | technical superuser only |
 
@@ -456,6 +493,11 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
     "Fix and resubmit", and the filing page redirects to the review screen for any other status;
   - the review screen shows "Filed by {staff name} for the student." and lists overridden checks under "Overridden by
     staff" with the reason.
+- **The scholar list** (`scholars/`, M9): tabs Active (default), Suspended, Inactive, Graduated, At risk, Not renewed
+  (due this term), All; a name search (every word matches first or last name) and a tier filter by code; 25 rows a
+  page, unknown values fall back to the defaults; columns scholar, school, tier, GWA (latest term), terms, status;
+  `?scholar=<id>` opens a drawer with the facts, renewal status, at-risk reasons and "Open record". The staff nav has
+  "Scholars" after Applications; the student nav has "Scholarships".
 
 ## 6. Authorization
 - **Roles:** `User.role` decides which area a user can enter. Staff powers come from `ProgramMembership`, and a super
@@ -488,6 +530,8 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 
 - **M8:** head and staff may both do everything in application review (queue, review, document
   decisions, return, approve, reject, bulk), as the table above proposes. The split stays open (§18 Q7).
+- **M9:** head and staff may both do everything on scholars, as the table proposes (§18 Q7 open); moving the
+  current term is office-only.
 - **Permission-matrix test:** `tests/test_permission_matrix.py` enumerates `get_resolver()` and checks each URL name
   against an expected-access table for anonymous, student, other-student, staff, other-program staff, head and super
   admin. A new URL fails the test until it's added to the table.
@@ -563,6 +607,11 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - every failed check adds a human-readable reason;
   - this is the only thing that gates applying. Submitting also needs the "Personal details" completion section done
     (§16 M7).
+- **Renewal rules (M9)** (`matching.eligibility.evaluate_renewal`, pure): the window; a current school; the renewal
+  GWA, scale-aware (`renewal_min_gwa_percent` or `renewal_max_gwa_one_to_five`; a scale with no renewal rule is
+  `unmet`; no renewal GWA rule at all means no check); `renewal_min_units`; and, when `renewal_no_failing_grades` is
+  on, the student's declaration "I have no failing, incomplete or dropped subjects this term." Residency, voter and
+  school allowlists are not re-checked. Every rule must be met to submit; no tier candidates.
 - **Model hint, advisory** (`matching.legacy_model.suggest(...)`):
   - It is a pure-Python port of v1's pickle. `scripts/export_legacy_model.py`, run once in a throwaway sklearn 1.6.1
     environment, exports the scaler means/scales, one-hot categories, coefficients, intercepts and classes to
@@ -970,9 +1019,13 @@ starts, and ends with every acceptance item checked.
 - Profiles created for the program only; the email lookup waits for the maintainer (§18 Q16).
 
 **M9: Scholars, terms and renewals**
-- [ ] Scholar list and detail, edit, status changes, `ScholarTerm` history, merit by rule + confirmation, at-risk
-  selector.
-- [ ] Renewal applications, term rollover + graduation, CSV/XLSX import with preview, CSV/XLSX export.
+- [ ] Scholar list and detail, edit, status changes, `ScholarTerm` history, staff term records, merit by rule +
+  confirmation, at-risk selector.
+- [ ] Renewal applications; office terms page (add school year, make current) with rollover + graduation.
+- [ ] Extend the demo loader for this milestone's screens.
+
+**M9b: Import and export**
+- [ ] CSV/XLSX import with preview; manual award creation; CSV/XLSX export.
 - [ ] Extend the demo loader for this milestone's screens.
 
 **M10: Money**
@@ -1022,11 +1075,13 @@ starts, and ends with every acceptance item checked.
 2. Confirm the benefit amounts per program and tier.
 3. What qualifies a student for each LANI tier (honors, premier, priority, basic plus, basic, SUC/LCU, review, lead)?
 4. Renewal criteria: is CEAA's "GWA ≥ 80%, ≥ 15 units" right? What scale is LANI's "SWA not lower than 2.5" on?
-5. Definition of at-risk.
+5. Definition of at-risk. Proposed in M9 (§4.6): the latest term misses the renewal GWA or units, or the award is
+   not renewed after the window closed.
 6. Can one student hold CEAA and LANI at the same time? Decided 2026-11-13 (M8): yes, one active award per program
    (v1 never checked across programs). The maintainer to confirm.
 7. Head vs staff powers (§6 proposal).
-8. Maximum terms per program; graduation rules.
+8. Maximum terms per program; graduation rules. M9: the summer term never renews; awards graduate at `max_terms`
+   on rollover, and by hand for the final year.
 9. Budget figures; confirm the City fiscal year (January–December) as the budget period.
 10. RA 10173 retention period for documents and closed records.
 11. Can staff create student accounts, or only profiles that students claim?
