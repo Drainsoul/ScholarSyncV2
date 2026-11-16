@@ -9,7 +9,7 @@
     <table class="table">
       <thead><tr><th scope="col">Program</th><th scope="col">Term</th><th scope="col">Status</th><th scope="col">Submitted</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
       <tbody>{% for row in rows %}<tr>
-        <th scope="row">{{ row.application.program.name }}</th>
+        <th scope="row">{{ row.application.program.name }}{% if row.application.kind == "renewal" %} <span class="text-sm">Renewal</span>{% endif %}</th>
         <td>{{ row.application.term }}</td>
         <td>{% status row.tone row.application.get_status_display %}{% if row.application.on_behalf %} <span class="text-sm">Filed by staff</span>{% endif %}</td>
         <td>{% if row.application.submitted_at %}{{ row.application.submitted_at|date:"j M Y" }}{% else %}Not submitted{% endif %}</td>

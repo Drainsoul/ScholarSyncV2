@@ -1,3 +1,4 @@
+import html
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -9,6 +10,7 @@ import pytest
 import time_machine
 from django.core.exceptions import ValidationError
 from django.http import Http404
+from django.urls import reverse
 
 from apps.accounts.models import User
 from apps.applications import renewals
@@ -21,18 +23,24 @@ from apps.applications.renewals import (
     RENEWAL_SUMMER,
     start_renewal,
 )
-from apps.applications.tests.factories import ApplicationFactory
+from apps.applications.services import RENEWAL_TIER_GONE, submit_application
+from apps.applications.tests.factories import (
+    ApplicationFactory,
+    DocumentFactory,
+    DocumentFileFactory,
+)
 from apps.awards.models import Award
 from apps.awards.tests.factories import RenewalFactory
 from apps.awards.tests.scholars import add_record, make_scholar
 from apps.core.models import AuditEvent
-from apps.programs.models import AcademicTerm, BenefitTier, Program
+from apps.programs.models import AcademicTerm, BenefitTier, Program, RequiredDocument
 from apps.programs.tests.factories import (
     AcademicTermFactory,
     BenefitTierFactory,
     ProgramFactory,
     RequiredDocumentFactory,
 )
+from apps.students.models import EducationRecord
 from apps.students.tests.factories import EducationRecordFactory, FullProfileFactory
 
 pytestmark = pytest.mark.django_db
@@ -208,3 +216,130 @@ def test_start_renewal_race_returns_existing(scholar: Scholar) -> None:
         status.return_value = Renewal(RenewalStatus.DUE, scholar.current, None)
         with mock.patch.object(renewals, "open_application", side_effect=first_none):
             assert start_renewal(user=scholar.user, award_id=scholar.award.pk) == existing
+
+
+# --- Submitting a renewal ---
+
+
+def renewal_ready(world: Scholar) -> Application:
+    """A draft renewal with every renewal document uploaded."""
+    application = start_renewal(user=world.user, award_id=world.award.pk)
+    for requirement in RequiredDocument.objects.filter(program=world.program):
+        if requirement.applies_to in ("renewal", "both"):
+            document = DocumentFactory.create(application=application, requirement=requirement)
+            DocumentFileFactory.create(document=document)
+    return application
+
+
+def test_submit_renewal_freezes_and_snapshots(scholar: Scholar) -> None:
+    application = renewal_ready(scholar)
+    submitted = submit_application(
+        user=scholar.user, application=application, tier=None, declares_no_failing=True
+    )
+    assert submitted.status == Application.Status.SUBMITTED
+    assert submitted.requested_tier == scholar.tier
+    assert submitted.declares_no_failing is True
+    assert (submitted.school_name, submitted.gwa, submitted.year_level) == (
+        "Factory College",
+        Decimal("88.00"),
+        3,
+    )
+    codes = [check["code"] for check in submitted.match_snapshot["checks"]]
+    assert codes == ["window", "school", "renewal_gwa", "renewal_units"]
+    event = AuditEvent.objects.get(action="application.submitted")
+    assert event.data == {"tier": "standard"}
+
+
+def test_submit_renewal_uses_repriced_tier(scholar: Scholar) -> None:
+    repriced = BenefitTierFactory.create(
+        program=scholar.program, effective_from=scholar.current, code="standard"
+    )
+    submitted = submit_application(user=scholar.user, application=renewal_ready(scholar), tier=None)
+    assert submitted.requested_tier == repriced
+
+
+def test_submit_renewal_refused_when_rule_unmet(scholar: Scholar) -> None:
+    application = renewal_ready(scholar)
+    EducationRecord.objects.filter(profile=scholar.award.profile).update(gwa=Decimal("79"))
+    with pytest.raises(ValidationError) as caught:
+        submit_application(user=scholar.user, application=application, tier=None)
+    assert caught.value.messages == [
+        "Your GWA of 79.00 doesn't meet this program's renewal minimum of 80%."
+    ]
+    application.refresh_from_db()
+    assert application.status == Application.Status.DRAFT
+
+
+def test_submit_renewal_refused_without_declaration() -> None:
+    world = scholar_world(renewal_no_failing_grades=True)
+    application = renewal_ready(world)
+    with pytest.raises(ValidationError) as caught:
+        submit_application(user=world.user, application=application, tier=None)
+    assert caught.value.messages == [
+        "Confirm below that you have no failing, incomplete or dropped subjects."
+    ]
+    submitted = submit_application(
+        user=world.user, application=application, tier=None, declares_no_failing=True
+    )
+    assert submitted.status == Application.Status.SUBMITTED
+
+
+def test_submit_renewal_tier_gone(scholar: Scholar) -> None:
+    BenefitTierFactory.create(
+        program=scholar.program, effective_from=scholar.current, code="standard", is_active=False
+    )
+    with pytest.raises(ValidationError) as caught:
+        submit_application(user=scholar.user, application=renewal_ready(scholar), tier=None)
+    assert caught.value.messages == [RENEWAL_TIER_GONE]
+
+
+def test_renewal_detail_shows_renewal_checks_and_documents(client, scholar: Scholar) -> None:
+    application = start_renewal(user=scholar.user, award_id=scholar.award.pk)
+    client.force_login(scholar.user)
+    response = client.get(reverse("applications:detail", args=[application.pk]))
+    body = html.unescape(response.content.decode())
+    assert f"Renewal: {scholar.program.name}" in body
+    assert f"Renewing your scholarship for {scholar.current}." in body
+    assert "To renew: a GWA of at least 80% (schools that grade in percent)." in body
+    assert "COR" in body
+    assert "JHS" not in body
+    assert 'name="tier"' not in body
+    assert "declares_no_failing" not in body  # the program doesn't ask
+
+
+def test_renewal_detail_asks_declaration_when_rule_on(client) -> None:
+    world = scholar_world(renewal_no_failing_grades=True)
+    application = start_renewal(user=world.user, award_id=world.award.pk)
+    client.force_login(world.user)
+    body = html.unescape(
+        client.get(reverse("applications:detail", args=[application.pk])).content.decode()
+    )
+    assert "I have no failing, incomplete or dropped subjects this term." in body
+
+
+def test_renewal_submit_view_passes_declaration(client) -> None:
+    world = scholar_world(renewal_no_failing_grades=True)
+    application = renewal_ready(world)
+    client.force_login(world.user)
+    response = client.post(
+        reverse("applications:submit", args=[application.pk]),
+        {"declaration": "on", "declares_no_failing": "on"},
+    )
+    assert response.status_code == 302
+    application.refresh_from_db()
+    assert application.status == Application.Status.SUBMITTED
+    assert application.declares_no_failing is True
+
+
+def test_renewal_detail_query_budget(client, scholar: Scholar, django_assert_max_num_queries):
+    application = start_renewal(user=scholar.user, award_id=scholar.award.pk)
+    client.force_login(scholar.user)
+    with django_assert_max_num_queries(14):  # the student detail budget
+        assert client.get(reverse("applications:detail", args=[application.pk])).status_code == 200
+
+
+def test_list_marks_renewal(client, scholar: Scholar) -> None:
+    start_renewal(user=scholar.user, award_id=scholar.award.pk)
+    client.force_login(scholar.user)
+    body = client.get(reverse("applications:list")).content.decode()
+    assert "Renewal" in body

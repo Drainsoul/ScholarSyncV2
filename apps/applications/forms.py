@@ -16,6 +16,34 @@ class DocumentForm(forms.Form):
     file = forms.CharField(error_messages={"required": "Upload a file first."})
 
 
+NO_FAILING_LABEL = "I have no failing, incomplete or dropped subjects this term."
+
+
+class RenewalSubmitForm(forms.Form):
+    """The declaration, and the no-failing-grades question when the program asks it. The tier
+    is the award's, so there is no tier field and `cleaned_data["tier"]` is None."""
+
+    declaration = forms.BooleanField(
+        label=DECLARATION_LABEL,
+        error_messages={"required": "Confirm the declaration to submit."},
+    )
+
+    def __init__(self, *args: Any, asks_no_failing: bool, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        if asks_no_failing:
+            self.fields["declares_no_failing"] = forms.BooleanField(
+                required=False, label=NO_FAILING_LABEL
+            )
+            self.order_fields(["declares_no_failing", "declaration"])
+
+    def clean(self) -> dict[str, Any]:
+        cleaned = super().clean() or {}
+        cleaned["tier"] = None
+        if "declares_no_failing" not in self.fields:
+            cleaned["declares_no_failing"] = None
+        return cleaned
+
+
 class SubmitForm(forms.Form):
     """Tier choice (radios when there are several candidates) and the declaration.
 

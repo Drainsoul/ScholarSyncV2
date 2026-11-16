@@ -24,13 +24,19 @@ from apps.applications.selectors import (
     own_applications,
     rejected_this_term,
 )
+from apps.awards.models import Award
+from apps.awards.selectors import renewal_tier
 from apps.core import audit
 from apps.core.transitions import InvalidTransition, assert_transition
 from apps.files.policy import MB, join_types
 from apps.files.selectors import usable_file
 from apps.matching.eligibility import Academic, EligibilityResult
 from apps.matching.legacy_model import Hint, hint_for
-from apps.matching.selectors import eligibility_for, eligibility_with
+from apps.matching.selectors import (
+    eligibility_for,
+    eligibility_with,
+    renewal_eligibility_with,
+)
 from apps.programs.models import BenefitTier, Program, RequiredDocument
 from apps.programs.selectors import application_term
 from apps.students.completion import completion
@@ -46,6 +52,7 @@ REJECTED_THIS_TERM = "This application wasn't approved for {term}. You can apply
 ON_BEHALF_LOCKED = (
     "The scholarship office filed this application for you. Contact them to change it."
 )
+RENEWAL_TIER_GONE = "Your allowance tier is no longer offered. Contact the scholarship office."
 SNAPSHOT_VERSION = 1
 
 
@@ -312,14 +319,32 @@ def received_email(profile: StudentProfile, application: Application) -> None:
     )
 
 
+def _renewal_checks(
+    locked: Application, academic: Academic | None, today: date, declares: bool | None
+) -> tuple[BenefitTier, EligibilityResult]:
+    """The renewal rules on the frozen school and grades, and the award's tier in force."""
+    assert locked.award_id is not None  # applications_renewal_has_award
+    award = Award.objects.select_related("program", "tier").get(pk=locked.award_id)
+    result = renewal_eligibility_with(award, academic, today=today, declares_no_failing=declares)
+    if not result.eligible:
+        raise ValidationError(_first_reason(result))
+    chosen = renewal_tier(award, locked.term)
+    if chosen is None:
+        raise ValidationError(RENEWAL_TIER_GONE)
+    return chosen, result
+
+
 @transaction.atomic
 def submit_application(
     *,
     user: User,
     application: Application,
     tier: BenefitTier | None,
+    declares_no_failing: bool | None = None,
     request: HttpRequest | None = None,
 ) -> Application:
+    """Submit or resubmit. A renewal is evaluated on the renewal rules and keeps the award's
+    tier code; `tier` is ignored for it. `declares_no_failing` is the renewal declaration."""
     _require_student(user)
     profile, locked = _lock_profile_then_application(user, application)
     if locked.on_behalf:
@@ -353,10 +378,15 @@ def submit_application(
         # Read the school and grades once: what is evaluated is exactly what is frozen.
         record = current_education(profile)
         academic = Academic.from_record(record) if record is not None else None
-        result = eligibility_with(profile, locked.program, academic, today=today)
-        if not result.eligible:
-            raise ValidationError(_first_reason(result))
-        chosen = choose_tier(result.tier_candidates, tier)
+        if locked.kind == Application.Kind.RENEWAL:
+            chosen, result = _renewal_checks(locked, academic, today, declares_no_failing)
+            locked.declares_no_failing = declares_no_failing
+            update_fields.append("declares_no_failing")
+        else:
+            result = eligibility_with(profile, locked.program, academic, today=today)
+            if not result.eligible:
+                raise ValidationError(_first_reason(result))
+            chosen = choose_tier(result.tier_candidates, tier)
         assert record is not None and academic is not None  # eligibility needs a current school
         _copy_academics(locked, record)
         locked.requested_tier = chosen

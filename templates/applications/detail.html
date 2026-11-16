@@ -1,10 +1,15 @@
 {% extends "layouts/student.html" %}{% load ui uploads %}
-{% block title %}{{ application.program.name }} application{% endblock %}
+{% block title %}{% if application.kind == "renewal" %}Renewal: {{ application.program.name }}{% else %}{{ application.program.name }} application{% endif %}{% endblock %}
 {% block content %}
   <div class="page-header">
     <div>
+      {% if application.kind == "renewal" %}
+      <h1>Renewal: {{ application.program.name }}</h1>
+      <p class="page-header__meta">Renewing your scholarship for {{ application.term }}. Status: {{ application.get_status_display }}.</p>
+      {% else %}
       <h1>{{ application.program.name }} application</h1>
       <p class="page-header__meta">{{ application.term }} · {{ application.get_status_display }}</p>
+      {% endif %}
     </div>
   </div>
   {% if application.on_behalf %}
@@ -27,6 +32,12 @@
   <div class="banner banner--warning"><div><p>Staff returned this application: {{ application.decision_reason }}</p></div></div>
   {% endif %}
   <div class="stack">
+    {% if renewal_items %}
+    <section class="card" aria-labelledby="renewal-rules-title">
+      <h2 class="card__title" id="renewal-rules-title">Renewal rules</h2>
+      {% include "components/checklist.html" with items=renewal_items %}
+    </section>
+    {% endif %}
     <section class="card" aria-labelledby="academic-title">
       <h2 class="card__title" id="academic-title">Your school and grades</h2>
       {% if academic %}
@@ -80,6 +91,7 @@
         {% include "components/form_errors.html" with form=submit_form %}
         {% if "tier" in submit_form.fields %}{% field submit_form.tier %}
         {% elif submit_form.candidates %}<p>Allowance tier: {{ submit_form.candidates.0.name }}</p>{% endif %}
+        {% if "declares_no_failing" in submit_form.fields %}{% field submit_form.declares_no_failing %}{% endif %}
         {% field submit_form.declaration %}
         <div class="btn-row"><button type="submit" class="btn btn--primary">{% if application.status == "returned" %}Resubmit application{% else %}Submit application{% endif %}</button></div>
       </form>

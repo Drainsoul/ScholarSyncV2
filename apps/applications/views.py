@@ -12,7 +12,7 @@ from django.views.generic import TemplateView
 
 from apps.accounts.models import User
 from apps.applications import services
-from apps.applications.forms import DocumentForm, SubmitForm
+from apps.applications.forms import DocumentForm, RenewalSubmitForm, SubmitForm
 from apps.applications.models import Application, Document
 from apps.applications.selectors import (
     DocumentRow,
@@ -25,7 +25,7 @@ from apps.core.permissions import StudentRequiredMixin
 from apps.core.shell import shell_context
 from apps.matching.checklist import checklist_items
 from apps.matching.eligibility import Academic
-from apps.matching.selectors import eligibility_for
+from apps.matching.selectors import eligibility_for, renewal_eligibility_with
 from apps.programs.models import BenefitTier, Program, RequiredDocument
 from apps.programs.selectors import application_term
 from apps.students.selectors import current_education, profile_for
@@ -188,8 +188,30 @@ def _candidates(user: User, application: Application) -> list[BenefitTier]:
     return list(result.tier_candidates)
 
 
-def _submit_form(user: User, application: Application, data: QueryDict | None = None) -> SubmitForm:
+def _submit_form(
+    user: User, application: Application, data: QueryDict | None = None
+) -> SubmitForm | RenewalSubmitForm:
+    if application.kind == Application.Kind.RENEWAL:
+        return RenewalSubmitForm(
+            data, asks_no_failing=application.program.renewal_no_failing_grades
+        )
     return SubmitForm(data, candidates=_candidates(user, application))
+
+
+def _renewal_items(user: User, application: Application) -> list[dict[str, str]]:
+    """The live renewal checklist for a renewal draft; nothing for anything else."""
+    if application.kind != Application.Kind.RENEWAL or application.status != (
+        Application.Status.DRAFT
+    ):
+        return []
+    profile = profile_for(user)
+    record = current_education(profile) if profile is not None else None
+    academic = Academic.from_record(record) if record is not None else None
+    assert application.award is not None
+    result = renewal_eligibility_with(
+        application.award, academic, today=timezone.localdate(), declares_no_failing=None
+    )
+    return checklist_items(result)
 
 
 def render_detail(
@@ -199,7 +221,7 @@ def render_detail(
     error_for: RequiredDocument | None = None,
     error: str = "",
     status: int = 200,
-    submit_form: SubmitForm | None = None,
+    submit_form: SubmitForm | RenewalSubmitForm | None = None,
     banner: str = "",
 ) -> HttpResponse:
     """The application page; `error` shows on the row of `error_for`, and a banner points there.
@@ -245,6 +267,7 @@ def render_detail(
         "uploaded_count": sum(1 for row in required if row.current is not None),
         "required_count": len(required),
         "education_url": reverse("students:profile-education"),
+        "renewal_items": _renewal_items(_student(request), application),
     }
     return render(request, "applications/detail.html", context, status=status)
 
@@ -268,6 +291,7 @@ class SubmitView(StudentRequiredMixin, View):
                 user=user,
                 application=application,
                 tier=form.cleaned_data.get("tier"),
+                declares_no_failing=form.cleaned_data.get("declares_no_failing"),
                 request=request,
             )
         except ValidationError as error:
