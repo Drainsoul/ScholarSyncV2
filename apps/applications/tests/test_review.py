@@ -733,7 +733,7 @@ def test_approve_creates_award_and_first_term(listed: bool) -> None:
     assert approved.actor == actor
     assert approved.program == program
     assert approved.target_id == str(application.pk)
-    assert approved.data == {"tier": award.tier.code, "award": award.pk}
+    assert approved.data == {"tier": award.tier.code, "award": award.pk, "kind": "new"}
     created = AuditEvent.objects.get(action="award.created")
     assert created.program == program
     assert created.data == {
@@ -751,6 +751,7 @@ def test_approve_with_an_explicit_tier_and_no_merit() -> None:
     award = review.approve_application(
         actor=staff_of(program), program=program, application=application, tier=other
     )
+    assert isinstance(award, Award)
     assert award.tier == other
     assert award.terms.get().merit is False
     application.refresh_from_db()
@@ -929,6 +930,7 @@ def test_approve_allowed_with_award_in_another_program() -> None:
     award = review.approve_application(
         actor=staff_of(program), program=program, application=application, tier=None
     )
+    assert isinstance(award, Award)
     assert award.program == program
     assert set(Award.objects.filter(profile=application.profile)) == {elsewhere, award}
 

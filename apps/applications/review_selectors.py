@@ -29,6 +29,7 @@ SORTS: dict[str, tuple[str, ...]] = {
 }
 
 DEFAULT_STATUS = "waiting"
+KINDS = frozenset({Application.Kind.NEW, Application.Kind.RENEWAL})
 DEFAULT_SORT = "submitted"
 MAX_TERM_ID = 2**31 - 1
 
@@ -39,6 +40,7 @@ class QueueFilters:
     term_id: int | None = None
     q: str = ""
     sort: str = DEFAULT_SORT
+    kind: str = ""  # "", "new" or "renewal"
 
 
 @dataclass(frozen=True)
@@ -90,8 +92,15 @@ def parse_queue_filters(params: QueryDict) -> QueueFilters:
     sort = params.get("sort", "")
     if sort.removeprefix("-") not in SORTS:
         sort = DEFAULT_SORT
+    kind = params.get("kind", "")
+    if kind not in KINDS:
+        kind = ""
     return QueueFilters(
-        status=status, term_id=term_id, q=params.get("q", "").replace("\x00", "").strip(), sort=sort
+        status=status,
+        term_id=term_id,
+        q=params.get("q", "").replace("\x00", "").strip(),
+        sort=sort,
+        kind=kind,
     )
 
 
@@ -112,6 +121,8 @@ def queue(program: Program, filters: QueueFilters) -> QuerySet[Application]:
         rows = rows.filter(status__in=statuses)
     if filters.term_id is not None:
         rows = rows.filter(term_id=filters.term_id)
+    if filters.kind:
+        rows = rows.filter(kind=filters.kind)
     # icontains escapes % and _ itself; every word must match the first or the last name.
     for word in filters.q.split():
         rows = rows.filter(
@@ -124,7 +135,14 @@ def staff_application(program: Program, pk: int) -> Application:
     application = (
         applications_for_program(program)
         .select_related(
-            "profile", "profile__user", "term", "requested_tier", "school", "program", "created_by"
+            "profile",
+            "profile__user",
+            "term",
+            "requested_tier",
+            "school",
+            "program",
+            "created_by",
+            "award__started_term",
         )
         .filter(pk=pk)
         .first()

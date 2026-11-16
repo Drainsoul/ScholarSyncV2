@@ -77,3 +77,64 @@ def award_from_application(
         },
     )
     return award
+
+
+AWARD_ON_HOLD = "This award is on hold. Reinstate it before approving the renewal."
+AWARD_ENDED = "This award has ended, so the renewal can't be approved."
+TERM_EXISTS = "This scholar already has a record for {term}."
+
+
+@transaction.atomic
+def term_from_renewal(
+    *,
+    actor: User,
+    application: Application,
+    tier: BenefitTier,
+    request: HttpRequest | None = None,
+) -> ScholarTerm:
+    """The next scholar term of a renewal being approved; the award moves to `tier`.
+
+    The caller holds the profile and application locks (lock order: profile, application, award).
+    """
+    assert application.award_id is not None  # applications_renewal_has_award
+    award = Award.objects.select_for_update(of=("self",)).get(
+        pk=application.award_id, profile_id=application.profile_id
+    )
+    if award.status == Award.Status.SUSPENDED:
+        raise ValidationError(AWARD_ON_HOLD)
+    if award.status != Award.Status.ACTIVE:
+        raise ValidationError(AWARD_ENDED)
+    if ScholarTerm.objects.filter(award=award, term=application.term).exists():
+        raise ValidationError(TERM_EXISTS.format(term=application.term))
+    record = ScholarTerm.objects.create(
+        award=award,
+        term=application.term,
+        year_level=application.year_level,
+        course=application.course,
+        school=application.school,
+        school_name=application.school_name,
+        school_type=application.school_type,
+        gwa=application.gwa,
+        gwa_scale=application.gwa_scale,
+        units=application.units,
+        tier=tier,
+        merit=application.match_snapshot.get("merit_likely") is True,
+        compliance=ScholarTerm.Compliance.COMPLETE,  # approval needs every document approved
+    )
+    if award.tier_id != tier.pk:
+        award.tier = tier
+        award.save(update_fields=["tier", "updated_at"])
+    audit.record(
+        actor=actor,
+        action="scholar_term.created",
+        target=record,
+        program=application.program,
+        request=request,
+        data={
+            "award": award.pk,
+            "term": application.term_id,
+            "source": "renewal",
+            "tier": tier.code,
+        },
+    )
+    return record

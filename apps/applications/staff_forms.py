@@ -83,8 +83,14 @@ class DecisionForm(forms.Form):
             pk__in=[tier.pk for tier in in_force]
         ).order_by("sort_order", "name")
         # Preselect the requested tier only while it is still offered.
-        if application.requested_tier_id in {tier.pk for tier in in_force}:
-            tier_field.initial = application.requested_tier_id
+        # A re-priced row (same code) stands in for the requested one, as approval does.
+        requested = application.requested_tier
+        if requested is not None:
+            same = [t for t in in_force if t.pk == requested.pk] or [
+                t for t in in_force if t.code == requested.code
+            ]
+            if same:
+                tier_field.initial = same[0].pk
 
     def clean(self) -> dict[str, object]:
         cleaned = super().clean() or {}

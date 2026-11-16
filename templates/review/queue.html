@@ -22,6 +22,12 @@
       <option value="">Any term</option>
       {% for term in terms %}<option value="{{ term.pk }}"{% if filters.term_id == term.pk %} selected{% endif %}>{{ term }}</option>{% endfor %}
     </select>
+    <label class="visually-hidden" for="filter-kind">Kind</label>
+    <select class="input" id="filter-kind" name="kind">
+      <option value="">New and renewals</option>
+      <option value="new"{% if filters.kind == "new" %} selected{% endif %}>New applications</option>
+      <option value="renewal"{% if filters.kind == "renewal" %} selected{% endif %}>Renewals</option>
+    </select>
     <button class="btn btn--secondary" type="submit">Apply filters</button>
   </form>
   {# The count is a live region outside the swap target, so screen readers hear each new result. #}
@@ -48,13 +54,14 @@
     <div class="table-wrap" role="region" aria-labelledby="queue-caption" tabindex="0">
       <table class="table">
         <caption id="queue-caption" class="visually-hidden">Applications</caption>
-        <thead><tr><th scope="col" class="select"><input type="checkbox" data-bulk-all aria-label="Select all applications on this page"></th>{% sort_th "Applicant" "name" %}<th scope="col">School</th><th scope="col">Requested tier</th>{% sort_th "Submitted" "submitted" %}<th scope="col">Status</th></tr></thead>
+        <thead><tr><th scope="col" class="select"><input type="checkbox" data-bulk-all aria-label="Select all applications on this page"></th>{% sort_th "Applicant" "name" %}<th scope="col">School</th><th scope="col">Kind</th><th scope="col">Requested tier</th>{% sort_th "Submitted" "submitted" %}<th scope="col">Status</th></tr></thead>
         <tbody>
           {% for row in rows %}
           <tr>
             <td class="select"><input type="checkbox" name="ids" value="{{ row.application.pk }}" data-bulk-item aria-label="Select {{ row.application.profile.full_name }}"></td>
             <th scope="row"><a href="{% url 'review:detail' program=program.slug pk=row.application.pk %}">{{ row.application.profile.full_name }}</a></th>
             <td>{% if row.application.school %}{{ row.application.school.name }}{% else %}{{ row.application.school_name }}{% endif %}</td>
+            <td>{% if row.application.kind == "renewal" %}Renewal{% else %}New{% endif %}</td>
             <td>{{ row.application.requested_tier.name|default:"" }}</td>
             <td>{% if row.application.first_submitted_at %}{{ row.application.first_submitted_at|date:"j M Y" }}{% endif %}</td>
             <td>{% status row.tone row.application.get_status_display %}</td>

@@ -20,9 +20,9 @@ from apps.applications.models import Application, Document
 from apps.applications.review_selectors import applications_for_program
 from apps.applications.selectors import undecided_rows
 from apps.applications.services import application_url
-from apps.awards.models import Award
+from apps.awards.models import Award, ScholarTerm
 from apps.awards.selectors import holds_award
-from apps.awards.services import already_holds, award_from_application
+from apps.awards.services import already_holds, award_from_application, term_from_renewal
 from apps.core import audit
 from apps.core.permissions import require_program_staff
 from apps.core.transitions import assert_transition
@@ -298,15 +298,24 @@ def reject_application(
 
 
 def _approval_tier(locked: Application, tier: BenefitTier | None) -> BenefitTier:
-    """The chosen tier, or the requested one, if in force for the application's term."""
+    """The chosen tier, or the requested one, if in force for the application's term.
+
+    A requested row re-priced since (same code, a later effective term) falls back to the row
+    in force with its code, so a re-price never makes staff re-pick."""
     in_force = {row.pk: row for row in tiers_in_force(locked.program, locked.term)}
     if tier is not None:
         if tier.pk not in in_force:
             raise ValidationError(FOREIGN_TIER)
         return in_force[tier.pk]
-    if locked.requested_tier_id is None or locked.requested_tier_id not in in_force:
+    requested = locked.requested_tier
+    if requested is None:
         raise ValidationError(TIER_GONE)
-    return in_force[locked.requested_tier_id]
+    if requested.pk in in_force:
+        return in_force[requested.pk]
+    same_code = [row for row in in_force.values() if row.code == requested.code]
+    if not same_code:
+        raise ValidationError(TIER_GONE)
+    return same_code[0]
 
 
 @transaction.atomic
@@ -318,8 +327,9 @@ def approve_application(
     tier: BenefitTier | None,
     note: str = "",
     request: HttpRequest | None = None,
-) -> Award:
-    """Approve under the locks, creating the award and its first scholar term."""
+) -> Award | ScholarTerm:
+    """Approve under the locks. A new application creates the award and its first scholar
+    term; a renewal adds the next term to its award."""
     profile, locked = _lock_for_staff(actor, program, application.pk)
     assert_transition(locked, Application.Status.APPROVED)
     undecided = undecided_rows(locked)
@@ -330,7 +340,8 @@ def approve_application(
     if undecided:
         raise ValidationError(NOT_DECIDED.format(label=undecided[0].requirement.label))
     chosen = _approval_tier(locked, tier)
-    if holds_award(profile, locked.program):
+    renewal = locked.kind == Application.Kind.RENEWAL
+    if not renewal and holds_award(profile, locked.program):
         raise ValidationError(already_holds(locked.program))
     note = note.strip()
     if len(note) > MAX_DECISION_REASON:
@@ -342,17 +353,25 @@ def approve_application(
     locked.save(
         update_fields=["status", "decided_at", "decided_by", "decision_reason", "updated_at"]
     )
-    award = award_from_application(actor=actor, application=locked, tier=chosen, request=request)
+    result: Award | ScholarTerm
+    if renewal:
+        result = term_from_renewal(actor=actor, application=locked, tier=chosen, request=request)
+        award_id = result.award_id
+    else:
+        result = award_from_application(
+            actor=actor, application=locked, tier=chosen, request=request
+        )
+        award_id = result.pk
     audit.record(
         actor=actor,
         action="application.approved",
         target=locked,
         program=locked.program,
         request=request,
-        data={"tier": chosen.code, "award": award.pk},
+        data={"tier": chosen.code, "award": award_id, "kind": locked.kind},
     )
     _email(profile, locked, kind="application_decided", outcome=OUTCOME_APPROVED)
-    return award
+    return result
 
 
 @dataclass(frozen=True)

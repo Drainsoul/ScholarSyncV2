@@ -25,6 +25,9 @@
   </div>
 </div>
 {% if error %}<div class="banner banner--danger" role="alert"><div><p>{{ error }}</p></div></div>{% endif %}
+{% if application.kind == "renewal" %}
+<div class="banner banner--info" role="note"><div><p>Renewal for {{ application.term }}. Scholar since {{ application.award.started_term }}.</p>{% if last_term %}<p>Last term ({{ last_term.term }}): GWA {{ last_term.gwa|default_if_none:"not given" }}, {{ last_term.units|default_if_none:"no" }} units.</p>{% endif %}</div></div>
+{% endif %}
 {% if application.on_behalf %}
 <div class="banner banner--info" role="note"><div><p>Filed by {{ filed_by }} for the student.</p></div></div>
 {% endif %}

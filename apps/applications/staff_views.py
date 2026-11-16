@@ -35,6 +35,7 @@ from apps.applications.staff_forms import (
 )
 from apps.applications.staff_wording import staff_items
 from apps.applications.views import APPLICATION_TONES, DOCUMENT_TONES
+from apps.awards.models import ScholarTerm
 from apps.awards.selectors import other_active_awards
 from apps.core.htmx import HtmxHttpRequest, close_dialog, toast
 from apps.core.permissions import ProgramStaffRequiredMixin
@@ -45,7 +46,7 @@ from apps.programs.models import AcademicTerm, Program
 PAGE_SIZE = 25
 TABLE_ID = "queue-table"
 BULK_APPROVE_FILTERS = frozenset({"waiting", "under_review"})  # approval needs a review
-QUEUE_KEYS = ("status", "term", "q", "sort", "page")
+QUEUE_KEYS = ("status", "term", "kind", "q", "sort", "page")
 MAX_QUEUE_VALUE = 200
 
 
@@ -149,6 +150,16 @@ def render_review(
         for row in doc_rows
     ]
     filer = application.created_by
+    # A renewal shows the scholar's latest term record beside the grades it was filed with.
+    last_term = (
+        ScholarTerm.objects.filter(award_id=application.award_id)
+        .exclude(term_id=application.term_id)
+        .select_related("term")
+        .order_by("-term__sort_key")
+        .first()
+        if application.award_id is not None
+        else None
+    )
     overridden = snapshot.get("override") if application.on_behalf else None
     overrides = [
         CHECK_LABELS.get(code, code.replace("_", " ").capitalize())
@@ -161,6 +172,7 @@ def render_review(
         {
             "filed_by": filer.full_name if filer is not None and filer.full_name else "staff",
             "overrides": overrides,
+            "last_term": last_term,
             **shell_context(request, area="staff", program=program),
             "program": program,
             "application": application,
@@ -281,7 +293,13 @@ class DecideView(ReviewActionView):
         try:
             if decision == APPROVE:
                 review.approve_application(**common, tier=form.cleaned_data["tier"], note=reason)
-                message = "Application approved. The award has been created."
+                if application.kind == Application.Kind.RENEWAL:
+                    message = (
+                        f"Application approved. {application.profile.full_name}'s scholarship "
+                        f"is renewed for {application.term}."
+                    )
+                else:
+                    message = "Application approved. The award has been created."
             elif decision == RETURN:
                 review.return_application(**common, reason=reason)
                 message = "Application returned to the student."
