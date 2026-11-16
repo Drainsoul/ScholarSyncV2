@@ -314,7 +314,9 @@ def _create_unclaimed_profile(*, staff_email: str, program_slug: str, email: str
     )
 
 
-def _walk_in_application(program: Program, staff: User, walk_in: WalkIn) -> Application:
+def _walk_in_application(
+    program: Program, staff: User, walk_in: WalkIn, gwa: Decimal
+) -> Application:
     """A staff-created profile (invite goes to Mailpit) with an on-behalf draft and academics."""
     profile, _ = students.create_staff_profile(
         actor=staff,
@@ -335,14 +337,14 @@ def _walk_in_application(program: Program, staff: User, walk_in: WalkIn) -> Appl
             "school": School.objects.get(name="Taguig City University"),
             "course": "BS Information Technology",
             "year_level": 2,
-            "gwa": Decimal("88.50"),
+            "gwa": gwa,
             "units": 21,
         },
     )
 
 
 def _file_submitted_walk_in(program: Program, staff: User) -> None:
-    application = _walk_in_application(program, staff, WALK_IN_SUBMITTED)
+    application = _walk_in_application(program, staff, WALK_IN_SUBMITTED, Decimal("78.00"))
     for number, requirement in enumerate(required_documents_for(program, "new"), start=1):
         file = _sample_file(staff, requirement.accepted_types, number)
         behalf.attach_on_behalf(
@@ -361,30 +363,12 @@ def _file_submitted_walk_in(program: Program, staff: User) -> None:
     )
 
 
-def _require_residency_and_voter(program: Program) -> None:
-    """Give the demo program the Taguig residency and voter rules, so walk-ins need an override.
-
-    The starter data leaves both off; the demo turns them on only where nobody set them. Every
-    other demo applicant lives in Ususan since 2012 and is a registered voter, so they still pass.
-    """
-    changed = []
-    if program.min_residency_years is None:
-        program.min_residency_years = 3
-        changed.append("min_residency_years")
-    if not program.requires_registered_voter:
-        program.requires_registered_voter = True
-        changed.append("requires_registered_voter")
-    if changed:
-        program.save(update_fields=changed)
-
-
 def _give_staff_on_behalf_samples() -> None:
     """Two walk-ins: one submitted with overridden rules (needs storage), one staff draft."""
     if application_term(timezone.localdate()) is None:
         return  # No term applies today: load without on-behalf samples.
     program = Program.objects.get(slug="tcu-ceaa")
     staff = User.objects.get(email__iexact="staff@scholarsync.test")
-    _require_residency_and_voter(program)
     if storage.is_configured():
         if not ProfileInvite.objects.filter(email=WALK_IN_SUBMITTED.email).exists():
             try:
@@ -405,7 +389,7 @@ def _give_staff_on_behalf_samples() -> None:
     if not ProfileInvite.objects.filter(email=WALK_IN_DRAFT.email).exists():
         try:
             with transaction.atomic():
-                _walk_in_application(program, staff, WALK_IN_DRAFT)
+                _walk_in_application(program, staff, WALK_IN_DRAFT, Decimal("88.50"))
         except (ValidationError, Http404, PermissionDenied, ObjectDoesNotExist) as error:
             logger.warning("Demo on-behalf draft skipped (%s).", type(error).__name__)
 

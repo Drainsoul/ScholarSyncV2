@@ -382,9 +382,9 @@ def test_demo_has_on_behalf_submitted_application(demo_app, settings, frozen_tod
     application = Application.objects.get(profile=_walk_in("Ramon"))
     assert application.on_behalf is True
     assert application.status == Application.Status.SUBMITTED
-    assert "residency" in application.match_snapshot["override"]
+    assert application.match_snapshot["override"] == ["gwa"]
     assert application.override_reason == (
-        "Walk-in applicant; residency and voter records checked at the office."
+        "Walk-in applicant; the GWA shortfall was reviewed with the student's adviser."
     )
     assert application.created_by is not None
     assert application.created_by.email == "staff@scholarsync.test"

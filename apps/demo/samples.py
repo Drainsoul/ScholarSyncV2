@@ -46,7 +46,7 @@ SAMPLE_APPLICANTS: tuple[SampleApplicant, ...] = (
     ),
 )
 
-OVERRIDE_REASON = "Walk-in applicant; residency and voter records checked at the office."
+OVERRIDE_REASON = "Walk-in applicant; the GWA shortfall was reviewed with the student's adviser."
 
 
 @dataclass(frozen=True)
@@ -57,6 +57,7 @@ class WalkIn:
     birth_date: date
 
 
-# Staff-created profiles with no barangay or voter data, filed for at the office counter.
+# Staff-created profiles filed for at the office counter. The submitted one's GWA (78) is under
+# TCU CEAA's 80% minimum, so staff override the GWA rule.
 WALK_IN_SUBMITTED = WalkIn("ramon@scholarsync.test", "Ramon", "Aquino", date(2006, 9, 12))
 WALK_IN_DRAFT = WalkIn("lorna@scholarsync.test", "Lorna", "Castillo", date(2006, 2, 27))
