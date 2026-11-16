@@ -319,3 +319,109 @@ def test_drawer_links_to_record(client, world: World) -> None:
     page = body(client, world.staff, world.url(scholar=str(award.pk)))
     assert record_url(world, award) in page
     assert "Open record" in page
+
+
+# --- Term records and merit ---
+
+
+def term_url(world: World, award: Award, name: str, **extra: int) -> str:
+    return reverse(name, kwargs={"program": world.program.slug, "pk": award.pk, **extra})
+
+
+def test_add_term_page_prefills_year_level(client, world: World) -> None:
+    award = world.scholar("Ana", "Cruz")
+    page = body(client, world.staff, term_url(world, award, "scholars:term-new"))
+    assert "Renewal documents checked" in page
+    assert 'name="year_level" value="3"' in page
+    assert str(world.current) in page
+
+
+def test_add_term_round_trip(client, world: World) -> None:
+    award = world.scholar("Ana", "Cruz")
+    client.force_login(world.staff)
+    response = client.post(
+        term_url(world, award, "scholars:term-new"),
+        {
+            "term": world.current.pk,
+            "school_name": "Walk-in College",
+            "school_type": "private",
+            "gwa_scale": "percent",
+            "gwa": "86.50",
+            "units": "18",
+            "compliance_checked": "on",
+        },
+    )
+    assert response.status_code == 302
+    record = award.terms.get(term=world.current)
+    assert record.gwa == Decimal("86.50")
+    assert record.compliance == "complete"
+
+
+def test_add_term_form_error_400(client, world: World) -> None:
+    award = world.scholar("Ana", "Cruz")
+    client.force_login(world.staff)
+    response = client.post(term_url(world, award, "scholars:term-new"), {"term": world.current.pk})
+    assert response.status_code == 400
+    assert "Choose the student's school or type its name." in html.unescape(
+        response.content.decode()
+    )
+
+
+def test_edit_term_round_trip(client, world: World) -> None:
+    award = world.scholar("Ana", "Cruz")
+    record = award.terms.get()
+    url = term_url(world, award, "scholars:term-edit", term=record.pk)
+    page = body(client, world.staff, url)
+    assert 'name="term"' not in page
+    response = client.post(
+        url,
+        {
+            "school_name": "Factory College",
+            "school_type": "private",
+            "gwa_scale": "percent",
+            "gwa": "91.00",
+            "units": "18",
+            "year_level": "2",
+        },
+    )
+    assert response.status_code == 302
+    record.refresh_from_db()
+    assert record.gwa == Decimal("91.00")
+
+
+def test_merit_buttons_and_post(client, world: World) -> None:
+    award = world.scholar("Ana", "Cruz")
+    record = award.terms.get()
+    page = body(client, world.staff, record_url(world, award))
+    assert "Confirm merit" in page and ">No merit<" in page
+    response = client.post(
+        term_url(world, award, "scholars:term-merit", term=record.pk), {"merit": "yes"}
+    )
+    assert response.status_code == 302
+    record.refresh_from_db()
+    assert record.merit is True and record.merit_confirmed_by == world.staff
+    page = body(client, world.staff, record_url(world, award))
+    assert "Merit: Confirmed" in page
+    assert "Change" in page
+
+
+def test_merit_post_bad_value_400(client, world: World) -> None:
+    award = world.scholar("Ana", "Cruz")
+    client.force_login(world.staff)
+    url = term_url(world, award, "scholars:term-merit", term=award.terms.get().pk)
+    assert client.post(url, {"merit": "maybe"}).status_code == 400
+
+
+def test_term_urls_foreign_404(client, world: World) -> None:
+    foreign = make_scholar(
+        ProgramFactory.create(),
+        BenefitTierFactory.create(effective_from=world.previous),
+        [world.previous],
+    )
+    record = foreign.terms.get()
+    client.force_login(world.staff)
+    assert client.get(term_url(world, foreign, "scholars:term-new")).status_code == 404
+    edit = term_url(world, foreign, "scholars:term-edit", term=record.pk)
+    assert client.get(edit).status_code == 404
+    merit = term_url(world, foreign, "scholars:term-merit", term=record.pk)
+    assert client.post(merit, {"merit": "yes"}).status_code == 404

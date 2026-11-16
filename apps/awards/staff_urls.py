@@ -9,4 +9,11 @@ urlpatterns = [
     path("<int:pk>/", staff_views.ScholarDetailView.as_view(), name="detail"),
     path("<int:pk>/edit/", staff_views.ScholarEditView.as_view(), name="edit"),
     path("<int:pk>/status/", staff_views.ScholarStatusView.as_view(), name="status"),
+    path("<int:pk>/terms/new/", staff_views.TermFormView.as_view(), name="term-new"),
+    path("<int:pk>/terms/<int:term>/", staff_views.TermFormView.as_view(), name="term-edit"),
+    path(
+        "<int:pk>/terms/<int:term>/merit/",
+        staff_views.TermMeritView.as_view(),
+        name="term-merit",
+    ),
 ]

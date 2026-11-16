@@ -9,20 +9,28 @@ from django.http import Http404
 from apps.applications.models import Application
 from apps.applications.tests.factories import ApplicationFactory
 from apps.awards.models import Award, ScholarTerm
+from apps.awards.selectors import next_year_level
 from apps.awards.services import (
+    FUTURE_TERM,
+    GRADUATED_NO_RECORD,
     NEED_END_REASON,
     NEED_HOLD_REASON,
     STATUS_REASON_TOO_LONG,
+    TERM_EXISTS,
+    TermData,
+    add_term,
     already_holds,
     award_from_application,
     change_status,
+    confirm_merit,
+    edit_term,
     update_award,
 )
 from apps.awards.tests.factories import AwardFactory
 from apps.awards.tests.scholars import make_scholar
 from apps.core.models import AuditEvent
 from apps.core.transitions import InvalidTransition
-from apps.programs.models import School
+from apps.programs.models import AcademicTerm, Program, School
 from apps.programs.tests.factories import (
     AcademicTermFactory,
     BenefitTierFactory,
@@ -352,3 +360,207 @@ def test_status_change_needs_program_staff(scholars: Scholars) -> None:
             to="suspended",
             reason="x",
         )
+
+
+# --- Term records and merit ---
+
+
+def term_data(term: AcademicTerm, **fields: Any) -> TermData:
+    values: dict[str, Any] = {
+        "term": term,
+        "school": None,
+        "school_name": "Walk-in College",
+        "school_type": "private",
+        "gwa_scale": "percent",
+        "course": "BSED",
+        "year_level": 2,
+        "gwa": Decimal("85.00"),
+        "units": 18,
+        "compliance_checked": False,
+    }
+    values.update(fields)
+    return TermData(**values)
+
+
+def add(scholars: Scholars, award: Award, data: TermData) -> ScholarTerm:
+    return add_term(actor=scholars.actor, program=scholars.program, award=award, data=data)
+
+
+def test_add_term_for_past_term_with_compliance(scholars: Scholars) -> None:
+    older = AcademicTermFactory.create(school_year_start=2025, term=1)
+    award = scholars.award()
+    record = add(scholars, award, term_data(older, compliance_checked=True))
+    assert (record.term, record.school_name, record.gwa, record.units) == (
+        older,
+        "Walk-in College",
+        Decimal("85.00"),
+        18,
+    )
+    assert record.compliance == ScholarTerm.Compliance.COMPLETE
+    assert record.merit_confirmed_by is None
+    event = AuditEvent.objects.get(action="scholar_term.created")
+    assert event.data == {
+        "award": award.pk,
+        "term": older.pk,
+        "source": "staff",
+        "tier": "standard",
+    }
+
+
+def test_add_term_for_current_term_incomplete(scholars: Scholars) -> None:
+    record = add(scholars, scholars.award(), term_data(scholars.current))
+    assert record.compliance == ScholarTerm.Compliance.INCOMPLETE
+
+
+def test_add_term_future_refused(scholars: Scholars) -> None:
+    future = AcademicTermFactory.create(school_year_start=2026, term=2)
+    with pytest.raises(ValidationError) as caught:
+        add(scholars, scholars.award(), term_data(future))
+    assert caught.value.messages == [FUTURE_TERM]
+
+
+def test_add_term_duplicate_refused(scholars: Scholars) -> None:
+    award = scholars.award()
+    with pytest.raises(ValidationError) as caught:
+        add(scholars, award, term_data(scholars.previous))
+    assert caught.value.messages == [TERM_EXISTS.format(term=scholars.previous)]
+
+
+def test_add_term_graduated_refused(scholars: Scholars) -> None:
+    award = scholars.award(status=Award.Status.GRADUATED)
+    with pytest.raises(ValidationError) as caught:
+        add(scholars, award, term_data(scholars.current))
+    assert caught.value.messages == [GRADUATED_NO_RECORD]
+
+
+def test_add_term_allowed_while_suspended(scholars: Scholars) -> None:
+    award = scholars.award(status=Award.Status.SUSPENDED)
+    assert add(scholars, award, term_data(scholars.current)).award == award
+
+
+def test_add_term_tier_by_code(scholars: Scholars) -> None:
+    repriced = BenefitTierFactory.create(
+        program=scholars.program, effective_from=scholars.current, code="standard"
+    )
+    record = add(scholars, scholars.award(), term_data(scholars.current))
+    assert record.tier == repriced
+
+
+def test_add_term_listed_school_copies_type_and_scale(scholars: Scholars) -> None:
+    school = SchoolFactory.create(type=School.Type.LCU, grading_scale=School.Scale.ONE_TO_FIVE)
+    record = add(
+        scholars,
+        scholars.award(),
+        term_data(scholars.current, school=school, school_name="", gwa=Decimal("1.75")),
+    )
+    assert (record.school, record.school_name, record.school_type, record.gwa_scale) == (
+        school,
+        "",
+        "lcu",
+        "one_to_five",
+    )
+
+
+def test_add_term_proposes_merit(scholars: Scholars) -> None:
+    Program.objects.filter(pk=scholars.program.pk).update(merit_min_gwa_percent=Decimal("90"))
+    scholars.program.refresh_from_db()
+    high = add(scholars, scholars.award(), term_data(scholars.current, gwa=Decimal("95")))
+    low = add(scholars, scholars.award(), term_data(scholars.current, gwa=Decimal("85")))
+    assert (high.merit, low.merit) == (True, False)
+
+
+def test_edit_term_gwa_change_reproposes_merit(scholars: Scholars) -> None:
+    Program.objects.filter(pk=scholars.program.pk).update(merit_min_gwa_percent=Decimal("90"))
+    scholars.program.refresh_from_db()
+    award = scholars.award()
+    record = add(scholars, award, term_data(scholars.current, gwa=Decimal("85")))
+    confirm_merit(
+        actor=scholars.actor,
+        program=scholars.program,
+        award=award,
+        scholar_term_id=record.pk,
+        merit=False,
+    )
+    edited = edit_term(
+        actor=scholars.actor,
+        program=scholars.program,
+        award=award,
+        scholar_term_id=record.pk,
+        data=term_data(scholars.previous, gwa=Decimal("93")),
+    )
+    assert edited.term == scholars.current  # the term never changes
+    assert (edited.gwa, edited.merit, edited.merit_confirmed_by) == (Decimal("93.00"), True, None)
+    event = AuditEvent.objects.get(action="scholar_term.updated")
+    assert event.data == {"fields": ["gwa"]}
+
+
+def test_confirm_and_deny_merit(scholars: Scholars) -> None:
+    award = scholars.award()
+    record = award.terms.get()
+    confirmed = confirm_merit(
+        actor=scholars.actor,
+        program=scholars.program,
+        award=award,
+        scholar_term_id=record.pk,
+        merit=True,
+    )
+    assert (confirmed.merit, confirmed.merit_confirmed_by) == (True, scholars.actor)
+    denied = confirm_merit(
+        actor=scholars.actor,
+        program=scholars.program,
+        award=award,
+        scholar_term_id=record.pk,
+        merit=False,
+    )
+    assert (denied.merit, denied.merit_confirmed_by) == (False, scholars.actor)
+    events = AuditEvent.objects.filter(action="scholar_term.merit_confirmed").order_by("pk")
+    assert [event.data for event in events] == [{"merit": True}, {"merit": False}]
+
+
+def test_term_of_other_award_404(scholars: Scholars) -> None:
+    award = scholars.award()
+    other = scholars.award()
+    with pytest.raises(Http404):
+        confirm_merit(
+            actor=scholars.actor,
+            program=scholars.program,
+            award=award,
+            scholar_term_id=other.terms.get().pk,
+            merit=True,
+        )
+
+
+def test_term_writes_404_for_foreign_ids(scholars: Scholars) -> None:
+    foreign = make_scholar(
+        ProgramFactory.create(),
+        BenefitTierFactory.create(effective_from=scholars.previous),
+        [scholars.previous],
+    )
+    with pytest.raises(Http404):
+        add(scholars, foreign, term_data(scholars.current))
+    with pytest.raises(Http404):
+        edit_term(
+            actor=scholars.actor,
+            program=scholars.program,
+            award=foreign,
+            scholar_term_id=foreign.terms.get().pk,
+            data=term_data(scholars.current),
+        )
+    assert not AuditEvent.objects.exists()
+
+
+def test_academic_values_not_in_audit(scholars: Scholars) -> None:
+    add(scholars, scholars.award(), term_data(scholars.current, gwa=Decimal("87.25")))
+    for event in AuditEvent.objects.all():
+        assert "87.25" not in str(event.data)
+        assert "Walk-in College" not in str(event.data)
+
+
+def test_next_year_level_new_school_year_and_same_year(scholars: Scholars) -> None:
+    award = scholars.award()  # one record in 2025 term 2, year 2
+    assert next_year_level(award, scholars.current) == 3
+    same_year = AcademicTermFactory.create(school_year_start=2025, term=3)
+    assert next_year_level(award, same_year) == 2
+    bare = make_scholar(scholars.program, scholars.tier, [scholars.previous])
+    bare.terms.all().delete()
+    assert next_year_level(bare, scholars.current) is None

@@ -338,3 +338,18 @@ def scholar_record(award: Award, *, term: AcademicTerm | None, today: date) -> S
         renewal=renewal_for(award, term),
         at_risk=at_risk_reasons(award, award.program, term, today),
     )
+
+
+def next_year_level(award: Award, term: AcademicTerm) -> int | None:
+    """The latest record's year level, plus one when `term` is in a later school year."""
+    latest = (
+        ScholarTerm.objects.filter(award=award, term__sort_key__lt=term.sort_key)
+        .select_related("term")
+        .order_by("-term__sort_key")
+        .first()
+    )
+    if latest is None or latest.year_level is None:
+        return None
+    if term.school_year_start > latest.term.school_year_start:
+        return latest.year_level + 1
+    return latest.year_level

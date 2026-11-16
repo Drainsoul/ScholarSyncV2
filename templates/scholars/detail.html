@@ -31,10 +31,11 @@
   </section>
   <section class="card" aria-labelledby="terms-title">
     <h2 class="card__title" id="terms-title">Terms</h2>
+    {% if award.status != "graduated" %}<p><a class="btn btn--secondary" href="{% url 'scholars:term-new' program=program.slug pk=award.pk %}">{% icon "plus" %}Add a term record</a></p>{% endif %}
     {% if record.terms %}
     <div class="table-wrap" role="region" aria-labelledby="terms-title" tabindex="0">
       <table class="table table--stack">
-        <thead><tr><th scope="col">Term</th><th scope="col">School</th><th scope="col">Course and year</th><th scope="col" class="num">GWA</th><th scope="col" class="num">Units</th><th scope="col">Tier</th><th scope="col">Merit</th><th scope="col">Documents</th></tr></thead>
+        <thead><tr><th scope="col">Term</th><th scope="col">School</th><th scope="col">Course and year</th><th scope="col" class="num">GWA</th><th scope="col" class="num">Units</th><th scope="col">Tier</th><th scope="col">Merit</th><th scope="col">Documents</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
         <tbody>{% for record_term in record.terms %}<tr>
           <th scope="row">{{ record_term.term }}</th>
           <td data-label="School">{% if record_term.school %}{{ record_term.school.name }}{% else %}{{ record_term.school_name|default:"Not given" }}{% endif %}</td>
@@ -44,6 +45,17 @@
           <td data-label="Tier">{{ record_term.tier.name|default:"" }}</td>
           <td data-label="Merit">{% if record_term.merit_confirmed_by %}{% if record_term.merit %}Merit: Confirmed{% else %}No merit{% endif %}{% elif record_term.merit %}Merit: Proposed{% else %}No merit{% endif %}</td>
           <td data-label="Documents">{{ record_term.get_compliance_display }}</td>
+          <td>
+            <div class="btn-row">
+              <a class="btn btn--secondary" href="{% url 'scholars:term-edit' program=program.slug pk=award.pk term=record_term.pk %}">Edit<span class="visually-hidden"> {{ record_term.term }}</span></a>
+              {% if record_term.merit_confirmed_by %}
+              <form method="post" action="{% url 'scholars:term-merit' program=program.slug pk=award.pk term=record_term.pk %}">{% csrf_token %}<input type="hidden" name="merit" value="{% if record_term.merit %}no{% else %}yes{% endif %}"><button type="submit" class="btn btn--secondary">Change<span class="visually-hidden"> merit for {{ record_term.term }}</span></button></form>
+              {% else %}
+              <form method="post" action="{% url 'scholars:term-merit' program=program.slug pk=award.pk term=record_term.pk %}">{% csrf_token %}<input type="hidden" name="merit" value="yes"><button type="submit" class="btn btn--primary">Confirm merit</button></form>
+              <form method="post" action="{% url 'scholars:term-merit' program=program.slug pk=award.pk term=record_term.pk %}">{% csrf_token %}<input type="hidden" name="merit" value="no"><button type="submit" class="btn btn--secondary">No merit</button></form>
+              {% endif %}
+            </div>
+          </td>
         </tr>{% endfor %}</tbody>
       </table>
     </div>

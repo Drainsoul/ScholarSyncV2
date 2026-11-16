@@ -2,8 +2,10 @@ from typing import Any
 
 from django import forms
 
+from apps.applications.staff_forms import AcademicsForm
 from apps.awards.models import Award
-from apps.programs.models import BenefitTier
+from apps.awards.services import TermData
+from apps.programs.models import AcademicTerm, BenefitTier
 from apps.programs.selectors import current_term, tiers_in_force
 
 
@@ -37,3 +39,53 @@ class StatusForm(forms.Form):
         error_messages={"max_length": "Keep the reason under 1,000 characters."},
         help_text="Staff see the reason on the scholar's record.",
     )
+
+
+class TermRecordForm(AcademicsForm):
+    """A staff term record: the M8b school-and-grades form, plus the term and the documents check.
+
+    Editing a record drops the term field: the term never changes.
+    """
+
+    term = forms.ModelChoiceField(
+        label="Term",
+        queryset=AcademicTerm.objects.none(),
+        empty_label=None,
+        error_messages={"invalid_choice": "Choose a term this scholar has no record for yet."},
+    )
+    compliance_checked = forms.BooleanField(label="Renewal documents checked", required=False)
+
+    def __init__(self, *args: Any, award: Award, editing: bool = False, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        if editing:
+            del self.fields["term"]
+            return
+        current = current_term()
+        term_field = self.fields["term"]
+        assert isinstance(term_field, forms.ModelChoiceField)
+        if current is not None:
+            term_field.queryset = (
+                AcademicTerm.objects.filter(sort_key__lte=current.sort_key)
+                .exclude(pk__in=award.terms.values("term_id"))
+                .order_by("-sort_key")
+            )
+        self.order_fields(["term"])
+
+    def term_data(self, term: AcademicTerm) -> TermData:
+        cleaned = self.cleaned_data
+        return TermData(
+            term=term,
+            school=cleaned.get("school"),
+            school_name=cleaned.get("school_name", ""),
+            school_type=cleaned.get("school_type") or "",
+            gwa_scale=cleaned.get("gwa_scale") or "",
+            course=(cleaned.get("course") or "").strip(),
+            year_level=cleaned.get("year_level"),
+            gwa=cleaned.get("gwa"),
+            units=cleaned.get("units"),
+            compliance_checked=bool(cleaned.get("compliance_checked")),
+        )
+
+
+class MeritForm(forms.Form):
+    merit = forms.ChoiceField(choices=[("yes", "Confirm merit"), ("no", "No merit")])

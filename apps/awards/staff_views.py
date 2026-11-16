@@ -15,7 +15,7 @@ from django.views.generic import TemplateView
 
 from apps.accounts.models import User
 from apps.awards import services
-from apps.awards.models import Award
+from apps.awards.models import Award, ScholarTerm
 from apps.awards.selectors import (
     DEFAULT_SCHOLAR_TAB,
     SCHOLAR_TABS,
@@ -23,6 +23,7 @@ from apps.awards.selectors import (
     RenewalStatus,
     ScholarFilters,
     at_risk_reasons,
+    next_year_level,
     parse_scholar_filters,
     renewal_for,
     scholar_record,
@@ -30,12 +31,12 @@ from apps.awards.selectors import (
     staff_award,
 )
 from apps.awards.services import STATUS_LABELS
-from apps.awards.staff_forms import AwardEditForm, StatusForm
+from apps.awards.staff_forms import AwardEditForm, MeritForm, StatusForm, TermRecordForm
 from apps.awards.views import AWARD_TONES
 from apps.core.permissions import ProgramStaffRequiredMixin
 from apps.core.shell import shell_context
 from apps.programs.models import AcademicTerm, Program
-from apps.programs.selectors import application_term, window_state
+from apps.programs.selectors import application_term, current_term, window_state
 
 PAGE_SIZE = 25
 
@@ -255,4 +256,115 @@ class ScholarStatusView(ProgramStaffRequiredMixin, View):
             request,
             f"{STATUS_LABELS[to]}. The award is now {changed.get_status_display().lower()}.",
         )
+        return redirect(_record_url(self.program, award.pk))
+
+
+class TermFormView(ProgramStaffRequiredMixin, View):
+    """Add a term record (no `term` in the URL) or correct one."""
+
+    template_name = "scholars/term_form.html"
+
+    def _record(self, award: Award, kwargs: dict[str, Any]) -> ScholarTerm | None:
+        if "term" not in kwargs:
+            return None
+        record = award.terms.select_related("term", "school").filter(pk=kwargs["term"]).first()
+        if record is None:
+            raise Http404("No such term record.")
+        return record
+
+    def _render(
+        self,
+        request: HttpRequest,
+        award: Award,
+        form: TermRecordForm,
+        record: ScholarTerm | None,
+        status: int = 200,
+    ) -> HttpResponse:
+        context = {
+            **shell_context(request, area="staff", program=self.program),
+            "award": award,
+            "form": form,
+            "record": record,
+            "record_url": _record_url(self.program, award.pk),
+        }
+        return render(request, self.template_name, context, status=status)
+
+    def get(self, request: HttpRequest, program: str, pk: int, **kwargs: Any) -> HttpResponse:
+        award = staff_award(self.program, pk)
+        record = self._record(award, kwargs)
+        if record is None:
+            term = current_term()
+            initial: dict[str, Any] = {"term": term}
+            if term is not None:
+                initial["year_level"] = next_year_level(award, term)
+            form = TermRecordForm(initial=initial, award=award)
+        else:
+            form = TermRecordForm(
+                initial={
+                    "school": record.school,
+                    "school_name": record.school_name,
+                    "school_type": record.school_type,
+                    "gwa_scale": record.gwa_scale,
+                    "course": record.course,
+                    "year_level": record.year_level,
+                    "gwa": record.gwa,
+                    "units": record.units,
+                    "compliance_checked": record.compliance == ScholarTerm.Compliance.COMPLETE,
+                },
+                award=award,
+                editing=True,
+            )
+        return self._render(request, award, form, record)
+
+    def post(self, request: HttpRequest, program: str, pk: int, **kwargs: Any) -> HttpResponse:
+        award = staff_award(self.program, pk)
+        record = self._record(award, kwargs)
+        form = TermRecordForm(request.POST, award=award, editing=record is not None)
+        if not form.is_valid():
+            return self._render(request, award, form, record, status=400)
+        try:
+            if record is None:
+                services.add_term(
+                    actor=_actor(request),
+                    program=self.program,
+                    award=award,
+                    data=form.term_data(form.cleaned_data["term"]),
+                    request=request,
+                )
+                message = "Term record added."
+            else:
+                services.edit_term(
+                    actor=_actor(request),
+                    program=self.program,
+                    award=award,
+                    scholar_term_id=record.pk,
+                    data=form.term_data(record.term),
+                    request=request,
+                )
+                message = "Term record saved."
+        except ValidationError as error:
+            form.add_error(None, error)
+            return self._render(request, award, form, record, status=400)
+        messages.success(request, message)
+        return redirect(_record_url(self.program, award.pk))
+
+
+class TermMeritView(ProgramStaffRequiredMixin, View):
+    http_method_names = ["post", "options"]
+
+    def post(self, request: HttpRequest, program: str, pk: int, term: int) -> HttpResponse:
+        award = staff_award(self.program, pk)
+        form = MeritForm(request.POST)
+        if not form.is_valid():
+            return HttpResponse("Choose Confirm merit or No merit.", status=400)
+        merit = form.cleaned_data["merit"] == "yes"
+        services.confirm_merit(
+            actor=_actor(request),
+            program=self.program,
+            award=award,
+            scholar_term_id=term,
+            merit=merit,
+            request=request,
+        )
+        messages.success(request, "Merit confirmed." if merit else "Marked as no merit.")
         return redirect(_record_url(self.program, award.pk))

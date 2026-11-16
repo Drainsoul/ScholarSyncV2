@@ -1,5 +1,8 @@
 """Award writes. Audit data holds codes and ids only."""
 
+from dataclasses import dataclass
+from decimal import Decimal
+
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.http import Http404, HttpRequest
@@ -7,10 +10,12 @@ from django.http import Http404, HttpRequest
 from apps.accounts.models import User
 from apps.applications.models import Application
 from apps.awards.models import Award, ScholarTerm
+from apps.awards.selectors import renewal_tier
 from apps.core import audit
 from apps.core.permissions import require_program_staff
 from apps.core.transitions import assert_transition
-from apps.programs.models import AcademicTerm, BenefitTier, Program
+from apps.matching.eligibility import Academic, merit_likely
+from apps.programs.models import AcademicTerm, BenefitTier, Program, School
 from apps.programs.selectors import current_term, tiers_in_force
 from apps.students.models import StudentProfile
 
@@ -274,3 +279,169 @@ def change_status(
         data={"from": previous, "to": to},
     )
     return locked
+
+
+FUTURE_TERM = "Record terms up to the current one only."
+GRADUATED_NO_RECORD = "This scholar has graduated, so the award takes no new term records."
+
+
+@dataclass(frozen=True)
+class TermData:
+    term: AcademicTerm
+    school: School | None
+    school_name: str
+    school_type: str
+    gwa_scale: str
+    course: str
+    year_level: int | None
+    gwa: Decimal | None
+    units: int | None
+    compliance_checked: bool
+
+
+def _record_values(data: TermData) -> dict[str, object]:
+    """The record's school and grades; a listed school supplies its own type and scale."""
+    school = data.school
+    return {
+        "school": school,
+        "school_name": "" if school is not None else data.school_name,
+        "school_type": school.type if school is not None else data.school_type,
+        "gwa_scale": school.grading_scale if school is not None else data.gwa_scale,
+        "course": data.course,
+        "year_level": data.year_level,
+        "gwa": data.gwa,
+        "units": data.units,
+        "compliance": (
+            ScholarTerm.Compliance.COMPLETE
+            if data.compliance_checked
+            else ScholarTerm.Compliance.INCOMPLETE
+        ),
+    }
+
+
+def _proposed_merit(program: Program, values: dict[str, object]) -> bool:
+    school = values["school"]
+    academic = Academic(
+        school=school if isinstance(school, School) else None,
+        school_name=str(values["school_name"]),
+        school_type=str(values["school_type"]),
+        gwa_scale=str(values["gwa_scale"]),
+        gwa=values["gwa"] if isinstance(values["gwa"], Decimal) else None,
+        units=None,
+        course="",
+        year_level=None,
+    )
+    return merit_likely(program, academic) is True
+
+
+def _locked_record(award: Award, scholar_term_id: int) -> ScholarTerm:
+    record = (
+        ScholarTerm.objects.select_for_update(of=("self",))
+        .select_related("term")
+        .filter(pk=scholar_term_id, award=award)
+        .first()
+    )
+    if record is None:
+        raise Http404("No such term record.")
+    return record
+
+
+@transaction.atomic
+def add_term(
+    *,
+    actor: User,
+    program: Program,
+    award: Award,
+    data: TermData,
+    request: HttpRequest | None = None,
+) -> ScholarTerm:
+    """A term record entered by staff (walk-ins, terms recorded outside the app)."""
+    _, locked = _lock_award(actor, program, award.pk)
+    if locked.status == Award.Status.GRADUATED:
+        raise ValidationError(GRADUATED_NO_RECORD)
+    current = current_term()
+    if current is None or data.term.sort_key > current.sort_key:
+        raise ValidationError(FUTURE_TERM)
+    if ScholarTerm.objects.filter(award=locked, term=data.term).exists():
+        raise ValidationError(TERM_EXISTS.format(term=data.term))
+    tier = renewal_tier(locked, data.term) or locked.tier
+    values = _record_values(data)
+    record = ScholarTerm.objects.create(
+        award=locked,
+        term=data.term,
+        tier=tier,
+        merit=_proposed_merit(program, values),
+        **values,
+    )
+    audit.record(
+        actor=actor,
+        action="scholar_term.created",
+        target=record,
+        program=program,
+        request=request,
+        data={"award": locked.pk, "term": data.term.pk, "source": "staff", "tier": tier.code},
+    )
+    return record
+
+
+@transaction.atomic
+def edit_term(
+    *,
+    actor: User,
+    program: Program,
+    award: Award,
+    scholar_term_id: int,
+    data: TermData,
+    request: HttpRequest | None = None,
+) -> ScholarTerm:
+    """Correct a term record. The term itself never changes; a new GWA re-proposes merit."""
+    _, locked = _lock_award(actor, program, award.pk)
+    record = _locked_record(locked, scholar_term_id)
+    values = _record_values(data)
+    changed = [field for field, value in values.items() if getattr(record, field) != value]
+    if not changed:
+        return record
+    for field in changed:
+        setattr(record, field, values[field])
+    update = [*changed]
+    if {"gwa", "gwa_scale", "school"} & set(changed):
+        record.merit = _proposed_merit(program, values)
+        record.merit_confirmed_by = None
+        update += ["merit", "merit_confirmed_by"]
+    record.save(update_fields=[*update, "updated_at"])
+    audit.record(
+        actor=actor,
+        action="scholar_term.updated",
+        target=record,
+        program=program,
+        request=request,
+        data={"fields": changed},
+    )
+    return record
+
+
+@transaction.atomic
+def confirm_merit(
+    *,
+    actor: User,
+    program: Program,
+    award: Award,
+    scholar_term_id: int,
+    merit: bool,
+    request: HttpRequest | None = None,
+) -> ScholarTerm:
+    """Staff confirm (or deny) merit for one term; M10 pays merit only when confirmed."""
+    _, locked = _lock_award(actor, program, award.pk)
+    record = _locked_record(locked, scholar_term_id)
+    record.merit = merit
+    record.merit_confirmed_by = actor
+    record.save(update_fields=["merit", "merit_confirmed_by", "updated_at"])
+    audit.record(
+        actor=actor,
+        action="scholar_term.merit_confirmed",
+        target=record,
+        program=program,
+        request=request,
+        data={"merit": merit},
+    )
+    return record
