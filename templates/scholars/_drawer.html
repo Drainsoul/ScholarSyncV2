@@ -1,0 +1,25 @@
+{% load ui %}{% with award=scholar.award %}
+<div class="person">
+  {% avatar award.profile.full_name 0 "lg" %}
+  <div class="person__text">
+    <h3 class="person__name">{{ award.profile.full_name }}</h3>
+    {% if award.profile.user %}<p class="person__email">{{ award.profile.user.email }}</p>{% endif %}
+    <p class="person__meta">{% status scholar.tone award.get_status_display %} <span>({{ award.tier.name }} tier)</span></p>
+  </div>
+</div>
+<dl class="facts">
+  <dt>School</dt><dd>{{ award.latest_school_name|default:"Not given" }}</dd>
+  <dt>Course and year</dt><dd>{{ award.latest_course|default:"Not given" }}{% if award.latest_year_level %}, year {{ award.latest_year_level }}{% endif %}</dd>
+  <dt>Barangay</dt><dd>{{ award.profile.get_barangay_display|default:"Not given" }}</dd>
+  <dt>Allowance</dt><dd class="num">{{ award.tier.base_amount|peso }} a term</dd>
+  <dt>Scholar since</dt><dd>{{ award.started_term }}</dd>
+</dl>
+<div class="renewal">
+  <div class="renewal__head">
+    <p class="renewal__title">Renewal</p>
+    {% if award.latest_gwa is not None %}<p class="renewal__gwa num{% if scholar.at_risk %} renewal__gwa--low{% endif %}">GWA {{ award.latest_gwa }}</p>{% endif %}
+  </div>
+  <p class="renewal__note">{{ scholar.renewal }}</p>
+  {% for reason in scholar.at_risk %}<p class="renewal__note">{{ reason }}</p>{% endfor %}
+</div>
+{% endwith %}

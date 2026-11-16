@@ -77,6 +77,7 @@ def shell_context(
         if area == "staff" and program is not None:
             students = reverse("workspace:students", kwargs={"program": program.slug})
             queue = reverse("review:queue", kwargs={"program": program.slug})
+            scholar_list = reverse("scholars:list", kwargs={"program": program.slug})
             path = request.path
             nav = [
                 {"label": label, "url": home, "current": path == home, "count": 0, "icon": icon},
@@ -86,6 +87,13 @@ def shell_context(
                     "current": path.startswith(queue),
                     "count": waiting_count(program),
                     "icon": "file-text",
+                },
+                {
+                    "label": "Scholars",
+                    "url": scholar_list,
+                    "current": path.startswith(scholar_list),
+                    "count": 0,
+                    "icon": "school",
                 },
                 {
                     "label": "Students",

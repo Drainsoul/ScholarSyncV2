@@ -1,0 +1,50 @@
+{% extends "layouts/staff.html" %}{% load ui %}
+{% block title %}Scholars{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Scholars</h1><p class="page-header__meta">Everyone with a {{ program.name }} award{% if term %}, {{ term }}{% endif %}.</p></div>
+</div>
+<section class="card list-card" aria-labelledby="list-heading">
+  <h2 class="visually-hidden" id="list-heading">Scholar list</h2>
+  {% include "components/tabs.html" with tabs_label="Scholar status" %}
+  <form class="table-toolbar" method="get" action="{{ list_url }}" role="search" aria-label="Filter scholars">
+    <input type="hidden" name="status" value="{{ filters.status }}">
+    <div class="table-toolbar__search">
+      <label class="visually-hidden" for="scholar-q">Search by name</label>
+      {% icon "search" %}<input class="input" type="search" id="scholar-q" name="q" value="{{ filters.q }}" placeholder="Search by name">
+    </div>
+    <label class="visually-hidden" for="scholar-tier">Tier</label>
+    <select class="input" id="scholar-tier" name="tier">
+      <option value="">All tiers</option>
+      {% for code, name in tiers %}<option value="{{ code }}"{% if filters.tier == code %} selected{% endif %}>{{ name }}</option>{% endfor %}
+    </select>
+    <button class="btn btn--secondary" type="submit">{% icon "filter" %}Apply filters</button>
+    <p class="table-toolbar__meta">Sorted by name, A to Z</p>
+  </form>
+  {% if rows %}
+  <div class="table-wrap" role="region" aria-labelledby="list-heading" tabindex="0">
+    <table class="table table--stack" aria-labelledby="list-heading">
+      <thead><tr>
+        <th scope="col">Scholar</th><th scope="col">School</th><th scope="col">Tier</th>
+        <th scope="col" class="num">GWA</th><th scope="col" class="num">Terms</th><th scope="col">Status</th>
+      </tr></thead>
+      <tbody>{% for row in rows %}{% with award=row.award %}<tr id="scholar-{{ award.pk }}"{% if drawer and drawer.award.pk == award.pk %} class="is-selected" aria-current="true"{% endif %}>
+        <th scope="row"><span class="identity">{% avatar award.profile.full_name forloop.counter0 %}<span class="identity__text"><a class="identity__name" href="?{% if list_query %}{{ list_query }}&amp;{% endif %}scholar={{ award.pk }}#scholar-drawer">{{ award.profile.full_name }}</a>{% if award.profile.user %}<span class="text-sm text-muted">{{ award.profile.user.email }}</span>{% endif %}</span></span></th>
+        <td data-label="School">{{ award.latest_school_name|default:"Not given" }}</td>
+        <td data-label="Tier">{{ award.tier.name }}</td>
+        <td class="num" data-label="GWA">{{ award.latest_gwa|default_if_none:"Not given" }}</td>
+        <td class="num" data-label="Terms">{{ award.term_count }}</td>
+        <td data-label="Status">{% status row.tone award.get_status_display %}</td>
+      </tr>{% endwith %}{% endfor %}</tbody>
+    </table>
+  </div>
+  <div class="list-card__foot">
+    <p class="table-count num">Showing {{ page.start_index }}–{{ page.end_index }} of {{ page.paginator.count }}</p>
+    {% pagination page %}
+  </div>
+  {% else %}
+  {% include "components/empty_state.html" with title="No scholars here." %}
+  {% endif %}
+</section>
+{% if drawer %}{% include "components/drawer.html" with drawer_id="scholar-drawer" title="Scholar details" close_url=close_url body_template="scholars/_drawer.html" scholar=drawer %}{% endif %}
+{% endblock %}

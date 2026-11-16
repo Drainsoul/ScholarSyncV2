@@ -4,6 +4,7 @@ from enum import StrEnum
 
 from django.db.models import Count, Exists, OuterRef, Q, QuerySet, Subquery, Value
 from django.db.models.functions import Coalesce
+from django.http import Http404, QueryDict
 
 from apps.accounts.models import User
 from apps.applications.models import Application
@@ -187,6 +188,7 @@ def with_latest_term(rows: QuerySet[Award]) -> QuerySet[Award]:
         latest_gwa_scale=_latest("gwa_scale"),
         latest_units=_latest("units"),
         latest_year_level=_latest("year_level"),
+        latest_course=_latest("course"),
         latest_school_name=latest_school,
         term_count=Coalesce(count, Value(0)),
     )
@@ -241,3 +243,70 @@ def at_risk_reasons(
         if renewal_for(award, term).status == RenewalStatus.DUE:
             reasons.append("Not renewed, and renewals have closed.")
     return reasons
+
+
+SCHOLAR_TABS: dict[str, str] = {
+    "active": "Active",
+    "suspended": "Suspended",
+    "inactive": "Inactive",
+    "graduated": "Graduated",
+    "at_risk": "At risk",
+    "not_renewed": "Not renewed",
+    "all": "All",
+}
+DEFAULT_SCHOLAR_TAB = "active"
+
+
+@dataclass(frozen=True)
+class ScholarFilters:
+    status: str = DEFAULT_SCHOLAR_TAB
+    q: str = ""
+    tier: str = ""
+
+
+def parse_scholar_filters(params: QueryDict, program: Program) -> ScholarFilters:
+    """Unknown values fall back to the defaults, never an error."""
+    status = params.get("status", "")
+    if status not in SCHOLAR_TABS:
+        status = DEFAULT_SCHOLAR_TAB
+    tier = params.get("tier", "")
+    if tier and not program.tiers.filter(code=tier).exists():
+        tier = ""
+    return ScholarFilters(
+        status=status, q=params.get("q", "").replace("\x00", "").strip()[:200], tier=tier
+    )
+
+
+def _program_awards(program: Program) -> QuerySet[Award]:
+    return with_latest_term(
+        Award.objects.filter(program=program).select_related(
+            "profile", "profile__user", "tier", "started_term"
+        )
+    )
+
+
+def scholars(
+    program: Program, filters: ScholarFilters, *, term: AcademicTerm | None, today: date
+) -> QuerySet[Award]:
+    rows = _program_awards(program)
+    if filters.status in Award.Status.values:
+        rows = rows.filter(status=filters.status)
+    elif filters.status == "at_risk":
+        rows = rows.filter(at_risk_q(program, term, today))
+    elif filters.status == "not_renewed":
+        rows = rows.filter(renewal_due_q(term)) if term is not None else rows.none()
+    if filters.tier:
+        rows = rows.filter(tier__code=filters.tier)
+    for word in filters.q.split():
+        rows = rows.filter(
+            Q(profile__first_name__icontains=word) | Q(profile__last_name__icontains=word)
+        )
+    return rows.order_by("profile__last_name", "profile__first_name", "pk")
+
+
+def staff_award(program: Program, pk: int) -> Award:
+    """One of the program's awards, annotated; another program's id is a 404."""
+    award = _program_awards(program).filter(pk=pk).first()
+    if award is None:
+        raise Http404("No such scholar.")
+    return award
