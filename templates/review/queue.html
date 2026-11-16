@@ -4,6 +4,7 @@
 {% block content %}
   <div class="page-header">
     <div><h1>Applications</h1><p class="page-header__meta">Submitted applications to {{ program.name }}.</p></div>
+    <a class="btn btn--primary" href="{% url 'review:behalf-new' program=program.slug %}">File for a student</a>
   </div>
   <form id="queue-filters" class="table-toolbar" method="get" action="{% url 'review:queue' program=program.slug %}" role="search" aria-label="Filter applications"
     hx-get="{% url 'review:queue' program=program.slug %}" hx-target="#queue-table" hx-swap="outerHTML" hx-push-url="true"

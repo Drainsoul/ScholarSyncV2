@@ -1,0 +1,62 @@
+{% extends "layouts/staff.html" %}
+{% load ui %}
+{% block title %}File for a student{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div><h1>File for a student</h1><p class="page-header__meta">Fill in and submit an application to {{ program.name }} for a student you created a profile for.</p></div>
+  </div>
+  {% if error %}<div class="banner banner--danger" role="alert"><div><p>{{ error }}</p></div></div>{% endif %}
+  <h2>In progress</h2>
+  {% if in_progress %}
+  <div class="table-wrap" role="region" aria-label="Applications in progress" tabindex="0">
+    <table class="table">
+      <thead><tr><th scope="col">Student</th><th scope="col">Term</th><th scope="col">Status</th><th scope="col">Updated</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+      <tbody>{% for row in in_progress %}<tr>
+        <th scope="row">{{ row.application.profile.full_name }}</th>
+        <td>{{ row.application.term }}</td>
+        <td>{% status row.tone row.application.get_status_display %}</td>
+        <td>{{ row.application.updated_at|date:"j M Y" }}</td>
+        <td><a class="btn btn--secondary" href="{% url 'review:behalf' program=program.slug pk=row.application.pk %}">Continue<span class="visually-hidden"> for {{ row.application.profile.full_name }}</span></a></td>
+      </tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% else %}
+  <p>Nothing in progress.</p>
+  {% endif %}
+  <h2>Students</h2>
+  {% if profile_rows or q %}
+  <form class="table-toolbar" method="get" action="{% url 'review:behalf-new' program=program.slug %}" role="search" aria-label="Search students">
+    <div class="table-toolbar__search">
+      <label class="visually-hidden" for="filing-q">Name</label>
+      {% icon "search" %}<input class="input" type="search" id="filing-q" name="q" value="{{ q }}" placeholder="Search by name">
+    </div>
+    <button class="btn btn--secondary" type="submit">Search</button>
+  </form>
+  {% endif %}
+  {% if profile_rows %}
+  <p class="table-count" role="status">{{ total }} student{{ total|pluralize }}</p>
+  <div class="table-wrap" role="region" aria-label="Students" tabindex="0">
+    <table class="table">
+      <thead><tr><th scope="col">Name</th><th scope="col">Birth date</th><th scope="col">Profile</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+      <tbody>{% for row in profile_rows %}<tr>
+        <th scope="row">{{ row.profile.full_name }}</th>
+        <td>{% if row.profile.birth_date %}{{ row.profile.birth_date|date:"j M Y" }}{% endif %}</td>
+        <td>{% if row.claimed %}Claimed{% else %}Not claimed{% endif %}</td>
+        <td>
+          <form method="post" action="{% url 'review:behalf-new' program=program.slug %}">
+            {% csrf_token %}
+            <input type="hidden" name="profile" value="{{ row.profile.pk }}">
+            <button type="submit" class="btn btn--primary">File an application<span class="visually-hidden"> for {{ row.profile.full_name }}</span></button>
+          </form>
+        </td>
+      </tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% pagination page %}
+  {% elif q %}
+  {% include "components/empty_state.html" with title="No students match this name" body="Try another name." action_url=clear_url action_label="Clear search" %}
+  {% else %}
+  {% url 'workspace:students-new' program=program.slug as new_student_url %}
+  {% include "components/empty_state.html" with title="No students yet. Add one on the Students page first." action_url=new_student_url action_label="New profile" %}
+  {% endif %}
+{% endblock %}
