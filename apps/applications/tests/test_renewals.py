@@ -357,3 +357,16 @@ def test_submit_renewal_refused_when_award_no_longer_active(scholar: Scholar, st
     assert caught.value.messages == [RENEWAL_NOT_ACTIVE]
     application.refresh_from_db()
     assert application.status == Application.Status.DRAFT
+
+
+def test_unticked_no_failing_box_asks_to_confirm(client) -> None:
+    world = scholar_world(renewal_no_failing_grades=True)
+    application = renewal_ready(world)
+    client.force_login(world.user)
+    response = client.post(
+        reverse("applications:submit", args=[application.pk]), {"declaration": "on"}
+    )
+    assert response.status_code == 400
+    body = html.unescape(response.content.decode())
+    assert "Confirm below that you have no failing, incomplete or dropped subjects." in body
+    assert "Contact the scholarship office." not in body

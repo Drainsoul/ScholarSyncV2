@@ -39,7 +39,9 @@ class RenewalSubmitForm(forms.Form):
     def clean(self) -> dict[str, Any]:
         cleaned = super().clean() or {}
         cleaned["tier"] = None
-        if "declares_no_failing" not in self.fields:
+        # A checkbox can't say "no": unticked means not yet confirmed, which the checklist asks
+        # for, rather than a declaration of failing grades.
+        if "declares_no_failing" not in self.fields or not cleaned.get("declares_no_failing"):
             cleaned["declares_no_failing"] = None
         return cleaned
 
