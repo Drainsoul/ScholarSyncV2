@@ -7,7 +7,9 @@ wrong place, so the staff views swap them here. The student copy is not touched.
 
 from apps.matching.checklist import CHECK_LABELS
 
-ACADEMIC_CODES = frozenset({"school", "allowed_schools", "school_type", "units", "gwa"})
+ACADEMIC_CODES = frozenset(
+    {"school", "allowed_schools", "school_type", "units", "gwa", "renewal_gwa", "renewal_units"}
+)
 PROFILE_CODES = frozenset({"residency", "voter"})
 
 ENTER_ABOVE = "Enter this in School and grades above."

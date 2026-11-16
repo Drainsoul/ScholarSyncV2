@@ -1,10 +1,14 @@
 from decimal import Decimal
 
 from apps.matching.checklist import CHECK_LABELS, snapshot_items
+from apps.matching.eligibility import evaluate_renewal
 from apps.matching.tests.test_eligibility import (
+    TERM,
+    TODAY,
     make_academic,
     make_profile,
     make_program,
+    renewal_program,
     run,
 )
 from apps.programs.models import School
@@ -31,7 +35,15 @@ def test_snapshot_items_cover_every_check_code() -> None:
         "voter",
     }
     assert codes <= set(CHECK_LABELS)
-    assert set(CHECK_LABELS) == codes
+    renewal = evaluate_renewal(
+        renewal_program(renewal_no_failing_grades=True),
+        make_academic(),
+        today=TODAY,
+        term=TERM,
+        declares_no_failing=None,
+    )
+    renewal_codes = {check.code for check in renewal.checks}
+    assert set(CHECK_LABELS) == codes | renewal_codes
 
 
 def test_snapshot_items_shows_reasons_only_when_not_met() -> None:
@@ -55,3 +67,23 @@ def test_snapshot_items_empty_or_unknown() -> None:
     assert snapshot_items({"checks": [{"code": "gwa", "state": "weird"}]}) == []
     odd = snapshot_items({"checks": [{"code": "new_rule", "state": "met"}]})
     assert odd[0]["text"] == "New rule"
+
+
+def test_snapshot_items_label_renewal_codes() -> None:
+    snapshot = {
+        "checks": [
+            {"code": "renewal_gwa", "state": "met", "reason": ""},
+            {"code": "renewal_units", "state": "unmet", "reason": "Too few."},
+            {"code": "no_failing", "state": "missing", "reason": "Confirm."},
+        ]
+    }
+    assert [item["text"] for item in snapshot_items(snapshot)] == [
+        "Meets the renewal grade requirement",
+        "Carries enough units to renew",
+        "Declared no failing, incomplete or dropped subjects",
+    ]
+
+
+def test_snapshot_items_unknown_code_falls_back() -> None:
+    items = snapshot_items({"checks": [{"code": "made_up", "state": "met", "reason": ""}]})
+    assert items[0]["text"] == "Made up"

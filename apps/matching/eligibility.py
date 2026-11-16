@@ -206,34 +206,48 @@ def _units_check(program: Program, academic: Academic | None) -> Check:
 
 
 def _gwa_check(program: Program, academic: Academic | None) -> Check:
-    text = rule_sentence(program, "gwa")
+    return _grade_check(
+        "gwa", program, academic, program.min_gwa_percent, program.max_gwa_one_to_five, ""
+    )
+
+
+def _grade_check(
+    code: str,
+    program: Program,
+    academic: Academic | None,
+    percent: Decimal | None,
+    one_to_five: Decimal | None,
+    which: str,
+) -> Check:
+    """A scale-aware GWA check; `which` is "" for new applicants or "renewal " for renewals."""
+    text = rule_sentence(program, code)
     if academic is None or academic.gwa is None or not academic.gwa_scale:
         return Check(
-            "gwa",
+            code,
             CheckState.MISSING,
             text,
             "Add your GWA and grading scale to your profile.",
             EDUCATION_FIX,
         )
     scale = academic.gwa_scale
-    limit = _threshold(scale, program.min_gwa_percent, program.max_gwa_one_to_five)
+    limit = _threshold(scale, percent, one_to_five)
     if limit is None:
         reason = (
             "This program has no grade rule yet for schools that grade on a "
             f"{_scale_label(scale)} scale. Ask the scholarship office."
         )
-        return Check("gwa", CheckState.UNMET, text, reason, "")
+        return Check(code, CheckState.UNMET, text, reason, "")
     if _passes(scale, academic.gwa, limit):
-        return _met("gwa", text)
+        return _met(code, text)
     if scale == School.Scale.PERCENT:
         sentence = f"minimum of {_number(limit)}%"
     else:
         sentence = f"maximum of {limit}"
     return Check(
-        "gwa",
+        code,
         CheckState.UNMET,
         text,
-        f"Your GWA of {academic.gwa} doesn't meet this program's {sentence}.",
+        f"Your GWA of {academic.gwa} doesn't meet this program's {which}{sentence}.",
         "",
     )
 
@@ -287,7 +301,7 @@ def _voter_check(program: Program, profile: StudentProfile) -> Check:
     )
 
 
-def _merit_likely(program: Program, academic: Academic | None) -> bool | None:
+def merit_likely(program: Program, academic: Academic | None) -> bool | None:
     if academic is None or academic.gwa is None or not academic.gwa_scale:
         return None
     limit = _threshold(
@@ -326,5 +340,80 @@ def evaluate(
         eligible=eligible,
         checks=tuple(checks),
         tier_candidates=tuple(tiers) if eligible else (),
-        merit_likely=_merit_likely(program, academic),
+        merit_likely=merit_likely(program, academic),
+    )
+
+
+NO_FAILING_MISSING = "Confirm below that you have no failing, incomplete or dropped subjects."
+NO_FAILING_UNMET = (
+    "Renewing needs no failing, incomplete or dropped subjects this term. "
+    "Contact the scholarship office."
+)
+
+
+def _renewal_units_check(program: Program, academic: Academic | None) -> Check:
+    text = rule_sentence(program, "renewal_units")
+    minimum = program.renewal_min_units
+    assert minimum is not None
+    if academic is None or academic.units is None:
+        return Check(
+            "renewal_units",
+            CheckState.MISSING,
+            text,
+            "Add your units this term to your profile.",
+            EDUCATION_FIX,
+        )
+    if academic.units >= minimum:
+        return _met("renewal_units", text)
+    return Check(
+        "renewal_units",
+        CheckState.UNMET,
+        text,
+        f"You have {academic.units} units; renewing needs at least {minimum}.",
+        "",
+    )
+
+
+def _no_failing_check(program: Program, declares: bool | None) -> Check:
+    text = rule_sentence(program, "no_failing")
+    if declares is None:
+        return Check("no_failing", CheckState.MISSING, text, NO_FAILING_MISSING, "")
+    if declares:
+        return _met("no_failing", text)
+    return Check("no_failing", CheckState.UNMET, text, NO_FAILING_UNMET, "")
+
+
+def evaluate_renewal(
+    program: Program,
+    academic: Academic | None,
+    *,
+    today: date,
+    term: AcademicTerm | None,
+    declares_no_failing: bool | None,
+) -> EligibilityResult:
+    """A scholar's renewal rules. Residency, voter and school lists are not re-checked."""
+    checks = [_window_check(program, today, term), _school_check(academic)]
+    if (
+        program.renewal_min_gwa_percent is not None
+        or program.renewal_max_gwa_one_to_five is not None
+    ):
+        checks.append(
+            _grade_check(
+                "renewal_gwa",
+                program,
+                academic,
+                program.renewal_min_gwa_percent,
+                program.renewal_max_gwa_one_to_five,
+                "renewal ",
+            )
+        )
+    if program.renewal_min_units is not None:
+        checks.append(_renewal_units_check(program, academic))
+    if program.renewal_no_failing_grades:
+        checks.append(_no_failing_check(program, declares_no_failing))
+    return EligibilityResult(
+        eligible=all(check.state == CheckState.MET for check in checks),
+        checks=tuple(checks),
+        tier_candidates=(),
+        merit_likely=merit_likely(program, academic),
     )

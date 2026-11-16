@@ -10,9 +10,10 @@ from apps.matching.eligibility import (
     CheckState,
     EligibilityResult,
     evaluate,
+    evaluate_renewal,
 )
 from apps.programs.models import AcademicTerm, BenefitTier, Program, School
-from apps.programs.rules import rule_sentence, rule_sentences
+from apps.programs.rules import renewal_rule_sentences, rule_sentence, rule_sentences
 from apps.students.barangays import OUTSIDE_TAGUIG
 from apps.students.models import StudentProfile
 
@@ -423,3 +424,149 @@ def test_academic_from_application_none_without_school() -> None:
     from apps.applications.tests.factories import ApplicationFactory
 
     assert Academic.from_application(ApplicationFactory.create()) is None
+
+
+# --- Renewal rules (M9) ---
+
+
+def renewal_program(**overrides: Any) -> Program:
+    values: dict[str, Any] = {
+        "renewal_min_gwa_percent": Decimal("80"),
+        "renewal_max_gwa_one_to_five": None,
+        "renewal_min_units": 15,
+        "renewal_no_failing_grades": False,
+    }
+    values.update(overrides)
+    return make_program(**values)
+
+
+def renew(
+    program: Program,
+    academic: Academic | None = None,
+    *,
+    declares: bool | None = None,
+    term: AcademicTerm | None = TERM,
+) -> EligibilityResult:
+    return evaluate_renewal(
+        program,
+        academic or make_academic(),
+        today=TODAY,
+        term=term,
+        declares_no_failing=declares,
+    )
+
+
+def check_of(result: EligibilityResult, code: str) -> Check:
+    return next(check for check in result.checks if check.code == code)
+
+
+def test_renewal_percent_pass_and_fail() -> None:
+    program = renewal_program()
+    assert renew(program, make_academic(gwa=Decimal("80"))).eligible
+    result = renew(program, make_academic(gwa=Decimal("79.99")))
+    assert not result.eligible
+    gwa = check_of(result, "renewal_gwa")
+    assert gwa.state == CheckState.UNMET
+    assert gwa.reason == "Your GWA of 79.99 doesn't meet this program's renewal minimum of 80%."
+
+
+def test_renewal_one_to_five_pass_and_fail() -> None:
+    program = renewal_program(
+        renewal_min_gwa_percent=None, renewal_max_gwa_one_to_five=Decimal("2.50")
+    )
+    assert renew(program, make_academic(gwa_scale="one_to_five", gwa=Decimal("2.50"))).eligible
+    result = renew(program, make_academic(gwa_scale="one_to_five", gwa=Decimal("2.51")))
+    assert check_of(result, "renewal_gwa").reason == (
+        "Your GWA of 2.51 doesn't meet this program's renewal maximum of 2.50."
+    )
+
+
+def test_renewal_scale_without_rule_is_unmet() -> None:
+    result = renew(renewal_program(), make_academic(gwa_scale="four_point", gwa=Decimal("3.5")))
+    gwa = check_of(result, "renewal_gwa")
+    assert gwa.state == CheckState.UNMET
+    assert "no grade rule yet for schools that grade on a 4.00 point scale" in gwa.reason
+
+
+def test_renewal_gwa_missing() -> None:
+    gwa = check_of(renew(renewal_program(), make_academic(gwa=None)), "renewal_gwa")
+    assert gwa.state == CheckState.MISSING
+    assert gwa.reason == "Add your GWA and grading scale to your profile."
+
+
+def test_renewal_units_unmet_and_missing() -> None:
+    units = check_of(renew(renewal_program(), make_academic(units=12)), "renewal_units")
+    assert units.state == CheckState.UNMET
+    assert units.reason == "You have 12 units; renewing needs at least 15."
+    missing = check_of(renew(renewal_program(), make_academic(units=None)), "renewal_units")
+    assert missing.state == CheckState.MISSING
+    assert missing.reason == "Add your units this term to your profile."
+
+
+def test_renewal_skips_new_applicant_rules() -> None:
+    program = renewal_program()  # make_program sets residency, voter and school types
+    codes = [check.code for check in renew(program).checks]
+    assert codes == ["window", "school", "renewal_gwa", "renewal_units"]
+
+
+def test_renewal_without_rules_checks_window_and_school() -> None:
+    program = renewal_program(renewal_min_gwa_percent=None, renewal_min_units=None)
+    assert [check.code for check in renew(program).checks] == ["window", "school"]
+
+
+NO_FAILING_MISSING = "Confirm below that you have no failing, incomplete or dropped subjects."
+NO_FAILING_UNMET = (
+    "Renewing needs no failing, incomplete or dropped subjects this term. "
+    "Contact the scholarship office."
+)
+
+
+@pytest.mark.parametrize(
+    ("declares", "state", "reason"),
+    [
+        (None, CheckState.MISSING, NO_FAILING_MISSING),
+        (False, CheckState.UNMET, NO_FAILING_UNMET),
+        (True, CheckState.MET, ""),
+    ],
+)
+def test_no_failing_states(declares: bool | None, state: CheckState, reason: str) -> None:
+    program = renewal_program(renewal_no_failing_grades=True)
+    check = check_of(renew(program, declares=declares), "no_failing")
+    assert (check.state, check.reason) == (state, reason)
+
+
+def test_no_failing_absent_when_rule_off() -> None:
+    codes = [check.code for check in renew(renewal_program(), declares=False).checks]
+    assert "no_failing" not in codes
+
+
+def test_renewal_has_no_tier_candidates_and_proposes_merit() -> None:
+    result = renew(renewal_program(), make_academic(gwa=Decimal("95")))
+    assert result.eligible
+    assert result.tier_candidates == ()
+    assert result.merit_likely is True
+
+
+def test_renewal_window_without_term() -> None:
+    assert check_of(renew(renewal_program(), term=None), "window").state == CheckState.UNMET
+
+
+def test_renewal_school_missing() -> None:
+    result = evaluate_renewal(
+        renewal_program(), None, today=TODAY, term=TERM, declares_no_failing=None
+    )
+    assert check_of(result, "school").state == CheckState.MISSING
+
+
+def test_renewal_rule_sentences() -> None:
+    program = renewal_program(
+        renewal_max_gwa_one_to_five=Decimal("2.50"), renewal_no_failing_grades=True
+    )
+    assert renewal_rule_sentences(program) == [
+        "To renew: a GWA of at least 80% (schools that grade in percent). "
+        "To renew: a GWA of 2.50 or better (schools that grade 1 to 5).",
+        "To renew: at least 15 units this term.",
+        "To renew: no failing, incomplete or dropped subjects this term.",
+    ]
+    bare = renewal_program(renewal_min_gwa_percent=None, renewal_min_units=None)
+    assert renewal_rule_sentences(bare) == []

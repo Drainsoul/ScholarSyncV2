@@ -17,6 +17,9 @@ CHECK_LABELS: dict[str, str] = {
     "gwa": "Meets the grade requirement",
     "residency": "Meets the residency requirement",
     "voter": "Is a registered voter",
+    "renewal_gwa": "Meets the renewal grade requirement",
+    "renewal_units": "Carries enough units to renew",
+    "no_failing": "Declared no failing, incomplete or dropped subjects",
 }
 
 

@@ -6,7 +6,7 @@ from django.db.models import Exists, OuterRef, Q
 from apps.accounts.models import User
 from apps.applications.models import Application
 from apps.awards.models import Award
-from apps.matching.eligibility import Academic, EligibilityResult, evaluate
+from apps.matching.eligibility import Academic, EligibilityResult, evaluate, evaluate_renewal
 from apps.matching.legacy_model import Hint, hint_for
 from apps.programs.models import AcademicTerm, Program
 from apps.programs.selectors import application_term, tiers_in_force
@@ -69,6 +69,19 @@ def eligibility_with(
 ) -> EligibilityResult:
     """`eligibility_for` on school and grades the caller already read (None: no current school)."""
     return _evaluate(profile, program, academic, application_term(today), today)
+
+
+def renewal_eligibility_with(
+    award: Award, academic: Academic | None, *, today: date, declares_no_failing: bool | None
+) -> EligibilityResult:
+    """The renewal rules for an award on school and grades the caller already read."""
+    return evaluate_renewal(
+        award.program,
+        academic,
+        today=today,
+        term=application_term(today),
+        declares_no_failing=declares_no_failing,
+    )
 
 
 def match_page(user: User, *, today: date) -> MatchPage:

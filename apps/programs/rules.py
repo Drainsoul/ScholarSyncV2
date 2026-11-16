@@ -39,6 +39,19 @@ def _gwa_sentences(program: Program) -> list[str]:
     return sentences
 
 
+def _renewal_gwa_sentences(program: Program) -> list[str]:
+    sentences: list[str] = []
+    if program.renewal_min_gwa_percent is not None:
+        minimum = f"{program.renewal_min_gwa_percent.normalize():f}"
+        sentences.append(f"To renew: a GWA of at least {minimum}% (schools that grade in percent).")
+    if program.renewal_max_gwa_one_to_five is not None:
+        sentences.append(
+            f"To renew: a GWA of {program.renewal_max_gwa_one_to_five} or better "
+            "(schools that grade 1 to 5)."
+        )
+    return sentences
+
+
 def rule_sentence(
     program: Program, code: str, *, allowed_schools: Sequence[School] | None = None
 ) -> str:
@@ -77,7 +90,25 @@ def rule_sentence(
         return f"Applications must be open (they close on {closes})."
     if code == "school":
         return "You have a current school in your profile."
+    if code == "renewal_gwa":
+        return " ".join(_renewal_gwa_sentences(program))
+    if code == "renewal_units":
+        if program.renewal_min_units is None:
+            return ""
+        return f"To renew: at least {program.renewal_min_units} units this term."
+    if code == "no_failing":
+        if not program.renewal_no_failing_grades:
+            return ""
+        return "To renew: no failing, incomplete or dropped subjects this term."
     raise ValueError(f"Unknown rule code: {code}")
+
+
+def renewal_rule_sentences(program: Program) -> list[str]:
+    """The renewal rules, in the order the renewal checks run."""
+    sentences = [
+        rule_sentence(program, code) for code in ("renewal_gwa", "renewal_units", "no_failing")
+    ]
+    return [sentence for sentence in sentences if sentence]
 
 
 def rule_sentences(program: Program) -> list[str]:
