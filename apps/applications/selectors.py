@@ -7,7 +7,7 @@ from django.http import Http404
 
 from apps.accounts.models import User
 from apps.applications.models import Application, Document, DocumentFile
-from apps.awards.selectors import holds_active_award
+from apps.awards.selectors import holds_award
 from apps.core.permissions import require_program_staff
 from apps.files.models import StoredFile
 from apps.programs.models import AcademicTerm, Program, RequiredDocument
@@ -52,10 +52,10 @@ def open_application(
 
 
 def holds_scholarship(profile: StudentProfile, program: Program, term: AcademicTerm) -> bool:
-    """An approved application for this program and term, or an active award in the program."""
+    """An approved application for this program and term, or an award held in the program."""
     return Application.objects.filter(
         profile=profile, program=program, term=term, status=Application.Status.APPROVED
-    ).exists() or holds_active_award(profile, program)
+    ).exists() or holds_award(profile, program)
 
 
 def rejected_this_term(profile: StudentProfile, program: Program, term: AcademicTerm) -> bool:

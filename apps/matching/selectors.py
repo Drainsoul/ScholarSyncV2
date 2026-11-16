@@ -81,7 +81,7 @@ def match_page(user: User, *, today: date) -> MatchPage:
     held = Q(
         Exists(
             Award.objects.filter(
-                profile=profile, program=OuterRef("pk"), status=Award.Status.ACTIVE
+                profile=profile, program=OuterRef("pk"), status__in=Award.HELD_STATUSES
             )
         )
     )

@@ -21,7 +21,7 @@ from apps.applications.review_selectors import applications_for_program
 from apps.applications.selectors import undecided_rows
 from apps.applications.services import application_url
 from apps.awards.models import Award
-from apps.awards.selectors import holds_active_award
+from apps.awards.selectors import holds_award
 from apps.awards.services import already_holds, award_from_application
 from apps.core import audit
 from apps.core.permissions import require_program_staff
@@ -330,7 +330,7 @@ def approve_application(
     if undecided:
         raise ValidationError(NOT_DECIDED.format(label=undecided[0].requirement.label))
     chosen = _approval_tier(locked, tier)
-    if holds_active_award(profile, locked.program):
+    if holds_award(profile, locked.program):
         raise ValidationError(already_holds(locked.program))
     note = note.strip()
     if len(note) > MAX_DECISION_REASON:

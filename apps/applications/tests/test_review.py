@@ -1180,3 +1180,21 @@ def test_bulk_lets_permission_denied_through() -> None:
         review.bulk_action(actor=stranger, program=program, action="start_review", ids=[row.pk])
     row.refresh_from_db()
     assert row.status == S.SUBMITTED
+
+
+def test_approve_refused_while_award_suspended() -> None:
+    program = ProgramFactory.create()
+    application = approvable(program)
+    AwardFactory.create(
+        status=Award.Status.SUSPENDED,
+        source_application=ApplicationFactory.create(
+            profile=application.profile, program=program, status=S.APPROVED
+        ),
+    )
+    assert_not_approved(
+        application,
+        HOLDS_AWARD.format(program.name),
+        lambda: review.approve_application(
+            actor=staff_of(program), program=program, application=application, tier=None
+        ),
+    )

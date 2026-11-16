@@ -1004,3 +1004,22 @@ def test_student_cannot_withdraw_on_behalf_application(world: World, status: str
     assert application.status == status
     assert Document.objects.filter(application=application).count() == documents
     assert AuditEvent.objects.count() == before
+
+
+def test_start_refused_while_award_suspended(world: World) -> None:
+    from apps.awards.models import Award
+
+    AwardFactory.create(
+        profile=world.profile,
+        program=world.program,
+        status=Award.Status.SUSPENDED,
+        source_application=draft_for(
+            world, status=Application.Status.APPROVED, term=AcademicTermFactory.create()
+        ),
+    )
+    before = Application.objects.count()
+    assert_refused(
+        lambda: start_application(user=world.user, program=world.program),
+        "You already hold this scholarship.",
+    )
+    assert Application.objects.count() == before

@@ -3,9 +3,10 @@ from apps.programs.models import Program
 from apps.students.models import StudentProfile
 
 
-def holds_active_award(profile: StudentProfile, program: Program) -> bool:
+def holds_award(profile: StudentProfile, program: Program) -> bool:
+    """An active award, or one on hold: either way the student holds the scholarship."""
     return Award.objects.filter(
-        profile=profile, program=program, status=Award.Status.ACTIVE
+        profile=profile, program=program, status__in=Award.HELD_STATUSES
     ).exists()
 
 
