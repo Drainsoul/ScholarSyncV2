@@ -45,3 +45,18 @@ SAMPLE_APPLICANTS: tuple[SampleApplicant, ...] = (
         "applicant5@scholarsync.test", "Bianca", "Mendoza", date(2005, 12, 17), "approved"
     ),
 )
+
+OVERRIDE_REASON = "Walk-in applicant; residency and voter records checked at the office."
+
+
+@dataclass(frozen=True)
+class WalkIn:
+    email: str
+    first_name: str
+    last_name: str
+    birth_date: date
+
+
+# Staff-created profiles with no barangay or voter data, filed for at the office counter.
+WALK_IN_SUBMITTED = WalkIn("ramon@scholarsync.test", "Ramon", "Aquino", date(2006, 9, 12))
+WALK_IN_DRAFT = WalkIn("lorna@scholarsync.test", "Lorna", "Castillo", date(2006, 2, 27))

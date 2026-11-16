@@ -100,7 +100,7 @@ def test_load_twice_leaves_one_student_profile_and_one_staff_created_profile(dem
     loader.load()
     loader.load()
     assert StudentProfile.objects.filter(user__email="student@scholarsync.test").count() == 1
-    unclaimed = StudentProfile.objects.filter(user__isnull=True)
+    unclaimed = StudentProfile.objects.filter(user__isnull=True, first_name="Paolo")
     assert unclaimed.count() == 1
     assert ProfileInvite.objects.filter(email="paolo@scholarsync.test").count() == 1
     paolo = unclaimed.get()
@@ -164,7 +164,7 @@ def test_skipped_draft_log_holds_no_profile_values(
     monkeypatch.setattr(loader, "start_application", refuse)
     with caplog.at_level(logging.WARNING, logger="apps.demo.loader"):
         loader.load()
-    assert not Application.objects.exists()
+    assert not Application.objects.filter(on_behalf=False).exists()
     logged = " ".join(record.getMessage() for record in caplog.records)
     assert "Demo draft application skipped (ValidationError)." in logged
     assert "80.00" not in logged
@@ -281,9 +281,10 @@ def test_loader_builds_the_review_queue(demo_app, settings, frozen_today, stored
     client.force_login(User.objects.get(email="staff@scholarsync.test"))
     waiting = client.get("/staff/tcu-ceaa/applications/")
     assert [a.status for a in waiting.context["page"].object_list].count("returned") == 0
-    assert waiting.context["total"] == 3  # the default filter is Waiting: submitted + under review
+    # The default filter is Waiting: submitted + under review (the walk-in's filing included).
+    assert waiting.context["total"] == 4
     everything = client.get("/staff/tcu-ceaa/applications/?status=all")
-    assert everything.context["total"] == 5
+    assert everything.context["total"] == 6
     returned_only = client.get("/staff/tcu-ceaa/applications/?status=returned")
     assert returned_only.context["total"] == 1
 
@@ -366,3 +367,70 @@ def test_loader_skips_samples_when_a_service_refuses_staff(
     assert f"Demo review samples skipped ({kind})." in logged
     assert "Carolyn" not in logged
     assert Application.objects.filter(profile__user__email="student@scholarsync.test").exists()
+
+
+def _walk_in(first_name: str) -> StudentProfile:
+    return StudentProfile.objects.get(
+        user__isnull=True, created_for__slug="tcu-ceaa", first_name=first_name
+    )
+
+
+@pytest.mark.django_db
+def test_demo_has_on_behalf_submitted_application(demo_app, settings, frozen_today, stored):
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    application = Application.objects.get(profile=_walk_in("Ramon"))
+    assert application.on_behalf is True
+    assert application.status == Application.Status.SUBMITTED
+    assert "residency" in application.match_snapshot["override"]
+    assert application.override_reason == (
+        "Walk-in applicant; residency and voter records checked at the office."
+    )
+    assert application.created_by is not None
+    assert application.created_by.email == "staff@scholarsync.test"
+    assert application.documents.exists()
+
+
+@pytest.mark.django_db
+def test_demo_has_on_behalf_draft(demo_app, settings, frozen_today, stored):
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    draft = Application.objects.get(profile=_walk_in("Lorna"))
+    assert draft.on_behalf is True
+    assert draft.status == Application.Status.DRAFT
+    assert draft.gwa is not None
+    assert draft.course
+
+
+@pytest.mark.django_db
+def test_demo_on_behalf_rerun_is_idempotent(demo_app, settings, frozen_today, stored):
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    counts = (
+        StudentProfile.objects.count(),
+        Application.objects.filter(on_behalf=True).count(),
+        StoredFile.objects.count(),
+        ProfileInvite.objects.count(),
+    )
+    loader.load()
+    assert counts == (
+        StudentProfile.objects.count(),
+        Application.objects.filter(on_behalf=True).count(),
+        StoredFile.objects.count(),
+        ProfileInvite.objects.count(),
+    )
+    assert counts[1] == 2
+
+
+@pytest.mark.django_db
+def test_demo_on_behalf_without_storage_skips_submitted_sample(
+    demo_app, settings, frozen_today, monkeypatch
+):
+    settings.DEMO_ACTIVE = True
+    monkeypatch.setattr("apps.files.storage.is_configured", lambda: False)
+    loader.load()
+    assert not StudentProfile.objects.filter(first_name="Ramon", user__isnull=True).exists()
+    assert not Application.objects.filter(on_behalf=True, status="submitted").exists()
+    draft = Application.objects.get(on_behalf=True)
+    assert draft.status == Application.Status.DRAFT
+    assert draft.profile.first_name == "Lorna"
