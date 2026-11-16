@@ -29,3 +29,12 @@ class ScholarTermFactory(factory.django.DjangoModelFactory[ScholarTerm]):
 
     award = factory.declarations.SubFactory(AwardFactory)
     term = factory.declarations.SubFactory(AcademicTermFactory)
+
+
+class RenewalFactory(ApplicationFactory):
+    """A renewal of an award: same profile and program; the term defaults to a new one."""
+
+    kind = Application.Kind.RENEWAL
+    award = factory.declarations.SubFactory(AwardFactory)
+    profile = factory.declarations.SelfAttribute("award.profile")  # type: ignore[assignment]
+    program = factory.declarations.SelfAttribute("award.program")  # type: ignore[assignment]

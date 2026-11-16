@@ -1,9 +1,11 @@
 import pytest
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, connection, transaction
+from django.db.migrations.executor import MigrationExecutor
 
 from apps.applications.models import Application
 from apps.awards.models import Award, ScholarTerm
-from apps.awards.tests.factories import AwardFactory, ScholarTermFactory
+from apps.awards.tests.factories import AwardFactory, RenewalFactory, ScholarTermFactory
+from apps.core.transitions import InvalidTransition, assert_transition
 from apps.programs.tests.factories import ProgramFactory, SchoolFactory
 
 pytestmark = pytest.mark.django_db
@@ -88,4 +90,75 @@ def test_factory_builds_a_consistent_approved_application() -> None:
     assert application.status == Application.Status.APPROVED
     assert (application.profile, application.program) == (award.profile, award.program)
     assert award.tier.program == award.program
-    assert application.award == award
+    assert application.source_award == award
+
+
+@pytest.mark.parametrize(
+    ("start", "end"),
+    [
+        ("active", "suspended"),
+        ("active", "inactive"),
+        ("active", "graduated"),
+        ("suspended", "active"),
+        ("suspended", "inactive"),
+        ("suspended", "graduated"),
+        ("inactive", "active"),
+    ],
+)
+def test_award_transitions_allowed(start: str, end: str) -> None:
+    award = Award(status=start)
+    assert_transition(award, end)
+
+
+@pytest.mark.parametrize(
+    ("start", "end"),
+    [("graduated", "active"), ("inactive", "suspended"), ("inactive", "graduated")],
+)
+def test_award_transitions_refused(start: str, end: str) -> None:
+    with pytest.raises(InvalidTransition):
+        assert_transition(Award(status=start), end)
+
+
+def test_held_statuses() -> None:
+    assert Award.HELD_STATUSES == frozenset({"active", "suspended"})
+
+
+def test_status_reason_defaults_blank() -> None:
+    assert AwardFactory.create().status_reason == ""
+
+
+def test_renewal_factory_builds_a_consistent_renewal() -> None:
+    renewal = RenewalFactory.create()
+    assert renewal.kind == Application.Kind.RENEWAL
+    assert renewal.award is not None
+    assert (renewal.profile, renewal.program) == (renewal.award.profile, renewal.award.program)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_backfill_sets_term_tier() -> None:
+    before = [("awards", "0001_initial")]
+    after = [("awards", "0002_status_reason_term_tier")]
+    try:
+        executor = MigrationExecutor(connection)
+        executor.migrate(before)
+        old = executor.loader.project_state(before).apps
+        profile = old.get_model("students", "StudentProfile").objects.create()
+        program = old.get_model("programs", "Program").objects.create(slug="bf", name="Backfill")
+        term = old.get_model("programs", "AcademicTerm").objects.create(
+            school_year_start=2026, term=1, starts_on="2026-08-01", ends_on="2026-12-31"
+        )
+        tier = old.get_model("programs", "BenefitTier").objects.create(
+            program=program, code="standard", name="Standard", base_amount=5000, effective_from=term
+        )
+        award = old.get_model("awards", "Award").objects.create(
+            profile=profile, program=program, tier=tier, source="manual", started_term=term
+        )
+        row = old.get_model("awards", "ScholarTerm").objects.create(award=award, term=term)
+
+        executor = MigrationExecutor(connection)
+        executor.migrate(after)
+        new_term = executor.loader.project_state(after).apps.get_model("awards", "ScholarTerm")
+        assert new_term.objects.get(pk=row.pk).tier_id == tier.pk
+    finally:
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())

@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
@@ -19,6 +21,13 @@ class Award(models.Model):
         IMPORTED = "imported", "Imported"
         MANUAL = "manual", "Manual"
 
+    HELD_STATUSES: ClassVar[frozenset[str]] = frozenset({Status.ACTIVE, Status.SUSPENDED})
+    TRANSITIONS: ClassVar[dict[str, frozenset[str]]] = {
+        Status.ACTIVE: frozenset({Status.SUSPENDED, Status.INACTIVE, Status.GRADUATED}),
+        Status.SUSPENDED: frozenset({Status.ACTIVE, Status.INACTIVE, Status.GRADUATED}),
+        Status.INACTIVE: frozenset({Status.ACTIVE}),
+    }
+
     profile = models.ForeignKey(StudentProfile, on_delete=models.PROTECT, related_name="awards")
     program = models.ForeignKey(Program, on_delete=models.PROTECT, related_name="awards")
     tier = models.ForeignKey(BenefitTier, on_delete=models.PROTECT, related_name="+")
@@ -26,13 +35,14 @@ class Award(models.Model):
     status = models.CharField(max_length=12, choices=Status, default=Status.ACTIVE)
     source = models.CharField(max_length=10, choices=Source)
     source_application = models.OneToOneField(
-        Application, null=True, blank=True, on_delete=models.PROTECT, related_name="award"
+        Application, null=True, blank=True, on_delete=models.PROTECT, related_name="source_award"
     )
     started_term = models.ForeignKey(AcademicTerm, on_delete=models.PROTECT, related_name="+")
     ended_term = models.ForeignKey(
         AcademicTerm, null=True, blank=True, on_delete=models.PROTECT, related_name="+"
     )
     notes = models.TextField(blank=True)
+    status_reason = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -78,6 +88,9 @@ class ScholarTerm(models.Model):
     gwa = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     gwa_scale = models.CharField(max_length=12, choices=School.Scale, blank=True)
     units = models.PositiveSmallIntegerField(null=True, blank=True)
+    tier = models.ForeignKey(
+        BenefitTier, null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )
     merit = models.BooleanField(default=False)
     merit_confirmed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

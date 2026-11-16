@@ -60,6 +60,7 @@ def award_from_application(
         gwa=application.gwa,
         gwa_scale=application.gwa_scale,
         units=application.units,
+        tier=tier,
         merit=application.match_snapshot.get("merit_likely") is True,
         compliance=ScholarTerm.Compliance.COMPLETE,  # approval needs every document approved
     )

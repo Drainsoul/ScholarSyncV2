@@ -167,3 +167,20 @@ def test_on_behalf_trait_sets_staff_creator() -> None:
     assert application.on_behalf is True
     assert application.created_by is not None
     assert application.program.memberships.filter(user=application.created_by).exists()
+
+
+def test_renewal_needs_award() -> None:
+    with pytest.raises(IntegrityError), transaction.atomic():
+        ApplicationFactory.create(kind=Application.Kind.RENEWAL)
+
+
+def test_new_application_has_no_award() -> None:
+    from apps.awards.tests.factories import AwardFactory
+
+    award = AwardFactory.create()
+    with pytest.raises(IntegrityError), transaction.atomic():
+        ApplicationFactory.create(kind=Application.Kind.NEW, award=award)
+
+
+def test_declares_no_failing_defaults_none() -> None:
+    assert ApplicationFactory.create().declares_no_failing is None

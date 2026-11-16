@@ -39,6 +39,11 @@ class Application(models.Model):
     program = models.ForeignKey(Program, on_delete=models.PROTECT, related_name="applications")
     term = models.ForeignKey(AcademicTerm, on_delete=models.PROTECT, related_name="+")
     kind = models.CharField(max_length=10, choices=Kind, default=Kind.NEW)
+    # A string reference: apps.awards.models imports Application.
+    award = models.ForeignKey(
+        "awards.Award", null=True, blank=True, on_delete=models.PROTECT, related_name="renewals"
+    )
+    declares_no_failing = models.BooleanField(null=True, blank=True)
     requested_tier = models.ForeignKey(
         BenefitTier, null=True, blank=True, on_delete=models.PROTECT, related_name="+"
     )
@@ -108,6 +113,11 @@ class Application(models.Model):
                 | Q(school__isnull=False)
                 | ~Q(school_name=""),
                 name="applications_submitted_has_school",
+            ),
+            models.CheckConstraint(
+                condition=Q(kind="new", award__isnull=True)
+                | Q(kind="renewal", award__isnull=False),
+                name="applications_renewal_has_award",
             ),
             models.CheckConstraint(
                 condition=Q(on_behalf=True) | Q(override_reason=""),

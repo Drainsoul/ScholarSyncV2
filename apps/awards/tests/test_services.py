@@ -133,3 +133,11 @@ def test_merit_follows_the_snapshot(snapshot: dict[str, object], merit: bool) ->
         tier=tier,
     )
     assert award.terms.get().merit is merit
+
+
+def test_first_term_records_approval_tier() -> None:
+    application = approved_application()
+    tier = BenefitTierFactory.create(program=application.program, effective_from=application.term)
+    actor = MembershipFactory.create(program=application.program).user
+    award = award_from_application(actor=actor, application=application, tier=tier)
+    assert ScholarTerm.objects.get(award=award).tier == tier
