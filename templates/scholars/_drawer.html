@@ -7,6 +7,10 @@
     <p class="person__meta">{% status scholar.tone award.get_status_display %} <span>({{ award.tier.name }} tier)</span></p>
   </div>
 </div>
+<div class="btn-row btn-row--fill">
+  {% if award.profile.user %}<a class="btn btn--secondary" href="mailto:{{ award.profile.user.email }}">{% icon "mail" %}Email</a>{% endif %}
+  <a class="btn btn--primary" href="{% url 'scholars:detail' program=award.program.slug pk=award.pk %}">Open record</a>
+</div>
 <dl class="facts">
   <dt>School</dt><dd>{{ award.latest_school_name|default:"Not given" }}</dd>
   <dt>Course and year</dt><dd>{{ award.latest_course|default:"Not given" }}{% if award.latest_year_level %}, year {{ award.latest_year_level }}{% endif %}</dd>

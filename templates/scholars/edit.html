@@ -1,0 +1,18 @@
+{% extends "layouts/staff.html" %}{% load ui %}
+{% block title %}Edit {{ award.profile.full_name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><p class="text-sm"><a href="{{ record_url }}">{{ award.profile.full_name }}</a></p><h1>Edit scholar</h1></div>
+</div>
+<section class="card">
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% include "components/form_errors.html" with form=form %}
+    {% for bound_field in form %}{% field bound_field %}{% endfor %}
+    <div class="btn-row">
+      <button type="submit" class="btn btn--primary">Save</button>
+      <a class="btn btn--secondary" href="{{ record_url }}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

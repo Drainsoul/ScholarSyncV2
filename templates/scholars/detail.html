@@ -1,0 +1,61 @@
+{% extends "layouts/staff.html" %}{% load ui %}
+{% block title %}{{ award.profile.full_name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <p class="text-sm"><a href="{{ list_url }}">Scholars</a></p>
+    <h1>{{ award.profile.full_name }}</h1>
+    <p class="page-header__meta">{% status tone award.get_status_display %} {{ award.tier.name }} tier · Scholar since {{ award.started_term }}</p>
+  </div>
+  <div class="btn-row">
+    <a class="btn btn--secondary" href="{% url 'scholars:edit' program=program.slug pk=award.pk %}">{% icon "pencil" %}Edit</a>
+    {% for action in actions %}<a class="btn btn--secondary" href="{{ action.url }}">{{ action.label }}</a>{% endfor %}
+  </div>
+</div>
+{% if award.status_reason %}<div class="banner banner--warning" role="note"><div><p>{{ award.get_status_display }}: {{ award.status_reason }}</p></div></div>{% endif %}
+<div class="stack">
+  <section class="card" aria-labelledby="facts-title">
+    <h2 class="card__title" id="facts-title">Scholar</h2>
+    <dl class="details details--grid">
+      <div><dt>Email</dt><dd>{% if award.profile.user %}{{ award.profile.user.email }}{% else %}No account yet{% endif %}</dd></div>
+      <div><dt>Student number</dt><dd>{{ award.student_number|default:"Not given" }}</dd></div>
+      <div><dt>Allowance</dt><dd class="num">{{ award.tier.base_amount|peso }} a term</dd></div>
+      <div><dt>Ended</dt><dd>{{ award.ended_term|default_if_none:"Not ended" }}</dd></div>
+    </dl>
+    {% if award.notes %}<p>{{ award.notes|linebreaksbr }}</p>{% endif %}
+  </section>
+  <section class="card" aria-labelledby="renewal-title">
+    <h2 class="card__title" id="renewal-title">Renewal</h2>
+    <p>{{ renewal }}</p>
+    {% for reason in record.at_risk %}<p class="text-sm">{% icon "triangle-alert" %}{{ reason }}</p>{% endfor %}
+  </section>
+  <section class="card" aria-labelledby="terms-title">
+    <h2 class="card__title" id="terms-title">Terms</h2>
+    {% if record.terms %}
+    <div class="table-wrap" role="region" aria-labelledby="terms-title" tabindex="0">
+      <table class="table table--stack">
+        <thead><tr><th scope="col">Term</th><th scope="col">School</th><th scope="col">Course and year</th><th scope="col" class="num">GWA</th><th scope="col" class="num">Units</th><th scope="col">Tier</th><th scope="col">Merit</th><th scope="col">Documents</th></tr></thead>
+        <tbody>{% for record_term in record.terms %}<tr>
+          <th scope="row">{{ record_term.term }}</th>
+          <td data-label="School">{% if record_term.school %}{{ record_term.school.name }}{% else %}{{ record_term.school_name|default:"Not given" }}{% endif %}</td>
+          <td data-label="Course and year">{{ record_term.course|default:"Not given" }}{% if record_term.year_level %}, year {{ record_term.year_level }}{% endif %}</td>
+          <td class="num" data-label="GWA">{{ record_term.gwa|default_if_none:"Not given" }}</td>
+          <td class="num" data-label="Units">{{ record_term.units|default_if_none:"Not given" }}</td>
+          <td data-label="Tier">{{ record_term.tier.name|default:"" }}</td>
+          <td data-label="Merit">{% if record_term.merit_confirmed_by %}{% if record_term.merit %}Merit: Confirmed{% else %}No merit{% endif %}{% elif record_term.merit %}Merit: Proposed{% else %}No merit{% endif %}</td>
+          <td data-label="Documents">{{ record_term.get_compliance_display }}</td>
+        </tr>{% endfor %}</tbody>
+      </table>
+    </div>
+    {% else %}<p>No term records yet.</p>{% endif %}
+  </section>
+  <section class="card" aria-labelledby="applications-title">
+    <h2 class="card__title" id="applications-title">Applications</h2>
+    {% if record.applications %}
+    <ul class="list">{% for application in record.applications %}
+      <li><p>{% if application.submitted_at %}<a href="{% url 'review:detail' program=program.slug pk=application.pk %}">{{ application.get_kind_display }}, {{ application.term }}</a>{% else %}{{ application.get_kind_display }}, {{ application.term }}{% endif %}: {{ application.get_status_display }}</p></li>
+    {% endfor %}</ul>
+    {% else %}<p>No applications: this award was recorded by staff.</p>{% endif %}
+  </section>
+</div>
+{% endblock %}

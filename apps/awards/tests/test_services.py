@@ -1,17 +1,35 @@
 from decimal import Decimal
+from typing import Any
 
 import pytest
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
+from django.http import Http404
 
 from apps.applications.models import Application
 from apps.applications.tests.factories import ApplicationFactory
 from apps.awards.models import Award, ScholarTerm
-from apps.awards.services import award_from_application
+from apps.awards.services import (
+    NEED_END_REASON,
+    NEED_HOLD_REASON,
+    STATUS_REASON_TOO_LONG,
+    already_holds,
+    award_from_application,
+    change_status,
+    update_award,
+)
 from apps.awards.tests.factories import AwardFactory
+from apps.awards.tests.scholars import make_scholar
 from apps.core.models import AuditEvent
+from apps.core.transitions import InvalidTransition
 from apps.programs.models import School
-from apps.programs.tests.factories import BenefitTierFactory, MembershipFactory, SchoolFactory
+from apps.programs.tests.factories import (
+    AcademicTermFactory,
+    BenefitTierFactory,
+    MembershipFactory,
+    ProgramFactory,
+    SchoolFactory,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -141,3 +159,196 @@ def test_first_term_records_approval_tier() -> None:
     actor = MembershipFactory.create(program=application.program).user
     award = award_from_application(actor=actor, application=application, tier=tier)
     assert ScholarTerm.objects.get(award=award).tier == tier
+
+
+# --- Status changes and edits ---
+
+
+class Scholars:
+    def __init__(self) -> None:
+        self.previous = AcademicTermFactory.create(school_year_start=2025, term=2)
+        self.current = AcademicTermFactory.create(school_year_start=2026, term=1, is_current=True)
+        self.program = ProgramFactory.create()
+        self.tier = BenefitTierFactory.create(
+            program=self.program, effective_from=self.previous, code="standard"
+        )
+        self.actor = MembershipFactory.create(program=self.program).user
+
+    def award(self, **fields: Any) -> Award:
+        return make_scholar(self.program, self.tier, [self.previous], **fields)
+
+    def change(self, award: Award, to: str, reason: str = "") -> Award:
+        return change_status(
+            actor=self.actor, program=self.program, award=award, to=to, reason=reason
+        )
+
+
+@pytest.fixture
+def scholars() -> Scholars:
+    return Scholars()
+
+
+def status_events() -> list[AuditEvent]:
+    return list(AuditEvent.objects.filter(action="award.status_changed").order_by("pk"))
+
+
+@pytest.mark.parametrize(
+    ("start", "to", "reason"),
+    [
+        ("active", "suspended", "Missing enrolment."),
+        ("active", "inactive", "Transferred."),
+        ("active", "graduated", ""),
+        ("suspended", "active", ""),
+        ("suspended", "inactive", "No reply."),
+        ("suspended", "graduated", ""),
+        ("inactive", "active", ""),
+    ],
+)
+def test_status_transitions_allowed(scholars: Scholars, start: str, to: str, reason: str) -> None:
+    award = scholars.award(status=start)
+    changed = scholars.change(award, to, reason)
+    assert changed.status == to
+    [event] = status_events()
+    assert event.data == {"from": start, "to": to}
+
+
+@pytest.mark.parametrize(
+    ("start", "to"), [("graduated", "active"), ("inactive", "suspended"), ("active", "active")]
+)
+def test_status_transitions_refused(scholars: Scholars, start: str, to: str) -> None:
+    award = scholars.award(status=start)
+    with pytest.raises(InvalidTransition):
+        scholars.change(award, to, "Because.")
+    assert status_events() == []
+
+
+@pytest.mark.parametrize(
+    ("to", "message"), [("suspended", NEED_HOLD_REASON), ("inactive", NEED_END_REASON)]
+)
+def test_hold_and_end_need_reason(scholars: Scholars, to: str, message: str) -> None:
+    award = scholars.award()
+    with pytest.raises(ValidationError) as caught:
+        scholars.change(award, to, "   ")
+    assert caught.value.messages == [message]
+    award.refresh_from_db()
+    assert award.status == Award.Status.ACTIVE
+
+
+def test_reason_too_long(scholars: Scholars) -> None:
+    award = scholars.award()
+    with pytest.raises(ValidationError) as caught:
+        scholars.change(award, "suspended", "x" * 1001)
+    assert caught.value.messages == [STATUS_REASON_TOO_LONG]
+
+
+def test_reason_stored_not_in_audit(scholars: Scholars) -> None:
+    award = scholars.change(scholars.award(), "suspended", "Secret family matter.")
+    assert award.status_reason == "Secret family matter."
+    assert "Secret" not in str(status_events()[0].data)
+
+
+def test_end_and_graduate_set_ended_term(scholars: Scholars) -> None:
+    ended = scholars.change(scholars.award(), "inactive", "Moved away.")
+    graduated = scholars.change(scholars.award(), "graduated")
+    assert ended.ended_term == scholars.current
+    assert graduated.ended_term == scholars.current
+
+
+def test_reinstate_clears_ended_term_and_reason(scholars: Scholars) -> None:
+    award = scholars.change(scholars.award(), "inactive", "Moved away.")
+    award = scholars.change(award, "active")
+    assert award.ended_term is None
+    assert award.status_reason == ""
+
+
+def test_reinstate_conflict_already_holds(scholars: Scholars) -> None:
+    held = scholars.award(status=Award.Status.SUSPENDED)
+    make_scholar(scholars.program, scholars.tier, [scholars.previous], profile=held.profile)
+    with pytest.raises(ValidationError) as caught:
+        scholars.change(held, "active")
+    assert caught.value.messages == [already_holds(scholars.program)]
+    held.refresh_from_db()
+    assert held.status == Award.Status.SUSPENDED
+    assert status_events() == []
+
+
+def test_update_award_tier_must_be_in_force(scholars: Scholars) -> None:
+    award = scholars.award()
+    elsewhere = BenefitTierFactory.create(effective_from=scholars.previous)
+    with pytest.raises(ValidationError) as caught:
+        update_award(
+            actor=scholars.actor,
+            program=scholars.program,
+            award=award,
+            student_number="",
+            notes="",
+            tier=elsewhere,
+        )
+    assert caught.value.messages == ["Choose one of this program's allowance tiers."]
+
+
+def test_update_award_audit_lists_fields_only(scholars: Scholars) -> None:
+    award = scholars.award()
+    honors = BenefitTierFactory.create(
+        program=scholars.program, effective_from=scholars.previous, code="honors"
+    )
+    updated = update_award(
+        actor=scholars.actor,
+        program=scholars.program,
+        award=award,
+        student_number=" 2026-0001 ",
+        notes="Prefers email.",
+        tier=honors,
+    )
+    assert (updated.student_number, updated.notes, updated.tier) == (
+        "2026-0001",
+        "Prefers email.",
+        honors,
+    )
+    event = AuditEvent.objects.get(action="award.updated")
+    assert event.data == {"fields": ["student_number", "notes", "tier"], "tier": "honors"}
+
+
+def test_update_award_without_changes_audits_nothing(scholars: Scholars) -> None:
+    award = scholars.award()
+    update_award(
+        actor=scholars.actor,
+        program=scholars.program,
+        award=award,
+        student_number="",
+        notes="",
+        tier=award.tier,
+    )
+    assert not AuditEvent.objects.filter(action="award.updated").exists()
+
+
+def test_writes_404_for_foreign_ids(scholars: Scholars) -> None:
+    foreign = make_scholar(
+        ProgramFactory.create(),
+        BenefitTierFactory.create(effective_from=scholars.previous),
+        [scholars.previous],
+    )
+    with pytest.raises(Http404):
+        scholars.change(foreign, "suspended", "x")
+    with pytest.raises(Http404):
+        update_award(
+            actor=scholars.actor,
+            program=scholars.program,
+            award=foreign,
+            student_number="1",
+            notes="",
+            tier=scholars.tier,
+        )
+    assert not AuditEvent.objects.exists()
+
+
+def test_status_change_needs_program_staff(scholars: Scholars) -> None:
+    outsider = MembershipFactory.create(program=ProgramFactory.create()).user
+    with pytest.raises(PermissionDenied):
+        change_status(
+            actor=outsider,
+            program=scholars.program,
+            award=scholars.award(),
+            to="suspended",
+            reason="x",
+        )

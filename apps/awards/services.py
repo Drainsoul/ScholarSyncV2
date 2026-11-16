@@ -2,13 +2,17 @@
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.http import HttpRequest
+from django.http import Http404, HttpRequest
 
 from apps.accounts.models import User
 from apps.applications.models import Application
 from apps.awards.models import Award, ScholarTerm
 from apps.core import audit
-from apps.programs.models import BenefitTier, Program
+from apps.core.permissions import require_program_staff
+from apps.core.transitions import assert_transition
+from apps.programs.models import AcademicTerm, BenefitTier, Program
+from apps.programs.selectors import current_term, tiers_in_force
+from apps.students.models import StudentProfile
 
 ONE_ACTIVE_PER_PROGRAM = "awards_one_active_per_program"
 
@@ -138,3 +142,135 @@ def term_from_renewal(
         },
     )
     return record
+
+
+NEED_HOLD_REASON = "Say why you're putting this award on hold."
+NEED_END_REASON = "Say why you're ending this award."
+STATUS_REASON_TOO_LONG = "Keep the reason under 1,000 characters."
+MAX_STATUS_REASON = 1000
+FOREIGN_TIER = "Choose one of this program's allowance tiers."
+STATUS_LABELS: dict[str, str] = {
+    Award.Status.SUSPENDED: "Put on hold",
+    Award.Status.ACTIVE: "Reinstate",
+    Award.Status.INACTIVE: "End award",
+    Award.Status.GRADUATED: "Mark graduated",
+}
+_NEED_REASON: dict[str, str] = {
+    Award.Status.SUSPENDED: NEED_HOLD_REASON,
+    Award.Status.INACTIVE: NEED_END_REASON,
+}
+
+
+def _lock_award(actor: User, program: Program, pk: int) -> tuple[StudentProfile, Award]:
+    """The program's award `pk` and its profile, locked profile first. Http404 otherwise."""
+    require_program_staff(actor, program)
+    profile_id = (
+        Award.objects.filter(program=program, pk=pk).values_list("profile_id", flat=True).first()
+    )
+    if profile_id is None:
+        raise Http404("No such scholar.")
+    profile = StudentProfile.objects.select_for_update().get(pk=profile_id)
+    award = (
+        Award.objects.select_for_update(of=("self",))
+        .select_related("program", "tier")
+        .filter(pk=pk, program=program)
+        .first()
+    )
+    if award is None or award.profile_id != profile.pk:  # never trust the earlier read
+        raise Http404("No such scholar.")
+    return profile, award
+
+
+@transaction.atomic
+def update_award(
+    *,
+    actor: User,
+    program: Program,
+    award: Award,
+    student_number: str,
+    notes: str,
+    tier: BenefitTier,
+    request: HttpRequest | None = None,
+) -> Award:
+    """The student number, notes and tier. A new tier must be in force for the current term."""
+    _, locked = _lock_award(actor, program, award.pk)
+    if tier.pk != locked.tier_id:
+        term = current_term()
+        in_force = {row.pk for row in tiers_in_force(program, term)} if term is not None else set()
+        if tier.pk not in in_force:
+            raise ValidationError(FOREIGN_TIER)
+    values = {"student_number": student_number.strip()[:50], "notes": notes.strip()}
+    changed = [field for field, value in values.items() if getattr(locked, field) != value]
+    for field in changed:
+        setattr(locked, field, values[field])
+    data: dict[str, object] = {}
+    if tier.pk != locked.tier_id:
+        locked.tier = tier
+        changed.append("tier")
+        data["tier"] = tier.code
+    if not changed:
+        return locked
+    locked.save(update_fields=[*changed, "updated_at"])
+    audit.record(
+        actor=actor,
+        action="award.updated",
+        target=locked,
+        program=program,
+        request=request,
+        data={"fields": changed, **data},
+    )
+    return locked
+
+
+def _ending_term(award: Award) -> AcademicTerm:
+    """The current term, or (with none set) the award's latest recorded term."""
+    term = current_term()
+    if term is not None:
+        return term
+    latest = award.terms.select_related("term").order_by("-term__sort_key").first()
+    return latest.term if latest is not None else award.started_term
+
+
+@transaction.atomic
+def change_status(
+    *,
+    actor: User,
+    program: Program,
+    award: Award,
+    to: str,
+    reason: str,
+    request: HttpRequest | None = None,
+) -> Award:
+    """Hold, reinstate, end or graduate. The reason is free text: it stays out of audit data."""
+    _, locked = _lock_award(actor, program, award.pk)
+    assert_transition(locked, to)
+    reason = reason.strip()
+    if to in _NEED_REASON and not reason:
+        raise ValidationError(_NEED_REASON[to])
+    if len(reason) > MAX_STATUS_REASON:
+        raise ValidationError(STATUS_REASON_TOO_LONG)
+    previous = locked.status
+    locked.status = to
+    if to == Award.Status.ACTIVE:
+        locked.status_reason = ""
+        locked.ended_term = None
+    else:
+        locked.status_reason = reason
+        if to in (Award.Status.INACTIVE, Award.Status.GRADUATED):
+            locked.ended_term = _ending_term(locked)
+    try:
+        with transaction.atomic():  # a savepoint, so the outer transaction survives the error
+            locked.save(update_fields=["status", "status_reason", "ended_term", "updated_at"])
+    except IntegrityError as exc:
+        if not _violates(exc, ONE_ACTIVE_PER_PROGRAM):
+            raise
+        raise ValidationError(already_holds(program)) from None
+    audit.record(
+        actor=actor,
+        action="award.status_changed",
+        target=locked,
+        program=program,
+        request=request,
+        data={"from": previous, "to": to},
+    )
+    return locked

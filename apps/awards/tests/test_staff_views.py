@@ -9,6 +9,7 @@ import time_machine
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.awards.models import Award
@@ -204,3 +205,117 @@ def test_window_closed_marks_not_renewed_at_risk(client) -> None:
     closed.scholar("Dan", "Due")
     page = body(client, closed.staff, closed.url(status="at_risk"))
     assert "Dan Due" in page
+
+
+# --- The scholar record ---
+
+
+def record_url(world: World, award: Award, name: str = "scholars:detail") -> str:
+    return reverse(name, kwargs={"program": world.program.slug, "pk": award.pk})
+
+
+def test_record_shows_terms_newest_first(client, world: World) -> None:
+    award = world.scholar("Ana", "Cruz", terms=[world.previous, world.current])
+    page = body(client, world.staff, record_url(world, award))
+    assert "Ana Cruz" in page
+    assert page.index(str(world.current)) < page.index(str(world.previous), page.index("Terms"))
+
+
+def test_record_shows_only_allowed_actions(client, world: World) -> None:
+    active = world.scholar("Ana", "Active")
+    page = body(client, world.staff, record_url(world, active))
+    assert "Put on hold" in page and "End award" in page and "Mark graduated" in page
+    assert "Reinstate" not in page
+    graduated = world.scholar("Gil", "Grad", status=Award.Status.GRADUATED)
+    page = body(client, world.staff, record_url(world, graduated))
+    for label in ("Put on hold", "End award", "Mark graduated", "Reinstate"):
+        assert label not in page
+
+
+def test_record_lists_source_application_and_renewals(client, world: World) -> None:
+    from apps.awards.tests.factories import RenewalFactory
+
+    award = world.scholar("Ana", "Cruz")
+    renewal = RenewalFactory.create(
+        award=award,
+        term=world.current,
+        status="submitted",
+        submitted_at=timezone.now(),
+        school_name="College",
+    )
+    page = body(client, world.staff, record_url(world, award))
+    assert (
+        reverse("review:detail", kwargs={"program": world.program.slug, "pk": renewal.pk}) in page
+    )
+
+
+def test_status_page_and_post(client, world: World) -> None:
+    award = world.scholar("Ana", "Cruz")
+    url = record_url(world, award, "scholars:status")
+    page = body(client, world.staff, f"{url}?to=suspended")
+    assert "Put on hold" in page
+    response = client.post(url, {"to": "suspended", "reason": "Missing enrolment."}, follow=True)
+    page = html.unescape(response.content.decode())
+    assert "Put on hold. The award is now suspended." in page
+    award.refresh_from_db()
+    assert award.status == Award.Status.SUSPENDED
+
+
+def test_status_post_error_rerenders_400(client, world: World) -> None:
+    award = world.scholar("Ana", "Cruz")
+    client.force_login(world.staff)
+    response = client.post(
+        record_url(world, award, "scholars:status"), {"to": "suspended", "reason": ""}
+    )
+    assert response.status_code == 400
+    assert "Say why you're putting this award on hold." in html.unescape(response.content.decode())
+
+
+def test_status_page_unknown_target_goes_back(client, world: World) -> None:
+    award = world.scholar("Ana", "Cruz")
+    client.force_login(world.staff)
+    response = client.get(record_url(world, award, "scholars:status") + "?to=bogus")
+    assert response.status_code == 302
+    assert response.url == record_url(world, award)
+
+
+def test_edit_round_trip(client, world: World) -> None:
+    award = world.scholar("Ana", "Cruz")
+    url = record_url(world, award, "scholars:edit")
+    page = body(client, world.staff, url)
+    assert "Student number" in page
+    response = client.post(
+        url, {"student_number": "2026-0007", "notes": "Call first.", "tier": world.tier.pk}
+    )
+    assert response.status_code == 302
+    award.refresh_from_db()
+    assert (award.student_number, award.notes) == ("2026-0007", "Call first.")
+
+
+def test_record_query_budget(client, world: World, django_assert_max_num_queries) -> None:
+    award = world.scholar("Ana", "Cruz", terms=[world.previous, world.current])
+    client.force_login(world.staff)
+    with django_assert_max_num_queries(16):
+        assert client.get(record_url(world, award)).status_code == 200
+
+
+def test_record_foreign_award_404(client, world: World) -> None:
+    foreign = make_scholar(
+        ProgramFactory.create(),
+        BenefitTierFactory.create(effective_from=world.previous),
+        [world.previous],
+    )
+    client.force_login(world.staff)
+    for name in ("scholars:detail", "scholars:edit", "scholars:status"):
+        assert client.get(record_url(world, foreign, name)).status_code == 404
+    response = client.post(
+        record_url(world, foreign, "scholars:status"), {"to": "suspended", "reason": "x"}
+    )
+    assert response.status_code == 404
+
+
+def test_drawer_links_to_record(client, world: World) -> None:
+    award = world.scholar("Ana", "Cruz")
+    page = body(client, world.staff, world.url(scholar=str(award.pk)))
+    assert record_url(world, award) in page
+    assert "Open record" in page

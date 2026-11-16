@@ -229,6 +229,10 @@ def test_review_screen_renewal_banner(client) -> None:
     body = html.unescape(client.get(url).content.decode())
     assert f"Renewal for {current}. Scholar since {award.started_term}." in body
     assert f"Last term ({award.started_term}): GWA 88.00, 18 units." in body
+    record = reverse(
+        "scholars:detail", kwargs={"program": application.program.slug, "pk": award.pk}
+    )
+    assert record in body
 
 
 def test_review_screen_renewal_checks_labelled(client) -> None:

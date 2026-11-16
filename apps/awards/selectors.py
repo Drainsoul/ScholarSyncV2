@@ -310,3 +310,31 @@ def staff_award(program: Program, pk: int) -> Award:
     if award is None:
         raise Http404("No such scholar.")
     return award
+
+
+@dataclass(frozen=True)
+class ScholarRecord:
+    terms: list[ScholarTerm]  # newest first
+    applications: list[Application]  # the source application, then renewals, newest first
+    renewal: Renewal
+    at_risk: list[str]
+
+
+def scholar_record(award: Award, *, term: AcademicTerm | None, today: date) -> ScholarRecord:
+    """Everything the scholar's record page shows; `award` comes from `staff_award`."""
+    terms = list(
+        ScholarTerm.objects.filter(award=award)
+        .select_related("term", "school", "tier", "merit_confirmed_by")
+        .order_by("-term__sort_key", "-pk")
+    )
+    applications = list(
+        Application.objects.filter(Q(source_award=award) | Q(award=award))
+        .select_related("term")
+        .order_by("-term__sort_key", "-pk")
+    )
+    return ScholarRecord(
+        terms=terms,
+        applications=applications,
+        renewal=renewal_for(award, term),
+        at_risk=at_risk_reasons(award, award.program, term, today),
+    )
