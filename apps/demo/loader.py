@@ -18,9 +18,12 @@ from apps.accounts.services import create_staff_user, record_consent
 from apps.applications import behalf, review
 from apps.applications.models import Application
 from apps.applications.services import attach_document, start_application, submit_application
+from apps.awards.models import Award, ScholarTerm
+from apps.awards.services import change_status
 from apps.demo.accounts import ACCOUNTS, PASSWORD, DemoAccount
 from apps.demo.samples import (
     DECLINE_REASON,
+    HOLD_REASON,
     OVERRIDE_REASON,
     PDF_TYPE,
     PNG_TYPE,
@@ -28,16 +31,19 @@ from apps.demo.samples import (
     SAMPLE_APPLICANTS,
     SAMPLE_PDF,
     SAMPLE_PNG,
+    SAMPLE_SCHOLARS,
     WALK_IN_DRAFT,
     WALK_IN_SUBMITTED,
     SampleApplicant,
+    SampleScholar,
     WalkIn,
 )
 from apps.files import storage
 from apps.files.models import StoredFile
-from apps.programs.models import BenefitTier, Program, School
+from apps.programs.models import AcademicTerm, BenefitTier, Program, School
 from apps.programs.selectors import application_term, required_documents_for
 from apps.programs.services import add_membership
+from apps.programs.terms import school_year_terms
 from apps.students import services as students
 from apps.students.models import EducationRecord, FamilyMember, ProfileInvite, StudentProfile
 
@@ -394,6 +400,95 @@ def _give_staff_on_behalf_samples() -> None:
             logger.warning("Demo on-behalf draft skipped (%s).", type(error).__name__)
 
 
+def _ensure_previous_term() -> AcademicTerm | None:
+    """The semester before the current one, created when missing (the seed creates only the
+    current school year). None in summer or with no term: then there are no scholar samples."""
+    current = application_term(timezone.localdate())
+    if current is None or current.term == AcademicTerm.Term.SUMMER:
+        return None
+    if current.term == AcademicTerm.Term.FIRST:
+        year, number = current.school_year_start - 1, AcademicTerm.Term.SECOND
+    else:
+        year, number = current.school_year_start, AcademicTerm.Term.FIRST
+    spec = school_year_terms(date(year, 8, 1))[number - 1]
+    term, _ = AcademicTerm.objects.get_or_create(
+        school_year_start=year,
+        term=number,
+        defaults={"starts_on": spec.starts_on, "ends_on": spec.ends_on},
+    )
+    return term
+
+
+def _sample_scholar(scholar: SampleScholar, program: Program, previous: AcademicTerm) -> Award:
+    user = User.objects.create_user(
+        email=scholar.email,
+        password=PASSWORD,
+        full_name=f"{scholar.first_name} {scholar.last_name}",
+        role=User.Role.STUDENT,
+    )
+    EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)
+    record_consent(user=user, request=None)
+    applicant = SampleApplicant(
+        scholar.email, scholar.first_name, scholar.last_name, scholar.birth_date, scholar.state
+    )
+    _sample_profile(user, applicant)
+    profile = StudentProfile.objects.get(user=user)
+    tier = (
+        BenefitTier.objects.filter(program=program, code="standard")
+        .order_by("-effective_from__sort_key")
+        .first()
+    )
+    assert tier is not None
+    # Written with the ORM (M9): no service creates an award in a past term until
+    # the M9b import, and the samples need a scholar whose last term is behind them.
+    award = Award.objects.create(
+        profile=profile,
+        program=program,
+        tier=tier,
+        status=Award.Status.ACTIVE,
+        source=Award.Source.MANUAL,
+        started_term=previous,
+    )
+    ScholarTerm.objects.create(
+        award=award,
+        term=previous,
+        tier=tier,
+        school=School.objects.get(name="Taguig City University"),
+        school_type=School.Type.LCU,
+        gwa_scale=School.Scale.PERCENT,
+        gwa=scholar.gwa,
+        units=21,
+        year_level=1,
+        course="BS Information Technology",
+        compliance=ScholarTerm.Compliance.COMPLETE,
+    )
+    return award
+
+
+def _give_staff_scholars() -> None:
+    """Three TCU CEAA scholars from last semester (idempotent): due, at risk and on hold."""
+    if User.objects.filter(email__iexact=SAMPLE_SCHOLARS[0].email).exists():
+        return
+    previous = _ensure_previous_term()
+    if previous is None:
+        return  # summer, or no term: nobody renews
+    program = Program.objects.get(slug="tcu-ceaa")
+    staff = User.objects.get(email__iexact="staff@scholarsync.test")
+    try:
+        with transaction.atomic():  # all three or none
+            awards = {s.state: _sample_scholar(s, program, previous) for s in SAMPLE_SCHOLARS}
+            change_status(
+                actor=staff,
+                program=program,
+                award=awards["on_hold"],
+                to=Award.Status.SUSPENDED,
+                reason=HOLD_REASON,
+            )
+    except (ValidationError, Http404, PermissionDenied, ObjectDoesNotExist) as error:
+        # Log only the error class: service sentences can hold profile values.
+        logger.warning("Demo scholar samples skipped (%s).", type(error).__name__)
+
+
 def load() -> int:
     """Create the demo accounts that are missing and return how many were created."""
     with transaction.atomic():
@@ -413,4 +508,5 @@ def load() -> int:
             email="paolo@scholarsync.test",
         )
         _give_staff_on_behalf_samples()
+        _give_staff_scholars()
     return created

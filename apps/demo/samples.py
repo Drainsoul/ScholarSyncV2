@@ -3,6 +3,7 @@
 import base64
 from dataclasses import dataclass
 from datetime import date
+from decimal import Decimal
 
 PDF_TYPE = "application/pdf"
 PNG_TYPE = "image/png"
@@ -61,3 +62,31 @@ class WalkIn:
 # TCU CEAA's 80% minimum, so staff override the GWA rule.
 WALK_IN_SUBMITTED = WalkIn("ramon@scholarsync.test", "Ramon", "Aquino", date(2006, 9, 12))
 WALK_IN_DRAFT = WalkIn("lorna@scholarsync.test", "Lorna", "Castillo", date(2006, 2, 27))
+
+
+@dataclass(frozen=True)
+class SampleScholar:
+    email: str
+    first_name: str
+    last_name: str
+    birth_date: date
+    gwa: Decimal  # last term's GWA, on TCU's percent scale
+    state: str  # due | at_risk | on_hold
+
+
+# TCU CEAA scholars from the previous semester. Carmela is due to renew; Daniel's 78 is under
+# CEAA's 80% renewal mark, so he is at risk; Elena's award is on hold. They share the demo
+# password, so a visitor can sign in as Carmela and renew.
+SAMPLE_SCHOLARS: tuple[SampleScholar, ...] = (
+    SampleScholar(
+        "scholar@scholarsync.test", "Carmela", "Villanueva", date(2005, 4, 18), Decimal("88"), "due"
+    ),
+    SampleScholar(
+        "scholar2@scholarsync.test", "Daniel", "Ramos", date(2005, 9, 2), Decimal("78"), "at_risk"
+    ),
+    SampleScholar(
+        "scholar3@scholarsync.test", "Elena", "Garcia", date(2006, 1, 7), Decimal("85"), "on_hold"
+    ),
+)
+
+HOLD_REASON = "Waiting for the registrar to confirm enrolment."

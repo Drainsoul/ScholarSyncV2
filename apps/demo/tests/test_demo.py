@@ -20,10 +20,14 @@ from django.utils import timezone
 from apps.accounts.models import User
 from apps.applications.models import Application
 from apps.awards.models import Award
+from apps.awards.selectors import RenewalStatus, at_risk_q, renewal_for, with_latest_term
 from apps.demo import loader
 from apps.demo.accounts import ACCOUNTS, PASSWORD
+from apps.demo.samples import HOLD_REASON, SAMPLE_SCHOLARS
 from apps.files.models import StoredFile
 from apps.matching.selectors import match_page
+from apps.programs.models import AcademicTerm, Program
+from apps.programs.selectors import application_term
 from apps.students.models import ProfileInvite, StudentProfile
 from apps.students.selectors import profile_page
 
@@ -265,7 +269,7 @@ def test_loader_builds_the_review_queue(demo_app, settings, frozen_today, stored
         "applicant4@scholarsync.test": "returned",
         "applicant5@scholarsync.test": "approved",
     }
-    assert Award.objects.count() == 1
+    assert Award.objects.filter(source=Award.Source.APPLIED).count() == 1
     returned = Application.objects.get(profile__user__email="applicant4@scholarsync.test")
     declined = returned.documents.get(status="declined")
     assert declined.decline_reason == "The scan is too dark to read."
@@ -434,3 +438,87 @@ def test_demo_on_behalf_without_storage_skips_submitted_sample(
     draft = Application.objects.get(on_behalf=True)
     assert draft.status == Application.Status.DRAFT
     assert draft.profile.first_name == "Lorna"
+
+
+# --- Scholars and renewals (M9) ---
+
+
+def _scholar_award(email: str) -> Award:
+    return Award.objects.select_related("program", "tier").get(profile__user__email=email)
+
+
+@pytest.mark.django_db
+def test_load_creates_three_scholars_once(demo_app, settings, frozen_today):
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    loader.load()
+    emails = [scholar.email for scholar in SAMPLE_SCHOLARS]
+    assert Award.objects.filter(profile__user__email__in=emails).count() == 3
+    for email in emails:
+        user = User.objects.get(email=email)
+        assert user.check_password(PASSWORD)
+        assert EmailAddress.objects.get(user=user).verified
+
+
+@pytest.mark.django_db
+def test_carmela_is_due(demo_app, settings, frozen_today):
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    award = _scholar_award("scholar@scholarsync.test")
+    term = application_term(timezone.localdate())
+    assert renewal_for(award, term).status == RenewalStatus.DUE
+    assert award.source == Award.Source.MANUAL
+
+
+@pytest.mark.django_db
+def test_daniel_is_at_risk(demo_app, settings, frozen_today):
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    award = _scholar_award("scholar2@scholarsync.test")
+    today = timezone.localdate()
+    term = application_term(today)
+    flagged = with_latest_term(Award.objects.filter(program=award.program)).filter(
+        at_risk_q(award.program, term, today)
+    )
+    assert list(flagged.values_list("pk", flat=True)) == [award.pk]
+
+
+@pytest.mark.django_db
+def test_elena_on_hold_with_reason(demo_app, settings, frozen_today):
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    award = _scholar_award("scholar3@scholarsync.test")
+    assert award.status == Award.Status.SUSPENDED
+    assert award.status_reason == HOLD_REASON
+
+
+@pytest.mark.django_db
+def test_previous_term_created_once(demo_app, settings, frozen_today):
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    loader.load()
+    # 15 October 2026 falls in term 1 of 2026-2027: the previous semester is term 2 of 2025-2026.
+    previous = AcademicTerm.objects.filter(school_year_start=2025, term=2)
+    assert previous.count() == 1
+    assert not previous.get().is_current
+    assert _scholar_award("scholar@scholarsync.test").started_term == previous.get()
+
+
+@pytest.mark.django_db
+def test_summer_skips_scholars(demo_app, settings):
+    settings.DEMO_ACTIVE = True
+    with time_machine.travel(
+        datetime(2027, 7, 10, 12, 0, tzinfo=ZoneInfo("Asia/Manila")), tick=False
+    ):
+        loader.load()
+    assert not Award.objects.filter(profile__user__email__startswith="scholar").exists()
+
+
+@pytest.mark.django_db
+def test_demo_does_not_change_program_config(demo_app, settings, frozen_today):
+    settings.DEMO_ACTIVE = True
+    call_command("seed_programs")
+    fields = [f.name for f in Program._meta.concrete_fields if f.name != "updated_at"]
+    before = list(Program.objects.order_by("pk").values(*fields))
+    loader.load()
+    assert list(Program.objects.order_by("pk").values(*fields)) == before
