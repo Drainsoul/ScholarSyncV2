@@ -1,0 +1,40 @@
+{% extends "layouts/student.html" %}{% load ui %}
+{% block title %}Your scholarships{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div><h1>Your scholarships</h1></div>
+  </div>
+  {% if cards %}
+  <div class="stack">{% for item in cards %}{% with award=item.card.award %}
+    <section class="card" aria-labelledby="award-{{ award.pk }}-title">
+      <h2 class="card__title" id="award-{{ award.pk }}-title">{{ award.program.name }}</h2>
+      <p>{% status item.tone award.get_status_display %} <span class="text-sm">{{ award.tier.name }} tier · Scholar since {{ award.started_term }}</span></p>
+      <p>{{ item.renewal.text }}</p>
+      {% if item.renewal.action == "renew" %}
+      <form method="post" action="{{ item.renewal.url }}">
+        {% csrf_token %}
+        <div class="btn-row"><button type="submit" class="btn btn--primary">{{ item.renewal.label }}</button></div>
+      </form>
+      {% elif item.renewal.action == "continue" %}
+      <p><a class="btn btn--primary" href="{{ item.renewal.url }}">Continue your renewal</a></p>
+      {% endif %}
+      {% if item.card.terms %}
+      <div class="table-wrap" role="region" aria-label="{{ award.program.name }} terms" tabindex="0">
+        <table class="table">
+          <thead><tr><th scope="col">Term</th><th scope="col">School</th><th scope="col">Year</th><th scope="col" class="num">GWA</th><th scope="col" class="num">Units</th></tr></thead>
+          <tbody>{% for record in item.card.terms %}<tr>
+            <th scope="row">{{ record.term }}</th>
+            <td>{% if record.school %}{{ record.school.name }}{% else %}{{ record.school_name|default:"Not given" }}{% endif %}</td>
+            <td>{{ record.year_level|default_if_none:"Not given" }}</td>
+            <td class="num">{{ record.gwa|default_if_none:"Not given" }}</td>
+            <td class="num">{{ record.units|default_if_none:"Not given" }}</td>
+          </tr>{% endfor %}</tbody>
+        </table>
+      </div>
+      {% endif %}
+    </section>
+  {% endwith %}{% endfor %}</div>
+  {% else %}
+  {% include "components/empty_state.html" with title="No scholarships yet." action_url=match_url action_label="Find scholarships" %}
+  {% endif %}
+{% endblock %}

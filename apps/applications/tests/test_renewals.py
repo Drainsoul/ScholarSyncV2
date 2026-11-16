@@ -18,12 +18,15 @@ from apps.applications.models import Application
 from apps.applications.renewals import (
     ALREADY_RENEWED,
     OTHER_OPEN,
-    RENEWAL_NOT_ACTIVE,
     RENEWAL_REJECTED,
     RENEWAL_SUMMER,
     start_renewal,
 )
-from apps.applications.services import RENEWAL_TIER_GONE, submit_application
+from apps.applications.services import (
+    RENEWAL_NOT_ACTIVE,
+    RENEWAL_TIER_GONE,
+    submit_application,
+)
 from apps.applications.tests.factories import (
     ApplicationFactory,
     DocumentFactory,

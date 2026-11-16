@@ -33,6 +33,7 @@ def shell_context(
         profile = reverse("students:profile")
         match = reverse("matching:match")
         applications = reverse("applications:list")
+        scholarships = reverse("scholarships:list")
         path = request.path
         nav = [
             {"label": label, "url": home, "current": path == home, "count": 0, "icon": icon},
@@ -56,6 +57,13 @@ def shell_context(
                 "current": path.startswith(applications),
                 "count": 0,
                 "icon": "file-text",
+            },
+            {
+                "label": "Scholarships",
+                "url": scholarships,
+                "current": path.startswith(scholarships),
+                "count": 0,
+                "icon": "wallet",
             },
         ]
     else:

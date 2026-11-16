@@ -164,6 +164,8 @@ URLS: dict[str, str] = {
     "review:behalf-submit": "staff_post_only",
     "review:behalf-withdraw": "staff_post_only",
     "office:home": "office",
+    "scholarships:list": "student",
+    "scholarships:renew": "student_post_only",
     "account_login": "guest_only",
     "account_signup": "guest_only",
     "account_logout": "logout",
@@ -203,6 +205,7 @@ URLS: dict[str, str] = {
 URL_KWARGS: dict[str, dict[str, str]] = {
     "workspace:dashboard": {"program": "tcu-ceaa"},
     "workspace:students": {"program": "tcu-ceaa"},
+    "scholarships:renew": {"pk": "999999"},
     "review:queue": {"program": "tcu-ceaa"},
     "review:bulk": {"program": "tcu-ceaa"},
     "review:detail": {"program": "tcu-ceaa", "pk": "999999"},
