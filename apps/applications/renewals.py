@@ -11,7 +11,7 @@ from django.utils import timezone
 from apps.accounts.models import User
 from apps.applications.models import Application
 from apps.applications.selectors import open_application
-from apps.applications.services import _require_student
+from apps.applications.services import RENEWAL_NOT_ACTIVE, _require_student
 from apps.awards.models import Award
 from apps.awards.selectors import RenewalStatus, renewal_for
 from apps.core import audit
@@ -19,9 +19,6 @@ from apps.matching.eligibility import window_reason
 from apps.programs.selectors import application_term
 from apps.students.models import StudentProfile
 
-RENEWAL_NOT_ACTIVE = (
-    "This scholarship isn't active, so it can't be renewed. Contact the scholarship office."
-)
 RENEWAL_SUMMER = "Scholarships aren't renewed for the summer term."
 ALREADY_RENEWED = "Your scholarship is already renewed for {term}."
 RENEWAL_REJECTED = "Your renewal wasn't approved for {term}. Contact the scholarship office."

@@ -52,6 +52,9 @@ REJECTED_THIS_TERM = "This application wasn't approved for {term}. You can apply
 ON_BEHALF_LOCKED = (
     "The scholarship office filed this application for you. Contact them to change it."
 )
+RENEWAL_NOT_ACTIVE = (
+    "This scholarship isn't active, so it can't be renewed. Contact the scholarship office."
+)
 RENEWAL_TIER_GONE = "Your allowance tier is no longer offered. Contact the scholarship office."
 SNAPSHOT_VERSION = 1
 
@@ -324,7 +327,14 @@ def _renewal_checks(
 ) -> tuple[BenefitTier, EligibilityResult]:
     """The renewal rules on the frozen school and grades, and the award's tier in force."""
     assert locked.award_id is not None  # applications_renewal_has_award
-    award = Award.objects.select_related("program", "tier").get(pk=locked.award_id)
+    # Lock order: profile, application, then award. A hold or an ending since the start wins.
+    award = (
+        Award.objects.select_for_update(of=("self",))
+        .select_related("program", "tier")
+        .get(pk=locked.award_id, profile_id=locked.profile_id)
+    )
+    if award.status != Award.Status.ACTIVE:
+        raise ValidationError(RENEWAL_NOT_ACTIVE)
     result = renewal_eligibility_with(award, academic, today=today, declares_no_failing=declares)
     if not result.eligible:
         raise ValidationError(_first_reason(result))

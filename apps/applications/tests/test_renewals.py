@@ -343,3 +343,14 @@ def test_list_marks_renewal(client, scholar: Scholar) -> None:
     client.force_login(scholar.user)
     body = client.get(reverse("applications:list")).content.decode()
     assert "Renewal" in body
+
+
+@pytest.mark.parametrize("status", [Award.Status.SUSPENDED, Award.Status.INACTIVE])
+def test_submit_renewal_refused_when_award_no_longer_active(scholar: Scholar, status: str) -> None:
+    application = renewal_ready(scholar)
+    Award.objects.filter(pk=scholar.award.pk).update(status=status)
+    with pytest.raises(ValidationError) as caught:
+        submit_application(user=scholar.user, application=application, tier=None)
+    assert caught.value.messages == [RENEWAL_NOT_ACTIVE]
+    application.refresh_from_db()
+    assert application.status == Application.Status.DRAFT
