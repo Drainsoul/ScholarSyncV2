@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from decimal import Decimal
 from typing import Any
 
@@ -162,4 +163,44 @@ class AcademicsForm(forms.Form):
                 low, high, message = GWA_RANGES[School.Scale(scale)]
                 if not low <= gwa <= high:
                     self.add_error("gwa", message)
+        return cleaned
+
+
+class BehalfSubmitForm(forms.Form):
+    """Submit on a student's behalf: the tier (radios when several are in force) and the reason
+    for filing although a rule isn't met. Whether a reason is needed is the service's call.
+
+    With one candidate there is no tier field and `cleaned_data["tier"]` is that tier; with none
+    it is None (a resubmit keeps its tier; a draft is refused by the service).
+    """
+
+    override_reason = forms.CharField(
+        label="Reason for filing anyway",
+        max_length=MAX_DECISION_REASON,
+        required=False,
+        widget=forms.Textarea(attrs={"rows": 4}),
+        error_messages={"max_length": DECISION_REASON_TOO_LONG},
+        help_text="Needed only when a rule isn't met.",
+    )
+
+    def __init__(self, *args: Any, candidates: Sequence[BenefitTier], **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.candidates = list(candidates)
+        if len(self.candidates) > 1:
+            self.fields["tier"] = forms.ModelChoiceField(
+                queryset=BenefitTier.objects.filter(pk__in=[t.pk for t in self.candidates]),
+                widget=forms.RadioSelect,
+                empty_label=None,
+                label="Allowance tier",
+                error_messages={
+                    "required": NEED_TIER,
+                    "invalid_choice": "Choose one of this program's allowance tiers.",
+                },
+            )
+            self.order_fields(["tier", "override_reason"])
+
+    def clean(self) -> dict[str, Any]:
+        cleaned = super().clean() or {}
+        if len(self.candidates) <= 1:
+            cleaned["tier"] = self.candidates[0] if self.candidates else None
         return cleaned

@@ -1,0 +1,102 @@
+{% extends "layouts/staff.html" %}{% load ui uploads %}
+{% block title %}{{ profile.full_name }}, filing{% endblock %}
+{% block content %}
+<div class="card review-head">
+  <div class="page-header">
+    <div class="identity">
+      {% avatar profile.full_name application.pk "lg" %}
+      <div class="identity__text">
+        <div class="review-head__title"><h1>{{ profile.full_name }}</h1>{% status tone application.get_status_display %}</div>
+        <p class="page-header__meta">{{ program.name }} · {{ application.term }} · Filed by {{ filed_by }}</p>
+      </div>
+    </div>
+    <form method="post" action="{% url 'review:behalf-withdraw' program=program.slug pk=application.pk %}">
+      {% csrf_token %}
+      <button type="submit" class="btn btn--secondary">Withdraw</button>
+    </form>
+  </div>
+</div>
+{% if banner %}<div class="banner banner--danger" role="alert"><div><p>{{ banner }}</p></div></div>{% endif %}
+{% if error_card %}<div class="banner banner--danger" role="alert"><div><p>Check the <a href="#{{ error_card.anchor }}">{{ error_card.row.requirement.label }} document</a> below.</p></div></div>{% endif %}
+{% if application.status == "returned" %}
+<div class="banner banner--warning" role="note"><div><p class="banner__title">Returned for fixes</p><p>{{ application.decision_reason }}</p></div></div>
+{% endif %}
+<div class="stack">
+  <section class="card" aria-labelledby="academics-title">
+    <h2 class="card__title" id="academics-title">School and grades</h2>
+    {% if academics_form %}
+    <form method="post" action="{% url 'review:behalf-academics' program=program.slug pk=application.pk %}" novalidate>
+      {% csrf_token %}
+      {% include "components/form_errors.html" with form=academics_form %}
+      {% field academics_form.school %}
+      {% field academics_form.school_name %}
+      {% field academics_form.school_type %}
+      {% field academics_form.gwa_scale %}
+      {% field academics_form.course %}
+      {% field academics_form.year_level %}
+      {% field academics_form.gwa %}
+      {% field academics_form.units %}
+      <div class="btn-row"><button type="submit" class="btn btn--secondary">Save school and grades</button></div>
+    </form>
+    {% else %}
+    <p class="text-sm text-muted">Frozen when the application was submitted.</p>
+    <dl class="details details--grid">
+      <div><dt>School</dt><dd>{{ frozen.school }}</dd></div>
+      <div><dt>Course and year</dt><dd>{{ frozen.course|default:"Not given" }}{% if frozen.year_level %}, year {{ frozen.year_level }}{% endif %}</dd></div>
+      <div><dt>GWA</dt><dd class="num">{% if frozen.gwa is not None %}{{ frozen.gwa }}{% if frozen.gwa_scale %} ({{ frozen.gwa_scale }}){% endif %}{% else %}Not given{% endif %}</dd></div>
+      <div><dt>Units</dt><dd class="num">{{ frozen.units|default_if_none:"Not given" }}</dd></div>
+    </dl>
+    {% endif %}
+  </section>
+  <section class="card" aria-labelledby="rules-title">
+    <div class="card__header"><h2 class="card__title" id="rules-title">Rules</h2><p class="text-sm text-muted num">{{ rules_met }} of {{ checks|length }} rules met</p></div>
+    {% if evaluated_on %}<p class="text-sm text-muted">As checked on {{ evaluated_on|date:"j F Y" }}</p>{% endif %}
+    {% include "components/checklist.html" with items=checks %}
+    {% if any_unmet %}<p>Staff can file even when a rule isn't met. Say why below.</p>{% endif %}
+  </section>
+  <section class="card" aria-labelledby="documents-title">
+    <h2 class="card__title" id="documents-title">Documents</h2>
+    <p>{{ uploaded_count }} of {{ required_count }} required documents uploaded</p>
+    <ul class="stack">{% for card in cards %}
+      <li id="{{ card.anchor }}">
+        {% if card.row.current %}
+        {% if not card.editable %}<p><strong>{{ card.row.requirement.label }}</strong></p>{% endif %}
+        <p class="text-sm">Current file: <a href="{% url 'files:download' card.row.current.id %}">{{ card.row.current.original_name }}</a>
+          {% if card.row.document.status == "declined" %}{% status card.tone "Declined" %}
+          {% elif card.row.document.status == "approved" %}{% status card.tone "Approved" %}
+          {% else %}{% status card.tone "Waiting for review" %}{% endif %}</p>
+        {% if card.row.document.status == "declined" and card.row.document.decline_reason %}<p class="text-sm">{{ card.row.document.decline_reason }}</p>{% endif %}
+        {% elif not card.editable %}
+        <p><strong>{{ card.row.requirement.label }}</strong></p>
+        <p class="text-sm">No file uploaded.</p>
+        {% endif %}
+        {% if card.editable %}
+        <form method="post" action="{% url 'review:behalf-document' program=program.slug pk=application.pk requirement=card.row.requirement.pk %}" novalidate>
+          {% csrf_token %}
+          {% upload_field "document" card.field_id "file" card.row.requirement.label card.row.requirement.help_text card.error %}
+          <div class="btn-row"><button type="submit" class="btn btn--secondary">Save document</button></div>
+        </form>
+        {% else %}
+        {% if card.row.requirement.help_text %}<p class="text-sm">{{ card.row.requirement.help_text }}</p>{% endif %}
+        {% if card.error %}<p class="field__error"><span>{{ card.error }}</span></p>{% endif %}
+        {% endif %}
+      </li>{% endfor %}
+    </ul>
+  </section>
+  <section class="card" aria-labelledby="submit-title">
+    <h2 class="card__title" id="submit-title">Submit</h2>
+    <form method="post" action="{% url 'review:behalf-submit' program=program.slug pk=application.pk %}" novalidate>
+      {% csrf_token %}
+      {% include "components/form_errors.html" with form=submit_form %}
+      {% if draft %}
+      {% if "tier" in submit_form.fields %}{% field submit_form.tier %}
+      {% elif submit_form.candidates %}<p>Allowance tier: {{ submit_form.candidates.0.name }}</p>{% endif %}
+      {% field submit_form.override_reason %}
+      <div class="btn-row"><button type="submit" class="btn btn--primary">Submit application</button></div>
+      {% else %}
+      <div class="btn-row"><button type="submit" class="btn btn--primary">Resubmit</button></div>
+      {% endif %}
+    </form>
+  </section>
+</div>
+{% endblock %}
