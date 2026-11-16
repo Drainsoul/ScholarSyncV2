@@ -25,6 +25,9 @@
   </div>
 </div>
 {% if error %}<div class="banner banner--danger" role="alert"><div><p>{{ error }}</p></div></div>{% endif %}
+{% if application.on_behalf %}
+<div class="banner banner--info" role="note"><div><p>Filed by {{ filed_by }} for the student.</p></div></div>
+{% endif %}
 {% for award in other_awards %}
 <div class="banner banner--info" role="note"><div><p>Also holds an active {{ award.program.name }} award.</p></div></div>
 {% endfor %}
@@ -62,6 +65,9 @@
       <div class="card__header"><h2 class="card__title" id="eligibility-title">Eligibility</h2><p class="text-sm text-muted num">{{ rules_met }} of {{ rules_total }} rules met</p></div>
       {% if evaluated_on %}<p class="text-sm text-muted">As checked on {{ evaluated_on|date:"j F Y" }}</p>{% endif %}
       {% include "components/checklist.html" with items=checks %}
+      {% if application.on_behalf and overrides %}
+      <div class="banner banner--warning" role="note"><div><p class="banner__title">Overridden by staff</p><ul>{% for rule in overrides %}<li>{{ rule }}</li>{% endfor %}</ul><p>{{ application.override_reason }}</p></div></div>
+      {% endif %}
       {% if hint.label or hint.reason %}
       <div class="banner" role="note"><div><p class="banner__title">{% if hint.label %}Legacy model suggests: {{ hint.label }}{% else %}{{ hint.reason }}{% endif %}</p><p>Advisory only. The rules above decided who could apply.</p></div></div>
       {% endif %}

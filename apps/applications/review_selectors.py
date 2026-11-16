@@ -122,7 +122,9 @@ def queue(program: Program, filters: QueueFilters) -> QuerySet[Application]:
 def staff_application(program: Program, pk: int) -> Application:
     application = (
         applications_for_program(program)
-        .select_related("profile", "profile__user", "term", "requested_tier", "school", "program")
+        .select_related(
+            "profile", "profile__user", "term", "requested_tier", "school", "program", "created_by"
+        )
         .filter(pk=pk)
         .first()
     )
@@ -216,7 +218,7 @@ def _behalf_rows(program: Program) -> QuerySet[Application]:
 def behalf_application(program: Program, pk: int) -> Application:
     application = (
         _behalf_rows(program)
-        .select_related("profile", "term", "requested_tier", "school", "program")
+        .select_related("profile", "term", "requested_tier", "school", "program", "created_by")
         .filter(pk=pk)
         .first()
     )

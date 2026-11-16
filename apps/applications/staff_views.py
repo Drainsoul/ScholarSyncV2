@@ -38,7 +38,7 @@ from apps.awards.selectors import other_active_awards
 from apps.core.htmx import HtmxHttpRequest, close_dialog, toast
 from apps.core.permissions import ProgramStaffRequiredMixin
 from apps.core.shell import shell_context
-from apps.matching.checklist import snapshot_items
+from apps.matching.checklist import CHECK_LABELS, snapshot_items
 from apps.programs.models import AcademicTerm, Program
 
 PAGE_SIZE = 25
@@ -145,10 +145,19 @@ def render_review(
         }
         for row in doc_rows
     ]
+    filer = application.created_by
+    overridden = snapshot.get("override") if application.on_behalf else None
+    overrides = [
+        CHECK_LABELS.get(code, code.replace("_", " ").capitalize())
+        for code in (overridden if isinstance(overridden, list) else [])
+        if isinstance(code, str)
+    ]
     return render(
         request,
         "review/detail.html",
         {
+            "filed_by": filer.full_name if filer is not None and filer.full_name else "staff",
+            "overrides": overrides,
             **shell_context(request, area="staff", program=program),
             "program": program,
             "application": application,

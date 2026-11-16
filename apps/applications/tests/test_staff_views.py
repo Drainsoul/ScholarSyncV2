@@ -20,6 +20,7 @@ from apps.awards.models import Award
 from apps.awards.tests.factories import AwardFactory
 from apps.core.audit import record
 from apps.core.models import AuditEvent
+from apps.matching.checklist import CHECK_LABELS
 from apps.programs.tests.factories import BenefitTierFactory, MembershipFactory, ProgramFactory
 from apps.students.tests.factories import FullProfileFactory, ProfileFactory
 
@@ -697,3 +698,96 @@ def test_queue_offers_bulk_form_and_approve_only_when_waiting(client: Any) -> No
     _row(membership.program, S.UNDER_REVIEW)
     reviewing = client.get(_url(), {"status": "under_review"}).content.decode()
     assert 'value="approve"' in reviewing
+
+
+# --- on-behalf applications on the review screen ---
+
+
+def _behalf_snapshot(override: list[str]) -> dict[str, Any]:
+    snapshot = _snapshot()
+    snapshot["filed_by_staff"] = True
+    snapshot["override"] = override
+    return snapshot
+
+
+def test_review_shows_filed_by_staff(client: Any) -> None:
+    membership = _staff()
+    application = _row(
+        membership.program,
+        S.UNDER_REVIEW,
+        on_behalf=True,
+        created_by=membership.user,
+        match_snapshot=_behalf_snapshot([]),
+    )
+    client.force_login(membership.user)
+    body = client.get(_detail_url(application.pk)).content.decode()
+    assert f"Filed by {membership.user.full_name} for the student." in body
+    application.created_by = None
+    application.save()
+    body = client.get(_detail_url(application.pk)).content.decode()
+    assert "Filed by staff for the student." in body
+
+
+def test_review_lists_overridden_checks_with_reason(client: Any) -> None:
+    membership = _staff()
+    application = _row(
+        membership.program,
+        S.UNDER_REVIEW,
+        on_behalf=True,
+        created_by=membership.user,
+        override_reason="Voter record <b>pending</b> at the COMELEC",
+        match_snapshot=_behalf_snapshot(["voter"]),
+    )
+    client.force_login(membership.user)
+    body = client.get(_detail_url(application.pk)).content.decode()
+    assert "Overridden by staff" in body
+    block = body.split("Overridden by staff", 1)[1]
+    assert "Voter record &lt;b&gt;pending&lt;/b&gt; at the COMELEC" in block
+    assert "<b>pending</b>" not in body
+    assert CHECK_LABELS["voter"] in block
+
+
+def test_review_eligible_on_behalf_has_no_override_block(client: Any) -> None:
+    membership = _staff()
+    application = _row(
+        membership.program,
+        S.UNDER_REVIEW,
+        on_behalf=True,
+        created_by=membership.user,
+        match_snapshot=_behalf_snapshot([]),
+    )
+    client.force_login(membership.user)
+    body = client.get(_detail_url(application.pk)).content.decode()
+    assert "Filed by" in body
+    assert "Overridden by staff" not in body
+
+
+def test_returned_on_behalf_links_fix_and_resubmit(client: Any) -> None:
+    membership = _staff()
+    application = _row(
+        membership.program,
+        S.RETURNED,
+        on_behalf=True,
+        created_by=membership.user,
+        decision_reason="Scan is blurry",
+        match_snapshot=_behalf_snapshot([]),
+    )
+    client.force_login(membership.user)
+    body = client.get(_detail_url(application.pk)).content.decode()
+    url = reverse(
+        "review:behalf", kwargs={"program": membership.program.slug, "pk": application.pk}
+    )
+    assert f'href="{url}"' in body
+    assert "Fix and resubmit" in body
+
+
+def test_student_application_review_unchanged(client: Any) -> None:
+    membership = _staff()
+    application = _row(
+        membership.program, S.RETURNED, decision_reason="Scan is blurry", match_snapshot=_snapshot()
+    )
+    client.force_login(membership.user)
+    body = client.get(_detail_url(application.pk)).content.decode()
+    assert "Filed by" not in body
+    assert "Overridden by staff" not in body
+    assert "Fix and resubmit" not in body

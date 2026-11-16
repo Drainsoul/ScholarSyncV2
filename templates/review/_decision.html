@@ -13,6 +13,7 @@
   {% if application.decision_reason %}<p class="text-sm">{{ application.decision_reason }}</p>{% endif %}
   {% elif application.status == "returned" %}
   <p>Returned: {{ application.decision_reason }}</p>
+  {% if application.on_behalf %}<p><a class="btn btn--primary" href="{% url 'review:behalf' program=program.slug pk=application.pk %}">Fix and resubmit</a></p>{% endif %}
   {% elif application.status == "rejected" %}
   <p>Not approved: {{ application.decision_reason }}</p>
   {% elif application.status == "withdrawn" %}
