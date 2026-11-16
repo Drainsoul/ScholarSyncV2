@@ -2,14 +2,15 @@ from dataclasses import dataclass
 from datetime import date
 from enum import StrEnum
 
-from django.db.models import Exists, OuterRef, Q
+from django.db.models import Count, Exists, OuterRef, Q, QuerySet, Subquery, Value
+from django.db.models.functions import Coalesce
 
 from apps.accounts.models import User
 from apps.applications.models import Application
 from apps.awards.models import Award, ScholarTerm
 from apps.matching.eligibility import window_reason
 from apps.programs.models import AcademicTerm, BenefitTier, Program
-from apps.programs.selectors import application_term, tiers_in_force
+from apps.programs.selectors import application_term, tiers_in_force, window_state
 from apps.students.models import StudentProfile
 
 # A renewal in one of these states settles the term: nothing more is due.
@@ -155,3 +156,88 @@ def scholarships_for_student(user: User, *, today: date) -> list[ScholarshipCard
             )
         )
     return cards
+
+
+def _latest(field: str) -> Subquery:
+    return Subquery(
+        ScholarTerm.objects.filter(award=OuterRef("pk"))
+        .order_by("-term__sort_key", "-pk")
+        .values(field)[:1]
+    )
+
+
+def with_latest_term(rows: QuerySet[Award]) -> QuerySet[Award]:
+    """Annotate each award with its latest term record (by term order) and its record count."""
+    latest_school = Subquery(
+        ScholarTerm.objects.filter(award=OuterRef("pk"))
+        .order_by("-term__sort_key", "-pk")
+        .annotate(name=Coalesce("school__name", "school_name"))
+        .values("name")[:1]
+    )
+    count = Subquery(
+        ScholarTerm.objects.filter(award=OuterRef("pk"))
+        .order_by()
+        .values("award")
+        .annotate(n=Count("pk"))
+        .values("n")[:1]
+    )
+    return rows.annotate(
+        latest_term_id=_latest("term_id"),
+        latest_gwa=_latest("gwa"),
+        latest_gwa_scale=_latest("gwa_scale"),
+        latest_units=_latest("units"),
+        latest_year_level=_latest("year_level"),
+        latest_school_name=latest_school,
+        term_count=Coalesce(count, Value(0)),
+    )
+
+
+def _renewal_closed(program: Program, term: AcademicTerm | None, today: date) -> bool:
+    return term is not None and window_state(program, today) == "closed"
+
+
+def at_risk_q(program: Program, term: AcademicTerm | None, today: date) -> Q:
+    """Active awards at risk (a proposal pending §18 Q5), on a `with_latest_term` queryset."""
+    risks = Q(pk__in=[])
+    if program.renewal_min_gwa_percent is not None:
+        risks |= Q(latest_gwa_scale="percent", latest_gwa__lt=program.renewal_min_gwa_percent)
+    if program.renewal_max_gwa_one_to_five is not None:
+        risks |= Q(
+            latest_gwa_scale="one_to_five", latest_gwa__gt=program.renewal_max_gwa_one_to_five
+        )
+    if program.renewal_min_units is not None:
+        risks |= Q(latest_units__lt=program.renewal_min_units)
+    if _renewal_closed(program, term, today):
+        assert term is not None
+        risks |= renewal_due_q(term)
+    return Q(status=Award.Status.ACTIVE) & risks
+
+
+def at_risk_reasons(
+    award: Award, program: Program, term: AcademicTerm | None, today: date
+) -> list[str]:
+    """Why an annotated active award is at risk, as sentences for staff; empty when it isn't."""
+    if award.status != Award.Status.ACTIVE:
+        return []
+    reasons = []
+    gwa, scale = award.latest_gwa, award.latest_gwa_scale  # type: ignore[attr-defined]
+    if gwa is not None:
+        low = (
+            scale == "percent"
+            and program.renewal_min_gwa_percent is not None
+            and gwa < program.renewal_min_gwa_percent
+        ) or (
+            scale == "one_to_five"
+            and program.renewal_max_gwa_one_to_five is not None
+            and gwa > program.renewal_max_gwa_one_to_five
+        )
+        if low:
+            reasons.append(f"Last term's GWA of {gwa} misses the renewal mark.")
+    units = award.latest_units  # type: ignore[attr-defined]
+    if units is not None and program.renewal_min_units is not None:
+        if units < program.renewal_min_units:
+            reasons.append(f"Last term's {units} units are under the renewal minimum.")
+    if _renewal_closed(program, term, today):
+        if renewal_for(award, term).status == RenewalStatus.DUE:
+            reasons.append("Not renewed, and renewals have closed.")
+    return reasons
