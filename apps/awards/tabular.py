@@ -21,9 +21,13 @@ MAX_ROWS = 500
 MAX_COLUMNS = 30
 MAX_CELL = 200
 MAX_UNPACKED = 50 * 1024 * 1024
+MAX_SCANNED = MAX_ROWS * 20  # every row read, empty ones included, so blank padding can't run long
 
 TOO_MANY_ROWS = f"This file has more than {MAX_ROWS} rows. Split it into smaller files."
 TOO_MANY_COLUMNS = f"This file has more than {MAX_COLUMNS} columns. Use the template's columns."
+TOO_MANY_LINES = (
+    "This file has too many rows, counting empty ones. Delete the empty rows and try again."
+)
 LONG_CELL = "Row {line} has a value longer than " + f"{MAX_CELL} characters."
 DUPLICATE_COLUMN = 'The column "{column}" appears twice.'
 UNDECODABLE = "We couldn't read this file's text. Save it as CSV UTF-8 and try again."
@@ -83,6 +87,8 @@ def _table(raw_rows: Iterable[Sequence[object]]) -> Table:
         seen.add(column)
     rows: list[tuple[int, dict[str, Cell]]] = []
     for line, raw in enumerate(rows_iter, start=2):
+        if line > MAX_SCANNED + 1:
+            raise TableError(TOO_MANY_LINES)
         values: dict[str, Cell] = {}
         for column, value in zip(headers, raw, strict=False):
             if not column:
@@ -122,7 +128,9 @@ def _xlsx_rows(body: bytes) -> Iterator[tuple[object, ...]]:
     workbook = openpyxl.load_workbook(io.BytesIO(body), read_only=True, data_only=True)
     try:
         sheet = workbook.worksheets[0]
-        yield from sheet.iter_rows(values_only=True, max_col=MAX_COLUMNS + 1)
+        yield from sheet.iter_rows(
+            values_only=True, max_col=MAX_COLUMNS + 1, max_row=MAX_SCANNED + 2
+        )
     finally:
         workbook.close()
 

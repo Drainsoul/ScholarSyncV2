@@ -180,3 +180,20 @@ def test_write_xlsx_types():
     assert sheet["A2"].value == "'=x"
     assert sheet["B2"].data_type == "n"
     assert sheet["B2"].value == 1.75
+
+
+def test_blank_rows_count_toward_a_hard_limit():
+    body = ("last_name\nCruz\n" + ",\n" * tabular.MAX_SCANNED).encode()
+    with pytest.raises(TableError) as excinfo:
+        read_table(body, CSV)
+    assert str(excinfo.value) == (
+        "This file has too many rows, counting empty ones. Delete the empty rows and try again."
+    )
+
+
+def test_blank_rows_count_toward_a_hard_limit_xlsx(monkeypatch):
+    monkeypatch.setattr(tabular, "MAX_SCANNED", 5)
+    body = xlsx(["last_name"], ["Cruz"], *[[None, "x"] for _ in range(6)])
+    with pytest.raises(TableError) as excinfo:
+        read_table(body, XLSX)
+    assert "too many rows, counting empty ones" in str(excinfo.value)
