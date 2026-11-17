@@ -100,6 +100,7 @@ def test_load_completes_a_partial_earlier_run(demo_app, settings, monkeypatch):
     # An earlier run from before the M11 samples, which give the office audited actions (an
     # account with audit events can't be deleted: they are append-only).
     monkeypatch.setattr(loader, "give_workspace_samples", lambda: None)
+    monkeypatch.setattr(loader, "give_office_samples", lambda: None)
     loader.load()
     User.objects.filter(email="office@scholarsync.test").delete()
     monkeypatch.undo()
@@ -529,7 +530,9 @@ def test_demo_does_not_change_program_config(demo_app, settings, frozen_today):
     fields = [f.name for f in Program._meta.concrete_fields if f.name != "updated_at"]
     before = list(Program.objects.order_by("pk").values(*fields))
     loader.load()
-    assert list(Program.objects.order_by("pk").values(*fields)) == before
+    # The demo adds its own closed sample program (M11b); the seeded ones stay as they were.
+    seeded = Program.objects.filter(pk__in=[row["id"] for row in before])
+    assert list(seeded.order_by("pk").values(*fields)) == before
 
 
 # --- Manual scholar and the sample import file (M9b) ---
@@ -643,3 +646,42 @@ def test_demo_has_workspace_samples(demo_app, settings, frozen_today, stored):
         )
     ]
     assert len(queue) == 4
+
+
+@pytest.mark.django_db
+def test_demo_has_office_samples(demo_app, settings, frozen_today):
+    from datetime import timedelta
+    from decimal import Decimal
+
+    from apps.programs.models import BenefitTier
+    from apps.programs.selectors import activation_problem, current_term
+
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    youth = Program.objects.get(slug="youth-grant")
+    assert not youth.is_active
+    assert activation_problem(youth, current_term()) is None
+    former = User.objects.get(email="former.staff@scholarsync.test")
+    assert (former.full_name, former.is_active, former.memberships.count()) == (
+        "Ramil Ocampo",
+        False,
+        0,
+    )
+    term = current_term()
+    assert term is not None
+    AcademicTerm.objects.get_or_create(
+        school_year_start=term.school_year_start + 1,
+        term=AcademicTerm.Term.FIRST,
+        defaults={
+            "starts_on": term.ends_on + timedelta(days=1),
+            "ends_on": term.ends_on + timedelta(days=150),
+        },
+    )
+    loader.load()
+    loader.load()
+    change = BenefitTier.objects.get(
+        program__slug="tcu-ceaa", effective_from__school_year_start=term.school_year_start + 1
+    )
+    assert (change.base_amount, change.merit_amount) == (Decimal("5500.00"), Decimal("11000.00"))
+    assert Program.objects.filter(slug="youth-grant").count() == 1
+    assert User.objects.filter(email="former.staff@scholarsync.test").count() == 1
