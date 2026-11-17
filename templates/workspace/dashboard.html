@@ -1,6 +1,22 @@
-{% extends "layouts/staff.html" %}
+{% extends "layouts/staff.html" %}{% load ui %}
 {% block title %}{{ program.name }}{% endblock %}
 {% block content %}
-  <h1>{{ program.name }}</h1>
-  {% include "components/empty_state.html" with title="Applications and scholars for this program will show here." %}
+<div class="page-header">
+  <div><h1>{{ program.name }}</h1>{% if board.term_label %}<p class="page-header__meta">{{ board.term_label }}</p>{% endif %}</div>
+</div>
+{% include "components/figures.html" with figures=board.figures %}
+<div class="split split--even">
+  <section class="card" aria-labelledby="attention-title">
+    <div class="card__header"><h2 class="card__title" id="attention-title">Needs attention</h2></div>
+    {% if board.attention %}{% include "components/row_links.html" with items=board.attention %}{% else %}{% include "components/empty_state.html" with title="Nothing needs attention right now." %}{% endif %}
+  </section>
+  <section class="card" aria-labelledby="months-title">
+    <div class="card__header"><h2 class="card__title" id="months-title">Applications by month</h2></div>
+    {% include "components/month_chart.html" with months=board.months chart_id="months-title" %}
+  </section>
+</div>
+<section class="card" aria-labelledby="tasks-title">
+  <div class="card__header"><h2 class="card__title" id="tasks-title">Your tasks</h2><a href="{% url 'workspace:tasks' program=program.slug %}">All tasks</a></div>
+  {% if task_rows %}{% include "components/row_links.html" with items=task_rows %}{% else %}{% include "components/empty_state.html" with title="No open tasks." %}{% endif %}
+</section>
 {% endblock %}

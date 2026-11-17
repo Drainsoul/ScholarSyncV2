@@ -5,6 +5,7 @@ from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
@@ -14,16 +15,38 @@ from apps.core.permissions import ProgramStaffRequiredMixin
 from apps.core.shell import home_url_for, shell_context
 from apps.students import services
 from apps.students.selectors import unclaimed_profiles_for
+from apps.workspace.dashboard import staff_dashboard
 from apps.workspace.forms import StaffProfileForm
+from apps.workspace.tasks import task_status
 
 
 class DashboardView(ProgramStaffRequiredMixin, TemplateView):
     template_name = "workspace/dashboard.html"
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        user = self.request.user
+        assert isinstance(user, User)
+        board = staff_dashboard(self.program, user, now=timezone.now())
+        today = timezone.localdate()
+        task_rows = []
+        for task in board.tasks:
+            status = task_status(task, today)
+            due = f"Due {task.due_on.day} {task.due_on:%b %Y}" if task.due_on else ""
+            task_rows.append(
+                {
+                    "title": task.title,
+                    "detail": status[1] if status else (due or "No due date"),
+                    "tone": status[0] if status else "neutral",
+                    "url": reverse(
+                        "workspace:task-edit", kwargs={"program": self.program.slug, "pk": task.pk}
+                    ),
+                }
+            )
         return {
             **super().get_context_data(**kwargs),
             **shell_context(self.request, area="staff", program=self.program),
+            "board": board,
+            "task_rows": task_rows,
         }
 
 

@@ -297,3 +297,23 @@ def payouts_for_student(user: User, *, today: date) -> dict[int, Payouts]:
             rows=mine,
         )
     return found
+
+
+def released_in_year(program: Program, year: int) -> Decimal:
+    """Released payouts whose schedule's distribution day falls in `year` (the budget year)."""
+    found: Decimal = Disbursement.objects.filter(
+        schedule__program=program,
+        schedule__distribution_date__year=year,
+        status=Disbursement.Status.RELEASED,
+    ).aggregate(total=money_sum("amount"))["total"]
+    return found
+
+
+def payout_counts(program: Program) -> dict[str, int]:
+    """Prepared and approved payouts in the program's published schedules."""
+    return Disbursement.objects.filter(
+        schedule__program=program, schedule__is_published=True
+    ).aggregate(
+        pending=Count("pk", filter=Q(status=Disbursement.Status.PENDING)),
+        approved=Count("pk", filter=Q(status=Disbursement.Status.APPROVED)),
+    )

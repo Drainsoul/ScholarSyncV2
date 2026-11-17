@@ -1,10 +1,13 @@
 """Staff-side reads for application review. Pure reads: nothing here writes."""
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime, time, timedelta
 
-from django.db.models import F, OrderBy, Q, QuerySet
+from django.db.models import Count, F, Min, OrderBy, Q, QuerySet
+from django.db.models.functions import TruncMonth
 from django.http import Http404, QueryDict
+from django.utils import timezone
 
 from apps.applications.models import Application, Document
 from apps.core.models import AuditEvent
@@ -247,3 +250,37 @@ def behalf_application(program: Program, pk: int) -> Application:
     if application is None:
         raise Http404("No such application.")
     return application
+
+
+def applications_by_month(programs: Iterable[Program], *, since: date) -> dict[date, int]:
+    """Applications first submitted on or after `since`, counted per month in Manila time.
+
+    Keys are the first day of each month."""
+    zone = timezone.get_default_timezone()
+    start = datetime.combine(since, time.min, tzinfo=zone)
+    rows = (
+        Application.objects.filter(program__in=list(programs), first_submitted_at__gte=start)
+        .annotate(month=TruncMonth("first_submitted_at", tzinfo=zone))
+        .values("month")
+        .annotate(n=Count("pk"))
+        .order_by()
+    )
+    return {row["month"].date(): row["n"] for row in rows}
+
+
+def waiting_over(
+    program_ids: list[int], *, days: int, now: datetime
+) -> dict[int, tuple[int, datetime | None]]:
+    """Per program, waiting applications whose latest submission is `days` or more old, and the
+    oldest of those submissions. Programs with none are left out."""
+    rows = (
+        Application.objects.filter(
+            program_id__in=program_ids,
+            status__in=WAITING_STATUSES,
+            submitted_at__lte=now - timedelta(days=days),
+        )
+        .values("program_id")
+        .annotate(n=Count("pk"), oldest=Min("submitted_at"))
+        .order_by()
+    )
+    return {row["program_id"]: (row["n"], row["oldest"]) for row in rows}

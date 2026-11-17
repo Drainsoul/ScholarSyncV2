@@ -1,0 +1,13 @@
+{# A month bar chart: months is a list of MonthBar; chart_id labels the table. Bars are decorative, the table carries the numbers. #}
+<ul class="bar-chart" aria-hidden="true">{% for month in months %}
+  <li class="bar-chart__month{% if month.current %} bar-chart__month--current{% endif %}"><span class="bar-chart__value num">{{ month.count }}</span><span class="bar-chart__bar" data-percent="{{ month.percent }}"></span><span class="bar-chart__label">{{ month.short }}</span></li>{% endfor %}
+</ul>
+<details class="chart-table">
+  <summary>View as table</summary>
+  <div class="table-wrap" role="region" aria-labelledby="{{ chart_id }}" tabindex="0">
+    <table class="table">
+      <thead><tr><th scope="col">Month</th><th scope="col" class="num">Applications</th></tr></thead>
+      <tbody>{% for month in months %}<tr><th scope="row">{{ month.label }}</th><td class="num">{{ month.count }}</td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+</details>

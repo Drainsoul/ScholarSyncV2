@@ -13,6 +13,7 @@ from apps.awards.selectors import rollover_preview
 from apps.awards.services import start_term
 from apps.core.permissions import SuperAdminRequiredMixin
 from apps.core.shell import shell_context
+from apps.core.text import counted
 from apps.programs.models import AcademicTerm
 from apps.programs.selectors import current_term
 from apps.programs.services import add_school_year
@@ -22,10 +23,6 @@ def _actor(request: HttpRequest) -> User:
     user = request.user
     assert isinstance(user, User)
     return user
-
-
-def counted(count: int, one: str, many: str) -> str:
-    return f"{count} {one if count == 1 else many}"
 
 
 def next_school_year() -> int:
