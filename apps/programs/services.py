@@ -22,15 +22,20 @@ def add_membership(
     user: User,
     program: Program,
     level: ProgramMembership.Level,
+    request: HttpRequest | None = None,
 ) -> ProgramMembership:
     """Add a program-staff account to a program.
 
     `actor=None` means the command line or the demo; otherwise the actor must be a super admin.
     """
-    if actor is not None and not (actor.is_super_admin and actor.is_active):
-        raise PermissionDenied("Only the scholarship office can change program memberships.")
+    _require_membership_editor(actor)
     if user.role != User.Role.STAFF:
         raise ValidationError("Only program staff accounts can be program members.")
+    # Lock the account so two adds at once can't both pass the duplicate check.
+    User.objects.select_for_update().get(pk=user.pk)
+    if ProgramMembership.objects.filter(user=user, program=program).exists():
+        name = user.full_name or user.email
+        raise ValidationError(f"{name} is already in {program.name}.")
     membership = ProgramMembership.objects.create(user=user, program=program, level=level)
     record(
         actor=actor,
@@ -38,8 +43,59 @@ def add_membership(
         target=membership,
         program=program,
         data={"level": str(level)},
+        request=request,
     )
     return membership
+
+
+def _require_membership_editor(actor: User | None) -> None:
+    if actor is not None and not (actor.is_super_admin and actor.is_active):
+        raise PermissionDenied("Only the scholarship office can change program memberships.")
+
+
+@transaction.atomic
+def change_membership(
+    *,
+    actor: User,
+    membership: ProgramMembership,
+    level: ProgramMembership.Level,
+    request: HttpRequest | None = None,
+) -> ProgramMembership:
+    """A new level; no event when it is the same."""
+    _require_membership_editor(actor)
+    locked = ProgramMembership.objects.select_for_update().get(pk=membership.pk)
+    if locked.level == level:
+        return locked
+    previous = locked.level
+    locked.level = level
+    locked.save(update_fields=["level", "updated_at"])
+    record(
+        actor=actor,
+        action="membership.changed",
+        target=locked,
+        program=locked.program,
+        data={"from": str(previous), "to": str(level)},
+        request=request,
+    )
+    return locked
+
+
+@transaction.atomic
+def remove_membership(
+    *, actor: User, membership: ProgramMembership, request: HttpRequest | None = None
+) -> None:
+    """Take an account out of a program. The office still covers a program left without a head."""
+    _require_membership_editor(actor)
+    locked = ProgramMembership.objects.select_for_update().get(pk=membership.pk)
+    record(
+        actor=actor,
+        action="membership.removed",
+        target=locked,
+        program=locked.program,
+        data={"level": str(locked.level)},
+        request=request,
+    )
+    locked.delete()
 
 
 SAME_TERM = "This is already the current term."

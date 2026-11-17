@@ -7,7 +7,7 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.http import Http404, HttpRequest, HttpResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.decorators import method_decorator
 from django.views import View
 
@@ -16,8 +16,10 @@ from apps.accounts.models import User
 from apps.accounts.selectors import staff_account, staff_accounts
 from apps.core.permissions import SuperAdminRequiredMixin
 from apps.core.shell import shell_context
+from apps.programs import services as programs
+from apps.programs.models import ProgramMembership
 
-from .forms import AccountForm
+from .forms import AccountForm, MembershipForm
 
 PAGE_SIZE = 25
 
@@ -91,8 +93,10 @@ class StaffDetailView(SuperAdminRequiredMixin, View):
         return render(request, "office/staff/detail.html", context)
 
     def extra_context(self, request: HttpRequest, account: User) -> dict[str, Any]:
-        """Hook for the membership forms."""
-        return {}
+        return {
+            "membership_form": MembershipForm(),
+            "levels": ProgramMembership.Level.choices,
+        }
 
 
 @method_decorator(reauthentication_required, name="post")
@@ -121,4 +125,61 @@ class StaffWelcomeView(SuperAdminRequiredMixin, View):
         if account.last_login is None:
             services.send_welcome(actor=_actor(request), user=account)
             messages.success(request, "Email sent again.")
+        return redirect("office:staff-detail", pk=account.pk)
+
+
+@method_decorator(reauthentication_required, name="post")
+class MembershipAddView(SuperAdminRequiredMixin, View):
+    http_method_names = ["post", "options"]
+
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        account = _account(pk)
+        form = MembershipForm(request.POST)
+        if not form.is_valid():
+            messages.error(request, "Pick a program and a level.")
+            return redirect("office:staff-detail", pk=account.pk)
+        program = form.cleaned_data["program"]
+        try:
+            programs.add_membership(
+                actor=_actor(request),
+                user=account,
+                program=program,
+                level=ProgramMembership.Level(form.cleaned_data["level"]),
+                request=request,
+            )
+        except ValidationError as error:
+            messages.error(request, " ".join(error.messages))
+        else:
+            messages.success(request, f"Added to {program.name}.")
+        return redirect("office:staff-detail", pk=account.pk)
+
+
+@method_decorator(reauthentication_required, name="post")
+class MembershipChangeView(SuperAdminRequiredMixin, View):
+    """Change a membership's level (`level=`) or remove it (`remove=1`)."""
+
+    http_method_names = ["post", "options"]
+
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        membership = get_object_or_404(
+            ProgramMembership.objects.select_related("program", "user"), pk=pk
+        )
+        account, program = membership.user, membership.program
+        if request.POST.get("remove") == "1":
+            programs.remove_membership(
+                actor=_actor(request), membership=membership, request=request
+            )
+            messages.success(request, f"Removed from {program.name}.")
+            return redirect("office:staff-detail", pk=account.pk)
+        level = request.POST.get("level", "")
+        if level not in ProgramMembership.Level.values:
+            messages.error(request, "Pick a level.")
+            return redirect("office:staff-detail", pk=account.pk)
+        changed = programs.change_membership(
+            actor=_actor(request),
+            membership=membership,
+            level=ProgramMembership.Level(level),
+            request=request,
+        )
+        messages.success(request, f"Now {changed.get_level_display()} in {program.name}.")
         return redirect("office:staff-detail", pk=account.pk)

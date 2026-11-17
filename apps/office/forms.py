@@ -2,6 +2,7 @@ from django import forms
 
 from apps.accounts.models import User
 from apps.core.text import normalize_newlines
+from apps.programs.models import Program, ProgramMembership
 
 
 class ProgramForm(forms.Form):
@@ -47,3 +48,14 @@ class AccountForm(forms.Form):
         if not name:
             raise forms.ValidationError("Enter the person's full name.")
         return name
+
+
+class MembershipForm(forms.Form):
+    program = forms.ModelChoiceField(
+        label="Program", queryset=Program.objects.order_by("name"), empty_label=None
+    )
+    level = forms.ChoiceField(
+        label="Level",
+        choices=ProgramMembership.Level.choices,
+        initial=ProgramMembership.Level.STAFF,
+    )

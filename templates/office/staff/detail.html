@@ -20,12 +20,34 @@
 </section>
 <section class="card" aria-labelledby="memberships-title">
   <h2 class="card__title" id="memberships-title">Programs</h2>
-  {% block memberships %}
+  <p class="text-sm text-muted">Membership changes ask for your password.</p>
   {% if memberships %}
-  <ul class="list">{% for membership in memberships %}<li><p>{{ membership.program.name }} · {{ membership.get_level_display }}</p></li>{% endfor %}</ul>
+  <div class="table-wrap" role="region" aria-labelledby="memberships-title" tabindex="0">
+    <table class="table table--stack">
+      <thead><tr><th scope="col">Program</th><th scope="col">Level</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+      <tbody>{% for membership in memberships %}<tr>
+        <th scope="row">{{ membership.program.name }}{% if not membership.program.is_active %} <span class="text-sm text-muted">Closed</span>{% endif %}</th>
+        <td data-label="Level">
+          <form class="btn-row" method="post" action="{% url 'office:membership-change' membership.pk %}">{% csrf_token %}
+            <label class="visually-hidden" for="level-{{ membership.pk }}">Level in {{ membership.program.name }}</label>
+            <select class="input" id="level-{{ membership.pk }}" name="level">{% for value, label in levels %}<option value="{{ value }}"{% if value == membership.level %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+            <button type="submit" class="btn btn--secondary">Change<span class="visually-hidden"> level in {{ membership.program.name }}</span></button>
+          </form>
+        </td>
+        <td><form method="post" action="{% url 'office:membership-change' membership.pk %}">{% csrf_token %}<input type="hidden" name="remove" value="1"><button type="submit" class="btn btn--ghost">Remove<span class="visually-hidden"> from {{ membership.program.name }}</span></button></form></td>
+      </tr>{% endfor %}</tbody>
+    </table>
+  </div>
   {% else %}
   {% include "components/empty_state.html" with title="Not in any program yet." %}
   {% endif %}
-  {% endblock %}
+  {% if account.role == "staff" %}
+  <h3 class="card__title">Add to a program</h3>
+  <form method="post" action="{% url 'office:membership-add' account.pk %}" novalidate>
+    {% csrf_token %}
+    {% for bound_field in membership_form %}{% field bound_field %}{% endfor %}
+    <div class="btn-row"><button type="submit" class="btn btn--primary">{% icon "plus" %}Add to program</button></div>
+  </form>
+  {% endif %}
 </section>
 {% endblock %}
