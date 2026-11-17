@@ -1,5 +1,6 @@
 from django.urls import path
 
+from apps.reports import office_views as report_views
 from apps.workspace import notification_views
 
 from . import program_views, school_views, staff_views, views
@@ -48,6 +49,17 @@ urlpatterns = [
         "notifications/<int:pk>/",
         notification_views.OfficeOpenNotificationView.as_view(),
         name="notification-open",
+    ),
+    path("reports/", report_views.OfficeReportListView.as_view(), name="reports"),
+    path(
+        "reports/<int:pk>/",
+        report_views.OfficeReportDetailView.as_view(),
+        name="report-detail",
+    ),
+    path(
+        "reports/<int:pk>/decide/",
+        report_views.OfficeReportDecideView.as_view(),
+        name="report-decide",
     ),
     path("terms/", views.TermsView.as_view(), name="terms"),
     path("terms/add/", views.AddYearView.as_view(), name="terms-add"),

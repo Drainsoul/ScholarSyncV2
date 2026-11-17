@@ -51,3 +51,22 @@ class ReportForm(forms.Form):
         if start and end and end < start:
             self.add_error("period_end", PERIOD_ORDER)
         return data
+
+
+class DecideForm(forms.Form):
+    decision = forms.ChoiceField(
+        label="Decision",
+        choices=[("accept", "Accept"), ("return", "Return to the program")],
+        widget=forms.RadioSelect,
+        initial="accept",
+    )
+    note = forms.CharField(
+        label="Note to the program",
+        help_text="Required when you return it.",
+        required=False,
+        max_length=1000,
+        widget=forms.Textarea(attrs={"rows": 3, "maxlength": 1000}),
+    )
+
+    def clean_note(self) -> str:
+        return normalize_newlines(self.cleaned_data.get("note", ""))

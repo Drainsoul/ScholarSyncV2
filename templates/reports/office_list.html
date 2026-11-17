@@ -1,0 +1,34 @@
+{% extends "layouts/office.html" %}{% load ui reports %}
+{% block title %}Program reports{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div><h1>Program reports</h1><p class="page-header__meta">Reports programs send to the scholarship office.</p></div>
+  </div>
+  <form class="table-toolbar" method="get" role="search" aria-label="Filter reports">
+    <input type="hidden" name="tab" value="{{ tab }}">
+    <label class="visually-hidden" for="report-program">Program</label>
+    <select class="input" id="report-program" name="program">
+      <option value="">All programs</option>
+      {% for item in programs %}<option value="{{ item.pk }}"{% if item.pk == program_id %} selected{% endif %}>{{ item.name }}</option>{% endfor %}
+    </select>
+    <button type="submit" class="btn btn--secondary">{% icon "filter" %}Apply filters</button>
+  </form>
+  {% include "components/tabs.html" with tabs_label="Report lists" %}
+  {% if page.object_list %}
+  <div class="table-wrap" role="region" aria-label="Reports" tabindex="0">
+    <table class="table table--stack">
+      <thead><tr><th scope="col">Report</th><th scope="col">Program</th><th scope="col">Period</th><th scope="col">Sent</th><th scope="col">Status</th></tr></thead>
+      <tbody>{% for report in page.object_list %}<tr>
+        <th scope="row" data-label="Report"><a href="{% url 'office:report-detail' report.pk %}">{{ report.title }}</a></th>
+        <td data-label="Program">{{ report.program.name }}</td>
+        <td data-label="Period">{{ report.period_start|date:"j M Y" }} to {{ report.period_end|date:"j M Y" }}</td>
+        <td data-label="Sent"><time datetime="{{ report.submitted_at|date:'c' }}">{{ report.submitted_at|date:"j M Y" }}</time></td>
+        <td data-label="Status">{% status report.status|report_tone report.get_status_display %}</td>
+      </tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% pagination page %}
+  {% else %}
+  {% include "components/empty_state.html" with title="No reports here." %}
+  {% endif %}
+{% endblock %}

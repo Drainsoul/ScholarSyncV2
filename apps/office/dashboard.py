@@ -20,6 +20,7 @@ from apps.core.text import counted
 from apps.money.selectors import budget_summaries
 from apps.programs.models import Program
 from apps.programs.selectors import current_term, window_state
+from apps.reports.selectors import oldest_submitted, submitted_count
 from apps.workspace.dashboard import WAIT_DAYS, day_month, waited_row
 from apps.workspace.support import open_count
 
@@ -65,6 +66,7 @@ def office_dashboard(user: User, *, now: datetime) -> OfficeDashboard:
     waiting = waiting_over(ids, days=WAIT_DAYS, now=now)
     budgets = budget_summaries(programs, today.year)
     support_open = open_count()
+    reports_waiting = submitted_count()
 
     figures = [
         {"label": "Scholars", "value": f"{sum(scholars.values()):,}"},
@@ -73,10 +75,28 @@ def office_dashboard(user: User, *, now: datetime) -> OfficeDashboard:
             "label": f"Waiting over {WAIT_DAYS} days",
             "value": f"{sum(count for count, _ in waiting.values()):,}",
         },
-        {"label": "Support requests", "value": f"{support_open:,}"},
+        {"label": "Reports to review", "value": f"{reports_waiting:,}"},
     ]
 
     attention: list[dict[str, str]] = []
+    if reports_waiting:
+        oldest = oldest_submitted()
+        days = (now - oldest).days if oldest is not None else 0
+        attention.append(
+            {
+                "title": counted(
+                    reports_waiting,
+                    "program report is waiting",
+                    "program reports are waiting",
+                )
+                + " for your review",
+                "detail": f"Oldest sent {counted(days, 'day', 'days')} ago"
+                if days
+                else "Sent today",
+                "tone": "warning",
+                "url": reverse("office:reports"),
+            }
+        )
     for program in programs:
         if program.pk in waiting:
             count, oldest = waiting[program.pk]

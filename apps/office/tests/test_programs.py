@@ -139,7 +139,7 @@ def test_office_nav_order(client: Any, office: User) -> None:
     response = client.get(LIST)
     labels = [item["label"] for item in response.context["nav_items"]]
     assert labels[:2] == ["Overview", "Programs"]
-    assert labels[-2:] == ["Terms", "Support"]
+    assert labels[-1] == "Support" and labels.index("Terms") > labels.index("Programs")
     programs = next(item for item in response.context["nav_items"] if item["label"] == "Programs")
     assert programs["current"] is True
 

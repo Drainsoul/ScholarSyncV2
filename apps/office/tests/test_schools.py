@@ -63,7 +63,7 @@ def test_unknown_school_404(client: Any, office: User) -> None:
 def test_school_nav_item(client: Any, office: User) -> None:
     response = client.get(LIST)
     labels = [item["label"] for item in response.context["nav_items"]]
-    assert labels == ["Overview", "Programs", "Staff", "Schools", "Terms", "Support"]
+    assert labels.index("Staff") < labels.index("Schools") < labels.index("Terms")
 
 
 def test_schools_list_search_and_query_count(

@@ -1,0 +1,44 @@
+{% extends "layouts/office.html" %}{% load ui reports %}
+{% block title %}{{ report.title }}{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div>
+      <p class="text-sm"><a href="{% url 'office:reports' %}">Program reports</a></p>
+      <h1>{{ report.title }}</h1>
+      <p class="page-header__meta">{% status report.status|report_tone report.get_status_display %} {{ report.program.name }}</p>
+    </div>
+  </div>
+  {% if report.status == "submitted" and report.review_note %}<div class="banner banner--warning" role="note"><div><p>Returned earlier: {{ report.review_note }}</p></div></div>{% endif %}
+  <div class="stack">
+    <section class="card" aria-labelledby="facts-title">
+      <h2 class="card__title" id="facts-title">Report</h2>
+      <dl class="details details--grid">
+        <div><dt>Program</dt><dd>{{ report.program.name }}</dd></div>
+        <div><dt>Period</dt><dd>{{ report.period_start|date:"j F Y" }} to {{ report.period_end|date:"j F Y" }}</dd></div>
+        <div><dt>Sent by</dt><dd>{{ report.submitted_by.full_name|default:"A staff member" }}</dd></div>
+        <div><dt>Sent on</dt><dd><time datetime="{{ report.submitted_at|date:'c' }}">{{ report.submitted_at|date:"j M Y, g:i A" }}</time></dd></div>
+      </dl>
+      {% if report.description %}<p>{{ report.description|linebreaksbr }}</p>{% endif %}
+    </section>
+    {% if report.status != "submitted" %}
+    <section class="card" aria-labelledby="decision-title">
+      <h2 class="card__title" id="decision-title">Decision</h2>
+      <p>{{ report.get_status_display }}{% if report.reviewed_at %} on <time datetime="{{ report.reviewed_at|date:'c' }}">{{ report.reviewed_at|date:"j M Y" }}</time>{% endif %}{% if report.reviewed_by %} by {{ report.reviewed_by.full_name|default:"the office" }}{% endif %}.</p>
+      {% if report.review_note %}<p>{{ report.review_note|linebreaksbr }}</p>{% endif %}
+    </section>
+    {% endif %}
+    {% include "reports/_files.html" %}
+    {% if form %}
+    <section class="card" aria-labelledby="decide-title">
+      <h2 class="card__title" id="decide-title">Decide</h2>
+      <form method="post" action="{% url 'office:report-decide' report.pk %}" novalidate>
+        {% csrf_token %}
+        {% include "components/form_errors.html" %}
+        {% field form.decision %}
+        {% field form.note %}
+        <div class="btn-row"><button type="submit" class="btn btn--primary">Save decision</button></div>
+      </form>
+    </section>
+    {% endif %}
+  </div>
+{% endblock %}

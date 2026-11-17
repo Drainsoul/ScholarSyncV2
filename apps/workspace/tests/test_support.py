@@ -143,7 +143,7 @@ def test_office_nav_and_overview_count_open_requests(client: Any, office: User) 
     html = response.content.decode()
     assert "2 support requests are waiting" in html
     board = response.context["board"]
-    assert board.figures[3] == {"label": "Support requests", "value": "2"}
+    assert {"label": "Support requests", "value": "2"} not in board.figures  # M11c: reports
 
 
 def test_student_help_link_in_secondary_nav(client: Any, student: User) -> None:

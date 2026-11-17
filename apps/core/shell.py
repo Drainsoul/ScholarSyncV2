@@ -6,7 +6,7 @@ from apps.accounts.models import User
 from apps.applications.review_selectors import waiting_count
 from apps.programs.models import Program, ProgramMembership
 from apps.programs.selectors import membership_for, programs_for
-from apps.reports.selectors import returned_count
+from apps.reports.selectors import returned_count, submitted_count
 from apps.workspace.selectors import unread_count
 from apps.workspace.support import open_count
 from apps.workspace.tasks import due_count
@@ -137,6 +137,7 @@ def shell_context(
             ]
         elif area == "office":
             terms = reverse("office:terms")
+            office_reports = reverse("office:reports")
             inbox = reverse("support:office")
             programs = reverse("office:programs")
             accounts = reverse("office:staff")
@@ -171,6 +172,13 @@ def shell_context(
                     "current": path.startswith(terms),
                     "count": 0,
                     "icon": "calendar",
+                },
+                {
+                    "label": "Reports",
+                    "url": office_reports,
+                    "current": path.startswith(office_reports),
+                    "count": submitted_count(),
+                    "icon": "file-text",
                 },
                 {
                     "label": "Support",

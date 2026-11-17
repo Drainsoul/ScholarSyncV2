@@ -126,7 +126,7 @@ def test_dropped_mockup_parts_absent(client: Any, office: User) -> None:
     client.force_login(office)
     html = client.get(reverse("office:home")).content.decode()
     assert "Good morning, Jessica" in html
-    for text in ("Download report", "New program", "Manage programs", "Reports to review"):
+    for text in ("Download report", "New program", "Manage programs"):
         assert text not in html
     assert 'href="#"' not in html
     for text in ("Applications by month", "Needs attention", "Programs", "Recent activity"):
@@ -177,3 +177,33 @@ def test_overview_queries_do_not_grow_with_programs(client: Any, office: User) -
     for program in ProgramFactory.create_batch(4):
         _used(program, 10)
     assert count() == two
+
+
+def test_overview_reports_figure_and_attention_row(office: User) -> None:
+    from apps.reports.tests.factories import ReportFactory
+
+    for days in (4, 2, 0):
+        ReportFactory.create(submitted_at=NOW - timedelta(days=days))
+    ReportFactory.create(status="accepted", submitted_at=NOW - timedelta(days=30))
+    board = office_dashboard(office, now=NOW)
+    assert board.figures[3] == {"label": "Reports to review", "value": "3"}
+    assert board.attention[0] == {
+        "title": "3 program reports are waiting for your review",
+        "detail": "Oldest sent 4 days ago",
+        "tone": "warning",
+        "url": reverse("office:reports"),
+    }
+
+
+def test_overview_single_report_sent_today(office: User) -> None:
+    from apps.reports.tests.factories import ReportFactory
+
+    ReportFactory.create(submitted_at=NOW - timedelta(hours=1))
+    row = office_dashboard(office, now=NOW).attention[0]
+    assert row["title"] == "1 program report is waiting for your review"
+    assert row["detail"] == "Sent today"
+
+
+def test_overview_has_no_support_figure(office: User) -> None:
+    labels = [figure["label"] for figure in office_dashboard(office, now=NOW).figures]
+    assert labels == ["Scholars", "Applications", "Waiting over 7 days", "Reports to review"]
