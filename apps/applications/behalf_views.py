@@ -16,7 +16,6 @@ from apps.applications.forms import DocumentForm
 from apps.applications.models import Application, Document
 from apps.applications.review import DECISION_REASON_TOO_LONG
 from apps.applications.review_selectors import (
-    MAX_TERM_ID,
     behalf_application,
     behalf_in_progress,
     filing_profiles,
@@ -26,6 +25,7 @@ from apps.applications.staff_forms import AcademicsForm, BehalfSubmitForm
 from apps.applications.staff_views import PAGE_SIZE, _actor, _error_text, _evaluated_on
 from apps.applications.staff_wording import staff_items
 from apps.applications.views import APPLICATION_TONES, DOCUMENT_TONES, DocumentCard
+from apps.core.params import positive_id
 from apps.core.permissions import ProgramStaffRequiredMixin
 from apps.core.shell import shell_context
 from apps.matching.checklist import checklist_items, snapshot_items
@@ -36,14 +36,6 @@ from apps.programs.selectors import tiers_in_force
 
 CHOOSE_STUDENT = "Choose a student."
 MAX_QUERY = 200
-
-
-def _profile_id(raw: str) -> int | None:
-    """The posted profile id, or None for anything that is not a plausible row id."""
-    if not raw.isascii() or not raw.isdigit():
-        return None
-    value = int(raw)
-    return value if 0 < value <= MAX_TERM_ID else None
 
 
 class NewView(ProgramStaffRequiredMixin, View):
@@ -81,7 +73,7 @@ class NewView(ProgramStaffRequiredMixin, View):
         return self._render(request)
 
     def post(self, request: HttpRequest, program: str) -> HttpResponse:
-        profile_id = _profile_id(request.POST.get("profile", ""))
+        profile_id = positive_id(request.POST.get("profile", ""))
         if profile_id is None:
             return self._render(request, error=CHOOSE_STUDENT, status=400)
         try:

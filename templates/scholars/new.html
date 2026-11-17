@@ -1,0 +1,64 @@
+{% extends "layouts/staff.html" %}{% load ui %}
+{% block title %}Add scholar{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <p class="text-sm"><a href="{% url 'scholars:list' program=program.slug %}">Scholars</a></p>
+    <h1>Add scholar</h1>
+    <p class="page-header__meta">Give one of {{ program.name }}'s students an award without an application.</p>
+  </div>
+</div>
+{% if form %}
+<section class="card">
+  <h2>{{ profile.full_name }}</h2>
+  <dl class="details details--grid">
+    <div><dt>Birth date</dt><dd>{% if profile.birth_date %}{{ profile.birth_date|date:"j F Y" }}{% else %}Not given{% endif %}</dd></div>
+    <div><dt>Account</dt><dd>{% if profile.user_id %}Claimed{% else %}Not claimed{% endif %}</dd></div>
+  </dl>
+  <form method="post" action="{{ new_url }}" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="profile" value="{{ profile.pk }}">
+    {% include "components/form_errors.html" with form=form %}
+    {% for bound_field in form %}{% field bound_field %}{% endfor %}
+    <div class="btn-row">
+      <button type="submit" class="btn btn--primary">Add scholar</button>
+      <a class="btn btn--secondary" href="{{ new_url }}">Choose another student</a>
+    </div>
+  </form>
+</section>
+{% else %}
+{% if error %}<div class="banner banner--danger" role="alert"><div><p>{{ error }}</p></div></div>{% endif %}
+<section class="card list-card" aria-labelledby="picker-heading">
+  <h2 id="picker-heading">Choose a student</h2>
+  {% if profiles or q %}
+  <form class="table-toolbar" method="get" action="{{ new_url }}" role="search" aria-label="Search students">
+    <div class="table-toolbar__search">
+      <label class="visually-hidden" for="new-scholar-q">Name</label>
+      {% icon "search" %}<input class="input" type="search" id="new-scholar-q" name="q" value="{{ q }}" placeholder="Search by name">
+    </div>
+    <button class="btn btn--secondary" type="submit">Search</button>
+  </form>
+  {% endif %}
+  {% if profiles %}
+  <p class="table-count" role="status">{{ total }} student{{ total|pluralize }}</p>
+  <div class="table-wrap" role="region" aria-label="Students" tabindex="0">
+    <table class="table">
+      <thead><tr><th scope="col">Name</th><th scope="col">Birth date</th><th scope="col">Account</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+      <tbody>{% for profile in profiles %}<tr>
+        <th scope="row">{{ profile.full_name }}</th>
+        <td>{% if profile.birth_date %}{{ profile.birth_date|date:"j M Y" }}{% endif %}</td>
+        <td>{% if profile.user_id %}Claimed{% else %}Not claimed{% endif %}</td>
+        <td>{% if profile.holds %}{% status "neutral" "Holds an award" %}{% else %}<a class="btn btn--secondary" href="{{ new_url }}?profile={{ profile.pk }}">Choose<span class="visually-hidden"> {{ profile.full_name }}</span></a>{% endif %}</td>
+      </tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% pagination page %}
+  {% elif q %}
+  {% include "components/empty_state.html" with title="No students match this name" body="Try another name." action_url=new_url action_label="Clear search" %}
+  {% else %}
+  {% url 'workspace:students-new' program=program.slug as new_student_url %}
+  {% include "components/empty_state.html" with title="No students yet." body="Students you create a profile for, award holders and applicants appear here." action_url=new_student_url action_label="Add a student first" %}
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

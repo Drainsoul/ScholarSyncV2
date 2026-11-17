@@ -3,6 +3,9 @@
 {% block content %}
 <div class="page-header">
   <div><h1>Scholars</h1><p class="page-header__meta">Everyone with a {{ program.name }} award{% if term %}, {{ term }}{% endif %}.</p></div>
+  <div class="btn-row">
+    <a class="btn btn--primary" href="{% url 'scholars:new' program=program.slug %}">{% icon "plus" %}Add scholar</a>
+  </div>
 </div>
 <section class="card list-card" aria-labelledby="list-heading">
   <h2 class="visually-hidden" id="list-heading">Scholar list</h2>

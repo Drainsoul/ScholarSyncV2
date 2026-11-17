@@ -22,23 +22,34 @@ from apps.awards.selectors import (
     Renewal,
     RenewalStatus,
     ScholarFilters,
+    addable_profiles,
     at_risk_reasons,
     next_year_level,
     parse_scholar_filters,
+    program_profiles,
     renewal_for,
     scholar_record,
     scholars,
     staff_award,
 )
 from apps.awards.services import STATUS_LABELS
-from apps.awards.staff_forms import AwardEditForm, MeritForm, StatusForm, TermRecordForm
+from apps.awards.staff_forms import (
+    AwardEditForm,
+    MeritForm,
+    NewScholarForm,
+    StatusForm,
+    TermRecordForm,
+)
 from apps.awards.views import AWARD_TONES
+from apps.core.params import positive_id
 from apps.core.permissions import ProgramStaffRequiredMixin
 from apps.core.shell import shell_context
 from apps.programs.models import AcademicTerm, Program
 from apps.programs.selectors import application_term, current_term, window_state
 
 PAGE_SIZE = 25
+MAX_QUERY = 200
+CHOOSE_STUDENT = "Choose a student first."
 
 
 def staff_renewal_text(renewal: Renewal, program: Program, today: Any) -> str:
@@ -367,4 +378,76 @@ class TermMeritView(ProgramStaffRequiredMixin, View):
             request=request,
         )
         messages.success(request, "Merit confirmed." if merit else "Marked as no merit.")
+        return redirect(_record_url(self.program, award.pk))
+
+
+class NewScholarView(ProgramStaffRequiredMixin, View):
+    """Add scholar: pick one of the program's students (GET), then the award form (?profile=)."""
+
+    template_name = "scholars/new.html"
+
+    def _picker(self, request: HttpRequest, *, error: str = "", status: int = 200) -> HttpResponse:
+        q = request.GET.get("q", "").replace("\x00", "").strip()[:MAX_QUERY]
+        paginator = Paginator(addable_profiles(self.program, q), PAGE_SIZE)
+        page = paginator.get_page(request.GET.get("page"))
+        context = {
+            **shell_context(request, area="staff", program=self.program),
+            "program": self.program,
+            "q": q,
+            "page": page,
+            "profiles": page.object_list,
+            "total": paginator.count,
+            "new_url": reverse("scholars:new", kwargs={"program": self.program.slug}),
+            "error": error,
+            "form": None,
+        }
+        return render(request, self.template_name, context, status=status)
+
+    def _form(
+        self, request: HttpRequest, profile: Any, form: NewScholarForm, status: int = 200
+    ) -> HttpResponse:
+        context = {
+            **shell_context(request, area="staff", program=self.program),
+            "program": self.program,
+            "profile": profile,
+            "form": form,
+            "new_url": reverse("scholars:new", kwargs={"program": self.program.slug}),
+        }
+        return render(request, self.template_name, context, status=status)
+
+    def _profile(self, raw: str) -> Any:
+        profile_id = positive_id(raw)
+        if profile_id is None:
+            return None
+        profile = program_profiles(self.program).filter(pk=profile_id).first()
+        if profile is None:
+            raise Http404("No such student.")
+        return profile
+
+    def get(self, request: HttpRequest, program: str) -> HttpResponse:
+        profile = self._profile(request.GET.get("profile", ""))
+        if profile is None:
+            return self._picker(request)
+        return self._form(request, profile, NewScholarForm(program=self.program))
+
+    def post(self, request: HttpRequest, program: str) -> HttpResponse:
+        profile = self._profile(request.POST.get("profile", ""))
+        if profile is None:
+            return self._picker(request, error=CHOOSE_STUDENT, status=400)
+        form = NewScholarForm(request.POST, program=self.program)
+        if not form.is_valid():
+            return self._form(request, profile, form, status=400)
+        try:
+            award = services.create_award(
+                actor=_actor(request),
+                program=self.program,
+                profile_id=profile.pk,
+                data=form.award_data(),
+                source=Award.Source.MANUAL,
+                request=request,
+            )
+        except ValidationError as error:
+            form.add_error(None, error)
+            return self._form(request, profile, form, status=400)
+        messages.success(request, f"Added {profile.full_name} as a scholar.")
         return redirect(_record_url(self.program, award.pk))

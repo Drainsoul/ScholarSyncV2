@@ -4,8 +4,8 @@ from django import forms
 
 from apps.applications.staff_forms import AcademicsForm
 from apps.awards.models import Award
-from apps.awards.services import TermData
-from apps.programs.models import AcademicTerm, BenefitTier
+from apps.awards.services import AwardData, TermData
+from apps.programs.models import AcademicTerm, BenefitTier, Program
 from apps.programs.selectors import current_term, tiers_in_force
 
 
@@ -89,3 +89,58 @@ class TermRecordForm(AcademicsForm):
 
 class MeritForm(forms.Form):
     merit = forms.ChoiceField(choices=[("yes", "Confirm merit"), ("no", "No merit")])
+
+
+class NewScholarForm(AcademicsForm):
+    """Add scholar: the award (start term, tier, student number, notes) and its first record."""
+
+    term = forms.ModelChoiceField(
+        label="Start term",
+        queryset=AcademicTerm.objects.none(),
+        empty_label=None,
+        error_messages={"invalid_choice": "Choose the current term or an earlier one."},
+    )
+    tier = forms.ChoiceField(
+        label="Allowance tier",
+        error_messages={"invalid_choice": "Choose one of this program's allowance tiers."},
+    )
+    student_number = forms.CharField(label="Student number", max_length=50, required=False)
+    notes = forms.CharField(label="Notes", required=False, widget=forms.Textarea(attrs={"rows": 3}))
+    compliance_checked = forms.BooleanField(label="Documents checked", required=False)
+
+    def __init__(self, *args: Any, program: Program, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        current = current_term()
+        term_field = self.fields["term"]
+        tier_field = self.fields["tier"]
+        assert isinstance(term_field, forms.ModelChoiceField)
+        assert isinstance(tier_field, forms.ChoiceField)
+        if current is not None:
+            term_field.queryset = AcademicTerm.objects.filter(
+                sort_key__lte=current.sort_key
+            ).order_by("-sort_key")
+            self.initial.setdefault("term", current)
+            tier_field.choices = [
+                (tier.code, tier.name) for tier in tiers_in_force(program, current)
+            ]
+        self.order_fields(["term", "tier", "student_number", "notes"])
+
+    def award_data(self) -> AwardData:
+        cleaned = self.cleaned_data
+        return AwardData(
+            tier_code=cleaned["tier"],
+            student_number=(cleaned.get("student_number") or "").strip(),
+            notes=(cleaned.get("notes") or "").strip(),
+            record=TermData(
+                term=cleaned["term"],
+                school=cleaned.get("school"),
+                school_name=cleaned.get("school_name", ""),
+                school_type=cleaned.get("school_type") or "",
+                gwa_scale=cleaned.get("gwa_scale") or "",
+                course=(cleaned.get("course") or "").strip(),
+                year_level=cleaned.get("year_level"),
+                gwa=cleaned.get("gwa"),
+                units=cleaned.get("units"),
+                compliance_checked=bool(cleaned.get("compliance_checked")),
+            ),
+        )

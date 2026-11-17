@@ -410,3 +410,19 @@ def program_profiles(program: Program) -> QuerySet[StudentProfile]:
     return StudentProfile.objects.filter(
         Q(created_for=program) | Exists(holds) | Exists(applied)
     ).order_by("last_name", "first_name", "pk")
+
+
+def addable_profiles(program: Program, q: str) -> QuerySet[StudentProfile]:
+    """The program's students for the Add scholar picker; every word of `q` must match a name.
+
+    Each row carries `holds` (an active or on-hold award in the program)."""
+    rows = program_profiles(program).annotate(
+        holds=Exists(
+            Award.objects.filter(
+                profile=OuterRef("pk"), program=program, status__in=Award.HELD_STATUSES
+            )
+        )
+    )
+    for word in q.split():
+        rows = rows.filter(Q(first_name__icontains=word) | Q(last_name__icontains=word))
+    return rows
