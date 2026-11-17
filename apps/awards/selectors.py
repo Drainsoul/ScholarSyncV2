@@ -386,18 +386,22 @@ def rollover_preview(term: AcademicTerm) -> RolloverResult:
     )
 
 
-def start_tier(program: Program, code: str, term: AcademicTerm) -> BenefitTier | None:
-    """The tier a new award starting in `term` gets: the in-force row with this code.
+def pick_tier(rows: list[BenefitTier], term: AcademicTerm) -> BenefitTier | None:
+    """Of one code's rows (with `effective_from` loaded), the one a new award starting in `term`
+    gets: the latest row effective by `term`, unless that row ended the tier. When no row is
+    effective yet (the seed's tiers start in the current school year), the earliest active row."""
+    effective = [row for row in rows if row.effective_from.sort_key <= term.sort_key]
+    if effective:
+        latest = max(effective, key=lambda row: (row.effective_from.sort_key, row.pk))
+        return latest if latest.is_active else None
+    active = [row for row in rows if row.is_active]
+    return min(active, key=lambda row: (row.effective_from.sort_key, row.pk), default=None)
 
-    When no row with the code is effective yet by `term` (the seed's tiers start in the current
-    school year), the earliest active row with the code is used instead."""
-    in_force = next((tier for tier in tiers_in_force(program, term) if tier.code == code), None)
-    if in_force is not None:
-        return in_force
-    rows = BenefitTier.objects.filter(program=program, code=code)
-    if rows.filter(effective_from__sort_key__lte=term.sort_key).exists():
-        return None  # the code exists by then but has ended
-    return rows.filter(is_active=True).order_by("effective_from__sort_key", "pk").first()
+
+def start_tier(program: Program, code: str, term: AcademicTerm) -> BenefitTier | None:
+    """The tier with this code that a new award starting in `term` gets (see `pick_tier`)."""
+    rows = BenefitTier.objects.filter(program=program, code=code).select_related("effective_from")
+    return pick_tier(list(rows), term)
 
 
 def program_profiles(program: Program) -> QuerySet[StudentProfile]:
