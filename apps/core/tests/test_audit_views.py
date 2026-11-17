@@ -201,3 +201,15 @@ def test_every_recorded_action_has_a_sentence() -> None:
     assert len(actions) > 60
     missing = sorted(action for action in actions if action not in VERBS)
     assert missing == []
+
+
+def test_head_who_filter_never_names_an_outsider(client: Any) -> None:
+    """A head can't learn another program's staff names by guessing account ids."""
+    tcu = ProgramFactory.create(slug="tcu-ceaa", name="TCU CEAA")
+    lani = ProgramFactory.create(slug="lani", name="LANI")
+    _head(client, tcu)
+    outsider = _staff_actor("Shannon Briggs")
+    record(actor=outsider, action="award.created", program=lani)
+    html = client.get(_head_url(tcu) + f"?who={outsider.pk}").content.decode()
+    assert "Shannon Briggs" not in html
+    assert "Showing one person's actions: this person." in html

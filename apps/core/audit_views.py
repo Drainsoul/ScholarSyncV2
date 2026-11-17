@@ -67,7 +67,13 @@ class _AuditLog(TemplateView):
             )
         who_name = ""
         if filters.who is not None:
-            person = User.objects.filter(pk=filters.who).first()
+            # A head only learns the name of someone who acted in their program.
+            people = User.objects.filter(pk=filters.who)
+            if program is not None:
+                people = people.filter(
+                    pk__in=AuditEvent.objects.filter(program=program).values("actor_id")
+                )
+            person = people.first()
             who_name = actor_name(person) if person is not None else "this person"
         shell = shell_context(self.request, area=self.area, program=program if not office else None)
         return {
