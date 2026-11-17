@@ -3,7 +3,7 @@
 import hashlib
 import logging
 import uuid
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from pathlib import Path
 
@@ -24,6 +24,9 @@ from apps.awards.services import AwardData, TermData, change_status, create_awar
 from apps.demo.accounts import ACCOUNTS, PASSWORD, DemoAccount
 from apps.demo.samples import (
     DECLINE_REASON,
+    DEMO_BUDGET,
+    DEMO_CLAIM_LOCATION,
+    DEMO_SCHEDULE_NOTE,
     HOLD_REASON,
     MANUAL_SCHOLAR,
     OVERRIDE_REASON,
@@ -42,6 +45,8 @@ from apps.demo.samples import (
 )
 from apps.files import storage
 from apps.files.models import StoredFile
+from apps.money import services as money
+from apps.money.models import Disbursement, DistributionSchedule
 from apps.programs.models import AcademicTerm, BenefitTier, Program, School
 from apps.programs.selectors import application_term, current_term, required_documents_for
 from apps.programs.services import add_membership
@@ -548,6 +553,67 @@ def _give_staff_a_manual_scholar() -> None:
         logger.warning("Demo manual scholar skipped (%s).", type(error).__name__)
 
 
+def _demo_schedule(head: User, program: Program, term: AcademicTerm, day: date) -> int:
+    schedule = money.save_schedule(
+        actor=head,
+        program=program,
+        schedule_id=None,
+        data=money.ScheduleData(
+            term=term,
+            distribution_date=day,
+            claim_location=program.claim_location_default or DEMO_CLAIM_LOCATION,
+            frequency_label="Once a semester",
+            notes=DEMO_SCHEDULE_NOTE,
+        ),
+    )
+    money.set_published(actor=head, program=program, schedule_id=schedule.pk, published=True)
+    money.generate(actor=head, program=program, schedule_id=schedule.pk)
+    return schedule.pk
+
+
+def _give_staff_money() -> None:
+    """TCU CEAA payouts (idempotent): last semester's day is past (Carmela received, Daniel
+    approved; Elena is on hold, so generation skips her), and the current term's day is two
+    weeks away with Felipe prepared. Plus this year's budget."""
+    program = Program.objects.get(slug="tcu-ceaa")
+    if DistributionSchedule.objects.filter(program=program, notes=DEMO_SCHEDULE_NOTE).exists():
+        return
+    previous = _ensure_previous_term()
+    term = current_term()
+    if previous is None or term is None:
+        return
+    head = User.objects.get(email__iexact="head@scholarsync.test")
+    today = timezone.localdate()
+    try:
+        with transaction.atomic():
+            past = _demo_schedule(head, program, previous, previous.ends_on)
+            names = {s.state: s.first_name for s in SAMPLE_SCHOLARS}
+            rows = {
+                row.scholar_term.award.profile.first_name: row.pk
+                for row in Disbursement.objects.filter(schedule_id=past).select_related(
+                    "scholar_term__award__profile"
+                )
+            }
+            for state in ("due", "at_risk"):
+                money.approve(
+                    actor=head,
+                    program=program,
+                    schedule_id=past,
+                    disbursement_id=rows[names[state]],
+                )
+            money.release(
+                actor=head,
+                program=program,
+                schedule_id=past,
+                disbursement_id=rows[names["due"]],
+            )
+            _demo_schedule(head, program, term, today + timedelta(days=14))
+            money.set_budget(actor=head, program=program, year=today.year, amount=DEMO_BUDGET)
+    except (ValidationError, Http404, PermissionDenied, ObjectDoesNotExist, KeyError) as error:
+        # Log only the error class: service sentences can hold profile values.
+        logger.warning("Demo money samples skipped (%s).", type(error).__name__)
+
+
 def load() -> int:
     """Create the demo accounts that are missing and return how many were created."""
     with transaction.atomic():
@@ -569,4 +635,5 @@ def load() -> int:
         _give_staff_on_behalf_samples()
         _give_staff_scholars()
         _give_staff_a_manual_scholar()
+        _give_staff_money()
     return created

@@ -102,3 +102,10 @@ class ManualScholar:
 
 # A walk-in staff gave a TCU CEAA award by hand (M9b Add scholar): no account, never invited.
 MANUAL_SCHOLAR = ManualScholar("Felipe", "Manalo", date(2005, 6, 18), Decimal("87.25"))
+
+
+# Money samples (M10): TCU CEAA distribution days. The note marks the demo's schedules, so
+# loading again adds nothing.
+DEMO_CLAIM_LOCATION = "Taguig City University Gymnasium"
+DEMO_SCHEDULE_NOTE = "Bring a valid ID."
+DEMO_BUDGET = Decimal("1000000.00")

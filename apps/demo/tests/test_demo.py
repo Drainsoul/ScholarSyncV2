@@ -573,3 +573,36 @@ def test_sample_import_previews_ok(demo_app, settings, frozen_today, monkeypatch
     assert preview.problem == ""
     assert [row.errors for row in preview.rows] == [[]] * 5
     assert preview.ok
+
+
+@pytest.mark.django_db
+def test_demo_money_samples(demo_app, settings, frozen_today):
+    from decimal import Decimal
+
+    from apps.money.models import Budget, Disbursement, DistributionSchedule
+
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    program = Program.objects.get(slug="tcu-ceaa")
+    past, upcoming = DistributionSchedule.objects.filter(program=program).order_by(
+        "distribution_date"
+    )
+    assert past.is_published and upcoming.is_published
+    assert past.distribution_date < timezone.localdate() < upcoming.distribution_date
+    assert (upcoming.distribution_date - timezone.localdate()).days == 14
+    statuses = {
+        row.scholar_term.award.profile.first_name: row.status
+        for row in Disbursement.objects.filter(schedule=past).select_related(
+            "scholar_term__award__profile"
+        )
+    }
+    by_email = {s.state: s.first_name for s in SAMPLE_SCHOLARS}
+    assert statuses == {by_email["due"]: "released", by_email["at_risk"]: "approved"}
+    felipe = Disbursement.objects.get(schedule=upcoming)
+    assert felipe.status == "pending"
+    assert felipe.scholar_term.award.profile.first_name == MANUAL_SCHOLAR.first_name
+    budget = Budget.objects.get(program=program)
+    assert (budget.fiscal_year, budget.amount) == (2026, Decimal("1000000.00"))
+    loader.load()
+    assert DistributionSchedule.objects.count() == 2
+    assert Disbursement.objects.count() == 3
