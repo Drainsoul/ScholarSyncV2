@@ -306,3 +306,62 @@ def test_bulk_refuses_release_before_the_day_once(time_machine: Any) -> None:
     for ids in (None, [first.pk, second.pk]):
         with pytest.raises(ValidationError, match="Release after the distribution day"):
             _bulk(first.schedule, "release", ids)
+
+
+def test_bulk_approve_notifies_each_row_once() -> None:
+    """50 approvals queue exactly 50 emails and 50 notifications (M11)."""
+    from apps.workspace.models import Notification
+
+    first = payout()
+    rows = [first] + [payout(first.schedule) for _ in range(49)]
+    result = _bulk(first.schedule, "approve", [row.pk for row in rows])
+    assert result.done == 50
+    assert Notification.objects.filter(kind="allowance_approved").count() == 50
+    assert EmailOutbox.objects.filter(kind="allowance_approved").count() == 50
+
+
+def test_bulk_row_failing_after_its_save_rolls_back_whole() -> None:
+    """A row that fails at notify, after its status was saved, keeps nothing: no status change,
+    no notification, no email, no audit event. The rows around it go through."""
+    from apps.workspace import services as workspace
+    from apps.workspace.models import Notification
+
+    first = payout()
+    middle = payout(first.schedule)
+    last = payout(first.schedule)
+    victim = middle.scholar_term.award.profile.user
+    real = workspace.notify
+
+    def failing(**kwargs: Any) -> Any:
+        if kwargs["user"] == victim:
+            raise ValidationError("Mail is down.")
+        return real(**kwargs)
+
+    with mock.patch.object(services, "notify", failing):
+        result = _bulk(first.schedule, "approve", [first.pk, middle.pk, last.pk])
+    assert result.done == 2
+    middle.refresh_from_db()
+    assert middle.status == Disbursement.Status.PENDING
+    assert not Notification.objects.filter(recipient=victim).exists()
+    assert not EmailOutbox.objects.filter(to=victim.email).exists()  # type: ignore[union-attr]
+    approved = AuditEvent.objects.filter(action="disbursement.approved")
+    assert set(approved.values_list("target_id", flat=True)) == {str(first.pk), str(last.pk)}
+
+
+def test_bulk_release_query_count(time_machine: Any, django_assert_max_num_queries: Any) -> None:
+    from apps.workspace.models import Notification
+
+    first = payout(status=APPROVED, distribution_date=DAY)
+    rows = [first] + [payout(first.schedule, status=APPROVED) for _ in range(49)]
+    time_machine.move_to(AFTER_DAY)
+    head = head_of(first.schedule.program)
+    with django_assert_max_num_queries(500):  # +50: notifications (M11)
+        result = services.bulk(
+            actor=head,
+            program=first.schedule.program,
+            schedule_id=first.schedule_id,
+            action="release",
+            ids=[row.pk for row in rows],
+        )
+    assert result.done == 50
+    assert Notification.objects.filter(kind="allowance_released").count() == 50
