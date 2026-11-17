@@ -22,8 +22,8 @@ def test_known_action_reads_as_a_sentence() -> None:
 
 def test_unknown_action_falls_back() -> None:
     actor = UserFactory.create(role=User.Role.STAFF, full_name="Krista Kelley")
-    event = record(actor=actor, action="file.viewed")
-    assert describe(event) == "Krista Kelley: file.viewed"
+    event = record(actor=actor, action="mystery.happened")
+    assert describe(event) == "Krista Kelley: mystery.happened"
 
 
 def test_systemless_actor() -> None:

@@ -1,5 +1,6 @@
 from django.urls import path
 
+from apps.core import audit_views
 from apps.reports import office_views as report_views
 from apps.workspace import notification_views
 
@@ -61,6 +62,7 @@ urlpatterns = [
         report_views.OfficeReportDecideView.as_view(),
         name="report-decide",
     ),
+    path("audit/", audit_views.OfficeAuditView.as_view(), name="audit"),
     path("terms/", views.TermsView.as_view(), name="terms"),
     path("terms/add/", views.AddYearView.as_view(), name="terms-add"),
     path("terms/<int:pk>/current/", views.MakeCurrentView.as_view(), name="terms-current"),

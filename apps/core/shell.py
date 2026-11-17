@@ -138,6 +138,7 @@ def shell_context(
         elif area == "office":
             terms = reverse("office:terms")
             office_reports = reverse("office:reports")
+            audit = reverse("office:audit")
             inbox = reverse("support:office")
             programs = reverse("office:programs")
             accounts = reverse("office:staff")
@@ -179,6 +180,13 @@ def shell_context(
                     "current": path.startswith(office_reports),
                     "count": submitted_count(),
                     "icon": "file-text",
+                },
+                {
+                    "label": "Audit log",
+                    "url": audit,
+                    "current": path.startswith(audit),
+                    "count": 0,
+                    "icon": "shield",
                 },
                 {
                     "label": "Support",
@@ -235,6 +243,7 @@ def shell_context(
             membership is not None and membership.level == ProgramMembership.Level.HEAD
         ):
             settings_url = reverse("settings:rules", kwargs={"program": program.slug})
+            audit_url = reverse("audit:program", kwargs={"program": program.slug})
             context["nav_secondary"] = [
                 {
                     "label": "Settings",
@@ -242,6 +251,13 @@ def shell_context(
                     "current": request.path.startswith(settings_url),
                     "count": 0,
                     "icon": "sliders-horizontal",
-                }
+                },
+                {
+                    "label": "Audit log",
+                    "url": audit_url,
+                    "current": request.path.startswith(audit_url),
+                    "count": 0,
+                    "icon": "shield",
+                },
             ]
     return context

@@ -1,0 +1,47 @@
+{% extends layout %}{% load ui %}
+{% block title %}Audit log{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div><h1>Audit log</h1><p class="page-header__meta">{% if office %}Every change recorded in ScholarSync.{% else %}Changes recorded in {{ program.name }}.{% endif %}</p></div>
+  </div>
+  <form class="table-toolbar" method="get" role="search" aria-label="Filter the audit log">
+    {% if filters.who %}<input type="hidden" name="who" value="{{ filters.who }}">{% endif %}
+    <label class="visually-hidden" for="audit-group">What</label>
+    <select class="input" id="audit-group" name="group">
+      <option value="">Everything</option>
+      {% for key, label in groups %}<option value="{{ key }}"{% if filters.group == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    {% if office %}
+    <label class="visually-hidden" for="audit-program">Program</label>
+    <select class="input" id="audit-program" name="program">
+      <option value="">All programs</option>
+      <option value="none"{% if filters.program == "none" %} selected{% endif %}>No program</option>
+      {% for item in programs %}<option value="{{ item.pk }}"{% if filters.program == item.pk|stringformat:"s" %} selected{% endif %}>{{ item.name }}</option>{% endfor %}
+    </select>
+    {% endif %}
+    <label for="audit-start">From</label>
+    <input class="input" type="date" id="audit-start" name="start" value="{{ filters.start|date:'Y-m-d' }}">
+    <label for="audit-end">To</label>
+    <input class="input" type="date" id="audit-end" name="end" value="{{ filters.end|date:'Y-m-d' }}">
+    <button class="btn btn--secondary" type="submit">{% icon "filter" %}Apply filters</button>
+  </form>
+  {% if filters.who %}<p role="status">Showing one person's actions: {{ who_name }}. <a href="{{ everyone_url }}">Show everyone</a></p>{% endif %}
+  {% if rows %}
+  <div class="table-wrap" role="region" aria-label="Audit events" tabindex="0">
+    <table class="table table--stack">
+      <thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">What</th>{% if office %}<th scope="col">Program</th>{% endif %}<th scope="col">Record</th><th scope="col">Details</th></tr></thead>
+      <tbody>{% for row in rows %}<tr>
+        <td data-label="When"><time datetime="{{ row.event.at|date:'c' }}">{{ row.event.at|date:"j M Y, g:i A" }}</time></td>
+        <td data-label="Who">{{ row.who }}{% if row.who_url and not filters.who %}<br><a class="text-sm" href="{{ row.who_url }}">Only this person</a>{% endif %}</td>
+        <th scope="row" data-label="What">{{ row.what }}<br><span class="text-sm text-muted"><code>{{ row.event.action }}</code></span></th>
+        {% if office %}<td data-label="Program">{{ row.event.program.name|default:"—" }}</td>{% endif %}
+        <td data-label="Record">{{ row.record|default:"—" }}</td>
+        <td data-label="Details">{% if row.details %}<ul class="text-sm" role="list">{% for key, value in row.details %}<li>{{ key }}: {{ value }}</li>{% endfor %}</ul>{% else %}—{% endif %}</td>
+      </tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% pagination page %}
+  {% else %}
+  {% include "components/empty_state.html" with title="No events match these filters." %}
+  {% endif %}
+{% endblock %}

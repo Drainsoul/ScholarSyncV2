@@ -13,6 +13,7 @@ urlpatterns = [
     path("staff/<slug:program>/scholars/", include("apps.awards.staff_urls")),
     path("staff/<slug:program>/settings/", include("apps.programs.settings_urls")),
     path("staff/<slug:program>/reports/", include("apps.reports.staff_urls")),
+    path("staff/<slug:program>/audit/", include("apps.core.audit_urls")),
     path(
         "staff/<slug:program>/notifications/",
         include("apps.workspace.staff_notification_urls"),

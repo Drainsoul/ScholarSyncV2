@@ -45,6 +45,7 @@ class AuditEvent(models.Model):
 
     class Meta:
         ordering = ["-at", "-id"]
+        indexes = [models.Index(fields=["program", "-at"], name="core_audit_program_at")]
 
     def __str__(self) -> str:
         return f"{self.action} #{self.pk}"

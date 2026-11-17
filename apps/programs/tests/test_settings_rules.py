@@ -121,8 +121,8 @@ def test_settings_nav_only_for_heads_and_office(client: Any) -> None:
         items = client.get(dashboard).context.get("nav_secondary") or []
         return [item["label"] for item in items]
 
-    assert secondary(_head(program)) == ["Settings"]
-    assert secondary(UserFactory.create(role=User.Role.SUPER_ADMIN)) == ["Settings"]
+    assert secondary(_head(program)) == ["Settings", "Audit log"]
+    assert secondary(UserFactory.create(role=User.Role.SUPER_ADMIN)) == ["Settings", "Audit log"]
     assert secondary(MembershipFactory.create(program=program).user) == []
 
 
