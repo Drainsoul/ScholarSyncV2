@@ -464,3 +464,57 @@ def test_imported_profile_on_students_page(world: World, client):
     )
     assert client.post(invite, {"email": "felipe@example.com"}).status_code == 302
     assert ProfileInvite.objects.get(profile=profile).email == "felipe@example.com"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_imports_of_different_files_create_one_person(monkeypatch):
+    """Two files naming the same new person, imported at the same moment: one wins, the other is
+    refused (the program lock serialises them), never two profiles each with an award."""
+    world = World()
+    monkeypatch.setattr(storage, "read_all", lambda key: world.bodies[key])
+    first, second = world.file([row()]), world.file([row()])
+    real_check = importing.check_import
+    barrier = threading.Barrier(2, timeout=3)
+
+    def overlapping_check(program: Any, file: StoredFile) -> ImportPreview:
+        try:
+            barrier.wait()  # without a lock both threads get here before either writes
+        except threading.BrokenBarrierError:
+            pass
+        return real_check(program, file)
+
+    monkeypatch.setattr("apps.awards.importing.check_import", overlapping_check)
+    outcomes: list[str] = []
+
+    def run(stored: StoredFile) -> None:
+        from django.db import connection
+
+        try:
+            world.run(stored)
+            outcomes.append("imported")
+        except ImportRejected:
+            outcomes.append("rejected")
+        finally:
+            connection.close()
+
+    threads = [threading.Thread(target=run, args=(f,)) for f in (first, second)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert StudentProfile.objects.filter(first_name="Felipe", last_name="Santos").count() == 1
+    assert Award.objects.count() == 1
+    assert sorted(outcomes) == ["imported", "rejected"]
+
+
+@pytest.mark.parametrize(
+    ("birth", "message"),
+    [
+        ("2999-03-14", "Birth date: The birth date can't be in the future."),
+        ("0205-03-14", "Birth date: Enter a birth date from 1900 onward."),
+    ],
+)
+def test_birth_date_rules_match_the_hand_form(world: World, birth: str, message: str):
+    preview = world.check([row(birth_date=birth)])
+    assert preview.rows[0].errors == [message]
+    assert not preview.ok

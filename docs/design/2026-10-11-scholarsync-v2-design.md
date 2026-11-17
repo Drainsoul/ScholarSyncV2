@@ -422,7 +422,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
       program, is a row error;
     - **all or nothing:** a preview checks every row with the same Form rules as manual creation; Import appears only
       when every row passes (at most 500 rows, 2 MB). The commit re-reads the file and re-validates under locks
-      (file row, then profiles in pk order);
+      (program row, so imports into one program run one at a time; then the file row; then profiles in pk order);
   - **`ScholarImport`** (M9b): `program`, `file` (one-to-one `StoredFile`, so a file imports once), `imported_by`,
     `row_count`, `created_at`. `Award.import_batch` (nullable FK) links imported awards to it.
 - **At-risk** is derived, never stored (a proposal pending §18 Q5): an `active` award is at risk when its latest term
@@ -548,8 +548,8 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   decisions, return, approve, reject, bulk), as the table above proposes. The split stays open (§18 Q7).
 - **M9:** head and staff may both do everything on scholars, as the table proposes (§18 Q7 open); moving the
   current term is office-only.
-- **M9b:** head and staff may both add, import and export scholars. Adding and importing answer 404 for an inactive
-  program; export still works.
+- **M9b:** head and staff may both add, import and export scholars. Like every staff screen, all of them answer 404
+  for an inactive program (`ProgramStaffRequiredMixin`); `create_award` and `import_scholars` re-check it.
 - **Permission-matrix test:** `tests/test_permission_matrix.py` enumerates `get_resolver()` and checks each URL name
   against an expected-access table for anonymous, student, other-student, staff, other-program staff, head and super
   admin. A new URL fails the test until it's added to the table.

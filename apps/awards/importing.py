@@ -13,6 +13,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.http import Http404, HttpRequest
+from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.applications.staff_forms import AcademicsForm
@@ -35,6 +36,7 @@ from apps.files.selectors import usable_file
 from apps.programs.models import AcademicTerm, BenefitTier, Program, School
 from apps.programs.selectors import current_term
 from apps.students.models import StudentProfile
+from apps.workspace.forms import MIN_BIRTH_DATE
 
 COLUMNS: tuple[str, ...] = (
     "last_name",
@@ -148,6 +150,15 @@ class ImportRowForm(AcademicsForm):
     def __init__(self, *args: Any, lookups: Lookups, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.lookups = lookups
+
+    def clean_birth_date(self) -> date:
+        """The rules the staff profile form applies (apps/workspace/forms.py)."""
+        born: date = self.cleaned_data["birth_date"]
+        if born > timezone.localdate():
+            raise ValidationError("The birth date can't be in the future.")
+        if born < MIN_BIRTH_DATE:
+            raise ValidationError("Enter a birth date from 1900 onward.")
+        return born
 
     def _start_term(self, year_text: str, term_text: str) -> AcademicTerm | None:
         if not year_text and not term_text:
@@ -398,8 +409,12 @@ def import_scholars(
     file_id: uuid.UUID,
     request: HttpRequest | None = None,
 ) -> ScholarImport:
-    """Import every row of the file, or nothing. Raises ImportRejected with the fresh preview."""
-    active = Program.objects.filter(pk=program.pk, is_active=True).first()
+    """Import every row of the file, or nothing. Raises ImportRejected with the fresh preview.
+
+    Lock order: program, then file, then matched profiles in pk order (then create_award's own
+    locks). The program lock serialises every import into the program, so two files naming the
+    same new person can't both create them."""
+    active = Program.objects.select_for_update().filter(pk=program.pk, is_active=True).first()
     if active is None:
         raise Http404("No such program.")
     require_program_staff(actor, active)
