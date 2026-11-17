@@ -272,9 +272,12 @@ def confirm_upload(
 def download_url(*, user: User, file: StoredFile, request: HttpRequest | None = None) -> str:
     """Audit the view and return a short-lived presigned GET sent as an attachment.
 
-    A file behind an application's document is audited under that application's program (one
-    query); any other file under no program."""
-    program = Program.objects.filter(applications__documents__files__file=file).first()
+    A file behind an application's document is audited under that application's program, a report
+    file under the report's program (a query each at most); any other file under no program."""
+    program = (
+        Program.objects.filter(applications__documents__files__file=file).first()
+        or Program.objects.filter(reports__files__file=file).first()
+    )
     record(actor=user, action="file.viewed", target=file, program=program, request=request)
     return storage.presigned_get(
         key=file.final_key,

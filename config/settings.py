@@ -150,6 +150,7 @@ INSTALLED_APPS = [
     "apps.money",
     "apps.matching",
     "apps.workspace",
+    "apps.reports",
     "apps.office",
     "apps.kit",
 ]

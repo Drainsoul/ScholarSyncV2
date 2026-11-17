@@ -39,6 +39,10 @@ VERBS: dict[str, str] = {
     "profile.created_by_staff": "added a student profile",
     "support.sent": "sent the office a message",
     "support.answered": "answered a support request",
+    "report.submitted": "sent the office a report",
+    "report.resubmitted": "sent a report back to the office",
+    "report.accepted": "accepted a report",
+    "report.returned": "returned a report",
 }
 
 FEED_SIZE = 8

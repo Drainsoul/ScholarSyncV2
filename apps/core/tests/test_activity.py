@@ -57,3 +57,23 @@ def test_recent_activity_skips_actions_without_a_verb() -> None:
     assert len(rows) == 8
     assert all(event.action == "award.created" for event, _ in rows)
     assert rows[0][1] == "Krista Kelley added a scholar"
+
+
+def test_report_actions_read_as_sentences() -> None:
+    actor = UserFactory.create(role=User.Role.STAFF, full_name="Krista Kelley")
+    program = ProgramFactory.create(name="LANI")
+    sentences = [
+        describe(record(actor=actor, action=action, program=program))
+        for action in (
+            "report.submitted",
+            "report.resubmitted",
+            "report.accepted",
+            "report.returned",
+        )
+    ]
+    assert sentences == [
+        "Krista Kelley sent the office a report (LANI)",
+        "Krista Kelley sent a report back to the office (LANI)",
+        "Krista Kelley accepted a report (LANI)",
+        "Krista Kelley returned a report (LANI)",
+    ]
