@@ -1,7 +1,7 @@
 from datetime import date
 
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import transaction
+from django.db import connection, transaction
 
 from apps.accounts.models import User
 from apps.core.audit import record
@@ -41,6 +41,16 @@ SAME_TERM = "This is already the current term."
 BACKWARD = "The current term can only move forward."
 
 
+# A transaction-scoped advisory lock: term changes run one at a time, even on an empty table
+# (where row locks find nothing to lock), so a double post never rolls over twice or collides.
+TERM_LOCK = 4_711_011
+
+
+def _lock_terms() -> None:
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT pg_advisory_xact_lock(%s)", [TERM_LOCK])
+
+
 def _require_office(actor: User) -> None:
     if not (actor.is_super_admin and actor.is_active):
         raise PermissionDenied("Only the scholarship office can change school terms.")
@@ -51,6 +61,7 @@ def add_school_year(*, actor: User, start: int) -> list[AcademicTerm]:
     """The three terms of school year `start` (the seed's dates), none current. Years go in
     order: only the year after the latest one, or any year when there are no terms yet."""
     _require_office(actor)
+    _lock_terms()
     latest = (
         AcademicTerm.objects.select_for_update()
         .order_by("-school_year_start")
@@ -79,6 +90,7 @@ def set_current_term(*, actor: User, term: AcademicTerm) -> AcademicTerm | None:
     The old flag is cleared before the new one is set: `programs_one_current_term` allows one.
     The rollover is the caller's (`awards.services.start_term`)."""
     _require_office(actor)
+    _lock_terms()
     flagged = list(AcademicTerm.objects.select_for_update().filter(is_current=True))
     target = AcademicTerm.objects.select_for_update().get(pk=term.pk)
     old = flagged[0] if flagged else None

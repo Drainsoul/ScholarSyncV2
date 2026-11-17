@@ -141,3 +141,66 @@ def test_set_current_staff_forbidden(db):
     term = AcademicTermFactory.create(school_year_start=2026, term=1)
     with pytest.raises(PermissionDenied):
         set_current_term(actor=UserFactory.create(role=User.Role.STAFF), term=term)
+
+
+def _office_user() -> User:
+    return UserFactory.create(role=User.Role.SUPER_ADMIN)
+
+
+def _race(monkeypatch: pytest.MonkeyPatch, calls: list) -> list[str]:  # type: ignore[type-arg]
+    """Run `calls` in two threads; each pauses at a barrier inside its transaction (in `record`),
+    so without a lock both read before either writes."""
+    import threading
+
+    from django.db import connection
+
+    from apps.programs import services as program_services
+
+    barrier = threading.Barrier(2, timeout=2)
+    real_record = program_services.record  # type: ignore[attr-defined]
+
+    def paused_record(**kwargs: object) -> object:
+        try:
+            barrier.wait()
+        except threading.BrokenBarrierError:
+            pass
+        return real_record(**kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(program_services, "record", paused_record)
+    outcomes: list[str] = []
+
+    def run(call: object) -> None:
+        try:
+            call()  # type: ignore[operator]
+            outcomes.append("done")
+        except ValidationError as error:
+            outcomes.append(" ".join(error.messages))
+        except Exception as error:  # an IntegrityError here is the bug
+            outcomes.append(type(error).__name__)
+        finally:
+            connection.close()
+
+    threads = [threading.Thread(target=run, args=(call,)) for call in calls]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    return sorted(outcomes)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_make_current_rolls_over_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    AcademicTermFactory.create(school_year_start=2026, term=1, is_current=True)
+    target = AcademicTermFactory.create(school_year_start=2026, term=2)
+    office = _office_user()
+    outcomes = _race(monkeypatch, [lambda: set_current_term(actor=office, term=target)] * 2)
+    assert outcomes == ["This is already the current term.", "done"]
+    assert AuditEvent.objects.filter(action="term.made_current").count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_first_school_year(monkeypatch: pytest.MonkeyPatch) -> None:
+    office = _office_user()
+    outcomes = _race(monkeypatch, [lambda: add_school_year(actor=office, start=2026)] * 2)
+    assert outcomes == ["Add school year 2027–2028 next.", "done"]
+    assert AcademicTerm.objects.count() == 3

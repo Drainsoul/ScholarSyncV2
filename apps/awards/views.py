@@ -33,6 +33,9 @@ def _student(request: HttpRequest) -> User:
     return user
 
 
+PROGRAM_CLOSED = "This program isn't taking renewals right now. Contact the scholarship office."
+
+
 def renewal_line(card: ScholarshipCard) -> dict[str, str]:
     """What the card says about renewing: a sentence, and the action it offers (if any)."""
     renewal, term = card.renewal, card.renewal.term
@@ -56,6 +59,8 @@ def renewal_line(card: ScholarshipCard) -> dict[str, str]:
             "action": "continue",
             "url": reverse("applications:detail", args=[renewal.application_id]),
         }
+    if not card.award.program.is_active:
+        return {"text": PROGRAM_CLOSED}
     if card.window_reason:
         return {"text": card.window_reason}
     return {

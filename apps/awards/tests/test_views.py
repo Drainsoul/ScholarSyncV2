@@ -192,3 +192,11 @@ def test_nav_has_scholarships(client, due) -> None:
     body = page(client, award)
     assert f'href="{reverse(PAGE)}"' in body
     assert "Scholarships" in body
+
+
+def test_renewal_for_inactive_program_has_no_button(client, due) -> None:
+    award, current = due
+    Program.objects.filter(pk=award.program_id).update(is_active=False)
+    body = page(client, award)
+    assert "This program isn't taking renewals right now. Contact the scholarship office." in body
+    assert f"Renew for {current}" not in body
