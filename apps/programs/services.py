@@ -10,7 +10,14 @@ from apps.core.audit import record
 from apps.core.permissions import require_office, require_settings_editor
 from apps.core.text import counted
 
-from .models import AcademicTerm, BenefitTier, Program, ProgramMembership, RequiredDocument
+from .models import (
+    AcademicTerm,
+    BenefitTier,
+    Program,
+    ProgramMembership,
+    RequiredDocument,
+    School,
+)
 from .selectors import activation_problem, current_term, deactivation_counts, tier_in_use
 from .terms import school_year_terms
 
@@ -545,3 +552,52 @@ def set_document_active(
         actor, program, locked, "document.restored" if active else "document.stopped", request
     )
     return locked
+
+
+SCHOOL_TAKEN = "A school with this name already exists."
+
+
+@transaction.atomic
+def save_school(
+    *,
+    actor: User,
+    school: School | None,
+    name: str,
+    type: str,
+    grading_scale: str,
+    is_in_taguig: bool,
+    request: HttpRequest | None = None,
+) -> School:
+    """Add a school (`school=None`) or edit one. Names are unique whatever their case."""
+    require_office(actor)
+    clash = School.objects.filter(name__iexact=name)
+    if school is not None:
+        clash = clash.exclude(pk=school.pk)
+    if clash.exists():
+        raise ValidationError({"name": SCHOOL_TAKEN})
+    fields = {
+        "name": name,
+        "type": type,
+        "grading_scale": grading_scale,
+        "is_in_taguig": is_in_taguig,
+    }
+    if school is None:
+        saved = School.objects.create(**fields)
+        action = "school.added"
+    else:
+        saved = School.objects.select_for_update().get(pk=school.pk)
+        changed = [field for field, value in fields.items() if getattr(saved, field) != value]
+        if not changed:
+            return saved
+        for field in changed:
+            setattr(saved, field, fields[field])
+        saved.save(update_fields=[*changed, "updated_at"])
+        action = "school.updated"
+    record(
+        actor=actor,
+        action=action,
+        target=saved,
+        data={"type": saved.type, "grading_scale": saved.grading_scale},
+        request=request,
+    )
+    return saved

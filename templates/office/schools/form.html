@@ -1,0 +1,19 @@
+{% extends "layouts/office.html" %}{% load ui %}
+{% block title %}{% if school %}Edit {{ school.name }}{% else %}Add a school{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>{% if school %}Edit {{ school.name }}{% else %}Add a school{% endif %}</h1><p class="page-header__meta"><a href="{% url 'office:schools' %}">Back to schools</a></p></div>
+</div>
+<section class="card" aria-labelledby="school-form-title">
+  <h2 class="card__title" id="school-form-title">School details</h2>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% include "components/form_errors.html" %}
+    {% for bound_field in form %}{% field bound_field %}{% endfor %}
+    <div class="btn-row">
+      <button type="submit" class="btn btn--primary">{% if school %}Save school{% else %}Add school{% endif %}</button>
+      <a class="btn btn--secondary" href="{% url 'office:schools' %}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

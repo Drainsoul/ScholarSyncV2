@@ -2,7 +2,7 @@ from django import forms
 
 from apps.accounts.models import User
 from apps.core.text import normalize_newlines
-from apps.programs.models import Program, ProgramMembership
+from apps.programs.models import Program, ProgramMembership, School
 
 
 class ProgramForm(forms.Form):
@@ -59,3 +59,10 @@ class MembershipForm(forms.Form):
         choices=ProgramMembership.Level.choices,
         initial=ProgramMembership.Level.STAFF,
     )
+
+
+class SchoolForm(forms.Form):
+    name = forms.CharField(label="School name", max_length=200)
+    type = forms.ChoiceField(label="Type", choices=School.Type.choices)
+    grading_scale = forms.ChoiceField(label="Grading", choices=School.Scale.choices)
+    is_in_taguig = forms.BooleanField(label="In Taguig", required=False)

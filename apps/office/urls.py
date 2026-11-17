@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import program_views, staff_views, views
+from . import program_views, school_views, staff_views, views
 
 app_name = "office"
 
@@ -29,6 +29,9 @@ urlpatterns = [
         staff_views.MembershipChangeView.as_view(),
         name="membership-change",
     ),
+    path("schools/", school_views.SchoolListView.as_view(), name="schools"),
+    path("schools/new/", school_views.SchoolNewView.as_view(), name="school-new"),
+    path("schools/<int:pk>/", school_views.SchoolEditView.as_view(), name="school-edit"),
     path("terms/", views.TermsView.as_view(), name="terms"),
     path("terms/add/", views.AddYearView.as_view(), name="terms-add"),
     path("terms/<int:pk>/current/", views.MakeCurrentView.as_view(), name="terms-current"),

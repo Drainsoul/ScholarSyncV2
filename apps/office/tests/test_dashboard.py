@@ -158,3 +158,22 @@ def test_overview_query_count(
     client.force_login(office)
     with django_assert_max_num_queries(25):
         assert client.get(reverse("office:home")).status_code == 200
+
+
+def test_overview_queries_do_not_grow_with_programs(client: Any, office: User) -> None:
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    client.force_login(office)
+
+    def count() -> int:
+        with CaptureQueriesContext(connection) as queries:
+            assert client.get(reverse("office:home")).status_code == 200
+        return len(queries)
+
+    for program in ProgramFactory.create_batch(2):
+        _used(program, 10)
+    two = count()
+    for program in ProgramFactory.create_batch(4):
+        _used(program, 10)
+    assert count() == two

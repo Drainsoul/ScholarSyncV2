@@ -1,0 +1,30 @@
+{% extends "layouts/office.html" %}{% load ui %}
+{% block title %}Schools{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Schools</h1><p class="page-header__meta">Students pick these on their profile and applications.</p></div>
+  <a class="btn btn--primary" href="{% url 'office:school-new' %}">{% icon "plus" %}Add a school</a>
+</div>
+<form class="toolbar" method="get" role="search">
+  <label class="visually-hidden" for="school-q">Search schools</label>
+  <input class="input" id="school-q" type="search" name="q" value="{{ q }}" placeholder="Search schools">
+  <button class="btn btn--secondary" type="submit">Search</button>
+</form>
+{% if page.object_list %}
+<div class="table-wrap" role="region" aria-label="Schools" tabindex="0">
+  <table class="table table--stack">
+    <thead><tr><th scope="col">School</th><th scope="col">Type</th><th scope="col">Grading</th><th scope="col">In Taguig</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+    <tbody>{% for school in page.object_list %}<tr>
+      <th scope="row">{{ school.name }}</th>
+      <td data-label="Type">{{ school.get_type_display }}</td>
+      <td data-label="Grading">{{ school.get_grading_scale_display }}</td>
+      <td data-label="In Taguig">{% if school.is_in_taguig %}Yes{% else %}No{% endif %}</td>
+      <td><a class="btn btn--secondary" href="{% url 'office:school-edit' school.pk %}">Edit<span class="visually-hidden"> {{ school.name }}</span></a></td>
+    </tr>{% endfor %}</tbody>
+  </table>
+</div>
+{% pagination page %}
+{% else %}
+{% include "components/empty_state.html" with title="No schools match." %}
+{% endif %}
+{% endblock %}

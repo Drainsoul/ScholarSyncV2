@@ -181,12 +181,17 @@ def budget_summary(program: Program, year: int) -> BudgetSummary:
         spent=money_sum("amount", Q(status=Disbursement.Status.RELEASED)),
         committed=money_sum("amount", Q(status=Disbursement.Status.APPROVED)),
     )
-    spent, committed = found["spent"], found["committed"]
     amount = (
         Budget.objects.filter(program=program, fiscal_year=year)
         .values_list("amount", flat=True)
         .first()
     )
+    return _summary(year, amount, found["spent"], found["committed"])
+
+
+def _summary(
+    year: int, amount: Decimal | None, spent: Decimal, committed: Decimal
+) -> BudgetSummary:
     remaining = amount - spent - committed if amount is not None else None
     used = int((spent + committed) * 100 // amount) if amount else None
     over_by = -remaining if remaining is not None and remaining < 0 else None
@@ -199,6 +204,35 @@ def budget_summary(program: Program, year: int) -> BudgetSummary:
         used_percent=used,
         over_by=over_by,
     )
+
+
+def budget_summaries(programs: list[Program], year: int) -> dict[int, BudgetSummary]:
+    """`budget_summary` for many programs in two queries, keyed by program id."""
+    ids = [program.pk for program in programs]
+    totals = {
+        row["schedule__program_id"]: row
+        for row in Disbursement.objects.filter(
+            schedule__program_id__in=ids, schedule__distribution_date__year=year
+        )
+        .values("schedule__program_id")
+        .annotate(
+            spent=money_sum("amount", Q(status=Disbursement.Status.RELEASED)),
+            committed=money_sum("amount", Q(status=Disbursement.Status.APPROVED)),
+        )
+        .order_by()
+    }
+    amounts = dict(
+        Budget.objects.filter(program_id__in=ids, fiscal_year=year).values_list(
+            "program_id", "amount"
+        )
+    )
+    summaries: dict[int, BudgetSummary] = {}
+    for pk in ids:
+        row = totals.get(pk)
+        spent: Decimal = row["spent"] if row else ZERO
+        committed: Decimal = row["committed"] if row else ZERO
+        summaries[pk] = _summary(year, amounts.get(pk), spent, committed)
+    return summaries
 
 
 def budget_figures(summary: BudgetSummary) -> list[dict[str, str]]:

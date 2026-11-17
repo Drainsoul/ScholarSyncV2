@@ -17,7 +17,7 @@ from apps.awards.selectors import active_counts
 from apps.core.activity import recent_activity, when
 from apps.core.charts import MonthBar, first_month, month_bars
 from apps.core.text import counted
-from apps.money.selectors import budget_summary
+from apps.money.selectors import budget_summaries
 from apps.programs.models import Program
 from apps.programs.selectors import current_term, window_state
 from apps.workspace.dashboard import WAIT_DAYS, day_month, waited_row
@@ -63,7 +63,7 @@ def office_dashboard(user: User, *, now: datetime) -> OfficeDashboard:
         submitted_counts(ids, school_year_start=term.school_year_start) if term is not None else {}
     )
     waiting = waiting_over(ids, days=WAIT_DAYS, now=now)
-    budgets = {program.pk: budget_summary(program, today.year) for program in programs}
+    budgets = budget_summaries(programs, today.year)
     support_open = open_count()
 
     figures = [
