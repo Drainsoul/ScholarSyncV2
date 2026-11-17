@@ -1,0 +1,6 @@
+{% extends "emails/base.html" %}
+{% block body %}
+    <p>Hello {{ full_name }}, the scholarship office made you a {{ role_label }} account on ScholarSync.</p>
+    <p><a href="{{ set_password_url }}">Set your password</a> within 3 days.</p>
+    <p>After that, use "Forgot password" on the sign-in page.</p>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "layouts/office.html" %}{% load ui %}
+{% block title %}{{ account.full_name|default:account.email }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>{{ account.full_name|default:account.email }}</h1><p class="page-header__meta"><a href="{% url 'office:staff' %}">Back to accounts</a></p></div>
+</div>
+<section class="card" aria-labelledby="account-title">
+  <h2 class="card__title" id="account-title">Account</h2>
+  <dl class="facts">
+    <div><dt>Email</dt><dd>{{ account.email }}</dd></div>
+    <div><dt>Role</dt><dd>{{ account.get_role_display }}</dd></div>
+    <div><dt>Status</dt><dd>{% if account.is_active %}{% status "success" "Active" %}{% else %}{% status "neutral" "Deactivated" %}{% endif %}</dd></div>
+    <div><dt>Last signed in</dt><dd>{% if account.last_login %}{{ account.last_login|date:"j M Y, g:i A" }}{% else %}Not signed in yet{% endif %}</dd></div>
+  </dl>
+  <div class="btn-row">
+    {% if not account.last_login and account.is_active %}<form method="post" action="{% url 'office:staff-welcome' account.pk %}">{% csrf_token %}<button type="submit" class="btn btn--secondary">{% icon "mail" %}Send the set-password email again</button></form>{% endif %}
+    {% if not is_self %}<form method="post" action="{% url 'office:staff-active' account.pk %}">{% csrf_token %}<input type="hidden" name="active" value="{% if account.is_active %}0{% else %}1{% endif %}"><button type="submit" class="btn btn--ghost">{% if account.is_active %}Deactivate account{% else %}Reactivate account{% endif %}</button></form>{% endif %}
+  </div>
+  {% if is_self %}<p class="text-sm text-muted">This is your account. Another office account can deactivate it.</p>{% endif %}
+</section>
+<section class="card" aria-labelledby="memberships-title">
+  <h2 class="card__title" id="memberships-title">Programs</h2>
+  {% block memberships %}
+  {% if memberships %}
+  <ul class="list">{% for membership in memberships %}<li><p>{{ membership.program.name }} · {{ membership.get_level_display }}</p></li>{% endfor %}</ul>
+  {% else %}
+  {% include "components/empty_state.html" with title="Not in any program yet." %}
+  {% endif %}
+  {% endblock %}
+</section>
+{% endblock %}

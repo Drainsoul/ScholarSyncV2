@@ -1,0 +1,30 @@
+{% extends "layouts/office.html" %}{% load ui %}
+{% block title %}Staff and office accounts{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Staff and office accounts</h1><p class="page-header__meta">Students sign up themselves; they aren't listed here.</p></div>
+  <a class="btn btn--primary" href="{% url 'office:staff-new' %}">{% icon "plus" %}New account</a>
+</div>
+<form class="toolbar" method="get" role="search">
+  <label class="visually-hidden" for="staff-q">Search by name or email</label>
+  <input class="input" id="staff-q" type="search" name="q" value="{{ q }}" placeholder="Search by name or email">
+  <button class="btn btn--secondary" type="submit">Search</button>
+</form>
+{% if page.object_list %}
+<div class="table-wrap" role="region" aria-label="Staff and office accounts" tabindex="0">
+  <table class="table table--stack">
+    <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Role</th><th scope="col">Programs</th><th scope="col">Status</th></tr></thead>
+    <tbody>{% for account in page.object_list %}<tr>
+      <th scope="row"><a href="{% url 'office:staff-detail' account.pk %}">{{ account.full_name|default:account.email }}</a></th>
+      <td data-label="Email">{{ account.email }}</td>
+      <td data-label="Role">{{ account.get_role_display }}</td>
+      <td data-label="Programs">{% for membership in account.memberships.all %}{{ membership.program.name }} ({{ membership.get_level_display|lower }}){% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
+      <td data-label="Status">{% if account.is_active %}{% status "success" "Active" %}{% else %}{% status "neutral" "Deactivated" %}{% endif %}{% if not account.last_login %} <span class="text-sm text-muted">Not signed in yet</span>{% endif %}</td>
+    </tr>{% endfor %}</tbody>
+  </table>
+</div>
+{% pagination page %}
+{% else %}
+{% include "components/empty_state.html" with title="No accounts match." %}
+{% endif %}
+{% endblock %}

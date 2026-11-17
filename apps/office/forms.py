@@ -1,5 +1,6 @@
 from django import forms
 
+from apps.accounts.models import User
 from apps.core.text import normalize_newlines
 
 
@@ -29,3 +30,20 @@ class ProgramForm(forms.Form):
 
     def clean_description(self) -> str:
         return normalize_newlines(self.cleaned_data["description"])
+
+
+class AccountForm(forms.Form):
+    ROLES = (
+        (User.Role.STAFF.value, "Program staff"),
+        (User.Role.SUPER_ADMIN.value, "Scholarship office"),
+    )
+
+    full_name = forms.CharField(label="Full name", max_length=150)
+    email = forms.EmailField(label="Email")
+    role = forms.ChoiceField(label="Role", choices=ROLES, widget=forms.RadioSelect)
+
+    def clean_full_name(self) -> str:
+        name = str(self.cleaned_data["full_name"]).strip()
+        if not name:
+            raise forms.ValidationError("Enter the person's full name.")
+        return name

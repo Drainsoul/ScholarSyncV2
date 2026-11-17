@@ -1,0 +1,7 @@
+{% extends "emails/base.txt" %}
+{% block body %}Hello {{ full_name }}, the scholarship office made you a {{ role_label }} account on ScholarSync.
+
+Set your password within 3 days: {{ set_password_url }}
+
+After that, use "Forgot password" on the sign-in page.
+{% endblock %}

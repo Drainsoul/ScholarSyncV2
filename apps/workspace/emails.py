@@ -62,6 +62,8 @@ KINDS: dict[str, frozenset[str]] = {
     "allowance_released": frozenset(
         {"full_name", "program_name", "term_label", "amount", "scholarships_url"}
     ),
+    # To an address the office typed in for a colleague (M11b); verified when the account is made.
+    "staff_welcome": frozenset({"full_name", "role_label", "set_password_url"}),
 }
 
 

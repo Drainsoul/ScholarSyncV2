@@ -1,0 +1,20 @@
+{% extends "layouts/office.html" %}{% load ui %}
+{% block title %}New account{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>New account</h1><p class="page-header__meta"><a href="{% url 'office:staff' %}">Back to accounts</a></p></div>
+</div>
+<section class="card" aria-labelledby="account-form-title">
+  <h2 class="card__title" id="account-form-title">Who is it for?</h2>
+  <p class="text-sm text-muted">We email them a link to set their password. Creating an account asks for your password.</p>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% include "components/form_errors.html" %}
+    {% for bound_field in form %}{% field bound_field %}{% endfor %}
+    <div class="btn-row">
+      <button type="submit" class="btn btn--primary">Create account</button>
+      <a class="btn btn--secondary" href="{% url 'office:staff' %}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

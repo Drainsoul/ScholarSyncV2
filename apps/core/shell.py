@@ -130,6 +130,7 @@ def shell_context(
             terms = reverse("office:terms")
             inbox = reverse("support:office")
             programs = reverse("office:programs")
+            accounts = reverse("office:staff")
             path = request.path
             nav = [
                 {"label": label, "url": home, "current": path == home, "count": 0, "icon": icon},
@@ -139,6 +140,13 @@ def shell_context(
                     "current": path.startswith(programs),
                     "count": 0,
                     "icon": "clipboard-check",
+                },
+                {
+                    "label": "Staff",
+                    "url": accounts,
+                    "current": path.startswith(accounts),
+                    "count": 0,
+                    "icon": "user",
                 },
                 {
                     "label": "Terms",

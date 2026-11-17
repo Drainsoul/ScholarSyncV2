@@ -1,3 +1,4 @@
+from allauth.account.forms import default_token_generator
 from allauth.account.internal.stagekit import LOGIN_SESSION_KEY
 from allauth.account.models import EmailAddress, EmailConfirmation
 from allauth.account.utils import user_pk_to_url_str
@@ -6,11 +7,14 @@ from django.conf import settings
 from django.contrib.auth import SESSION_KEY
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.sessions.models import Session
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.http import HttpRequest
+from django.urls import reverse
 
 from apps.core.audit import client_ip, hash_ip, record
+from apps.core.permissions import require_office
+from apps.workspace.emails import enqueue
 
 from .managers import normalise_email
 from .models import ConsentRecord, User
@@ -120,3 +124,88 @@ def record_consent(*, user: User, request: HttpRequest | None) -> ConsentRecord:
         request=request,
     )
     return consent
+
+
+EMAIL_TAKEN = "An account with this email already exists."
+NOT_YOURSELF = "You can't deactivate your own account."
+KEEP_ONE_OFFICE = "Keep at least one active scholarship office account."
+
+
+def set_password_url(user: User) -> str:
+    """allauth's password-reset-from-key link: the account's first password, valid for
+    PASSWORD_RESET_TIMEOUT (3 days); after that the person uses "Forgot password"."""
+    return settings.SITE_URL + reverse(
+        "account_reset_password_from_key",
+        kwargs={
+            "uidb36": user_pk_to_url_str(user),
+            "key": default_token_generator.make_token(user),
+        },
+    )
+
+
+def send_welcome(*, actor: User, user: User) -> None:
+    """Email the set-password link (again). Only staff and office accounts, and only before the
+    first sign-in; a no-op otherwise."""
+    require_office(actor)
+    if user.role == User.Role.STUDENT or user.last_login is not None:
+        return
+    enqueue(
+        to=user.email,
+        kind="staff_welcome",
+        context={
+            "full_name": user.full_name,
+            "role_label": user.get_role_display(),
+            "set_password_url": set_password_url(user),
+        },
+    )
+
+
+@transaction.atomic
+def create_account(
+    *,
+    actor: User,
+    email: str,
+    full_name: str,
+    role: User.Role,
+    request: HttpRequest | None = None,
+) -> User:
+    """A staff or office account with no password yet, and the email to set one."""
+    require_office(actor)
+    email = normalise_email(email)
+    if User.objects.filter(email__iexact=email).exists():
+        raise ValidationError({"email": EMAIL_TAKEN})
+    user = create_staff_user(actor=actor, email=email, full_name=full_name.strip(), role=role)
+    send_welcome(actor=actor, user=user)
+    return user
+
+
+@transaction.atomic
+def set_account_active(
+    *, actor: User, user: User, active: bool, request: HttpRequest | None = None
+) -> User:
+    """Deactivate (ending every session) or reactivate a staff or office account."""
+    require_office(actor)
+    locked = User.objects.select_for_update().get(pk=user.pk)
+    if locked.role == User.Role.STUDENT:
+        raise ValidationError("Only staff and office accounts are managed here.")
+    if locked.is_active == active:
+        return locked
+    if not active:
+        if locked.pk == actor.pk:
+            raise ValidationError(NOT_YOURSELF)
+        others = User.objects.filter(role=User.Role.SUPER_ADMIN, is_active=True).exclude(
+            pk=locked.pk
+        )
+        if locked.role == User.Role.SUPER_ADMIN and not others.exists():
+            raise ValidationError(KEEP_ONE_OFFICE)
+    locked.is_active = active
+    locked.save(update_fields=["is_active"])
+    ended = _end_sessions(locked) if not active else 0
+    record(
+        actor=actor,
+        action="user.reactivated" if active else "user.deactivated",
+        target=locked,
+        data={"role": str(locked.role), "sessions_ended": ended},
+        request=request,
+    )
+    return locked
