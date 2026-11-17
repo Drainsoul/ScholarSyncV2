@@ -1,11 +1,13 @@
 from django.http import HttpRequest
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.applications.review_selectors import waiting_count
 from apps.programs.models import Program
 from apps.programs.selectors import programs_for
 from apps.workspace.selectors import unread_count
+from apps.workspace.tasks import due_count
 
 # The staff "Disbursements" item is current on every money section (under the dashboard URL).
 MONEY_SECTIONS = ("schedules/", "disbursements/", "budget/")
@@ -83,6 +85,7 @@ def shell_context(
             queue = reverse("review:queue", kwargs={"program": program.slug})
             scholar_list = reverse("scholars:list", kwargs={"program": program.slug})
             money = reverse("money:overview", kwargs={"program": program.slug})
+            task_list = reverse("workspace:tasks", kwargs={"program": program.slug})
             path = request.path
             nav = [
                 {"label": label, "url": home, "current": path == home, "count": 0, "icon": icon},
@@ -113,6 +116,13 @@ def shell_context(
                     "current": path.startswith(students),
                     "count": 0,
                     "icon": "users",
+                },
+                {
+                    "label": "Tasks",
+                    "url": task_list,
+                    "current": path.startswith(task_list),
+                    "count": due_count(user, program, today=timezone.localdate()),
+                    "icon": "list-checks",
                 },
             ]
         elif area == "office":

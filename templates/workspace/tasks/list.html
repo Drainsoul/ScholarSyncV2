@@ -1,0 +1,33 @@
+{% extends "layouts/staff.html" %}{% load ui %}
+{% block title %}Tasks{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div><h1>Tasks</h1><p class="page-header__meta">Your own to-dos for {{ program.name }}. Nobody else sees them.</p></div>
+  </div>
+  <section class="card" aria-labelledby="add-title">
+    <h2 class="card__title" id="add-title">Add a task</h2>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include "components/form_errors.html" %}
+      {% for bound_field in form %}{% field bound_field %}{% endfor %}
+      <div class="btn-row"><button type="submit" class="btn btn--primary">{% icon "plus" %}Add task</button></div>
+    </form>
+  </section>
+  {% include "components/tabs.html" with tabs_label="Task lists" %}
+  {% if rows %}
+  <div class="table-wrap" role="region" aria-label="{% if tab == 'done' %}Done tasks{% else %}Open tasks{% endif %}" tabindex="0">
+    <table class="table">
+      <thead><tr><th scope="col">Task</th><th scope="col">Due</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+      <tbody>{% for task, status in rows %}<tr>
+        <th scope="row"><a href="{% url 'workspace:task-edit' program=program.slug pk=task.pk %}">{{ task.title }}</a></th>
+        <td>{% if task.due_on %}<time datetime="{{ task.due_on|date:'Y-m-d' }}">{{ task.due_on|date:"j M Y" }}</time>{% else %}—{% endif %}</td>
+        <td>{% if status %}{% status status.0 status.1 %}{% endif %}</td>
+        <td><form method="post" action="{% url 'workspace:task-done' program=program.slug pk=task.pk %}">{% csrf_token %}<input type="hidden" name="done" value="{% if task.done_at %}0{% else %}1{% endif %}"><button type="submit" class="btn btn--secondary">{% if task.done_at %}Reopen{% else %}Done{% endif %}<span class="visually-hidden">: {{ task.title }}</span></button></form></td>
+      </tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% pagination page %}
+  {% else %}
+  {% if tab == "done" %}{% include "components/empty_state.html" with title="No finished tasks yet." %}{% else %}{% include "components/empty_state.html" with title="No open tasks." %}{% endif %}
+  {% endif %}
+{% endblock %}

@@ -1,5 +1,7 @@
 from django.conf import settings
 from django.db import models
+from django.db.models.functions import Length
+from django.db.models.lookups import LessThanOrEqual
 
 
 class EmailOutbox(models.Model):
@@ -45,3 +47,31 @@ class Notification(models.Model):
 
     def __str__(self) -> str:
         return f"{self.kind} #{self.pk}"
+
+
+class Task(models.Model):
+    """A personal to-do of one staff member in one program. Only the owner ever sees it."""
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="tasks"
+    )
+    program = models.ForeignKey(
+        "programs.Program", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )
+    title = models.CharField(max_length=200)
+    notes = models.TextField(blank=True)
+    due_on = models.DateField(null=True, blank=True)
+    done_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=LessThanOrEqual(Length("notes"), 2000), name="workspace_task_notes_len"
+            )
+        ]
+        indexes = [models.Index(fields=["owner", "program", "done_at"])]
+
+    def __str__(self) -> str:
+        return f"Task #{self.pk}"

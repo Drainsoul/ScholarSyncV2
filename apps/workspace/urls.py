@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import task_views, views
 
 app_name = "workspace"
 
@@ -13,5 +13,15 @@ urlpatterns = [
         "<slug:program>/students/<int:profile_id>/invite/",
         views.StudentInviteView.as_view(),
         name="students-invite",
+    ),
+    path("<slug:program>/tasks/", task_views.TaskListView.as_view(), name="tasks"),
+    path("<slug:program>/tasks/<int:pk>/", task_views.TaskEditView.as_view(), name="task-edit"),
+    path(
+        "<slug:program>/tasks/<int:pk>/done/", task_views.TaskDoneView.as_view(), name="task-done"
+    ),
+    path(
+        "<slug:program>/tasks/<int:pk>/delete/",
+        task_views.TaskDeleteView.as_view(),
+        name="task-delete",
     ),
 ]

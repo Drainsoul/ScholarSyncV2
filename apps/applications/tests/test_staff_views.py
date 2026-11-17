@@ -117,6 +117,7 @@ def test_staff_nav_shows_applications_count(client: Any) -> None:
         "Scholars",
         "Disbursements",
         "Students",
+        "Tasks",
     ]
     assert nav[1]["count"] == 1
     assert nav[1]["url"] == _url()

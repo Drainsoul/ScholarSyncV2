@@ -30,3 +30,18 @@ class StaffProfileForm(forms.Form):
         if born < MIN_BIRTH_DATE:
             raise forms.ValidationError("Enter a birth date from 1900 onward.")
         return born
+
+
+class TaskForm(forms.Form):
+    title = forms.CharField(label="Task", max_length=200)
+    due_on = forms.DateField(
+        label="Due date",
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
+    notes = forms.CharField(
+        label="Notes",
+        required=False,
+        max_length=2000,
+        widget=forms.Textarea(attrs={"rows": 3, "maxlength": 2000}),
+    )

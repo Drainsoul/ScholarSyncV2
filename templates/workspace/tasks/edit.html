@@ -1,0 +1,24 @@
+{% extends "layouts/staff.html" %}{% load ui %}
+{% block title %}Edit task{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div><h1>Edit task</h1><p class="page-header__meta"><a href="{% url 'workspace:tasks' program=program.slug %}">Back to tasks</a>{% if status %} · {% status status.0 status.1 %}{% endif %}</p></div>
+  </div>
+  <section class="card" aria-labelledby="edit-title">
+    <h2 class="card__title" id="edit-title">{{ task.title }}</h2>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include "components/form_errors.html" %}
+      {% for bound_field in form %}{% field bound_field %}{% endfor %}
+      <div class="btn-row">
+        <button type="submit" class="btn btn--primary">Save task</button>
+        <a class="btn btn--secondary" href="{% url 'workspace:tasks' program=program.slug %}">Cancel</a>
+      </div>
+    </form>
+  </section>
+  <section class="card" aria-labelledby="delete-title">
+    <h2 class="card__title" id="delete-title">Delete this task?</h2>
+    <p>It's gone for good once deleted.</p>
+    <form method="post" action="{% url 'workspace:task-delete' program=program.slug pk=task.pk %}">{% csrf_token %}<button type="submit" class="btn btn--danger">{% icon "trash-2" %}Delete task</button></form>
+  </section>
+{% endblock %}
