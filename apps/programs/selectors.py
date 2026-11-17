@@ -112,13 +112,18 @@ def activation_problem(program: Program, term: AcademicTerm | None) -> str | Non
 
 def deactivation_counts(program: Program) -> tuple[int, int]:
     """Waiting applications and payouts in progress (prepared or approved), which keep a
-    program open."""
+    program open. Returned applications count as waiting: a student may resubmit one, and in a
+    closed program nobody would see it."""
     from apps.applications.models import Application
     from apps.money.models import Disbursement
 
     waiting = Application.objects.filter(
         program=program,
-        status__in=[Application.Status.SUBMITTED, Application.Status.UNDER_REVIEW],
+        status__in=[
+            Application.Status.SUBMITTED,
+            Application.Status.UNDER_REVIEW,
+            Application.Status.RETURNED,
+        ],
     ).count()
     payouts = Disbursement.objects.filter(
         schedule__program=program,

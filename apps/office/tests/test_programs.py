@@ -150,3 +150,17 @@ def test_programs_list_query_count(
     ProgramFactory.create_batch(50)
     with django_assert_max_num_queries(10):
         assert client.get(LIST).status_code == 200
+
+
+def test_deactivate_refused_with_returned_applications(client: Any, office: User) -> None:
+    """A returned application could be resubmitted into a closed program where
+    nobody sees it, so returned ones keep the program open too."""
+    program = ProgramFactory.create(name="Quiet Grant")
+    ApplicationFactory.create(program=program, status=Application.Status.RETURNED)
+    html = _active(client, program, False).content.decode().replace("&#x27;", "'")
+    assert (
+        "Quiet Grant still has 1 waiting application and 0 payouts in progress. "
+        "Finish or reject them first."
+    ) in html
+    program.refresh_from_db()
+    assert program.is_active
