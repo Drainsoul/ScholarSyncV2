@@ -3,6 +3,9 @@ from datetime import date
 from django import forms
 from django.utils import timezone
 
+from apps.programs.models import Program
+from apps.workspace.models import SupportRequest
+
 MIN_BIRTH_DATE = date(1900, 1, 1)
 
 
@@ -44,4 +47,19 @@ class TaskForm(forms.Form):
         required=False,
         max_length=2000,
         widget=forms.Textarea(attrs={"rows": 3, "maxlength": 2000}),
+    )
+
+
+class SupportForm(forms.Form):
+    topic = forms.ChoiceField(label="What is it about?", choices=SupportRequest.Topic.choices)
+    program = forms.ModelChoiceField(
+        label="Program",
+        queryset=Program.objects.filter(is_active=True).order_by("name"),
+        required=False,
+        empty_label="Not about one program",
+    )
+    message = forms.CharField(
+        label="Your message",
+        max_length=2000,
+        widget=forms.Textarea(attrs={"rows": 6, "maxlength": 2000}),
     )

@@ -21,6 +21,7 @@ from apps.money.selectors import budget_summary
 from apps.programs.models import Program
 from apps.programs.selectors import current_term, window_state
 from apps.workspace.dashboard import WAIT_DAYS, day_month, waited_row
+from apps.workspace.support import open_count
 
 BUDGET_WARNING_PERCENT = 75
 
@@ -63,6 +64,7 @@ def office_dashboard(user: User, *, now: datetime) -> OfficeDashboard:
     )
     waiting = waiting_over(ids, days=WAIT_DAYS, now=now)
     budgets = {program.pk: budget_summary(program, today.year) for program in programs}
+    support_open = open_count()
 
     figures = [
         {"label": "Scholars", "value": f"{sum(scholars.values()):,}"},
@@ -71,6 +73,7 @@ def office_dashboard(user: User, *, now: datetime) -> OfficeDashboard:
             "label": f"Waiting over {WAIT_DAYS} days",
             "value": f"{sum(count for count, _ in waiting.values()):,}",
         },
+        {"label": "Support requests", "value": f"{support_open:,}"},
     ]
 
     attention: list[dict[str, str]] = []
@@ -98,6 +101,17 @@ def office_dashboard(user: User, *, now: datetime) -> OfficeDashboard:
                     "url": reverse("money:budget", kwargs={"program": program.slug}),
                 }
             )
+
+    if support_open:
+        attention.append(
+            {
+                "title": counted(support_open, "support request is", "support requests are")
+                + " waiting",
+                "detail": "Reply by email, then mark it answered",
+                "tone": "warning",
+                "url": reverse("support:office"),
+            }
+        )
 
     rows: list[dict[str, object]] = [
         {

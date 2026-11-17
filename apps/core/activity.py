@@ -37,6 +37,8 @@ VERBS: dict[str, str] = {
     "term.year_added": "added a school year",
     "invite.sent": "invited a student",
     "profile.created_by_staff": "added a student profile",
+    "support.sent": "sent the office a message",
+    "support.answered": "answered a support request",
 }
 
 FEED_SIZE = 8

@@ -7,6 +7,7 @@ urlpatterns = [
     path("me/applications/", include("apps.applications.urls")),
     path("me/scholarships/", include("apps.awards.urls")),
     path("me/notifications/", include("apps.workspace.notification_urls")),
+    path("", include("apps.workspace.support_urls")),
     path("me/", include("apps.students.urls")),
     path("staff/<slug:program>/applications/", include("apps.applications.staff_urls")),
     path("staff/<slug:program>/scholars/", include("apps.awards.staff_urls")),

@@ -7,6 +7,7 @@ from apps.applications.review_selectors import waiting_count
 from apps.programs.models import Program
 from apps.programs.selectors import programs_for
 from apps.workspace.selectors import unread_count
+from apps.workspace.support import open_count
 from apps.workspace.tasks import due_count
 
 # The staff "Disbursements" item is current on every money section (under the dashboard URL).
@@ -127,6 +128,7 @@ def shell_context(
             ]
         elif area == "office":
             terms = reverse("office:terms")
+            inbox = reverse("support:office")
             path = request.path
             nav = [
                 {"label": label, "url": home, "current": path == home, "count": 0, "icon": icon},
@@ -136,6 +138,13 @@ def shell_context(
                     "current": path.startswith(terms),
                     "count": 0,
                     "icon": "calendar",
+                },
+                {
+                    "label": "Support",
+                    "url": inbox,
+                    "current": path.startswith(inbox),
+                    "count": open_count(),
+                    "icon": "inbox",
                 },
             ]
         else:
@@ -152,6 +161,16 @@ def shell_context(
     }
     if area == "student":
         context["notifications_url"] = reverse("notifications:list")
+        help_url = reverse("support:student")
+        context["nav_secondary"] = [
+            {
+                "label": "Help and guides",
+                "url": help_url,
+                "current": request.path.startswith(help_url),
+                "count": 0,
+                "icon": "circle-help",
+            }
+        ]
         context["notifications_count"] = unread_count(user)
     if area == "staff" and program is not None:
         context["program"] = program
