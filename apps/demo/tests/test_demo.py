@@ -95,10 +95,14 @@ def test_load_creates_four_verified_accounts_once(demo_app, settings):
 
 
 @pytest.mark.django_db
-def test_load_completes_a_partial_earlier_run(demo_app, settings):
+def test_load_completes_a_partial_earlier_run(demo_app, settings, monkeypatch):
     settings.DEMO_ACTIVE = True
+    # An earlier run from before the M11 samples, which give the office audited actions (an
+    # account with audit events can't be deleted: they are append-only).
+    monkeypatch.setattr(loader, "give_workspace_samples", lambda: None)
     loader.load()
     User.objects.filter(email="office@scholarsync.test").delete()
+    monkeypatch.undo()
     assert loader.load() == 1
 
 
@@ -606,3 +610,36 @@ def test_demo_money_samples(demo_app, settings, frozen_today):
     loader.load()
     assert DistributionSchedule.objects.count() == 2
     assert Disbursement.objects.count() == 3
+
+
+@pytest.mark.django_db
+def test_demo_has_workspace_samples(demo_app, settings, frozen_today, stored):
+    from apps.applications.review_selectors import applications_by_month
+    from apps.core.charts import first_month, month_bars
+    from apps.workspace.models import Notification, SupportRequest, Task
+
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    loader.load()
+    carmela = Notification.objects.filter(recipient__email="scholar@scholarsync.test")
+    assert carmela.count() >= 2
+    assert carmela.filter(read_at=None).count() == 1
+    tasks = Task.objects.filter(owner__email="staff@scholarsync.test", program__slug="tcu-ceaa")
+    today = timezone.localdate()
+    assert tasks.count() == 3
+    assert tasks.filter(done_at=None, due_on__lt=today).count() == 1
+    assert tasks.filter(done_at=None, due_on=today).count() == 1
+    assert tasks.exclude(done_at=None).count() == 1
+    support = SupportRequest.objects.filter(sender__email="student@scholarsync.test")
+    assert sorted(support.values_list("status", flat=True)) == ["answered", "open"]
+    program = Program.objects.get(slug="tcu-ceaa")
+    counts = applications_by_month([program], since=first_month(today))
+    bars = month_bars(counts, today=today)
+    assert sum(1 for bar in bars if bar.count) >= 3
+    queue = [
+        a.status
+        for a in Application.objects.filter(
+            program=program, status__in=["submitted", "under_review"]
+        )
+    ]
+    assert len(queue) == 4

@@ -43,6 +43,7 @@ from apps.demo.samples import (
     SampleScholar,
     WalkIn,
 )
+from apps.demo.workspace import give_workspace_samples
 from apps.files import storage
 from apps.files.models import StoredFile
 from apps.money import services as money
@@ -636,4 +637,5 @@ def load() -> int:
         _give_staff_scholars()
         _give_staff_a_manual_scholar()
         _give_staff_money()
+        give_workspace_samples()
     return created
