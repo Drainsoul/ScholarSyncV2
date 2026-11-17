@@ -280,3 +280,29 @@ def test_bulk_approve_query_count(django_assert_max_num_queries: Any) -> None:
 
 def test_claim_date_format() -> None:
     assert services.long_date(date(2027, 3, 4)) == "4 March 2027"
+
+
+def test_bulk_all_does_not_count_refused_rows_as_more_to_go() -> None:
+    first = payout()
+    payout(first.schedule)
+    payout(first.schedule, award_status=Award.Status.SUSPENDED)  # stays prepared, refused
+    result = _bulk(first.schedule, "approve", None)
+    assert (result.done, len(result.skipped), result.remaining) == (2, 1, 0)
+
+
+def test_bulk_refuses_an_unpublished_schedule_once() -> None:
+    first = payout(is_published=False)
+    payout(first.schedule)
+    with pytest.raises(ValidationError, match="Publish the schedule first.") as exc:
+        _bulk(first.schedule, "approve", None)
+    assert exc.value.messages == ["Publish the schedule first."]
+    assert not Disbursement.objects.filter(status=APPROVED).exists()
+
+
+def test_bulk_refuses_release_before_the_day_once(time_machine: Any) -> None:
+    time_machine.move_to(datetime(2027, 3, 13, 9, 0, tzinfo=timezone.get_default_timezone()))
+    first = payout(distribution_date=DAY, status=APPROVED)
+    second = payout(first.schedule, status=APPROVED)
+    for ids in (None, [first.pk, second.pk]):
+        with pytest.raises(ValidationError, match="Release after the distribution day"):
+            _bulk(first.schedule, "release", ids)

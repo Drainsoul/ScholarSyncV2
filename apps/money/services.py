@@ -456,7 +456,12 @@ def bulk(
     """Approve or release the chosen payouts, or (ids=None) up to MAX_ALL in the action's source
     status. Each row runs in its own transaction, in pk order; refused rows are reported."""
     require_program_head(actor, program)  # a PermissionDenied is not a per-row skip
-    staff_schedule(program, schedule_id)
+    schedule = staff_schedule(program, schedule_id)
+    # Refusals that hold for every row are said once, not once per row (each row re-checks).
+    if action == "approve" and not schedule.is_published:
+        raise ValidationError(NOT_PUBLISHED)
+    if action == "release" and timezone.localdate() < schedule.distribution_date:
+        raise ValidationError(TOO_EARLY.format(date=long_date(schedule.distribution_date)))
     source = Disbursement.Status.PENDING if action == "approve" else Disbursement.Status.APPROVED
     rows = Disbursement.objects.filter(schedule_id=schedule_id).select_related(
         "scholar_term__award__profile"
@@ -488,7 +493,10 @@ def bulk(
             done += 1
     found_ids = {row.pk for row in found}
     skipped.extend(("", NOT_IN_SCHEDULE) for pk in wanted if pk not in found_ids)
-    remaining = rows.filter(status=source).count() if ids is None else 0
+    # Only rows past the cap are "more to go": refused rows stay in the source status on purpose.
+    remaining = 0
+    if ids is None and len(found) >= MAX_ALL:
+        remaining = rows.filter(status=source, pk__gt=found[-1].pk).count()
     return BulkResult(done=done, skipped=skipped, remaining=remaining)
 
 

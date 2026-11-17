@@ -268,7 +268,9 @@ class BulkView(ProgramStaffRequiredMixin, View):
         for name, reason in result.skipped:
             messages.warning(request, f"{name}: {reason}" if name else reason)
         if result.remaining:
-            messages.info(request, f"{result.remaining} more to go; click again.")
+            messages.info(
+                request, f"Done {result.done}. {result.remaining} more to go; click again."
+            )
         return _back(self.program, schedule)
 
 
