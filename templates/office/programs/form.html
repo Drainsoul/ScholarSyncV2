@@ -1,0 +1,19 @@
+{% extends "layouts/office.html" %}{% load ui %}
+{% block title %}{% if program %}Edit {{ program.name }}{% else %}New program{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>{% if program %}Edit {{ program.name }}{% else %}New program{% endif %}</h1><p class="page-header__meta"><a href="{% url 'office:programs' %}">Back to programs</a>{% if program %} · Link name: {{ program.slug }}{% endif %}</p></div>
+</div>
+<section class="card" aria-labelledby="program-form-title">
+  <h2 class="card__title" id="program-form-title">{% if program %}Name and description{% else %}About the program{% endif %}</h2>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% include "components/form_errors.html" %}
+    {% for bound_field in form %}{% field bound_field %}{% endfor %}
+    <div class="btn-row">
+      <button type="submit" class="btn btn--primary">{% if program %}Save program{% else %}Create program{% endif %}</button>
+      <a class="btn btn--secondary" href="{% url 'office:programs' %}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

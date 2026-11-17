@@ -2,11 +2,15 @@ from datetime import date
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import connection, transaction
+from django.http import HttpRequest
 
 from apps.accounts.models import User
 from apps.core.audit import record
+from apps.core.permissions import require_office
+from apps.core.text import counted
 
 from .models import AcademicTerm, Program, ProgramMembership
+from .selectors import activation_problem, current_term, deactivation_counts
 from .terms import school_year_terms
 
 
@@ -109,3 +113,86 @@ def set_current_term(*, actor: User, term: AcademicTerm) -> AcademicTerm | None:
         data={"from": old.pk if old is not None else None},
     )
     return old
+
+
+SLUG_TAKEN = "That slug is taken."
+
+
+@transaction.atomic
+def create_program(
+    *, actor: User, slug: str, name: str, description: str, request: HttpRequest | None = None
+) -> Program:
+    """A new program, closed until the office opens it. The slug never changes afterwards."""
+    require_office(actor)
+    slug = slug.strip().lower()
+    if Program.objects.filter(slug=slug).exists():
+        raise ValidationError({"slug": SLUG_TAKEN})
+    program = Program.objects.create(slug=slug, name=name, description=description, is_active=False)
+    record(
+        actor=actor,
+        action="program.created",
+        target=program,
+        program=program,
+        data={"slug": slug},
+        request=request,
+    )
+    return program
+
+
+@transaction.atomic
+def update_program(
+    *,
+    actor: User,
+    program: Program,
+    name: str,
+    description: str,
+    request: HttpRequest | None = None,
+) -> Program:
+    require_office(actor)
+    if (program.name, program.description) == (name, description):
+        return program
+    program.name, program.description = name, description
+    program.save(update_fields=["name", "description", "updated_at"])
+    record(
+        actor=actor,
+        action="program.updated",
+        target=program,
+        program=program,
+        data={"slug": program.slug},
+        request=request,
+    )
+    return program
+
+
+@transaction.atomic
+def set_program_active(
+    *, actor: User, program: Program, active: bool, request: HttpRequest | None = None
+) -> Program:
+    """Open or close a program. Opening needs a tier and a document; closing waits for open work."""
+    require_office(actor)
+    locked = Program.objects.select_for_update().get(pk=program.pk)
+    if locked.is_active == active:
+        return locked
+    if active:
+        problem = activation_problem(locked, current_term())
+        if problem is not None:
+            raise ValidationError(problem)
+    else:
+        waiting, payouts = deactivation_counts(locked)
+        if waiting or payouts:
+            raise ValidationError(
+                f"{locked.name} still has "
+                f"{counted(waiting, 'waiting application', 'waiting applications')} and "
+                f"{counted(payouts, 'payout', 'payouts')} in progress. Finish or reject them first."
+            )
+    locked.is_active = active
+    locked.save(update_fields=["is_active", "updated_at"])
+    record(
+        actor=actor,
+        action="program.activated" if active else "program.deactivated",
+        target=locked,
+        program=locked,
+        data={"slug": locked.slug},
+        request=request,
+    )
+    return locked

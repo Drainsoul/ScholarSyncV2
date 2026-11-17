@@ -1,0 +1,28 @@
+{% extends "layouts/office.html" %}{% load ui %}
+{% block title %}Programs{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Programs</h1><p class="page-header__meta">A new program stays closed until you open it.</p></div>
+  <a class="btn btn--primary" href="{% url 'office:program-new' %}">{% icon "plus" %}New program</a>
+</div>
+{% include "components/tabs.html" with tabs_label="Programs" %}
+{% if rows %}
+<div class="table-wrap" role="region" aria-label="Programs" tabindex="0">
+  <table class="table table--stack">
+    <thead><tr><th scope="col">Program</th><th scope="col">Window</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+    <tbody>{% for row in rows %}<tr>
+      <th scope="row">{% if row.program.is_active %}<a href="{% url 'workspace:dashboard' program=row.program.slug %}">{{ row.program.name }}</a>{% else %}{{ row.program.name }}{% endif %} <span class="text-sm text-muted">{{ row.program.slug }}</span></th>
+      <td data-label="Window">{{ row.window }}</td>
+      <td data-label="Status">{% if row.program.is_active %}{% status "success" "Open" %}{% else %}{% status "neutral" "Closed" %}{% endif %}</td>
+      <td><div class="btn-row">
+        <a class="btn btn--secondary" href="{% url 'office:program-edit' row.program.pk %}">Edit<span class="visually-hidden"> {{ row.program.name }}</span></a>
+        <a class="btn btn--secondary" href="{% url 'settings:rules' program=row.program.slug %}">Settings<span class="visually-hidden"> for {{ row.program.name }}</span></a>
+        <form method="post" action="{% url 'office:program-active' row.program.pk %}">{% csrf_token %}<input type="hidden" name="active" value="{% if row.program.is_active %}0{% else %}1{% endif %}"><button type="submit" class="btn btn--ghost">{% if row.program.is_active %}Close{% else %}Open{% endif %}<span class="visually-hidden"> {{ row.program.name }}</span></button></form>
+      </div></td>
+    </tr>{% endfor %}</tbody>
+  </table>
+</div>
+{% else %}
+{% include "components/empty_state.html" with title="No programs here." %}
+{% endif %}
+{% endblock %}

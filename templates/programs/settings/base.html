@@ -1,0 +1,12 @@
+{% extends "layouts/staff.html" %}{% load ui %}
+{% block title %}Program settings{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Program settings</h1><p class="page-header__meta">{{ program.name }}</p></div>
+</div>
+{% if not program.is_active %}<div class="banner banner--warning" role="status">{% icon "triangle-alert" %}<div><p class="banner__title">{{ program.name }} is closed.</p><p>Students don't see it until the office opens it.</p></div></div>{% endif %}
+<nav class="tabs" aria-label="Settings sections">
+  <a href="{% url 'settings:rules' program=program.slug %}"{% if tab == "rules" %} aria-current="page"{% endif %}>Rules</a>
+</nav>
+{% block settings %}{% endblock %}
+{% endblock %}

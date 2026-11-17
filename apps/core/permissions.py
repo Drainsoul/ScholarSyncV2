@@ -28,6 +28,20 @@ def require_program_staff(actor: User, program: Program | None) -> None:
     raise PermissionDenied("Only this program's staff can do that.")
 
 
+def require_office(actor: User) -> None:
+    """An active scholarship-office account; anyone else gets `PermissionDenied`."""
+    if not (actor.is_active and actor.is_super_admin):
+        raise PermissionDenied("Only the scholarship office can do that.")
+
+
+def require_settings_editor(actor: User, program: Program) -> None:
+    """Program settings (M11b): the office always (it configures a program before opening it),
+    or the head of an active program."""
+    if actor.is_active and actor.is_super_admin:
+        return
+    require_program_head(actor, program)
+
+
 def require_program_head(actor: User, program: Program) -> None:
     """The office, or the head of an active program (money decisions, spec §6)."""
     if actor.is_active and program.is_active:
@@ -69,6 +83,8 @@ class ProgramStaffRequiredMixin:
     """
 
     level: ClassVar[ProgramMembership.Level] = ProgramMembership.Level.STAFF
+    # Settings views set this: the office configures a program before opening it (M11b).
+    office_sees_inactive: ClassVar[bool] = False
     program: Program
     membership: ProgramMembership | None
 
@@ -78,7 +94,10 @@ class ProgramStaffRequiredMixin:
             return redirect_to_login(request.get_full_path())
         if not (user.is_program_staff or user.is_super_admin):
             raise PermissionDenied
-        self.program = get_object_or_404(Program, slug=kwargs.get("program"), is_active=True)
+        found = Program.objects.filter(slug=kwargs.get("program"))
+        if not (self.office_sees_inactive and user.is_super_admin):
+            found = found.filter(is_active=True)
+        self.program = get_object_or_404(found)
         if user.is_super_admin:
             self.membership = None
         else:

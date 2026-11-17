@@ -129,9 +129,17 @@ def shell_context(
         elif area == "office":
             terms = reverse("office:terms")
             inbox = reverse("support:office")
+            programs = reverse("office:programs")
             path = request.path
             nav = [
                 {"label": label, "url": home, "current": path == home, "count": 0, "icon": icon},
+                {
+                    "label": "Programs",
+                    "url": programs,
+                    "current": path.startswith(programs),
+                    "count": 0,
+                    "icon": "clipboard-check",
+                },
                 {
                     "label": "Terms",
                     "url": terms,

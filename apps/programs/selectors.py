@@ -95,3 +95,31 @@ def renewal_rule_text(program: Program) -> str:
     if rest:
         return "keep " + " and ".join(rest) + "."
     return ""
+
+
+SETUP_NEEDED = "Add an allowance tier and a required document before opening {name}."
+
+
+def activation_problem(program: Program, term: AcademicTerm | None) -> str | None:
+    """Why the program can't open yet: it needs a tier in force now and a required document."""
+    has_tier = term is not None and bool(tiers_in_force(program, term))
+    if has_tier and program.required_documents.exists():
+        return None
+    return SETUP_NEEDED.format(name=program.name)
+
+
+def deactivation_counts(program: Program) -> tuple[int, int]:
+    """Waiting applications and payouts in progress (prepared or approved), which keep a
+    program open."""
+    from apps.applications.models import Application
+    from apps.money.models import Disbursement
+
+    waiting = Application.objects.filter(
+        program=program,
+        status__in=[Application.Status.SUBMITTED, Application.Status.UNDER_REVIEW],
+    ).count()
+    payouts = Disbursement.objects.filter(
+        schedule__program=program,
+        status__in=[Disbursement.Status.PENDING, Disbursement.Status.APPROVED],
+    ).count()
+    return waiting, payouts
