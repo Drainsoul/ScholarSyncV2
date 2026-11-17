@@ -5,7 +5,7 @@
   <div><p class="text-sm"><a href="{% url 'money:budget' program=program.slug %}">Budget</a></p><h1>Set budget</h1><p class="page-header__meta">Saving asks for your password again.</p></div>
 </div>
 <section class="card">
-  <form method="post" novalidate>
+  <form method="post" action="{% url 'money:budget-edit' program=program.slug %}" novalidate>
     {% csrf_token %}
     {% include "components/form_errors.html" with form=form %}
     {% for bound_field in form %}{% field bound_field %}{% endfor %}

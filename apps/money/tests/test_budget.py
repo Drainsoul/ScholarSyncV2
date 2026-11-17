@@ -164,3 +164,12 @@ def test_budget_query_count(client: Any, django_assert_max_num_queries: Any) -> 
     client.force_login(staff_of(program))
     with django_assert_max_num_queries(12):
         assert client.get(_budget_url(program) + "?year=2026").status_code == 200
+
+
+def test_budget_form_posts_to_a_url_without_a_query(client: Any) -> None:
+    """allauth replays a POST after the password page only when its path is the whole `next`;
+    a form posting to `?year=…` would come back as a GET and lose the amount."""
+    program = ProgramFactory.create()
+    client.force_login(head_of(program))
+    html = client.get(_budget_url(program, "budget-edit") + "?year=2026").content.decode()
+    assert f'action="{_budget_url(program, "budget-edit")}"' in html
