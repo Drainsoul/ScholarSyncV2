@@ -4,7 +4,8 @@ from typing import Any
 from django import forms
 from django.core.validators import MaxValueValidator, MinValueValidator
 
-from apps.programs.models import Program, School
+from apps.programs.models import AcademicTerm, Program, School
+from apps.programs.selectors import current_term
 
 PERCENT = [MinValueValidator(Decimal("0")), MaxValueValidator(Decimal("100"))]
 ONE_TO_FIVE = [MinValueValidator(Decimal("1.00")), MaxValueValidator(Decimal("5.00"))]
@@ -124,3 +125,89 @@ class RulesForm(forms.ModelForm):  # type: ignore[type-arg]
 
     def fieldsets(self) -> list[tuple[str, list[forms.BoundField]]]:
         return [(title, [self[name] for name in names]) for title, names in FIELDSETS]
+
+
+AMOUNT = [MinValueValidator(Decimal("0"))]
+
+
+class _TermField(forms.ModelChoiceField):  # type: ignore[type-arg]
+    def label_from_instance(self, obj: Any) -> str:
+        return str(obj)
+
+
+def _term_field() -> _TermField:
+    """Every term validates (so a past one gets the service's sentence); only the current term
+    and later ones are offered."""
+    field = _TermField(
+        label="Starting from",
+        queryset=AcademicTerm.objects.order_by("sort_key"),
+        empty_label=None,
+    )
+    current = current_term()
+    if current is not None:
+        field.widget.choices = [
+            (term.pk, str(term))
+            for term in AcademicTerm.objects.filter(sort_key__gte=current.sort_key).order_by(
+                "sort_key"
+            )
+        ]
+    return field
+
+
+class TierForm(forms.Form):
+    code = forms.SlugField(label="Code", max_length=40, help_text="e.g. honors. It can't change.")
+    name = forms.CharField(label="Name", max_length=80)
+    base_amount = forms.DecimalField(
+        label="Allowance per term (₱)", max_digits=12, decimal_places=2, validators=AMOUNT
+    )
+    merit_amount = forms.DecimalField(
+        label="Allowance with merit (₱)",
+        max_digits=12,
+        decimal_places=2,
+        validators=AMOUNT,
+        initial=Decimal("0"),
+        help_text="The full amount with merit, not an extra. 0 means no merit amount.",
+    )
+    sort_order = forms.IntegerField(label="Order on lists", min_value=0, max_value=999, initial=0)
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.fields["effective_from"] = _term_field()
+
+    def clean_code(self) -> str:
+        return str(self.cleaned_data["code"]).lower()
+
+
+class TierChangeForm(forms.Form):
+    ACTIONS = (("change", "Change the amounts"), ("stop", "Stop offering this tier"))
+
+    action = forms.ChoiceField(
+        label="What to do", choices=ACTIONS, widget=forms.RadioSelect, initial="change"
+    )
+    base_amount = forms.DecimalField(
+        label="Allowance per term (₱)",
+        max_digits=12,
+        decimal_places=2,
+        validators=AMOUNT,
+        required=False,
+    )
+    merit_amount = forms.DecimalField(
+        label="Allowance with merit (₱)",
+        max_digits=12,
+        decimal_places=2,
+        validators=AMOUNT,
+        required=False,
+    )
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.fields["effective_from"] = _term_field()
+
+    def clean(self) -> dict[str, Any]:
+        data = super().clean() or {}
+        if data.get("action") == "change":
+            if data.get("base_amount") is None:
+                self.add_error("base_amount", "Enter the allowance per term.")
+            if data.get("merit_amount") is None:
+                data["merit_amount"] = Decimal("0")
+        return data

@@ -1,0 +1,25 @@
+{% extends "programs/settings/base.html" %}{% load ui %}
+{% block settings %}
+<section class="card" aria-labelledby="tiers-title">
+  <div class="card__header"><h2 class="card__title" id="tiers-title">Allowance tiers</h2><a class="btn btn--secondary" href="{% url 'settings:tier-new' program=program.slug %}">{% icon "plus" %}Add a tier</a></div>
+  <p class="text-sm text-muted">Changes ask for your password. Records already made keep their amounts.{% if current %} Amounts shown are for {{ current }}.{% endif %}</p>
+  {% if lines %}
+  <div class="table-wrap" role="region" aria-labelledby="tiers-title" tabindex="0">
+    <table class="table table--stack">
+      <thead><tr><th scope="col">Tier</th><th scope="col" class="num">Base</th><th scope="col" class="num">With merit</th><th scope="col">From</th><th scope="col">Upcoming changes</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+      <tbody>{% for line in lines %}<tr>
+        <th scope="row">{{ line.name }} <span class="text-sm text-muted">{{ line.code }}</span></th>
+        <td class="num" data-label="Base">{% if line.in_force %}{{ line.in_force.base_amount|peso }}{% else %}—{% endif %}</td>
+        <td class="num" data-label="With merit">{% if line.in_force and line.in_force.merit_amount %}{{ line.in_force.merit_amount|peso }}{% else %}—{% endif %}</td>
+        <td data-label="From">{% if line.in_force %}{{ line.in_force.effective_from }}{% else %}—{% endif %}</td>
+        <td data-label="Upcoming changes">{% for row in line.upcoming %}<p>{% if row.is_active %}{{ row.base_amount|peso }} from {{ row.effective_from }}{% else %}Stops from {{ row.effective_from }}{% endif %}</p>{% empty %}—{% endfor %}</td>
+        <td data-label="Status">{% if line.in_force %}{% status "success" "Offered" %}{% else %}{% status "neutral" "Not offered now" %}{% endif %}</td>
+        <td><a class="btn btn--secondary" href="{% url 'settings:tier-change' program=program.slug code=line.code %}">Change<span class="visually-hidden"> {{ line.name }}</span></a></td>
+      </tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% else %}
+  {% include "components/empty_state.html" with title="No allowance tiers yet." %}
+  {% endif %}
+</section>
+{% endblock %}

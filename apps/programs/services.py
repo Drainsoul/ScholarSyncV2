@@ -1,16 +1,17 @@
 from datetime import date
+from decimal import Decimal
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import connection, transaction
-from django.http import HttpRequest
+from django.http import Http404, HttpRequest
 
 from apps.accounts.models import User
 from apps.core.audit import record
 from apps.core.permissions import require_office, require_settings_editor
 from apps.core.text import counted
 
-from .models import AcademicTerm, Program, ProgramMembership
-from .selectors import activation_problem, current_term, deactivation_counts
+from .models import AcademicTerm, BenefitTier, Program, ProgramMembership
+from .selectors import activation_problem, current_term, deactivation_counts, tier_in_use
 from .terms import school_year_terms
 
 
@@ -236,3 +237,162 @@ def update_rules(
             request=request,
         )
     return changed
+
+
+TIER_CODE_TAKEN = "That tier code is taken."
+TIER_PAST_TERM = "Pick the current term or a later one."
+TIER_NO_CURRENT = "Set a current term first: tier changes start from it."
+TIER_IN_USE = "Records already use the {term} amounts for {tier}. Pick a later term."
+
+
+def _tier_term(term: AcademicTerm) -> None:
+    """Tier changes start now or later; the past stays as it was paid."""
+    current = current_term()
+    if current is None:
+        raise ValidationError(TIER_NO_CURRENT)
+    if term.sort_key < current.sort_key:
+        raise ValidationError({"effective_from": TIER_PAST_TERM})
+
+
+def _tier_audit(
+    actor: User, program: Program, tier: BenefitTier, action: str, request: HttpRequest | None
+) -> None:
+    record(
+        actor=actor,
+        action=action,
+        target=tier,
+        program=program,
+        data={
+            "code": tier.code,
+            "term": tier.effective_from_id,
+            "base_amount": str(tier.base_amount),
+            "merit_amount": str(tier.merit_amount),
+        },
+        request=request,
+    )
+
+
+@transaction.atomic
+def add_tier(
+    *,
+    actor: User,
+    program: Program,
+    code: str,
+    name: str,
+    base_amount: Decimal,
+    merit_amount: Decimal,
+    effective_from: AcademicTerm,
+    sort_order: int,
+    request: HttpRequest | None = None,
+) -> BenefitTier:
+    require_settings_editor(actor, program)
+    _tier_term(effective_from)
+    Program.objects.select_for_update().get(pk=program.pk)
+    if BenefitTier.objects.filter(program=program, code=code).exists():
+        raise ValidationError({"code": TIER_CODE_TAKEN})
+    tier = BenefitTier.objects.create(
+        program=program,
+        code=code,
+        name=name,
+        base_amount=base_amount,
+        merit_amount=merit_amount,
+        effective_from=effective_from,
+        sort_order=sort_order,
+    )
+    _tier_audit(actor, program, tier, "tier.added", request)
+    return tier
+
+
+def _tier_row_for(
+    program: Program, code: str, term: AcademicTerm
+) -> tuple[BenefitTier, BenefitTier | None]:
+    """The code's latest row (for its name and order) and its row for exactly `term`, if any.
+    An unknown code is a 404."""
+    rows = list(
+        BenefitTier.objects.select_for_update()
+        .filter(program=program, code=code)
+        .order_by("effective_from__sort_key")
+    )
+    if not rows:
+        raise Http404("No such tier.")
+    same = next((row for row in rows if row.effective_from_id == term.pk), None)
+    return rows[-1], same
+
+
+def _write_tier_row(
+    program: Program,
+    code: str,
+    term: AcademicTerm,
+    *,
+    base_amount: Decimal,
+    merit_amount: Decimal,
+    is_active: bool,
+) -> BenefitTier:
+    latest, same = _tier_row_for(program, code, term)
+    if same is not None:
+        if tier_in_use(same):
+            raise ValidationError(TIER_IN_USE.format(term=term, tier=same.name))
+        same.base_amount, same.merit_amount, same.is_active = base_amount, merit_amount, is_active
+        same.save(update_fields=["base_amount", "merit_amount", "is_active", "updated_at"])
+        return same
+    return BenefitTier.objects.create(
+        program=program,
+        code=code,
+        name=latest.name,
+        base_amount=base_amount,
+        merit_amount=merit_amount,
+        effective_from=term,
+        is_active=is_active,
+        sort_order=latest.sort_order,
+    )
+
+
+@transaction.atomic
+def change_tier_amounts(
+    *,
+    actor: User,
+    program: Program,
+    code: str,
+    base_amount: Decimal,
+    merit_amount: Decimal,
+    effective_from: AcademicTerm,
+    request: HttpRequest | None = None,
+) -> BenefitTier:
+    """New amounts from `effective_from` on. Records already made keep the row they point to."""
+    require_settings_editor(actor, program)
+    _tier_term(effective_from)
+    tier = _write_tier_row(
+        program,
+        code,
+        effective_from,
+        base_amount=base_amount,
+        merit_amount=merit_amount,
+        is_active=True,
+    )
+    _tier_audit(actor, program, tier, "tier.changed", request)
+    return tier
+
+
+@transaction.atomic
+def stop_tier(
+    *,
+    actor: User,
+    program: Program,
+    code: str,
+    effective_from: AcademicTerm,
+    request: HttpRequest | None = None,
+) -> BenefitTier:
+    """The tier is no longer offered from `effective_from` (an inactive row ends it)."""
+    require_settings_editor(actor, program)
+    _tier_term(effective_from)
+    latest, _ = _tier_row_for(program, code, effective_from)
+    tier = _write_tier_row(
+        program,
+        code,
+        effective_from,
+        base_amount=latest.base_amount,
+        merit_amount=latest.merit_amount,
+        is_active=False,
+    )
+    _tier_audit(actor, program, tier, "tier.stopped", request)
+    return tier

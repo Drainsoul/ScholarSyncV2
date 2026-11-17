@@ -7,6 +7,7 @@
 {% if not program.is_active %}<div class="banner banner--warning" role="status">{% icon "triangle-alert" %}<div><p class="banner__title">{{ program.name }} is closed.</p><p>Students don't see it until the office opens it.</p></div></div>{% endif %}
 <nav class="tabs" aria-label="Settings sections">
   <a href="{% url 'settings:rules' program=program.slug %}"{% if tab == "rules" %} aria-current="page"{% endif %}>Rules</a>
+  <a href="{% url 'settings:tiers' program=program.slug %}"{% if tab == "tiers" %} aria-current="page"{% endif %}>Allowance tiers</a>
 </nav>
 {% block settings %}{% endblock %}
 {% endblock %}

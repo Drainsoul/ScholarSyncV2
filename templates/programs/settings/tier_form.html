@@ -1,0 +1,16 @@
+{% extends "programs/settings/base.html" %}{% load ui %}
+{% block settings %}
+<section class="card" aria-labelledby="tier-form-title">
+  <h2 class="card__title" id="tier-form-title">{% if line %}Change {{ line.name }}{% else %}Add a tier{% endif %}</h2>
+  <p class="text-sm text-muted">Saving asks for your password. Records already made keep their amounts.</p>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% include "components/form_errors.html" %}
+    {% for bound_field in form %}{% field bound_field %}{% endfor %}
+    <div class="btn-row">
+      <button type="submit" class="btn btn--primary">{% if line %}Save change{% else %}Add tier{% endif %}</button>
+      <a class="btn btn--secondary" href="{% url 'settings:tiers' program=program.slug %}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

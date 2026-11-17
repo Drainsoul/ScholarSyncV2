@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 from typing import Literal
@@ -123,3 +124,51 @@ def deactivation_counts(program: Program) -> tuple[int, int]:
         status__in=[Disbursement.Status.PENDING, Disbursement.Status.APPROVED],
     ).count()
     return waiting, payouts
+
+
+@dataclass(frozen=True)
+class TierLine:
+    code: str
+    name: str
+    in_force: (
+        BenefitTier | None
+    )  # the row in force for the current term (None: not yet, or stopped)
+    upcoming: list[BenefitTier]  # rows effective after the current term, earliest first
+
+
+def tier_codes(program: Program, term: AcademicTerm | None) -> list[TierLine]:
+    """Every tier code of the program, with the row in force now and the changes to come. One
+    query whatever the number of rows."""
+    rows = list(
+        BenefitTier.objects.filter(program=program)
+        .select_related("effective_from")
+        .order_by("code", "effective_from__sort_key")
+    )
+    key = term.sort_key if term is not None else None
+    lines: dict[str, TierLine] = {}
+    for code in dict.fromkeys(row.code for row in rows):
+        mine = [row for row in rows if row.code == code]
+        now = [row for row in mine if key is not None and row.effective_from.sort_key <= key]
+        current = now[-1] if now and now[-1].is_active else None
+        later = [row for row in mine if key is None or row.effective_from.sort_key > key]
+        latest = current or mine[-1]
+        lines[code] = TierLine(code=code, name=latest.name, in_force=current, upcoming=later)
+    return sorted(
+        lines.values(),
+        key=lambda line: (
+            line.in_force.sort_order if line.in_force else 0,
+            line.name,
+        ),
+    )
+
+
+def tier_in_use(tier: BenefitTier) -> bool:
+    """Whether any award, term record or application points at this exact row."""
+    from apps.applications.models import Application
+    from apps.awards.models import Award, ScholarTerm
+
+    return (
+        Award.objects.filter(tier=tier).exists()
+        or ScholarTerm.objects.filter(tier=tier).exists()
+        or Application.objects.filter(requested_tier=tier).exists()
+    )
