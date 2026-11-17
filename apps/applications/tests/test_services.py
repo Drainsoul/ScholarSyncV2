@@ -572,7 +572,8 @@ def test_tier_required_when_several(world: World) -> None:
     submit_application(user=world.user, application=application, tier=other)
     application.refresh_from_db()
     assert application.requested_tier == other
-    assert application.match_snapshot["tier_candidates"] == ["full", "half"]
+    # Display order follows the factory's "Tier N" names, which depend on other tests: compare codes.
+    assert sorted(application.match_snapshot["tier_candidates"]) == ["full", "half"]
 
 
 def test_inactive_tier_refused(world: World) -> None:
