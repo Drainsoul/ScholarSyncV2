@@ -284,3 +284,18 @@ def waiting_over(
         .order_by()
     )
     return {row["program_id"]: (row["n"], row["oldest"]) for row in rows}
+
+
+def submitted_counts(program_ids: list[int], *, school_year_start: int) -> dict[int, int]:
+    """Submitted applications per program whose term is in the given school year."""
+    rows = (
+        Application.objects.filter(
+            program_id__in=program_ids,
+            submitted_at__isnull=False,
+            term__school_year_start=school_year_start,
+        )
+        .values("program_id")
+        .annotate(n=Count("pk"))
+        .order_by()
+    )
+    return {row["program_id"]: row["n"] for row in rows}

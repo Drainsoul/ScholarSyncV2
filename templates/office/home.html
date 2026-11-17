@@ -1,6 +1,45 @@
-{% extends "layouts/office.html" %}
+{% extends "layouts/office.html" %}{% load ui %}
 {% block title %}Overview{% endblock %}
 {% block content %}
-  <h1>Overview</h1>
-  {% include "components/empty_state.html" with title="Programs, staff and reports will show here." %}
+<div class="page-header">
+  <h1>{{ board.greeting }}</h1>
+</div>
+{% include "components/figures.html" with figures=board.figures %}
+<div class="split split--even">
+  <section class="card" aria-labelledby="months-title">
+    <div class="card__header"><h2 class="card__title" id="months-title">Applications by month</h2></div>
+    {% include "components/month_chart.html" with months=board.months chart_id="months-title" %}
+  </section>
+  <section class="card" aria-labelledby="attention-title">
+    <div class="card__header"><h2 class="card__title" id="attention-title">Needs attention</h2></div>
+    {% if board.attention %}{% include "components/row_links.html" with items=board.attention %}{% else %}{% include "components/empty_state.html" with title="Nothing needs attention right now." %}{% endif %}
+  </section>
+</div>
+<div class="split split--even">
+  <section class="card" aria-labelledby="programs-title">
+    <div class="card__header"><h2 class="card__title" id="programs-title">Programs</h2></div>
+    {% if board.programs %}
+    <div class="table-wrap" role="region" aria-labelledby="programs-title" tabindex="0">
+      <table class="table table--stack">
+        <thead><tr><th scope="col">Program</th><th scope="col" class="num">Applications</th><th scope="col" class="num">Scholars</th><th scope="col">Budget used</th></tr></thead>
+        <tbody>{% for item in board.programs %}<tr>
+          <th scope="row"><span class="identity">{% avatar item.name forloop.counter0 %}<span class="identity__text"><a href="{{ item.url }}">{{ item.name }}</a><span class="text-sm text-muted">{{ item.window }}</span></span></span></th>
+          <td class="num" data-label="Applications">{{ item.applications }}</td><td class="num" data-label="Scholars">{{ item.scholars }}</td>
+          <td data-label="Budget used">{% if item.used_percent is None %}—{% else %}<span class="meter-cell"><progress class="progress progress--primary" max="100" value="{{ item.used_percent }}" aria-label="{{ item.name }} budget used">{{ item.used_percent }}%</progress><span class="num">{{ item.used_percent }}%</span></span>{% endif %}</td>
+        </tr>{% endfor %}</tbody>
+      </table>
+    </div>
+    {% else %}
+    {% include "components/empty_state.html" with title="No active programs yet." %}
+    {% endif %}
+  </section>
+  <section class="card" aria-labelledby="activity-title">
+    <div class="card__header"><h2 class="card__title" id="activity-title">Recent activity</h2></div>
+    {% if board.activity %}
+    <ol class="timeline">{% for event in board.activity %}<li><p class="timeline__what">{{ event.what }}</p><p class="timeline__when"><time datetime="{{ event.datetime }}">{{ event.when }}</time></p></li>{% endfor %}</ol>
+    {% else %}
+    {% include "components/empty_state.html" with title="Nothing has happened yet." %}
+    {% endif %}
+  </section>
+</div>
 {% endblock %}

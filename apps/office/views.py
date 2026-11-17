@@ -14,6 +14,7 @@ from apps.awards.services import start_term
 from apps.core.permissions import SuperAdminRequiredMixin
 from apps.core.shell import shell_context
 from apps.core.text import counted
+from apps.office.dashboard import office_dashboard
 from apps.programs.models import AcademicTerm
 from apps.programs.selectors import current_term
 from apps.programs.services import add_school_year
@@ -42,7 +43,11 @@ class HomeView(SuperAdminRequiredMixin, TemplateView):
     template_name = "office/home.html"
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
-        return {**super().get_context_data(**kwargs), **shell_context(self.request, area="office")}
+        return {
+            **super().get_context_data(**kwargs),
+            **shell_context(self.request, area="office"),
+            "board": office_dashboard(_actor(self.request), now=timezone.now()),
+        }
 
 
 class TermsView(SuperAdminRequiredMixin, TemplateView):

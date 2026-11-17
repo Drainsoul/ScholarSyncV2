@@ -430,3 +430,14 @@ def addable_profiles(program: Program, q: str) -> QuerySet[StudentProfile]:
     for word in q.split():
         rows = rows.filter(Q(first_name__icontains=word) | Q(last_name__icontains=word))
     return rows
+
+
+def active_counts(program_ids: list[int]) -> dict[int, int]:
+    """Active awards per program, in one query; programs with none are left out."""
+    rows = (
+        Award.objects.filter(program_id__in=program_ids, status=Award.Status.ACTIVE)
+        .values("program_id")
+        .annotate(n=Count("pk"))
+        .order_by()
+    )
+    return {row["program_id"]: row["n"] for row in rows}
