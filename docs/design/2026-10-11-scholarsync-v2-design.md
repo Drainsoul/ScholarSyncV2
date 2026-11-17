@@ -24,6 +24,8 @@
   student view (§4.5, §5, §6, §7, §9, §16, §18).
 - **Revision:** 14 (2026-11-16): M9 decisions: scholars, renewals, term change and rollover; import and export split
   into M9b (§4.5, §4.6, §5, §6, §8, §16, §18).
+- **Revision:** 15 (2026-11-17): M9b decisions: manual and imported awards, the import purpose, direct-download
+  exports (§2, §4.4, §4.6, §5, §6, §7, §16, §18).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -73,7 +75,7 @@ Versions are pinned to the latest stable release when M2 scaffolds the project, 
 | Front-end build | **Vite** + strict **TypeScript** + **Biome**, **django-vite** | Same tooling as PersonalWebsite |
 | Charts / icons / fonts | **Chart.js** (lazy chunk), **Lucide** SVG sprite, **Fontsource** Lexend + Source Sans 3 (self-hosted) | No runtime CDNs |
 | Files | Any S3-compatible store via **django-storages** (S3 backend, boto3), **Pillow**, **filetype** | Private bucket, presigned URLs |
-| Import/export | stdlib `csv`, **openpyxl** | Row-by-row Django Forms with a preview |
+| Import/export | stdlib `csv`, **openpyxl** + **defusedxml** | Row-by-row Django Forms with a preview; all-or-nothing |
 | Email | Any SMTP server (one URL-style setting) + an `EmailOutbox` table | Provider APIs via django-anymail only if they cost nothing extra |
 | Security headers | **django-csp** | Report-only from M2, enforced at launch |
 | Observability | **sentry-sdk** with explicit `data_collection` opt-outs (user info, cookies, bodies, query params, DB data, frame variables off; header allowlist) + `before_send` scrubbing, JSON logs to stdout | |
@@ -239,7 +241,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 - **`StoredFile`:**
   - fields: `id` (UUID, so ids are never guessable), `key` (object-store key), `status` ∈ {pending, ready, rejected},
     `rejected_reason`, `original_name`, `declared_type`, `sniffed_type`, `size`, `sha256`, `uploaded_by`,
-    `purpose` ∈ {document, photo, report, export};
+    `purpose` ∈ {document, photo, report, export, import};
   - `export` files are written by the server only and never go through an upload intent;
   - flow: §7.
 
@@ -408,7 +410,21 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
     - `compliance` is `complete`, because every document was approved.
     - An optional approval note goes in `decision_reason`.
   - An approved renewal application creates the next `ScholarTerm`.
-  - Import or manual creation makes an `Award` + `ScholarTerm` with `source=imported` or `source=manual`.
+  - Import or manual creation makes an `Award` + `ScholarTerm` with `source=imported` or `source=manual` (M9b):
+    - **who:** staff pick from, and imports match only within, the program's own students: profiles created for the
+      program, holding an award in it, or with a submitted application to it. The app never searches every student
+      (as §18 Q16);
+    - **one import row = one scholar:** an award starting in the row's term (blank = the current term; the term must
+      exist and be no later than the current one) plus that term's record. The tier is the row with the code in
+      force for the start term, else the earliest row with that code;
+    - **matching:** first name, last name (case-insensitive, whitespace collapsed) and birth date. No match creates
+      an unclaimed profile for the program with no invite; several matches, or a match that holds an award in the
+      program, is a row error;
+    - **all or nothing:** a preview checks every row with the same Form rules as manual creation; Import appears only
+      when every row passes (at most 500 rows, 2 MB). The commit re-reads the file and re-validates under locks
+      (file row, then profiles in pk order);
+  - **`ScholarImport`** (M9b): `program`, `file` (one-to-one `StoredFile`, so a file imports once), `imported_by`,
+    `row_count`, `created_at`. `Award.import_batch` (nullable FK) links imported awards to it.
 - **At-risk** is derived, never stored (a proposal pending §18 Q5): an `active` award is at risk when its latest term
   record's GWA misses the renewal GWA rule for its scale (no rule for that scale: not flagged), or its units are under
   `renewal_min_units`, or its renewal is due and the program's window has closed.
@@ -469,7 +485,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 | Staff | `students/` (unclaimed profiles created for this program), `students/new/`, `students/<id>/invite/` | program staff/head |
 | Staff | `applications/` (queue), `applications/<id>/` (review), `applications/<id>/start/`, `applications/<id>/documents/<document>/approve/`, `applications/<id>/documents/<document>/decline/`, `applications/<id>/decide/` (approve, return or reject), `applications/bulk/` (start review, approve; POST) | program staff/head |
 | Staff | `applications/new/` (in progress + profile picker; POST starts), `applications/behalf/<id>/` (filing page), `…/academics/`, `…/documents/<requirement>/`, `…/submit/`, `…/withdraw/` (POST) | program staff/head |
-| Staff | `scholars/`, `scholars/<award>/`, `…/edit/`, `…/status/`, `…/terms/new/`, `…/terms/<term>/`, `…/terms/<term>/merit/` (POST); `scholars/import/`, `scholars/export/` (M9b) | program staff/head |
+| Staff | `scholars/`, `scholars/<award>/`, `…/edit/`, `…/status/`, `…/terms/new/`, `…/terms/<term>/`, `…/terms/<term>/merit/` (POST); `scholars/new/`, `scholars/import/`, `scholars/import/template/`, `scholars/export/` (M9b) | program staff/head |
 | Staff | `schedules/`, `disbursements/`, `disbursements/<schedule>/`, `budget/` | program staff/head (see §6) |
 | Staff | `reports/`, `tasks/`, `settings/` (tiers, documents, rules, window) | staff; `settings/` is head only |
 | Office | `/office/` (dashboard), `programs/`, `staff/`, `scholars/`, `reports/`, `analytics/`, `audit/`, `schools/`, `terms/` (M9: list, `add/` POST, `<term>/current/`) | super admin |
@@ -532,6 +548,8 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   decisions, return, approve, reject, bulk), as the table above proposes. The split stays open (§18 Q7).
 - **M9:** head and staff may both do everything on scholars, as the table proposes (§18 Q7 open); moving the
   current term is office-only.
+- **M9b:** head and staff may both add, import and export scholars. Adding and importing answer 404 for an inactive
+  program; export still works.
 - **Permission-matrix test:** `tests/test_permission_matrix.py` enumerates `get_resolver()` and checks each URL name
   against an expected-access table for anonymous, student, other-student, staff, other-program staff, head and super
   admin. A new URL fails the test until it's added to the table.
@@ -562,6 +580,11 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   | `document` | PDF, JPEG, PNG | 10 MB   | any role              |
   | `photo`    | JPEG, PNG      | 5 MB    | any role              |
   | `report`   | PDF            | 20 MB   | staff and office only |
+  | `import`   | CSV, XLSX      | 2 MB    | staff and office only |
+
+  `import` (M9b) accepts `text/csv`, `application/vnd.ms-excel` (what Windows browsers with Excel declare for `.csv`)
+  and XLSX; `upload.ts` declares the type from the extension when the browser gives none. Confirm sniffs XLSX; CSV
+  must have no known signature and no NUL byte in its first 4 KB. Import files are never downloadable.
 
   A student may start at most 20 uploads per hour. Staff may start 100 (`STAFF_STARTS_PER_HOUR`), since five documents
   for each of five walk-ins would otherwise hit the limit (M8b).
@@ -579,8 +602,10 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - Names are cleaned (no path parts or control characters, at most 255 characters) and sent as an ASCII fallback plus
     RFC 6266 `filename*`. The extension follows the sniffed type.
 - **Errors:** storage not configured or unavailable answers 503 with a sentence; anonymous POSTs answer 401 JSON.
-- **Exports:** large CSV/XLSX exports are written to the bucket under `exports/` and the browser is redirected to them
-  (the size threshold is an implementation detail).
+- **Exports (M9b):** a program's scholar list (at most a few thousand rows) is built in the request and sent as an
+  attachment with `Cache-Control: no-store`. Birth dates are left out; string cells starting with `=`, `+`, `-`, `@`,
+  a tab or a carriage return get a leading `'`; the audit event records format, tab, tier and row count, never the
+  name search. `StoredFile.Purpose.EXPORT` and `exports/` keys stay reserved for M11's office-wide exports.
 - **Bucket:** private; CORS allows PUT and GET from the app's origins only; encryption at rest is the provider's.
 - **Public endpoint:** presigned URLs must point at an address the browser can reach. An optional public endpoint
   setting covers the case where the app reaches storage by an internal name (inside compose); CSP `connect-src` and
@@ -1025,7 +1050,10 @@ starts, and ends with every acceptance item checked.
 - [ ] Extend the demo loader for this milestone's screens.
 
 **M9b: Import and export**
-- [ ] CSV/XLSX import with preview; manual award creation; CSV/XLSX export.
+- [ ] `import` upload purpose (CSV, XLSX); table reading and writing (openpyxl + defusedxml).
+- [ ] Manual award creation (`scholars/new/`) through `create_award`.
+- [ ] CSV/XLSX import with an all-or-nothing preview (`scholars/import/`, template download).
+- [ ] CSV/XLSX export of the filtered scholar list (`scholars/export/`).
 - [ ] Extend the demo loader for this milestone's screens.
 
 **M10: Money**
@@ -1090,6 +1118,7 @@ starts, and ends with every acceptance item checked.
 14. Is v1 still used by the City, and is there a cut-over date?
 16. Can staff file for a self-registered student found by the exact email of their account? (M8b; not
     built.) It reaches students who never touched the program and tells staff whether an address has an account.
+    M9b matches imports only within the program's own students for the same reason.
 
 ## 19. Decisions (2026-10-11 → 2026-10-30)
 | Decision | Why |
