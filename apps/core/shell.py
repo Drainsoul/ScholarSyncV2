@@ -6,6 +6,9 @@ from apps.applications.review_selectors import waiting_count
 from apps.programs.models import Program
 from apps.programs.selectors import programs_for
 
+# The staff "Disbursements" item is current on every money section (under the dashboard URL).
+MONEY_SECTIONS = ("schedules/", "disbursements/", "budget/")
+
 
 def home_url_for(user: User) -> str:
     """Where this user lands after signing in. Anonymous or inactive users get the login page."""
@@ -78,6 +81,7 @@ def shell_context(
             students = reverse("workspace:students", kwargs={"program": program.slug})
             queue = reverse("review:queue", kwargs={"program": program.slug})
             scholar_list = reverse("scholars:list", kwargs={"program": program.slug})
+            money = reverse("money:schedules", kwargs={"program": program.slug})
             path = request.path
             nav = [
                 {"label": label, "url": home, "current": path == home, "count": 0, "icon": icon},
@@ -94,6 +98,13 @@ def shell_context(
                     "current": path.startswith(scholar_list),
                     "count": 0,
                     "icon": "school",
+                },
+                {
+                    "label": "Disbursements",
+                    "url": money,
+                    "current": any(path.startswith(home + part) for part in MONEY_SECTIONS),
+                    "count": 0,
+                    "icon": "banknote",
                 },
                 {
                     "label": "Students",

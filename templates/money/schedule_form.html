@@ -1,0 +1,18 @@
+{% extends "layouts/staff.html" %}{% load ui %}
+{% block title %}{% if schedule %}Edit schedule{% else %}New schedule{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><p class="text-sm"><a href="{% url 'money:schedules' program=program.slug %}">Schedules</a></p><h1>{% if schedule %}Edit schedule{% else %}New schedule{% endif %}</h1></div>
+</div>
+<section class="card">
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% include "components/form_errors.html" with form=form %}
+    {% for bound_field in form %}{% field bound_field %}{% endfor %}
+    <div class="btn-row">
+      <button type="submit" class="btn btn--primary">Save</button>
+      <a class="btn btn--secondary" href="{% url 'money:schedules' program=program.slug %}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

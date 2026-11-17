@@ -1,0 +1,38 @@
+{% extends "layouts/staff.html" %}{% load ui %}
+{% block title %}Schedules{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Schedules</h1><p class="page-header__meta">Distribution days for {{ program.name }}. Scholars see published schedules.</p></div>
+  <div class="btn-row">
+    <a class="btn btn--primary" href="{% url 'money:schedule-new' program=program.slug %}">{% icon "plus" %}New schedule</a>
+  </div>
+</div>
+{% include "money/_tabs.html" %}
+<section class="card list-card" aria-labelledby="list-heading">
+  <h2 class="visually-hidden" id="list-heading">Schedule list</h2>
+  {% if schedules %}
+  <div class="table-wrap" role="region" aria-labelledby="list-heading" tabindex="0">
+    <table class="table table--stack" aria-labelledby="list-heading">
+      <thead><tr><th scope="col">Distribution day</th><th scope="col">Term</th><th scope="col">Claim location</th><th scope="col">Status</th><th scope="col">Payouts</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+      <tbody>{% for schedule in schedules %}<tr>
+        <th scope="row"><a href="{% url 'money:schedule-edit' program=program.slug pk=schedule.pk %}">{{ schedule.distribution_date|date:"j F Y" }}</a></th>
+        <td data-label="Term">{{ schedule.term }}</td>
+        <td data-label="Claim location">{{ schedule.claim_location }}</td>
+        <td data-label="Status">{% if schedule.is_published %}{% status "success" "Published" %}{% else %}{% status "neutral" "Draft" %}{% endif %}</td>
+        <td data-label="Payouts">{% if schedule.n_pending or schedule.n_approved or schedule.n_released or schedule.n_rejected %}{{ schedule.n_pending }} prepared · {{ schedule.n_approved }} approved · {{ schedule.n_released }} released · {{ schedule.n_rejected }} rejected{% else %}None yet{% endif %}</td>
+        <td data-label="Actions">
+          <form method="post" action="{% url 'money:schedule-publish' program=program.slug pk=schedule.pk %}">
+            {% csrf_token %}
+            {% if schedule.is_published %}<input type="hidden" name="publish" value="0"><button type="submit" class="btn btn--secondary">Unpublish</button>
+            {% else %}<input type="hidden" name="publish" value="1"><button type="submit" class="btn btn--secondary">Publish</button>{% endif %}
+          </form>
+        </td>
+      </tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% else %}
+  {% url 'money:schedule-new' program=program.slug as new_url %}
+  {% include "components/empty_state.html" with title="No schedules yet." action_url=new_url action_label="New schedule" %}
+  {% endif %}
+</section>
+{% endblock %}

@@ -26,7 +26,7 @@ from apps.money.selectors import (
     merit_confirmed,
     staff_schedule,
 )
-from apps.programs.models import Program
+from apps.programs.models import AcademicTerm, Program
 from apps.workspace.emails import enqueue
 
 ONE_LIVE_PAYOUT = "money_one_live_payout_per_term"
@@ -61,6 +61,104 @@ def _locked_schedule(program: Program, schedule_id: int) -> DistributionSchedule
     )
     if schedule is None:
         raise Http404("No such schedule.")
+    return schedule
+
+
+FROZEN = "This schedule has approved payouts, so its term and date are fixed."
+TERM_FIXED = "This schedule has payouts, so its term is fixed."
+STAYS_PUBLISHED = "This schedule has approved payouts, so it stays published."
+MONEY_MOVED = (Disbursement.Status.APPROVED, Disbursement.Status.RELEASED)
+
+
+@dataclass(frozen=True)
+class ScheduleData:
+    term: AcademicTerm
+    distribution_date: date
+    claim_location: str
+    frequency_label: str
+    notes: str
+
+
+@transaction.atomic
+def save_schedule(
+    *,
+    actor: User,
+    program: Program,
+    schedule_id: int | None,
+    data: ScheduleData,
+    request: HttpRequest | None = None,
+) -> DistributionSchedule:
+    """Create or edit a schedule. Once money moves its term and date are fixed (the budget year
+    follows the date), and once it has any payout its term is."""
+    require_program_staff(actor, program)
+    values: dict[str, object] = {
+        "term": data.term,
+        "distribution_date": data.distribution_date,
+        "claim_location": data.claim_location.strip()[:200],
+        "frequency_label": data.frequency_label.strip()[:80],
+        "notes": data.notes.strip(),
+    }
+    if schedule_id is None:
+        schedule = DistributionSchedule.objects.create(program=program, created_by=actor, **values)
+        audit.record(
+            actor=actor,
+            action="schedule.created",
+            target=schedule,
+            program=program,
+            request=request,
+            data={"term": data.term.pk},
+        )
+        return schedule
+    schedule = _locked_schedule(program, schedule_id)
+    changed = [field for field, value in values.items() if getattr(schedule, field) != value]
+    if not changed:
+        return schedule
+    rows = schedule.disbursements.all()
+    if {"term", "distribution_date"} & set(changed) and rows.filter(
+        status__in=MONEY_MOVED
+    ).exists():
+        raise ValidationError(FROZEN)
+    if "term" in changed and rows.exists():
+        raise ValidationError(TERM_FIXED)
+    for field in changed:
+        setattr(schedule, field, values[field])
+    schedule.save(update_fields=[*changed, "updated_at"])
+    audit.record(
+        actor=actor,
+        action="schedule.updated",
+        target=schedule,
+        program=program,
+        request=request,
+        data={"fields": changed},
+    )
+    return schedule
+
+
+@transaction.atomic
+def set_published(
+    *,
+    actor: User,
+    program: Program,
+    schedule_id: int,
+    published: bool,
+    request: HttpRequest | None = None,
+) -> DistributionSchedule:
+    """Students see published schedules only. One with approved payouts stays published."""
+    require_program_staff(actor, program)
+    schedule = _locked_schedule(program, schedule_id)
+    if schedule.is_published == published:
+        return schedule
+    if not published and schedule.disbursements.filter(status__in=MONEY_MOVED).exists():
+        raise ValidationError(STAYS_PUBLISHED)
+    schedule.is_published = published
+    schedule.save(update_fields=["is_published", "updated_at"])
+    audit.record(
+        actor=actor,
+        action="schedule.published" if published else "schedule.unpublished",
+        target=schedule,
+        program=program,
+        request=request,
+    )
     return schedule
 
 

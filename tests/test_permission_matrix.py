@@ -77,6 +77,36 @@ RULES: dict[str, dict[str, Any]] = {
         "head": 405,
         "office": 405,
     },
+    # Head-only screens and actions (M10 money decisions): program staff are refused.
+    "head": {
+        "anonymous": LOGIN,
+        "student": 403,
+        "other_student": 403,
+        "staff": 403,
+        "other_staff": 403,
+        "head": 200,
+        "office": 200,
+    },
+    "head_object": {
+        "anonymous": LOGIN,
+        "student": 403,
+        "other_student": 403,
+        "staff": 403,
+        "other_staff": 403,
+        "head": 404,
+        "office": 404,
+    },
+    # A GET on a head-only POST action (some ask for the password again) is 405, never a
+    # reauthentication redirect.
+    "head_post_only": {
+        "anonymous": LOGIN,
+        "student": 403,
+        "other_student": 403,
+        "staff": 403,
+        "other_staff": 403,
+        "head": 405,
+        "office": 405,
+    },
     # A student action that only answers POST: the role guard runs, then a GET is 405.
     "student_post_only": {
         "anonymous": LOGIN,
@@ -173,6 +203,10 @@ URLS: dict[str, str] = {
     "office:terms-current": "office_object",
     "scholarships:list": "student",
     "scholars:list": "staff",
+    "money:schedules": "staff",
+    "money:schedule-new": "staff",
+    "money:schedule-edit": "staff_object",
+    "money:schedule-publish": "staff_post_only",
     "scholars:new": "staff",
     "scholars:import": "staff",
     "scholars:import-template": "staff",
@@ -225,6 +259,10 @@ URL_KWARGS: dict[str, dict[str, str]] = {
     "workspace:students": {"program": "tcu-ceaa"},
     "scholarships:renew": {"pk": "999999"},
     "scholars:list": {"program": "tcu-ceaa"},
+    "money:schedules": {"program": "tcu-ceaa"},
+    "money:schedule-new": {"program": "tcu-ceaa"},
+    "money:schedule-edit": {"program": "tcu-ceaa", "pk": "999999"},
+    "money:schedule-publish": {"program": "tcu-ceaa", "pk": "999999"},
     "scholars:new": {"program": "tcu-ceaa"},
     "scholars:import": {"program": "tcu-ceaa"},
     "scholars:import-template": {"program": "tcu-ceaa"},

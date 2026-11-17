@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 
-from django.db.models import Exists, OuterRef, QuerySet
+from django.db.models import Count, Exists, OuterRef, Q, QuerySet
 from django.http import Http404
 
 from apps.awards.models import Award, ScholarTerm
@@ -29,6 +29,15 @@ def amount_for(record: ScholarTerm) -> tuple[Decimal, bool]:
 
 def schedules_for(program: Program) -> QuerySet[DistributionSchedule]:
     return DistributionSchedule.objects.filter(program=program).select_related("term")
+
+
+def schedule_list(program: Program) -> QuerySet[DistributionSchedule]:
+    """The program's schedules with a count of payouts per status (`n_<status>`)."""
+    counts = {
+        f"n_{status}": Count("disbursements", filter=Q(disbursements__status=status))
+        for status in Disbursement.Status.values
+    }
+    return schedules_for(program).annotate(**counts)
 
 
 def staff_schedule(program: Program, pk: int) -> DistributionSchedule:
