@@ -35,6 +35,9 @@
 - **Revision:** 18 (2026-11-17): M11b decisions: program lifecycle, history-safe tiers and documents, staff accounts
   with a set-password email, memberships, settings, schools; cross-program scholars and the audit viewer move to
   M11c; Django admin stays out (§4.1, §4.2, §5, §6, §9, §10, §16).
+- **Revision:** 19 (2026-11-18): M11c decisions: program reports and their review, staff and office notifications,
+  analytics and the program summary, cross-program scholars, the audit log for the office and heads; exports stay
+  direct downloads; office tasks and Chart.js are not planned (§4.4, §4.8, §5, §6, §7, §9, §12, §16).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -82,7 +85,7 @@ Versions are pinned to the latest stable release when M2 scaffolds the project, 
 | Auth | **django-allauth** (account + Google provider), **argon2-cffi** | Email login, mandatory verification, rate limits, reauthentication |
 | Templates | Django templates + **django-htmx** + **django-template-partials** | `{% partialdef %}` for HTMX fragments |
 | Front-end build | **Vite** + strict **TypeScript** + **Biome**, **django-vite** | Same tooling as PersonalWebsite |
-| Charts / icons / fonts | **Chart.js** (lazy chunk), **Lucide** SVG sprite, **Fontsource** Lexend + Source Sans 3 (self-hosted) | No runtime CDNs |
+| Charts / icons / fonts | CSS bar charts with a "View as table" (no chart library; M11c), **Lucide** SVG sprite, **Fontsource** Lexend + Source Sans 3 (self-hosted) | No runtime CDNs |
 | Files | Any S3-compatible store via **django-storages** (S3 backend, boto3), **Pillow**, **filetype** | Private bucket, presigned URLs |
 | Import/export | stdlib `csv`, **openpyxl** + **defusedxml** | Row-by-row Django Forms with a preview; all-or-nothing |
 | Email | Any SMTP server (one URL-style setting) + an `EmailOutbox` table | Provider APIs via django-anymail only if they cost nothing extra |
@@ -268,7 +271,8 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - fields: `id` (UUID, so ids are never guessable), `key` (object-store key), `status` ∈ {pending, ready, rejected},
     `rejected_reason`, `original_name`, `declared_type`, `sniffed_type`, `size`, `sha256`, `uploaded_by`,
     `purpose` ∈ {document, photo, report, export, import};
-  - `export` files are written by the server only and never go through an upload intent;
+  - `export` is reserved and unused (M11c): office-wide exports are direct downloads like M9b's (§7), so no export
+    file is ever stored; M12 decides whether the choice is removed;
   - flow: §7.
 
 ### 4.5 applications
@@ -508,14 +512,22 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   and each payout's status: "Being prepared", "Ready to claim", "Received {date}", or "Not paid" with the reason.
 
 ### 4.8 reports, workspace, core
-- **`Report`:**
-  - fields: `program`, `title`, `period_start`, `period_end`, `description`, `status`, `submitted_by`, `reviewed_by`,
-    `review_note`;
-  - transitions: `submitted` → `accepted` or `returned`; `returned` → `submitted`.
-- **`ReportFile`:** `report`, `file` FK `StoredFile`.
+- **`Report`** (M11c): a program's periodic report to the scholarship office.
+  - fields: `program`, `title` (1–200), `period_start`, `period_end` (≥ start: "The period must end on or after its
+    start."), `description` (≤ 2,000, optional), `status` ∈ {submitted, accepted, returned}, `submitted_by`,
+    `submitted_at`, `reviewed_by`, `reviewed_at`, `review_note` (≤ 1,000), `created_at`;
+  - transitions: `submitted` → `accepted` or `returned` (office only); `returned` → `submitted` (program staff or
+    head, any member; `submitted_by` becomes the resubmitter). Accepted is final. Every transition locks the row; a
+    second decision is refused with "This report was already {accepted|returned}.";
+  - returning needs a note ("Say what the program should change."); an accept note is optional;
+  - audited as `report.submitted`, `report.resubmitted`, `report.accepted`, `report.returned` (report id and program;
+    never the title, description or note).
+- **`ReportFile`** (M11c): `report` (CASCADE), `file` (one-to-one `StoredFile`, PROTECT), `created_at`. Each
+  submission carries one PDF of the `report` purpose; a resubmission may add a new version, and every version stays
+  downloadable, newest first. A file already attached to a report can't be attached again ("Upload the file again.").
 - **`Task`** (M11): `owner`, `program` (nullable), `title`, `notes` (≤ 2,000), `due_on`, `done_at`.
   - A personal to-do of one staff member in one program. M11's screens always set `program`; a program-less (office)
-    task waits for M11c.
+    task is not planned (M11c: the approved office nav has no Tasks item).
   - Only the owner sees, edits, completes or deletes it; anyone else, heads and the office included, gets a 404.
     Deleting is allowed (a to-do is not a record). Every change is audited with the id and program, never the title.
   - `tasks/` has Open (overdue first, then by due date, undated last) and Done (newest first) tabs, 25 a page; the
@@ -552,8 +564,8 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 | Staff | `applications/new/` (in progress + profile picker; POST starts), `applications/behalf/<id>/` (filing page), `…/academics/`, `…/documents/<requirement>/`, `…/submit/`, `…/withdraw/` (POST) | program staff/head |
 | Staff | `scholars/`, `scholars/<award>/`, `…/edit/`, `…/status/`, `…/terms/new/`, `…/terms/<term>/`, `…/terms/<term>/merit/` (POST); `scholars/new/`, `scholars/import/`, `scholars/import/template/`, `scholars/export/` (M9b) | program staff/head |
 | Staff | `schedules/`, `schedules/new/`, `schedules/<id>/`, `schedules/<id>/publish/` (POST); `disbursements/`, `disbursements/<schedule>/`, `…/generate/` (POST), `…/bulk/` (POST), `…/<id>/reject/`, `…/<id>/revert/` (POST); `budget/`, `budget/edit/` | program staff/head (see §6) |
-| Staff | `tasks/` (+ `<id>/`, `<id>/done/` POST, `<id>/delete/` POST; owner only, M11), `reports/` (M11c), `settings/` (rules and window; `tiers/`, `tiers/new/`, `tiers/<code>/`; `documents/`, `documents/<id>/`, `documents/<id>/active/` POST; M11b) | staff; `settings/` is head (and office) only |
-| Office | `/office/` (dashboard); M11b: `programs/` (+ `new/`, `<id>/`, `<id>/active/` POST), `staff/` (+ `new/`, `<id>/`, `<id>/active/`, `<id>/welcome/`, `<id>/memberships/` POST), `memberships/<id>/` POST, `schools/` (+ `new/`, `<id>/`); `terms/` (M9: list, `add/` POST, `<term>/current/`), `support/` (+ `<id>/answer/` POST; M11); M11c: `scholars/`, `reports/`, `analytics/`, `audit/` | super admin |
+| Staff | `tasks/` (+ `<id>/`, `<id>/done/` POST, `<id>/delete/` POST; owner only, M11), `reports/` (M11c: + `new/`, `<id>/`, `<id>/resubmit/` POST), `notifications/` (M11c: + `<id>/`, `read/` POST), `audit/` (M11c), `settings/` (rules and window; `tiers/`, `tiers/new/`, `tiers/<code>/`; `documents/`, `documents/<id>/`, `documents/<id>/active/` POST; M11b) | staff; `settings/` and `audit/` are head (and office) only |
+| Office | `/office/` (dashboard); M11b: `programs/` (+ `new/`, `<id>/`, `<id>/active/` POST), `staff/` (+ `new/`, `<id>/`, `<id>/active/`, `<id>/welcome/`, `<id>/memberships/` POST), `memberships/<id>/` POST, `schools/` (+ `new/`, `<id>/`); `terms/` (M9: list, `add/` POST, `<term>/current/`), `support/` (+ `<id>/answer/` POST; M11); M11c: `scholars/` (+ `export/`), `reports/` (+ `<id>/`, `<id>/decide/` POST), `analytics/` (+ `export/`), `audit/`, `notifications/` (+ `<id>/`, `read/` POST) | super admin |
 | Files | `POST /files/uploads/` (intent), `POST /files/uploads/<id>/confirm/`, `GET /files/<id>/` (authorize → 302) | owner or authorized staff |
 
 - **The staff queue** (`applications/`, M8):
@@ -619,6 +631,9 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 - **M11b:** the office manages programs, accounts, memberships and schools; heads and the office edit program
   settings (staff get 403 and no Settings link); settings open for an inactive program to the office only. The
   audit-log viewer screens arrive in M11c.
+- **M11c:** program staff and heads send and resubmit reports; only the office accepts or returns them. Analytics,
+  the program summary and cross-program scholars are office-only. The audit log is office (every event) and head
+  (only the program's events; events with no program are office-only); staff get 403 and see no link.
 - **Permission-matrix test:** `tests/test_permission_matrix.py` enumerates `get_resolver()` and checks each URL name
   against an expected-access table for anonymous, student, other-student, staff, other-program staff, head and super
   admin. A new URL fails the test until it's added to the table.
@@ -674,7 +689,13 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 - **Exports (M9b):** a program's scholar list (at most a few thousand rows) is built in the request and sent as an
   attachment with `Cache-Control: no-store`. Birth dates are left out; string cells starting with `=`, `+`, `-`, `@`,
   a tab or a carriage return get a leading `'`; the audit event records format, tab, tier and row count, never the
-  name search. `StoredFile.Purpose.EXPORT` and `exports/` keys stay reserved for M11c's office-wide exports.
+  name search.
+- **Exports (M11c):** the office's program summary (`/office/analytics/export/`) and cross-program scholar list
+  (`/office/scholars/export/`) follow M9b: built in the request, sent as an attachment with `Cache-Control:
+  no-store`, nothing stored. `StoredFile.Purpose.EXPORT` stays unused.
+- **Report files (M11c):** active staff of the report's program (the `staff_can_download` rule) and the office may
+  download every version, even after the uploader leaves; anyone else gets 404. The `file.viewed` event names the
+  report's program.
 - **Bucket:** private; CORS allows PUT and GET from the app's origins only; encryption at rest is the provider's.
 - **Public endpoint:** presigned URLs must point at an address the browser can reach. An optional public endpoint
   setting covers the case where the app reaches storage by an internal name (inside compose); CSP `connect-src` and
@@ -757,7 +778,20 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   | `allowance_approved` | "Your {program} allowance is ready to claim" | "{amount} for {term}. Claim it on {claim date} at {location}." | `/me/scholarships/` |
   | `allowance_released` | "Your {program} allowance was released" | "{amount} for {term}." | `/me/scholarships/` |
 
-  Staff and the office get no notifications in M11. Support messages are never emailed (free text).
+  Support messages are never emailed (free text).
+- **Staff and office notifications (M11c):** in the app only, never emailed. Centres at `/staff/<slug>/notifications/`
+  (all of the user's notifications; the program only picks the layout) and `/office/notifications/`; the bell shows on
+  every staff and office page.
+
+  | Kind | To | Title | Body | Url |
+  |---|---|---|---|---|
+  | `report_submitted` | every active office account | "{program} sent a report for review" | "{period}." | the office report |
+  | `report_submitted` (resubmit) | every active office account | "{program} sent a returned report back" | "{period}." | the office report |
+  | `report_accepted` | `submitted_by` | "The office accepted your {program} report" | "" | the staff report |
+  | `report_returned` | `submitted_by` | "The office returned your {program} report" | "Open it to see what to change." | the staff report |
+
+  `{period}` reads "1 August 2026 to 31 October 2026". The report title and the office's note are free text and
+  never go into a notification.
 - **Templates:** `templates/emails/<kind>.{html,txt}`, autoescaped.
   - v1 messages to port: application received, application decided, allowance approved/released, password reset (from
     allauth).
@@ -956,10 +990,22 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
     "Released this year", "At risk"; "Needs attention" (waiting over 7 days from `submitted_at`, own overdue tasks,
     at risk, prepared payouts, approved payouts, the window); "Applications by month" (6 months by
     `first_submitted_at` in Manila, zero-filled, CSS bars in 5 % steps + "View as table"); "Your tasks";
-  - **office** (`/office/`, the approved mockup) without "Download report" (M11c), "New program" and "Manage
-    programs" (M11b) and "Reports to review" (M11c, replaced by "Support requests"); needs attention per program
-    (waiting over 7 days, budget used ≥ 75 %) and open support requests; recent activity from audit events with a
-    sentence, where a student actor reads "A student".
+  - **office** (`/office/`, the approved mockup): figures Scholars, Applications, Waiting over 7 days and Reports
+    to review (M11c; support stays in "Needs attention" and the nav count); needs attention: "{n} program report(s)
+    is/are waiting for your review" ("Oldest sent {n} days ago" or "Sent today"), per program waiting over 7 days and
+    budget used ≥ 75 %, and open support requests; recent activity from audit events in `FEED_ACTIONS` with a
+    sentence, where a student actor reads "A student"; "Download report" downloads the program summary for the
+    current school year as XLSX (M11c).
+- **Analytics** (`/office/analytics/`, M11c): filters school year (default the current term's) and program; new
+  applications only (`kind=new`, ever submitted, term in the school year). Figures: Applications, Approved, Success
+  rate = approved ÷ (approved + rejected) (whole percent), Median days to approve (`decided_at −
+  first_submitted_at`, one decimal); "—" with no data. "Applications by month" (12 months, every kind, CSS bars +
+  "View as table"); a by-program table; top 10 listed schools by approved then applications then name, and a note
+  for applications naming an unlisted school. The program summary download has the by-program columns plus active
+  scholars and the amount released for the school year's terms.
+- **Audit log** (`/office/audit/`, `/staff/<slug>/audit/`, M11c): filters action group, from/to (Manila dates), who
+  (an account id) and, for the office, program; 50 a page, newest first; columns When, Who (a student reads "A
+  student"), What (sentence + action code), Program, Record, Details (`data`); `ip_hash` never shown.
 - **Staff review screens (M8):**
   - the queue (§5) is a filter toolbar over a table with a checkbox column; the bulk form wraps the table, and the
     count above it is a live region outside the swapped partial;
@@ -976,7 +1022,6 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
 - **TypeScript modules:**
   - `main.ts`: imports and configures htmx;
   - `dialog.ts`, `toast.ts`, `upload.ts` (presigned PUT + confirm), `bulk.ts` (select-all, count);
-  - `charts.ts`: a dynamic import of Chart.js that reads `{{ data|json_script }}`.
 - **Budget:** JS + CSS ≤ 100 KB gzipped, excluding the lazy chart chunk and fonts. CI checks it.
 - **Accessibility:**
   - target WCAG 2.2 AA;
