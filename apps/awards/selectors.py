@@ -384,3 +384,29 @@ def rollover_preview(term: AcademicTerm) -> RolloverResult:
     return RolloverResult(
         withdrawn=stale_applications(term).count(), graduated=graduating_awards().count()
     )
+
+
+def start_tier(program: Program, code: str, term: AcademicTerm) -> BenefitTier | None:
+    """The tier a new award starting in `term` gets: the in-force row with this code.
+
+    When no row with the code is effective yet by `term` (the seed's tiers start in the current
+    school year), the earliest active row with the code is used instead."""
+    in_force = next((tier for tier in tiers_in_force(program, term) if tier.code == code), None)
+    if in_force is not None:
+        return in_force
+    rows = BenefitTier.objects.filter(program=program, code=code)
+    if rows.filter(effective_from__sort_key__lte=term.sort_key).exists():
+        return None  # the code exists by then but has ended
+    return rows.filter(is_active=True).order_by("effective_from__sort_key", "pk").first()
+
+
+def program_profiles(program: Program) -> QuerySet[StudentProfile]:
+    """The students this program knows: created for it, holding any award in it, or with a
+    submitted application to it. Staff never search beyond these (spec §18 Q16)."""
+    holds = Award.objects.filter(profile=OuterRef("pk"), program=program)
+    applied = Application.objects.filter(
+        profile=OuterRef("pk"), program=program, submitted_at__isnull=False
+    )
+    return StudentProfile.objects.filter(
+        Q(created_for=program) | Exists(holds) | Exists(applied)
+    ).order_by("last_name", "first_name", "pk")

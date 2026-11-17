@@ -5,8 +5,24 @@ from django.db import models
 from django.db.models import Q
 
 from apps.applications.models import Application
+from apps.files.models import StoredFile
 from apps.programs.models import AcademicTerm, BenefitTier, Program, School
 from apps.students.models import StudentProfile
+
+
+class ScholarImport(models.Model):
+    """One imported file. The one-to-one file means a file imports at most once."""
+
+    program = models.ForeignKey(Program, on_delete=models.PROTECT, related_name="+")
+    file = models.OneToOneField(StoredFile, on_delete=models.PROTECT, related_name="+")
+    imported_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
+    )
+    row_count = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self) -> str:
+        return f"Scholar import {self.pk}"
 
 
 class Award(models.Model):
@@ -43,6 +59,9 @@ class Award(models.Model):
     )
     notes = models.TextField(blank=True)
     status_reason = models.TextField(blank=True)
+    import_batch = models.ForeignKey(
+        ScholarImport, null=True, blank=True, on_delete=models.PROTECT, related_name="awards"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

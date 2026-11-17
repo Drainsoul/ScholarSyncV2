@@ -9,12 +9,15 @@ from django.http import Http404, HttpRequest
 
 from apps.accounts.models import User
 from apps.applications.models import Application
-from apps.awards.models import Award, ScholarTerm
+from apps.awards.models import Award, ScholarImport, ScholarTerm
 from apps.awards.selectors import (
     RolloverResult,
     graduating_awards,
+    holds_award,
+    program_profiles,
     renewal_tier,
     stale_applications,
+    start_tier,
 )
 from apps.core import audit
 from apps.core.permissions import require_program_staff
@@ -523,3 +526,78 @@ def start_term(
     """Make `term` current (office only, forward only) and roll every program over, together."""
     set_current_term(actor=actor, term=term)
     return rollover(actor=actor, term=term, request=request)
+
+
+TIER_NOT_OFFERED = "The {code} tier isn't offered for {term}."
+NO_CURRENT_TERM = "There's no current term yet. Ask the scholarship office to set one."
+
+
+@dataclass(frozen=True)
+class AwardData:
+    tier_code: str
+    student_number: str
+    notes: str
+    record: TermData  # record.term is the start term
+
+
+@transaction.atomic
+def create_award(
+    *,
+    actor: User,
+    program: Program,
+    profile_id: int,
+    data: AwardData,
+    source: str,
+    batch: ScholarImport | None = None,
+    request: HttpRequest | None = None,
+) -> Award:
+    """A manual or imported award and its first term record, for one of the program's students."""
+    active = Program.objects.filter(pk=program.pk, is_active=True).first()
+    if active is None:
+        raise Http404("No such program.")
+    require_program_staff(actor, active)
+    known = program_profiles(active).filter(pk=profile_id).values_list("pk", flat=True).first()
+    if known is None:
+        raise Http404("No such student.")
+    profile = StudentProfile.objects.select_for_update().get(pk=known)
+    if holds_award(profile, active):
+        raise ValidationError(already_holds(active))
+    term = data.record.term
+    current = current_term()
+    if current is None:
+        raise ValidationError(NO_CURRENT_TERM)
+    if term.sort_key > current.sort_key:
+        raise ValidationError(FUTURE_TERM)
+    tier = start_tier(active, data.tier_code, term)
+    if tier is None:
+        raise ValidationError(TIER_NOT_OFFERED.format(code=data.tier_code, term=term))
+    try:
+        with transaction.atomic():  # a savepoint, so the outer transaction survives the error
+            award = Award.objects.create(
+                profile=profile,
+                program=active,
+                tier=tier,
+                status=Award.Status.ACTIVE,
+                source=source,
+                started_term=term,
+                student_number=data.student_number.strip()[:50],
+                notes=data.notes.strip(),
+                import_batch=batch,
+            )
+    except IntegrityError as exc:
+        if not _violates(exc, ONE_ACTIVE_PER_PROGRAM):
+            raise
+        raise ValidationError(already_holds(active)) from None
+    values = _record_values(data.record)
+    record = ScholarTerm.objects.create(
+        award=award, term=term, tier=tier, merit=_proposed_merit(active, values), **values
+    )
+    audit.record(
+        actor=actor,
+        action="award.created",
+        target=award,
+        program=active,
+        request=request,
+        data={"source": source, "tier": tier.code, "term": term.pk, "record": record.pk},
+    )
+    return award
