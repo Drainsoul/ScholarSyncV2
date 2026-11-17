@@ -14,7 +14,7 @@ from django.views import View
 from django.views.generic import TemplateView
 
 from apps.accounts.models import User
-from apps.awards import services
+from apps.awards import importing, services
 from apps.awards.models import Award, ScholarTerm
 from apps.awards.selectors import (
     DEFAULT_SCHOLAR_TAB,
@@ -44,12 +44,17 @@ from apps.awards.views import AWARD_TONES
 from apps.core.params import positive_id
 from apps.core.permissions import ProgramStaffRequiredMixin
 from apps.core.shell import shell_context
+from apps.files import storage
+from apps.files.models import StoredFile
+from apps.files.selectors import usable_file
+from apps.files.views import UNAVAILABLE
 from apps.programs.models import AcademicTerm, Program
 from apps.programs.selectors import application_term, current_term, window_state
 
 PAGE_SIZE = 25
 MAX_QUERY = 200
 CHOOSE_STUDENT = "Choose a student first."
+UPLOAD_AGAIN = "Upload the file again."
 
 
 def staff_renewal_text(renewal: Renewal, program: Program, today: Any) -> str:
@@ -451,3 +456,98 @@ class NewScholarView(ProgramStaffRequiredMixin, View):
             return self._form(request, profile, form, status=400)
         messages.success(request, f"Added {profile.full_name} as a scholar.")
         return redirect(_record_url(self.program, award.pk))
+
+
+# What each import column takes, for the import page.
+IMPORT_COLUMN_HELP: tuple[tuple[str, str, str], ...] = (
+    ("last_name", "Yes", "Text"),
+    ("first_name", "Yes", "Text"),
+    ("middle_name", "No", "Text"),
+    ("suffix", "No", "Text"),
+    ("birth_date", "Yes", "A date: 2005-03-14 or 3/14/2005"),
+    ("student_number", "No", "Text, up to 50 characters"),
+    ("tier", "Yes", "A tier code in force for the row's term"),
+    ("school_year", "No", "2026-2027 or 2026; blank with term for the current term"),
+    ("term", "No", "1, 2, 3, 1st semester, 2nd semester or summer"),
+    ("school", "Yes", "A listed school's name, or any other name"),
+    ("school_type", "If not listed", "Public, private, SUC or LCU"),
+    ("gwa_scale", "If not listed", "percent, one_to_five or four_point"),
+    ("course", "No", "Text"),
+    ("year_level", "No", "1 to 10"),
+    ("gwa", "No", "Within the grading scale's range"),
+    ("units", "No", "0 to 1000"),
+)
+
+
+class ScholarImportView(ProgramStaffRequiredMixin, View):
+    """Upload a file, check every row (the preview), then import them all (spec §4.6, M9b)."""
+
+    template_name = "scholars/import.html"
+
+    def _active(self) -> None:
+        if not self.program.is_active:
+            raise Http404("No such program.")
+
+    def _render(
+        self,
+        request: HttpRequest,
+        *,
+        preview: importing.ImportPreview | None = None,
+        file: StoredFile | None = None,
+        error: str = "",
+        status: int = 200,
+    ) -> HttpResponse:
+        context = {
+            **shell_context(request, area="staff", program=self.program),
+            "program": self.program,
+            "preview": preview,
+            "file": file,
+            "error": error,
+            "columns": IMPORT_COLUMN_HELP,
+            "import_url": reverse("scholars:import", kwargs={"program": self.program.slug}),
+            "template_url": reverse(
+                "scholars:import-template", kwargs={"program": self.program.slug}
+            ),
+        }
+        return render(request, self.template_name, context, status=status)
+
+    def get(self, request: HttpRequest, program: str) -> HttpResponse:
+        self._active()
+        return self._render(request)
+
+    def post(self, request: HttpRequest, program: str) -> HttpResponse:
+        self._active()
+        action = request.POST.get("action", "")
+        if action not in ("check", "import"):
+            return self._render(request, error=UPLOAD_AGAIN, status=400)
+        file = usable_file(_actor(request), request.POST.get("file", ""), StoredFile.Purpose.IMPORT)
+        if file is None:
+            return self._render(request, error=UPLOAD_AGAIN, status=400)
+        try:
+            if action == "check":
+                preview = importing.check_import(self.program, file)
+                status = 200 if preview.ok else 400
+                return self._render(request, preview=preview, file=file, status=status)
+            batch = importing.import_scholars(
+                actor=_actor(request), program=self.program, file_id=file.pk, request=request
+            )
+        except storage.StorageUnavailable:
+            return self._render(request, error=UNAVAILABLE, status=503)
+        except importing.ImportRejected as rejected:
+            return self._render(request, preview=rejected.preview, file=file, status=400)
+        except ValidationError as error:
+            messages.error(request, " ".join(error.messages))
+            return redirect("scholars:list", program=self.program.slug)
+        noun = "scholar" if batch.row_count == 1 else "scholars"
+        messages.success(request, f"Imported {batch.row_count} {noun}.")
+        return redirect("scholars:list", program=self.program.slug)
+
+
+class ImportTemplateView(ProgramStaffRequiredMixin, View):
+    """The import template: a CSV with the column names and no rows."""
+
+    def get(self, request: HttpRequest, program: str) -> HttpResponse:
+        response = HttpResponse(importing.TEMPLATE_CSV, content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = 'attachment; filename="scholars-import-template.csv"'
+        response["Cache-Control"] = "no-store"
+        return response

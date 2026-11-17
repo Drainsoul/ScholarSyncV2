@@ -1,0 +1,87 @@
+{% extends "layouts/staff.html" %}{% load ui uploads %}
+{% block title %}Import scholars{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <p class="text-sm"><a href="{% url 'scholars:list' program=program.slug %}">Scholars</a></p>
+    <h1>Import scholars</h1>
+    <p class="page-header__meta">Add many {{ program.name }} scholars at once from a CSV or XLSX file.</p>
+  </div>
+  <div class="btn-row">
+    <a class="btn btn--secondary" href="{{ template_url }}">{% icon "download" %}Download the template</a>
+  </div>
+</div>
+{% if error %}<div class="banner banner--danger" role="alert"><div><p>{{ error }}</p></div></div>{% endif %}
+
+{% if preview %}
+<section class="card" aria-labelledby="preview-heading">
+  <h2 class="card__title" id="preview-heading">Check the rows</h2>
+  {% if preview.problem %}
+  <div class="banner banner--danger" role="alert"><div><p>{{ preview.problem }}</p></div></div>
+  {% elif preview.ok %}
+  <p role="status">{{ preview.rows|length }} scholar{{ preview.rows|length|pluralize }} ready: {{ preview.new_count }} new student{{ preview.new_count|pluralize }}, {{ preview.matched_count }} existing.</p>
+  {% else %}
+  <div class="banner banner--danger" role="alert"><div><p>Fix the rows below, then upload the file again.</p></div></div>
+  {% endif %}
+  {% if preview.rows %}
+  <div class="table-wrap" role="region" aria-label="Rows in the file" tabindex="0">
+    <table class="table table--stack">
+      <thead><tr>
+        <th scope="col" class="num">Row</th><th scope="col">Name</th><th scope="col">Birth date</th>
+        <th scope="col">Term</th><th scope="col">Tier</th><th scope="col">School</th><th scope="col">Result</th>
+      </tr></thead>
+      <tbody>{% for row in preview.rows %}<tr>
+        <td class="num" data-label="Row">{{ row.line }}</td>
+        <th scope="row" data-label="Name">{{ row.name|default:"Not given" }}</th>
+        <td data-label="Birth date">{% if row.birth_date %}{{ row.birth_date|date:"j F Y" }}{% endif %}</td>
+        <td data-label="Term">{{ row.term_label }}</td>
+        <td data-label="Tier">{{ row.tier_code }}</td>
+        <td data-label="School">{{ row.school }}</td>
+        <td data-label="Result">{% if row.errors %}<ul class="field__error">{% for message in row.errors %}<li>{{ message }}</li>{% endfor %}</ul>{% elif row.is_new %}{% status "info" "New student" %}{% else %}{% status "neutral" "Existing student" %}{% endif %}</td>
+      </tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% endif %}
+  {% if preview.ok %}
+  <form method="post" action="{{ import_url }}">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="import">
+    <input type="hidden" name="file" value="{{ file.pk }}">
+    <div class="btn-row">
+      <button type="submit" class="btn btn--primary">Import {{ preview.rows|length }} scholar{{ preview.rows|length|pluralize }}</button>
+      <a class="btn btn--secondary" href="{{ import_url }}">Upload another file</a>
+    </div>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="card" aria-labelledby="upload-heading">
+  <h2 class="card__title" id="upload-heading">Upload a file</h2>
+  <p>Every row must be a student who doesn't hold a {{ program.name }} award yet, so an exported list can't be imported again.</p>
+  <p>Nothing is saved until every row passes. Students are matched by first name, last name and birth date among {{ program.name }}'s own students; anyone else becomes a new student you can invite from Students.</p>
+  <p>Format the student number column as text so Excel keeps leading zeros.</p>
+  <form method="post" action="{{ import_url }}" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="action" value="check">
+    {% upload_field "import" "import-file" "file" "Scholar file" %}
+    <div class="btn-row">
+      <button type="submit" class="btn btn--primary">Check file</button>
+    </div>
+  </form>
+</section>
+
+<section class="card" aria-labelledby="columns-heading">
+  <h2 class="card__title" id="columns-heading">Columns</h2>
+  <div class="table-wrap" role="region" aria-labelledby="columns-heading" tabindex="0">
+    <table class="table table--stack">
+      <thead><tr><th scope="col">Column</th><th scope="col">Required</th><th scope="col">Values</th></tr></thead>
+      <tbody>{% for name, required, values in columns %}<tr>
+        <th scope="row" data-label="Column"><code>{{ name }}</code></th>
+        <td data-label="Required">{{ required }}</td>
+        <td data-label="Values">{{ values }}</td>
+      </tr>{% endfor %}</tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
