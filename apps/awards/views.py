@@ -17,6 +17,7 @@ from apps.awards.models import Award
 from apps.awards.selectors import RenewalStatus, ScholarshipCard, scholarships_for_student
 from apps.core.permissions import StudentRequiredMixin
 from apps.core.shell import shell_context
+from apps.money.selectors import STUDENT_STATUS, payouts_for_student
 
 AWARD_TONES: dict[str, str] = {
     Award.Status.ACTIVE: "success",
@@ -70,7 +71,9 @@ class ScholarshipsView(StudentRequiredMixin, TemplateView):
     http_method_names = ["get", "head", "options"]
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
-        cards = scholarships_for_student(_student(self.request), today=timezone.localdate())
+        today = timezone.localdate()
+        cards = scholarships_for_student(_student(self.request), today=today)
+        payouts = payouts_for_student(_student(self.request), today=today) if cards else {}
         return {
             **super().get_context_data(**kwargs),
             **shell_context(self.request, area="student"),
@@ -79,6 +82,11 @@ class ScholarshipsView(StudentRequiredMixin, TemplateView):
                     "card": card,
                     "tone": AWARD_TONES[card.award.status],
                     "renewal": renewal_line(card),
+                    "payouts": payouts.get(card.award.pk),
+                    "payout_rows": [
+                        {"row": row, "word": STUDENT_STATUS[row.status]}
+                        for row in getattr(payouts.get(card.award.pk), "rows", [])
+                    ],
                 }
                 for card in cards
             ],

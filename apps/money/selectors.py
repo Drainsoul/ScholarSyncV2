@@ -1,16 +1,19 @@
 """Money reads: amounts, schedules and what may be paid. Every staff lookup is program-scoped."""
 
 from dataclasses import dataclass
+from datetime import date
 from decimal import Decimal
 
 from django.db.models import Count, DecimalField, Exists, OuterRef, Q, QuerySet, Sum, Value
 from django.db.models.functions import Coalesce
 from django.http import Http404, QueryDict
 
+from apps.accounts.models import User
 from apps.awards.models import Award, ScholarTerm
 from apps.core.templatetags.ui import peso
 from apps.money.models import Budget, Disbursement, DistributionSchedule
 from apps.programs.models import Program
+from apps.programs.selectors import current_term
 
 MONEY = DecimalField(max_digits=14, decimal_places=2)
 ZERO = Decimal("0")
@@ -220,3 +223,77 @@ def budget_figures(summary: BudgetSummary) -> list[dict[str, str]]:
 
 def year_schedules(program: Program, year: int) -> QuerySet[DistributionSchedule]:
     return schedule_list(program).filter(distribution_date__year=year)
+
+
+@dataclass(frozen=True)
+class Payouts:
+    times_claimed: int
+    received: Decimal
+    to_come: Decimal  # pending + approved in the current school year
+    next_schedule: DistributionSchedule | None
+    rows: list[Disbursement]  # newest term first
+
+
+STUDENT_STATUS = {
+    Disbursement.Status.PENDING: "Being prepared",
+    Disbursement.Status.APPROVED: "Ready to claim",
+    Disbursement.Status.RELEASED: "Received",
+    Disbursement.Status.REJECTED: "Not paid",
+}
+
+
+def payouts_for_student(user: User, *, today: date) -> dict[int, Payouts]:
+    """The student's own payouts per award, from published schedules only, in a fixed number
+    of queries whatever the number of awards."""
+    awards = dict(Award.objects.filter(profile__user=user).values_list("pk", "program_id"))
+    if not awards:
+        return {}
+    rows: dict[int, list[Disbursement]] = {pk: [] for pk in awards}
+    for row in (
+        Disbursement.objects.filter(scholar_term__award_id__in=awards, schedule__is_published=True)
+        .select_related("schedule", "scholar_term__term")
+        .order_by("-scholar_term__term__sort_key", "-schedule__distribution_date", "-pk")
+    ):
+        rows[row.scholar_term.award_id].append(row)
+    recorded: dict[int, set[int]] = {pk: set() for pk in awards}
+    for award_id, term_id in ScholarTerm.objects.filter(award_id__in=awards).values_list(
+        "award_id", "term_id"
+    ):
+        recorded[award_id].add(term_id)
+    upcoming = list(
+        DistributionSchedule.objects.filter(
+            program_id__in=set(awards.values()), is_published=True, distribution_date__gte=today
+        )
+        .select_related("term")
+        .order_by("distribution_date", "pk")
+    )
+    term = current_term()
+    year = term.school_year_start if term is not None else None
+    found: dict[int, Payouts] = {}
+    for pk, program_id in awards.items():
+        mine = rows[pk]
+        released = [row for row in mine if row.status == Disbursement.Status.RELEASED]
+        to_come = sum(
+            (
+                row.amount
+                for row in mine
+                if row.status in (Disbursement.Status.PENDING, Disbursement.Status.APPROVED)
+                and row.scholar_term.term.school_year_start == year
+            ),
+            ZERO,
+        )
+        found[pk] = Payouts(
+            times_claimed=len(released),
+            received=sum((row.amount for row in released), ZERO),
+            to_come=to_come,
+            next_schedule=next(
+                (
+                    schedule
+                    for schedule in upcoming
+                    if schedule.program_id == program_id and schedule.term_id in recorded[pk]
+                ),
+                None,
+            ),
+            rows=mine,
+        )
+    return found

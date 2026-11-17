@@ -32,6 +32,34 @@
         </table>
       </div>
       {% endif %}
+      {% with payouts=item.payouts %}{% if payouts %}
+      <h3 class="card__title">Allowance</h3>
+      <div class="figures">
+        {% include "components/stat_tile.html" with label="Times claimed" value=payouts.times_claimed %}
+        {% include "components/stat_tile.html" with label="Total received" value=payouts.received|peso %}
+        {% include "components/stat_tile.html" with label="Still to come this school year" value=payouts.to_come|peso %}
+      </div>
+      <p><strong>Next distribution:</strong>
+        {% if payouts.next_schedule %}{{ payouts.next_schedule.distribution_date|date:"j F Y" }} at {{ payouts.next_schedule.claim_location }}{% if payouts.next_schedule.frequency_label %} ({{ payouts.next_schedule.frequency_label }}){% endif %}.
+        {% if payouts.next_schedule.notes %}<span class="text-sm">{{ payouts.next_schedule.notes }}</span>{% endif %}
+        {% else %}None announced yet.{% endif %}</p>
+      {% if item.payout_rows %}
+      <div class="table-wrap" role="region" aria-label="{{ award.program.name }} payouts" tabindex="0">
+        <table class="table">
+          <thead><tr><th scope="col">Term</th><th scope="col">Distribution day</th><th scope="col" class="num">Amount</th><th scope="col">Status</th></tr></thead>
+          <tbody>{% for payout in item.payout_rows %}{% with row=payout.row %}<tr>
+            <th scope="row">{{ row.scholar_term.term }}</th>
+            <td>{{ row.schedule.distribution_date|date:"j F Y" }}</td>
+            <td class="num">{{ row.amount|peso }}</td>
+            <td>{{ payout.word }}{% if row.status == "released" and row.released_at %} {{ row.released_at|date:"j F Y" }}{% endif %}
+              {% if row.status == "rejected" and row.decision_reason %}<p class="text-sm">{{ row.decision_reason }}</p>{% endif %}</td>
+          </tr>{% endwith %}{% endfor %}</tbody>
+        </table>
+      </div>
+      {% else %}
+      <p>No payouts yet.</p>
+      {% endif %}
+      {% endif %}{% endwith %}
     </section>
   {% endwith %}{% endfor %}</div>
   {% else %}
