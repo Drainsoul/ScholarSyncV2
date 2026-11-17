@@ -1,0 +1,32 @@
+{% extends "layouts/staff.html" %}{% load ui %}
+{% block title %}Budget for {{ summary.year }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Budget for {{ summary.year }}</h1><p class="page-header__meta">{{ program.name }}. Payouts count in the year of their distribution day.</p></div>
+  <div class="btn-row">
+    <a class="btn btn--secondary" href="?year={{ previous_year }}">{% icon "chevron-left" %}{{ previous_year }}</a>
+    <a class="btn btn--secondary" href="?year={{ next_year }}">{{ next_year }}{% icon "chevron-right" %}</a>
+    {% if can_decide %}<a class="btn btn--primary" href="{% url 'money:budget-edit' program=program.slug %}?year={{ summary.year }}">{% icon "pencil" %}Set budget</a>{% endif %}
+  </div>
+</div>
+{% include "money/_tabs.html" %}
+{% include "components/figures.html" with figures=figures %}
+<section class="card list-card" aria-labelledby="list-heading">
+  <h2 class="card__title" id="list-heading">Distribution days in {{ summary.year }}</h2>
+  {% if schedules %}
+  <div class="table-wrap" role="region" aria-labelledby="list-heading" tabindex="0">
+    <table class="table table--stack" aria-labelledby="list-heading">
+      <thead><tr><th scope="col">Distribution day</th><th scope="col">Term</th><th scope="col" class="num">Released</th><th scope="col" class="num">Approved, not yet released</th></tr></thead>
+      <tbody>{% for schedule in schedules %}<tr>
+        <th scope="row"><a href="{% url 'money:schedule' program=program.slug schedule=schedule.pk %}">{{ schedule.distribution_date|date:"j F Y" }}</a></th>
+        <td data-label="Term">{{ schedule.term }}</td>
+        <td class="num" data-label="Released">{{ schedule.s_released|peso }}</td>
+        <td class="num" data-label="Approved, not yet released">{{ schedule.s_approved|peso }}</td>
+      </tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% else %}
+  <p>No distribution days in {{ summary.year }}.</p>
+  {% endif %}
+</section>
+{% endblock %}

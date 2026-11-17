@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import date
+from decimal import Decimal
 from typing import Literal
 
 from django.conf import settings
@@ -17,7 +18,7 @@ from apps.core import audit
 from apps.core.permissions import require_program_head, require_program_staff
 from apps.core.templatetags.ui import peso
 from apps.core.transitions import assert_transition
-from apps.money.models import Disbursement, DistributionSchedule
+from apps.money.models import Budget, Disbursement, DistributionSchedule
 from apps.money.selectors import (
     NOT_ACTIVE,
     amount_for,
@@ -489,3 +490,32 @@ def bulk(
     skipped.extend(("", NOT_IN_SCHEDULE) for pk in wanted if pk not in found_ids)
     remaining = rows.filter(status=source).count() if ids is None else 0
     return BulkResult(done=done, skipped=skipped, remaining=remaining)
+
+
+@transaction.atomic
+def set_budget(
+    *,
+    actor: User,
+    program: Program,
+    year: int,
+    amount: Decimal,
+    request: HttpRequest | None = None,
+) -> Budget:
+    """The program's budget for a fiscal year (heads; the view asks for the password again)."""
+    require_program_head(actor, program)
+    if amount < 0:
+        raise ValidationError("The budget can't be negative.")
+    budget, _ = Budget.objects.select_for_update().update_or_create(
+        program=program,
+        fiscal_year=year,
+        defaults={"amount": amount, "updated_by": actor},
+    )
+    audit.record(
+        actor=actor,
+        action="budget.set",
+        target=budget,
+        program=program,
+        request=request,
+        data={"year": str(year), "amount": str(budget.amount)},
+    )
+    return budget

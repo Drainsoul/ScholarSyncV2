@@ -8,7 +8,8 @@ from django.db.models.functions import Coalesce
 from django.http import Http404, QueryDict
 
 from apps.awards.models import Award, ScholarTerm
-from apps.money.models import Disbursement, DistributionSchedule
+from apps.core.templatetags.ui import peso
+from apps.money.models import Budget, Disbursement, DistributionSchedule
 from apps.programs.models import Program
 
 MONEY = DecimalField(max_digits=14, decimal_places=2)
@@ -156,3 +157,66 @@ def schedule_disbursement(schedule: DistributionSchedule, pk: int) -> Disburseme
     if row is None:
         raise Http404("This payout isn't in this schedule.")
     return row
+
+
+@dataclass(frozen=True)
+class BudgetSummary:
+    year: int
+    amount: Decimal | None  # None: no budget set for the year
+    spent: Decimal
+    committed: Decimal
+    remaining: Decimal | None
+    used_percent: int | None  # None with no budget or a zero budget
+    over_by: Decimal | None
+
+
+def budget_summary(program: Program, year: int) -> BudgetSummary:
+    """A payout counts in the fiscal year of its schedule's distribution day (spec §4.7)."""
+    found = Disbursement.objects.filter(
+        schedule__program=program, schedule__distribution_date__year=year
+    ).aggregate(
+        spent=money_sum("amount", Q(status=Disbursement.Status.RELEASED)),
+        committed=money_sum("amount", Q(status=Disbursement.Status.APPROVED)),
+    )
+    spent, committed = found["spent"], found["committed"]
+    amount = (
+        Budget.objects.filter(program=program, fiscal_year=year)
+        .values_list("amount", flat=True)
+        .first()
+    )
+    remaining = amount - spent - committed if amount is not None else None
+    used = int((spent + committed) * 100 // amount) if amount else None
+    over_by = -remaining if remaining is not None and remaining < 0 else None
+    return BudgetSummary(
+        year=year,
+        amount=amount,
+        spent=spent,
+        committed=committed,
+        remaining=remaining,
+        used_percent=used,
+        over_by=over_by,
+    )
+
+
+def budget_figures(summary: BudgetSummary) -> list[dict[str, str]]:
+    """The approved mockup's five tiles."""
+    if summary.amount is None:
+        available = "No budget set"
+    elif summary.over_by is not None:
+        available = f"Over budget by {peso(summary.over_by)}"
+    else:
+        available = peso(summary.remaining)
+    return [
+        {"label": f"Budget for {summary.year}", "value": peso(summary.amount)},
+        {"label": "Released", "value": peso(summary.spent)},
+        {"label": "Approved, not yet released", "value": peso(summary.committed)},
+        {"label": "Available", "value": available},
+        {
+            "label": "Budget used",
+            "value": "—" if summary.used_percent is None else f"{summary.used_percent}%",
+        },
+    ]
+
+
+def year_schedules(program: Program, year: int) -> QuerySet[DistributionSchedule]:
+    return schedule_list(program).filter(distribution_date__year=year)

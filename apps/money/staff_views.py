@@ -9,15 +9,15 @@ from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views import View
 
 from apps.accounts.models import User
 from apps.core.permissions import ProgramStaffRequiredMixin
 from apps.core.shell import shell_context
-from apps.core.templatetags.ui import peso
 from apps.money import selectors, services
-from apps.money.forms import BulkForm, RejectForm, ScheduleForm
+from apps.money.forms import BudgetForm, BulkForm, RejectForm, ScheduleForm
 from apps.money.models import Disbursement, DistributionSchedule
 from apps.programs.models import Program, ProgramMembership
 
@@ -50,6 +50,7 @@ def money_tabs(program: Program, active: str) -> list[dict[str, object]]:
     tabs = [
         ("schedules", "Schedules", reverse("money:schedules", args=[program.slug])),
         ("disbursements", "Disbursements", reverse("money:overview", args=[program.slug])),
+        ("budget", "Budget", reverse("money:budget", args=[program.slug])),
     ]
     return [
         {"label": label, "url": url, "current": key == active, "count": 0}
@@ -192,10 +193,9 @@ class ScheduleView(ProgramStaffRequiredMixin, View):
             filters=filters,
             statuses=Disbursement.Status.choices,
             tiers=list(dict(tiers).items()),
-            figures=[
-                {"label": label, "value": peso(totals[status][1])}
-                for status, label in Disbursement.Status.choices
-            ],
+            figures=selectors.budget_figures(
+                selectors.budget_summary(self.program, found.distribution_date.year)
+            ),
             prepared_count=totals[Disbursement.Status.PENDING][0],
             approved_count=totals[Disbursement.Status.APPROVED][0],
             can_decide=_can_decide(self.membership),
@@ -334,3 +334,65 @@ class RevertView(ProgramStaffRequiredMixin, View):
         else:
             messages.success(request, "Moved back to Prepared.")
         return _back(self.program, schedule)
+
+
+def _year(value: str | None) -> int:
+    """A fiscal year from the query string; anything else is this year."""
+    try:
+        year = int(value or "")
+    except ValueError:
+        return timezone.localdate().year
+    return year if 2000 <= year <= 2100 else timezone.localdate().year
+
+
+class BudgetView(ProgramStaffRequiredMixin, View):
+    def get(self, request: HttpRequest, program: str) -> HttpResponse:
+        year = _year(request.GET.get("year"))
+        summary = selectors.budget_summary(self.program, year)
+        context = _page(
+            request,
+            self.program,
+            "budget",
+            summary=summary,
+            figures=selectors.budget_figures(summary),
+            schedules=selectors.year_schedules(self.program, year),
+            previous_year=year - 1,
+            next_year=year + 1,
+            can_decide=_can_decide(self.membership),
+        )
+        return render(request, "money/budget.html", context)
+
+
+@method_decorator(reauthentication_required, name="post")
+class BudgetEditView(ProgramStaffRequiredMixin, View):
+    """Heads set the year's budget; saving asks for the password again (spec §10)."""
+
+    level = ProgramMembership.Level.HEAD
+
+    def _render(self, request: HttpRequest, form: BudgetForm, status: int = 200) -> HttpResponse:
+        context = _page(request, self.program, "budget", form=form)
+        return render(request, "money/budget_form.html", context, status=status)
+
+    def get(self, request: HttpRequest, program: str) -> HttpResponse:
+        year = _year(request.GET.get("year"))
+        amount = selectors.budget_summary(self.program, year).amount
+        return self._render(request, BudgetForm(initial={"year": year, "amount": amount}))
+
+    def post(self, request: HttpRequest, program: str) -> HttpResponse:
+        form = BudgetForm(request.POST)
+        if not form.is_valid():
+            return self._render(request, form, status=400)
+        year = form.cleaned_data["year"]
+        try:
+            services.set_budget(
+                actor=_actor(request),
+                program=self.program,
+                year=year,
+                amount=form.cleaned_data["amount"],
+                request=request,
+            )
+        except ValidationError as error:
+            form.add_error("amount", error)
+            return self._render(request, form, status=400)
+        messages.success(request, f"Budget for {year} saved.")
+        return redirect(reverse("money:budget", args=[self.program.slug]) + f"?year={year}")

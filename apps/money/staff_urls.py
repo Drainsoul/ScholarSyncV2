@@ -31,4 +31,6 @@ urlpatterns = [
         staff_views.RevertView.as_view(),
         name="revert",
     ),
+    path("budget/", staff_views.BudgetView.as_view(), name="budget"),
+    path("budget/edit/", staff_views.BudgetEditView.as_view(), name="budget-edit"),
 ]

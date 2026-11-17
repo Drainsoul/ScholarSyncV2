@@ -88,3 +88,10 @@ class RejectForm(forms.Form):
         help_text="The scholar reads this. At most 1,000 characters.",
         widget=forms.Textarea(attrs={"rows": 4, "maxlength": 1000}),
     )
+
+
+class BudgetForm(forms.Form):
+    year = forms.IntegerField(
+        label="Fiscal year (January to December)", min_value=2000, max_value=2100
+    )
+    amount = forms.DecimalField(label="Budget (PHP)", min_value=0, max_digits=12, decimal_places=2)
