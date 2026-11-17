@@ -202,9 +202,13 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
     use the {term} amounts for {tier}. Pick a later term."). Existing term records keep their row.
 - **`RequiredDocument`:**
   - fields: `program`, `code`, `label`, `help_text`, `applies_to` ∈ {new, renewal, both}, `is_required`,
-    `accepted_types` (pdf/jpg/png), `max_bytes`, `sort_order`, `is_active` (M11b);
-  - **switched off, never deleted (M11b):** an inactive requirement leaves every open application; a requirement
-    added after an application started doesn't apply to it (`required_documents_for(..., as_of=created_at)`);
+    `accepted_types` (pdf/jpg/png), `max_bytes`, `sort_order`, `is_active` and `required_since` (M11b);
+  - **switched off, never deleted (M11b):** an inactive requirement leaves every open application;
+  - **settings changes never block an application in review (M11b):** a draft follows the program's current list;
+    once submitted, an application answers only to requirements whose `required_since` is on or before its
+    `first_submitted_at`, plus any it already has an upload for (`applications.selectors.applicable_requirements`).
+    `required_since` starts at creation and moves to "now" when a requirement is restored, made required, or asked
+    of more applicants (`applies_to` widened);
   - caps: `max_bytes` is at most 10 MB (10,485,760), because the M5 document rule caps uploads there;
   - constraint: unique (`program`, `code`).
 
@@ -227,7 +231,8 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
     settings page, M11b) to pick up new values.
 - **Program lifecycle (M11b):** the office creates a program inactive (slug fixed from then on) and configures it;
   its settings pages open to the office only while it is inactive. Opening needs a tier in force and an active
-  required document; closing is refused while applications wait for review or payouts are prepared or approved.
+  required document; closing is refused while applications wait for review (submitted, under review or returned,
+  since a returned one may be resubmitted) or payouts are prepared or approved.
 - These are the v1 admin values (`docs/legacy-audit.md` §3), pending the maintainer's confirmation.
 
 ### 4.3 students
