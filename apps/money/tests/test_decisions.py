@@ -267,7 +267,7 @@ def test_bulk_approve_query_count(django_assert_max_num_queries: Any) -> None:
     first = payout()
     rows = [first] + [payout(first.schedule) for _ in range(49)]
     head = head_of(first.schedule.program)
-    with django_assert_max_num_queries(450):
+    with django_assert_max_num_queries(500):  # +50: notifications (M11)
         result = services.bulk(
             actor=head,
             program=first.schedule.program,

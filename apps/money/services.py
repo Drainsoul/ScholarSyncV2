@@ -28,7 +28,7 @@ from apps.money.selectors import (
     staff_schedule,
 )
 from apps.programs.models import AcademicTerm, Program
-from apps.workspace.emails import enqueue
+from apps.workspace.services import notify
 
 ONE_LIVE_PAYOUT = "money_one_live_payout_per_term"
 MAX_REASON = 1000
@@ -294,10 +294,25 @@ def allowance_email(
         "amount": peso(row.amount),
         "scholarships_url": settings.SITE_URL + reverse("scholarships:list"),
     }
+    program, amount, term = schedule.program.name, context["amount"], context["term_label"]
     if kind == "allowance_approved":
         context["claim_date"] = long_date(schedule.distribution_date)
         context["claim_location"] = schedule.claim_location
-    enqueue(to=profile.user.email, kind=kind, context=context)
+        title = f"Your {program} allowance is ready to claim"
+        body = (
+            f"{amount} for {term}. Claim it on {context['claim_date']} at "
+            f"{schedule.claim_location}."
+        )
+    else:
+        title, body = f"Your {program} allowance was released", f"{amount} for {term}."
+    notify(
+        user=profile.user,
+        kind=kind,
+        title=title,
+        body=body,
+        url=reverse("scholarships:list"),
+        email_context=context,
+    )
 
 
 _ACTIONS = {

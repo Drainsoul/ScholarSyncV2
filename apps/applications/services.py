@@ -42,7 +42,7 @@ from apps.programs.selectors import application_term
 from apps.students.completion import completion
 from apps.students.models import EducationRecord, StudentProfile
 from apps.students.selectors import current_education, effective_school_type
-from apps.workspace.emails import enqueue
+from apps.workspace.services import notify
 
 UPLOAD_AGAIN = "Upload the file again."
 ALREADY_SUBMITTED = "This application has already been submitted."
@@ -311,10 +311,13 @@ def received_email(profile: StudentProfile, application: Application) -> None:
     """Tell the student the application is in; a profile nobody has claimed gets no email."""
     if profile.user is None:
         return
-    enqueue(
-        to=profile.user.email,
+    notify(
+        user=profile.user,
         kind="application_received",
-        context={
+        title=f"We received your {application.program.name} application",
+        body="We'll email you when it's reviewed.",
+        url=reverse("applications:detail", args=[application.pk]),
+        email_context={
             "full_name": profile.full_name,
             "program_name": application.program.name,
             "application_url": application_url(application),

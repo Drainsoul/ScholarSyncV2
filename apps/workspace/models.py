@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 
@@ -23,3 +24,24 @@ class EmailOutbox(models.Model):
 
     def __str__(self) -> str:
         return f"{self.kind} ({self.status})"
+
+
+class Notification(models.Model):
+    """A message for one user in the app. Title, body and url are app-written, never free text."""
+
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications"
+    )
+    kind = models.CharField(max_length=64)
+    title = models.CharField(max_length=200)
+    body = models.CharField(max_length=500, blank=True)
+    url = models.CharField(max_length=200, blank=True)  # site-relative path
+    read_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        indexes = [models.Index(fields=["recipient", "read_at"])]
+
+    def __str__(self) -> str:
+        return f"{self.kind} #{self.pk}"

@@ -13,6 +13,7 @@ from typing import Literal
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.http import Http404, HttpRequest
+from django.urls import reverse
 from django.utils import timezone
 
 from apps.accounts.models import User
@@ -29,7 +30,7 @@ from apps.core.transitions import assert_transition
 from apps.programs.models import BenefitTier, Program
 from apps.programs.selectors import tiers_in_force
 from apps.students.models import StudentProfile
-from apps.workspace.emails import enqueue
+from apps.workspace.services import notify
 
 ALREADY_STARTED = "Someone has already started reviewing this application."
 START_FIRST = "Start the review before you check documents."
@@ -204,7 +205,21 @@ def _email(
     }
     if outcome is not None:
         context["outcome"] = outcome
-    enqueue(to=profile.user.email, kind=kind, context=context)
+    name = application.program.name
+    if kind == "application_returned":
+        title, body = f"{name} returned your application", "Open it to see what to fix."
+    elif outcome == OUTCOME_APPROVED:
+        title, body = f"Your {name} application was approved", ""
+    else:
+        title, body = f"Your {name} application was not approved", "Open it to see the reason."
+    notify(
+        user=profile.user,
+        kind=kind,
+        title=title,
+        body=body,
+        url=reverse("applications:detail", args=[application.pk]),
+        email_context=context,
+    )
 
 
 def _finish(
