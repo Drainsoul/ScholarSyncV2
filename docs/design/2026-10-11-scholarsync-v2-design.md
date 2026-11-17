@@ -32,6 +32,9 @@
 - **Revision:** 17 (2026-11-17): M11 decisions: M11 split into M11 (dashboards, notifications, tasks, support), M11b
   (office management and program settings) and M11c (reports and analytics); notifications, personal tasks, the
   support inbox (§3, §4.8, §5, §9, §12, §16).
+- **Revision:** 18 (2026-11-17): M11b decisions: program lifecycle, history-safe tiers and documents, staff accounts
+  with a set-password email, memberships, settings, schools; cross-program scholars and the audit viewer move to
+  M11c; Django admin stays out (§4.1, §4.2, §5, §6, §9, §10, §16).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -144,12 +147,16 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 ### 4.1 accounts
 - **`User`** (`AbstractBaseUser` + `PermissionsMixin`):
   - fields: `email` (unique, login), `full_name`, `role` ∈ {`student`, `staff`, `super_admin`}, `is_active`,
-    `is_staff` (Django admin only), `last_login`;
+    `is_staff` (unused: there is no Django admin), `last_login`;
   - signup always creates `role=student`;
   - only a super admin (via a service) or `create_office_admin` can create staff or super admins;
   - emails are stored stripped and lower-cased, and are unique on `Lower(email)`;
   - `create_superuser` exists only for Django's interface: `is_staff` + `is_superuser`, `role=staff`, no memberships.
-    Django admin stays out until M11b.
+    Django admin is not installed (M11b): it would let writes bypass services and audit events.
+  - **Accounts in the app (M11b):** the office creates staff and office accounts (full name required); the person gets
+    a `staff_welcome` email with a set-password link (allauth's reset-from-key URL, valid 3 days). An email that
+    already has an account is a form error. Deactivating ends the account's sessions; nobody deactivates their own
+    account or the last active office account.
 - **`ConsentRecord`:**
   - fields: `user` FK, `notice_version`, `consented_at`, `ip_hash`;
   - recorded at signup and whenever the privacy notice changes;
@@ -189,10 +196,15 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - fields: `program`, `code` (e.g. `honors`), `name`, `base_amount`, `merit_amount`, `effective_from` FK
     `AcademicTerm`, `is_active`, `sort_order`;
   - constraint: unique (`program`, `code`, `effective_from`);
-  - lookup: the amount for a term is the row with the latest `effective_from` ≤ that term.
+  - lookup: the amount for a term is the row with the latest `effective_from` ≤ that term;
+  - **changes are history-safe (M11b):** adding, re-pricing or stopping a tier writes a row effective from the
+    current term or later; a row any award, term record or application points to is never edited ("Records already
+    use the {term} amounts for {tier}. Pick a later term."). Existing term records keep their row.
 - **`RequiredDocument`:**
   - fields: `program`, `code`, `label`, `help_text`, `applies_to` ∈ {new, renewal, both}, `is_required`,
-    `accepted_types` (pdf/jpg/png), `max_bytes`, `sort_order`;
+    `accepted_types` (pdf/jpg/png), `max_bytes`, `sort_order`, `is_active` (M11b);
+  - **switched off, never deleted (M11b):** an inactive requirement leaves every open application; a requirement
+    added after an application started doesn't apply to it (`required_documents_for(..., as_of=created_at)`);
   - caps: `max_bytes` is at most 10 MB (10,485,760), because the M5 document rule caps uploads there;
   - constraint: unique (`program`, `code`).
 
@@ -212,7 +224,10 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
     scale; without it every UP and UST student is locked out under the §8 scale rule); renewal 1-5 GWA ≤ 2.50,
     ≥ 15 units, no failing grades.
   - The seed never overwrites an existing program, so an existing database needs `docker compose down -v` (or the
-    M11 settings page) to pick up new values.
+    settings page, M11b) to pick up new values.
+- **Program lifecycle (M11b):** the office creates a program inactive (slug fixed from then on) and configures it;
+  its settings pages open to the office only while it is inactive. Opening needs a tier in force and an active
+  required document; closing is refused while applications wait for review or payouts are prepared or approved.
 - These are the v1 admin values (`docs/legacy-audit.md` §3), pending the maintainer's confirmation.
 
 ### 4.3 students
@@ -532,10 +547,9 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 | Staff | `applications/new/` (in progress + profile picker; POST starts), `applications/behalf/<id>/` (filing page), `…/academics/`, `…/documents/<requirement>/`, `…/submit/`, `…/withdraw/` (POST) | program staff/head |
 | Staff | `scholars/`, `scholars/<award>/`, `…/edit/`, `…/status/`, `…/terms/new/`, `…/terms/<term>/`, `…/terms/<term>/merit/` (POST); `scholars/new/`, `scholars/import/`, `scholars/import/template/`, `scholars/export/` (M9b) | program staff/head |
 | Staff | `schedules/`, `schedules/new/`, `schedules/<id>/`, `schedules/<id>/publish/` (POST); `disbursements/`, `disbursements/<schedule>/`, `…/generate/` (POST), `…/bulk/` (POST), `…/<id>/reject/`, `…/<id>/revert/` (POST); `budget/`, `budget/edit/` | program staff/head (see §6) |
-| Staff | `tasks/` (+ `<id>/`, `<id>/done/` POST, `<id>/delete/` POST; owner only, M11), `reports/` (M11c), `settings/` (tiers, documents, rules, window; M11b) | staff; `settings/` is head only |
-| Office | `/office/` (dashboard), `programs/`, `staff/`, `scholars/`, `reports/`, `analytics/`, `audit/`, `schools/`, `terms/` (M9: list, `add/` POST, `<term>/current/`), `support/` (+ `<id>/answer/` POST; M11) | super admin |
+| Staff | `tasks/` (+ `<id>/`, `<id>/done/` POST, `<id>/delete/` POST; owner only, M11), `reports/` (M11c), `settings/` (rules and window; `tiers/`, `tiers/new/`, `tiers/<code>/`; `documents/`, `documents/<id>/`, `documents/<id>/active/` POST; M11b) | staff; `settings/` is head (and office) only |
+| Office | `/office/` (dashboard); M11b: `programs/` (+ `new/`, `<id>/`, `<id>/active/` POST), `staff/` (+ `new/`, `<id>/`, `<id>/active/`, `<id>/welcome/`, `<id>/memberships/` POST), `memberships/<id>/` POST, `schools/` (+ `new/`, `<id>/`); `terms/` (M9: list, `add/` POST, `<term>/current/`), `support/` (+ `<id>/answer/` POST; M11); M11c: `scholars/`, `reports/`, `analytics/`, `audit/` | super admin |
 | Files | `POST /files/uploads/` (intent), `POST /files/uploads/<id>/confirm/`, `GET /files/<id>/` (authorize → 302) | owner or authorized staff |
-| Django admin | `/_admin/` | technical superuser only |
 
 - **The staff queue** (`applications/`, M8):
   - it lists only applications with `submitted_at` set, so drafts the student hasn't submitted stay private;
@@ -597,6 +611,9 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   for an inactive program (`ProgramStaffRequiredMixin`); `create_award` and `import_scholars` re-check it.
 - **M10:** staff manage schedules and generate; heads (and the office) approve, reject, release, revert and set the
   budget; release, revert and the budget ask for the password again.
+- **M11b:** the office manages programs, accounts, memberships and schools; heads and the office edit program
+  settings (staff get 403 and no Settings link); settings open for an inactive program to the office only. The
+  audit-log viewer screens arrive in M11c.
 - **Permission-matrix test:** `tests/test_permission_matrix.py` enumerates `get_resolver()` and checks each URL name
   against an expected-access table for anonymous, student, other-student, staff, other-program staff, head and super
   admin. A new URL fails the test until it's added to the table.
@@ -752,6 +769,8 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - M10 adds `allowance_approved` (`full_name`, `program_name`, `term_label`, `amount`, `claim_date`,
     `claim_location`, `scholarships_url`) and `allowance_released` (`full_name`, `program_name`, `term_label`,
     `amount`, `scholarships_url`). None on generate, reject or revert.
+  - M11b adds `staff_welcome` ("Your ScholarSync account is ready"; `full_name`, `role_label`, `set_password_url`),
+    sent when the office creates an account and again on request until the first sign-in.
   - The staff reason is never in the email (free text; the student reads it signed in). A profile with no user gets no
     email.
   - There is no separate "document declined" email: the student can't re-upload until the application is returned, so
@@ -772,7 +791,8 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
     else's address into the signup form);
   - `ACCOUNT_SIGNUP_REDIRECT_URL` sends a new student to `/me/` after email confirmation;
   - allauth rate limits (Django database cache, via `createcachetable`);
-  - reauthentication before revert/release, membership and role changes, and program money settings;
+  - reauthentication before revert/release, membership and role changes, and program money settings (M11b: tier
+    changes, account creation and (de)activation, membership add, change and removal);
   - Argon2 first in `PASSWORD_HASHERS`; validators: minimum length 10, common, numeric, similarity;
   - Google signup shows the signup form (no auto signup), so the consent box is always ticked by a person;
   - unknown-account emails are off;
@@ -798,7 +818,6 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 - **Logging:**
   - JSON to stdout, with user IDs but no names, emails or document contents;
   - Sentry's `before_send` scrubs request bodies and cookies.
-- **Django admin:** `/_admin/` is limited to `is_superuser` technical accounts, separate from the in-app super admin.
 - **Dependencies:** `pip-audit` (on `uv export`) and `npm audit` in CI; Dependabot.
 - **RA 10173 (Data Privacy Act):**
   - a privacy notice and a consent record;
@@ -1143,18 +1162,18 @@ starts, and ends with every acceptance item checked.
 - [ ] Extend the demo loader for this milestone's screens.
 
 **M11b: Office management and program settings**
-- [ ] Office: programs (create, edit, activate, deactivate), staff accounts + memberships, schools and other reference
-  data, cross-program scholars, the audit viewer; Django admin at `/_admin/` decided.
-- [ ] Head program settings at `/staff/<slug>/settings/` (tiers, documents, rules, window; reauth for money settings
-  per §10).
-- [ ] The M9 fixes that need these screens: the Renew button of an inactive program; double-submits of "Make
-  current" and "Add school year".
+- [ ] Spec rev 18; the M9 fixes (Renew for an inactive program; term changes serialised by an advisory lock).
+- [ ] Office: programs (create inactive, edit, activate, deactivate), staff and office accounts with a set-password
+  email, memberships (reauth), schools; the overview's budgets in two queries.
+- [ ] Program settings at `/staff/<slug>/settings/` (rules and window; history-safe tiers with reauth; required
+  documents switched off, never deleted).
 - [ ] Extend the demo loader for this milestone's screens.
 
 **M11c: Reports and analytics**
 - [ ] Reports (`Report`, `ReportFile`, staff upload at `reports/`, office review); office analytics (trends, success
   rate, approval time, top feeder school); office-wide exports (`StoredFile.Purpose.EXPORT`); staff and office
-  notification centers; the office overview's "Reports to review" and "Download report".
+  notification centers; the office overview's "Reports to review" and "Download report"; cross-program scholars and
+  the audit viewer (office: all; head: own program), moved from M11b.
 - [ ] Extend the demo loader for this milestone's screens.
 
 **M12: Hardening + hosting guide**
