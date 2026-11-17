@@ -7,18 +7,19 @@ from django import forms
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.http import Http404, HttpRequest, HttpResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.decorators import method_decorator
 from django.views import View
 
 from apps.accounts.models import User
 from apps.core.permissions import ProgramStaffRequiredMixin
 from apps.core.shell import shell_context
+from apps.files.policy import MB
 from apps.programs import services
-from apps.programs.models import Program, ProgramMembership
+from apps.programs.models import Program, ProgramMembership, RequiredDocument
 from apps.programs.selectors import TierLine, current_term, tier_codes
 
-from .settings_forms import RulesForm, TierChangeForm, TierForm
+from .settings_forms import DocumentForm, RulesForm, TierChangeForm, TierForm
 
 
 def _actor(request: HttpRequest) -> User:
@@ -174,3 +175,98 @@ class TierChangeView(SettingsMixin, View):
             return self._render(request, line, form)
         messages.success(request, message)
         return redirect("settings:tiers", program=self.program.slug)
+
+
+class DocumentsView(SettingsMixin, View):
+    """The program's documents, with the add form on top."""
+
+    tab = "documents"
+
+    def _render(self, request: HttpRequest, form: DocumentForm) -> HttpResponse:
+        context = {
+            **self.settings_context(request),
+            "form": form,
+            "documents": RequiredDocument.objects.filter(program=self.program).order_by(
+                "-is_active", "sort_order", "pk"
+            ),
+        }
+        return render(request, "programs/settings/documents.html", context)
+
+    def get(self, request: HttpRequest, program: str) -> HttpResponse:
+        return self._render(request, DocumentForm(creating=True))
+
+    def post(self, request: HttpRequest, program: str) -> HttpResponse:
+        form = DocumentForm(request.POST, creating=True)
+        if not form.is_valid():
+            return self._render(request, form)
+        try:
+            services.add_document(
+                actor=_actor(request),
+                program=self.program,
+                data=form.document_data(),
+                request=request,
+            )
+        except ValidationError as error:
+            _form_errors(form, error)
+            return self._render(request, form)
+        messages.success(request, "Document added.")
+        return redirect("settings:documents", program=self.program.slug)
+
+
+class DocumentEditView(SettingsMixin, View):
+    tab = "documents"
+
+    def _render(
+        self, request: HttpRequest, document: RequiredDocument, form: DocumentForm
+    ) -> HttpResponse:
+        context = {**self.settings_context(request), "form": form, "document": document}
+        return render(request, "programs/settings/document_form.html", context)
+
+    def get(self, request: HttpRequest, program: str, pk: int) -> HttpResponse:
+        document = get_object_or_404(RequiredDocument, program=self.program, pk=pk)
+        initial = {
+            "label": document.label,
+            "help_text": document.help_text,
+            "applies_to": document.applies_to,
+            "is_required": document.is_required,
+            "accepted_types": document.accepted_types,
+            "max_mb": max(1, document.max_bytes // MB),
+            "sort_order": document.sort_order,
+        }
+        return self._render(request, document, DocumentForm(initial=initial, creating=False))
+
+    def post(self, request: HttpRequest, program: str, pk: int) -> HttpResponse:
+        document = get_object_or_404(RequiredDocument, program=self.program, pk=pk)
+        form = DocumentForm(request.POST, creating=False)
+        if not form.is_valid():
+            return self._render(request, document, form)
+        services.update_document(
+            actor=_actor(request),
+            program=self.program,
+            document=document,
+            data=form.document_data(),
+            request=request,
+        )
+        messages.success(request, "Document saved.")
+        return redirect("settings:documents", program=self.program.slug)
+
+
+class DocumentActiveView(SettingsMixin, View):
+    http_method_names = ["post"]
+
+    def post(self, request: HttpRequest, program: str, pk: int) -> HttpResponse:
+        document = get_object_or_404(RequiredDocument, program=self.program, pk=pk)
+        active = request.POST.get("active") == "1"
+        services.set_document_active(
+            actor=_actor(request),
+            program=self.program,
+            document=document,
+            active=active,
+            request=request,
+        )
+        label = document.label
+        messages.success(
+            request,
+            f"We'll ask for {label} again." if active else f"We'll stop asking for {label}.",
+        )
+        return redirect("settings:documents", program=self.program.slug)

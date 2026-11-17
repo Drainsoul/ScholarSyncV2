@@ -1,0 +1,37 @@
+{% extends "programs/settings/base.html" %}{% load ui %}
+{% block settings %}
+<section class="card" aria-labelledby="documents-title">
+  <h2 class="card__title" id="documents-title">Required documents</h2>
+  <p class="text-sm text-muted">A document you add applies to applications started or not yet sent. Ones already sent keep their list.</p>
+  {% if documents %}
+  <div class="table-wrap" role="region" aria-labelledby="documents-title" tabindex="0">
+    <table class="table table--stack">
+      <thead><tr><th scope="col">Document</th><th scope="col">For</th><th scope="col">Required</th><th scope="col">Types</th><th scope="col" class="num">Max size</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+      <tbody>{% for document in documents %}<tr>
+        <th scope="row">{{ document.label }} <span class="text-sm text-muted">{{ document.code }}</span></th>
+        <td data-label="For">{{ document.get_applies_to_display }}</td>
+        <td data-label="Required">{% if document.is_required %}Yes{% else %}Optional{% endif %}</td>
+        <td data-label="Types">{{ document.accepted_types|join:", " }}</td>
+        <td class="num" data-label="Max size">{{ document.max_bytes|filesizeformat }}</td>
+        <td data-label="Status">{% if document.is_active %}{% status "success" "Asked" %}{% else %}{% status "neutral" "Not asked" %}{% endif %}</td>
+        <td><div class="btn-row">
+          <a class="btn btn--secondary" href="{% url 'settings:document-edit' program=program.slug pk=document.pk %}">Edit<span class="visually-hidden"> {{ document.label }}</span></a>
+          <form method="post" action="{% url 'settings:document-active' program=program.slug pk=document.pk %}">{% csrf_token %}<input type="hidden" name="active" value="{% if document.is_active %}0{% else %}1{% endif %}"><button type="submit" class="btn btn--ghost">{% if document.is_active %}Stop asking for it{% else %}Ask for it again{% endif %}<span class="visually-hidden">: {{ document.label }}</span></button></form>
+        </div></td>
+      </tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% else %}
+  {% include "components/empty_state.html" with title="No required documents yet." %}
+  {% endif %}
+</section>
+<section class="card" aria-labelledby="add-document-title">
+  <h2 class="card__title" id="add-document-title">Add a document</h2>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% include "components/form_errors.html" %}
+    {% for bound_field in form %}{% field bound_field %}{% endfor %}
+    <div class="btn-row"><button type="submit" class="btn btn--primary">{% icon "plus" %}Add document</button></div>
+  </form>
+</section>
+{% endblock %}

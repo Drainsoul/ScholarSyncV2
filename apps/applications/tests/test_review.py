@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from datetime import timedelta
 from decimal import Decimal
 from typing import Any
 from unittest.mock import Mock, patch
@@ -24,7 +25,7 @@ from apps.core.models import AuditEvent
 from apps.core.transitions import InvalidTransition
 from apps.files.models import StoredFile
 from apps.files.tests.factories import StoredFileFactory
-from apps.programs.models import BenefitTier, Program, School
+from apps.programs.models import BenefitTier, Program, RequiredDocument, School
 from apps.programs.tests.factories import (
     BenefitTierFactory,
     MembershipFactory,
@@ -648,6 +649,17 @@ FOREIGN_TIER = "Choose one of this program's allowance tiers."
 HOLDS_AWARD = "This student already holds an active {} award."
 
 
+def existing_requirement(application: Application, **kwargs: object) -> RequiredDocument:
+    """A requirement that already existed when the application was submitted (M11b: one added
+    later doesn't apply to it)."""
+    requirement = RequiredDocumentFactory.create(program=application.program, **kwargs)
+    assert application.first_submitted_at is not None
+    earlier = application.first_submitted_at - timedelta(minutes=1)
+    RequiredDocument.objects.filter(pk=requirement.pk).update(created_at=earlier)
+    requirement.refresh_from_db()
+    return requirement
+
+
 def approvable(program: Program, **kwargs: object) -> Application:
     """Under review, with a requested tier in force and every document approved."""
     application = under_review(program, **kwargs)
@@ -763,7 +775,7 @@ def test_approve_refused_until_every_document_is_decided(case: str) -> None:
     program = ProgramFactory.create()
     application = approvable(program)
     if case == "missing":
-        requirement = RequiredDocumentFactory.create(program=program, sort_order=5)
+        requirement = existing_requirement(application, sort_order=5)
     else:
         requirement = document_with_file(application, case).requirement
     message = NEVER_UPLOADED if case == "missing" else NOT_DECIDED
@@ -782,7 +794,7 @@ def test_approve_names_a_never_uploaded_document_before_a_pending_one() -> None:
     pending = document_with_file(application, D.PENDING)
     pending.requirement.sort_order = 1
     pending.requirement.save()
-    missing = RequiredDocumentFactory.create(program=program, sort_order=5)
+    missing = existing_requirement(application, sort_order=5)
     assert_not_approved(
         application,
         NEVER_UPLOADED.format(missing.label),
@@ -798,8 +810,8 @@ def test_undecided_documents_in_requirement_order() -> None:
     late = document_with_file(application, D.PENDING)
     late.requirement.sort_order = 9
     late.requirement.save()
-    early = RequiredDocumentFactory.create(program=program, sort_order=1)
-    optional = RequiredDocumentFactory.create(program=program, sort_order=0, is_required=False)
+    early = existing_requirement(application, sort_order=1)
+    optional = existing_requirement(application, sort_order=0, is_required=False)
     declined_optional = document_with_file(application, D.DECLINED)
     declined_optional.requirement.is_required = False
     declined_optional.requirement.sort_order = 10

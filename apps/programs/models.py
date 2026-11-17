@@ -222,6 +222,8 @@ class RequiredDocument(models.Model):
     sort_order = models.PositiveSmallIntegerField(default=0)
     accepted_types = ArrayField(models.CharField(max_length=100), default=default_accepted_types)
     max_bytes = models.PositiveIntegerField(default=10 * MB)
+    # Switched off, never deleted (M11b): uploads point to it.
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -8,6 +8,7 @@
 <nav class="tabs" aria-label="Settings sections">
   <a href="{% url 'settings:rules' program=program.slug %}"{% if tab == "rules" %} aria-current="page"{% endif %}>Rules</a>
   <a href="{% url 'settings:tiers' program=program.slug %}"{% if tab == "tiers" %} aria-current="page"{% endif %}>Allowance tiers</a>
+  <a href="{% url 'settings:documents' program=program.slug %}"{% if tab == "documents" %} aria-current="page"{% endif %}>Documents</a>
 </nav>
 {% block settings %}{% endblock %}
 {% endblock %}

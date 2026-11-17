@@ -4,7 +4,9 @@ from typing import Any
 from django import forms
 from django.core.validators import MaxValueValidator, MinValueValidator
 
-from apps.programs.models import AcademicTerm, Program, School
+from apps.core.text import normalize_newlines
+from apps.files.policy import JPEG, MB, PDF, PNG
+from apps.programs.models import AcademicTerm, Program, RequiredDocument, School
 from apps.programs.selectors import current_term
 
 PERCENT = [MinValueValidator(Decimal("0")), MaxValueValidator(Decimal("100"))]
@@ -210,4 +212,46 @@ class TierChangeForm(forms.Form):
                 self.add_error("base_amount", "Enter the allowance per term.")
             if data.get("merit_amount") is None:
                 data["merit_amount"] = Decimal("0")
+        return data
+
+
+TYPE_CHOICES = ((PDF, "PDF"), (JPEG, "JPEG photo"), (PNG, "PNG image"))
+
+
+class DocumentForm(forms.Form):
+    code = forms.SlugField(label="Code", max_length=40, help_text="e.g. grades. It can't change.")
+    label = forms.CharField(label="Document", max_length=200)
+    help_text = forms.CharField(
+        label="Help for students",
+        required=False,
+        max_length=2000,
+        widget=forms.Textarea(attrs={"rows": 3, "maxlength": 2000}),
+    )
+    applies_to = forms.ChoiceField(label="Asked of", choices=RequiredDocument.AppliesTo.choices)
+    is_required = forms.BooleanField(label="Required", required=False, initial=True)
+    accepted_types = forms.MultipleChoiceField(
+        label="Accepted file types",
+        choices=TYPE_CHOICES,
+        widget=forms.CheckboxSelectMultiple,
+        initial=[PDF, JPEG, PNG],
+        error_messages={"required": "Pick at least one file type."},
+    )
+    max_mb = forms.IntegerField(label="Max size (MB)", min_value=1, max_value=10, initial=10)
+    sort_order = forms.IntegerField(label="Order on lists", min_value=0, max_value=999, initial=0)
+
+    def __init__(self, *args: Any, creating: bool, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        if not creating:
+            del self.fields["code"]
+
+    def clean_code(self) -> str:
+        return str(self.cleaned_data["code"]).lower()
+
+    def clean_help_text(self) -> str:
+        return normalize_newlines(self.cleaned_data["help_text"])
+
+    def document_data(self) -> dict[str, Any]:
+        """The cleaned values as `RequiredDocument` fields (size in bytes)."""
+        data = dict(self.cleaned_data)
+        data["max_bytes"] = data.pop("max_mb") * MB
         return data

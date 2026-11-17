@@ -65,13 +65,24 @@ def rejected_this_term(profile: StudentProfile, program: Program, term: Academic
     ).exists()
 
 
+def applicable_requirements(application: Application) -> QuerySet[RequiredDocument]:
+    """The active requirements this application answers to (M11b).
+
+    A draft follows the program's current list. Once submitted, a requirement added later
+    applies only if the application already has an upload for it, so a new requirement never
+    blocks an application in review."""
+    rows = required_documents_for(
+        application.program, cast(Literal["new", "renewal"], application.kind)
+    )
+    if application.first_submitted_at is None:
+        return rows
+    uploaded = Document.objects.filter(application=application).values("requirement_id")
+    return rows.filter(Q(created_at__lte=application.first_submitted_at) | Q(pk__in=uploaded))
+
+
 def document_rows(application: Application) -> list[DocumentRow]:
     """One row per requirement for the application's kind, in order. Three queries."""
-    requirements = list(
-        required_documents_for(
-            application.program, cast(Literal["new", "renewal"], application.kind)
-        )
-    )
+    requirements = list(applicable_requirements(application))
     documents = {
         document.requirement_id: document
         for document in Document.objects.filter(application=application)

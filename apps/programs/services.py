@@ -10,7 +10,7 @@ from apps.core.audit import record
 from apps.core.permissions import require_office, require_settings_editor
 from apps.core.text import counted
 
-from .models import AcademicTerm, BenefitTier, Program, ProgramMembership
+from .models import AcademicTerm, BenefitTier, Program, ProgramMembership, RequiredDocument
 from .selectors import activation_problem, current_term, deactivation_counts, tier_in_use
 from .terms import school_year_terms
 
@@ -396,3 +396,96 @@ def stop_tier(
     )
     _tier_audit(actor, program, tier, "tier.stopped", request)
     return tier
+
+
+DOCUMENT_CODE_TAKEN = "That document code is taken."
+DOCUMENT_FIELDS = (
+    "label",
+    "help_text",
+    "applies_to",
+    "is_required",
+    "accepted_types",
+    "max_bytes",
+    "sort_order",
+)
+
+
+def _document_audit(
+    actor: User,
+    program: Program,
+    document: RequiredDocument,
+    action: str,
+    request: HttpRequest | None,
+) -> None:
+    record(
+        actor=actor,
+        action=action,
+        target=document,
+        program=program,
+        data={"code": document.code},
+        request=request,
+    )
+
+
+@transaction.atomic
+def add_document(
+    *,
+    actor: User,
+    program: Program,
+    data: dict[str, object],
+    request: HttpRequest | None = None,
+) -> RequiredDocument:
+    require_settings_editor(actor, program)
+    Program.objects.select_for_update().get(pk=program.pk)
+    code = str(data["code"])
+    if RequiredDocument.objects.filter(program=program, code=code).exists():
+        raise ValidationError({"code": DOCUMENT_CODE_TAKEN})
+    document = RequiredDocument.objects.create(
+        program=program, code=code, **{name: data[name] for name in DOCUMENT_FIELDS}
+    )
+    _document_audit(actor, program, document, "document.added", request)
+    return document
+
+
+@transaction.atomic
+def update_document(
+    *,
+    actor: User,
+    program: Program,
+    document: RequiredDocument,
+    data: dict[str, object],
+    request: HttpRequest | None = None,
+) -> RequiredDocument:
+    """Everything but the code; no event when nothing changed."""
+    require_settings_editor(actor, program)
+    locked = RequiredDocument.objects.select_for_update().get(pk=document.pk, program=program)
+    changed = [name for name in DOCUMENT_FIELDS if getattr(locked, name) != data[name]]
+    if not changed:
+        return locked
+    for name in changed:
+        setattr(locked, name, data[name])
+    locked.save(update_fields=[*changed, "updated_at"])
+    _document_audit(actor, program, locked, "document.updated", request)
+    return locked
+
+
+@transaction.atomic
+def set_document_active(
+    *,
+    actor: User,
+    program: Program,
+    document: RequiredDocument,
+    active: bool,
+    request: HttpRequest | None = None,
+) -> RequiredDocument:
+    """Stop asking for a document, or ask again. It is never deleted: uploads point to it."""
+    require_settings_editor(actor, program)
+    locked = RequiredDocument.objects.select_for_update().get(pk=document.pk, program=program)
+    if locked.is_active == active:
+        return locked
+    locked.is_active = active
+    locked.save(update_fields=["is_active", "updated_at"])
+    _document_audit(
+        actor, program, locked, "document.restored" if active else "document.stopped", request
+    )
+    return locked

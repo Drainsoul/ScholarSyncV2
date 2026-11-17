@@ -64,8 +64,9 @@ def tiers_in_force(program: Program, term: AcademicTerm) -> list[BenefitTier]:
 def required_documents_for(
     program: Program, kind: Literal["new", "renewal"]
 ) -> QuerySet[RequiredDocument]:
+    """The active requirements for this kind; a switched-off one is gone everywhere."""
     return program.required_documents.filter(
-        applies_to__in=[kind, RequiredDocument.AppliesTo.BOTH]
+        applies_to__in=[kind, RequiredDocument.AppliesTo.BOTH], is_active=True
     ).order_by("sort_order", "pk")
 
 
@@ -104,7 +105,7 @@ SETUP_NEEDED = "Add an allowance tier and a required document before opening {na
 def activation_problem(program: Program, term: AcademicTerm | None) -> str | None:
     """Why the program can't open yet: it needs a tier in force now and a required document."""
     has_tier = term is not None and bool(tiers_in_force(program, term))
-    if has_tier and program.required_documents.exists():
+    if has_tier and program.required_documents.filter(is_active=True).exists():
         return None
     return SETUP_NEEDED.format(name=program.name)
 
