@@ -90,10 +90,13 @@ class StudentInviteView(ProgramStaffRequiredMixin, View):
         profile = get_object_or_404(unclaimed_profiles_for(self.program), pk=profile_id)
         actor = request.user
         assert isinstance(actor, User)
+        # Imported profiles (M9b) have never been invited: their first invite takes an address.
+        first = not profile.invites.exists()
+        email = request.POST.get("email", "").strip() or None
         try:
-            services.issue_invite(actor=actor, profile=profile)
+            services.issue_invite(actor=actor, profile=profile, email=email if first else None)
         except ValidationError as error:
             messages.error(request, " ".join(error.messages))
         else:
-            messages.success(request, "Invitation sent again.")
+            messages.success(request, "Invitation sent." if first else "Invitation sent again.")
         return redirect("workspace:students", program=self.program.slug)

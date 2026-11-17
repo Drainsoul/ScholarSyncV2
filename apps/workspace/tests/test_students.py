@@ -168,3 +168,57 @@ def test_nav_shows_students_and_marks_the_right_item_current(client: Any) -> Non
     on_dashboard = client.get(dashboard).content.decode()
     assert f'href="{students}"' in on_dashboard
     assert f'href="{students}" aria-current' not in on_dashboard
+
+
+def _uninvited(membership: Any) -> StudentProfile:
+    """A profile with no invite, as an M9b import creates."""
+    return StudentProfile.objects.create(
+        first_name="Lia",
+        last_name="Santos",
+        birth_date=date(2005, 3, 14),
+        created_by=membership.user,
+        created_for=membership.program,
+    )
+
+
+def test_uninvited_profile_shows_not_invited_with_an_email_field(client: Any) -> None:
+    membership = _staff()
+    profile = _uninvited(membership)
+    client.force_login(membership.user)
+    page = client.get(_list_url()).content.decode()
+    assert "Lia Santos" in page
+    assert "Not invited" in page
+    assert "Expired" not in page
+    assert f'id="invite-email-{profile.pk}"' in page
+    assert "Send invitation" in page
+
+
+def test_first_invite_takes_an_email(client: Any) -> None:
+    membership = _staff()
+    profile = _uninvited(membership)
+    client.force_login(membership.user)
+    response = client.post(_invite_url(profile), {"email": " Lia@Example.com "})
+    assert response.status_code == 302
+    invite = ProfileInvite.objects.get(profile=profile)
+    assert invite.email == "lia@example.com"
+    assert EmailOutbox.objects.filter(kind="profile_invite", to="lia@example.com").count() == 1
+    assert "Invitation sent." in client.get(response.url).content.decode()
+
+
+def test_first_invite_without_email_is_refused(client: Any) -> None:
+    membership = _staff()
+    profile = _uninvited(membership)
+    client.force_login(membership.user)
+    response = client.post(_invite_url(profile), {"email": ""})
+    assert response.status_code == 302
+    assert not ProfileInvite.objects.filter(profile=profile).exists()
+    assert "Enter the student&#x27;s email address." in client.get(response.url).content.decode()
+
+
+def test_first_invite_bad_email_is_refused(client: Any) -> None:
+    membership = _staff()
+    profile = _uninvited(membership)
+    client.force_login(membership.user)
+    response = client.post(_invite_url(profile), {"email": "not-an-email"})
+    assert not ProfileInvite.objects.filter(profile=profile).exists()
+    assert "Enter a valid email address." in client.get(response.url).content.decode()

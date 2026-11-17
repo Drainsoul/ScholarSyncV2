@@ -15,7 +15,7 @@
       <tbody>{% for profile in profiles %}<tr>
         <th scope="row">{{ profile.full_name }}</th>
         <td>{{ profile.invite_email|default:"" }}</td>
-        <td>{% if profile.invite_expires_at and profile.invite_expires_at > now %}Sent, expires {{ profile.invite_expires_at|date:"j M Y" }}{% else %}Expired{% endif %}</td>
+        <td>{% if not profile.invite_email %}Not invited{% elif profile.invite_expires_at and profile.invite_expires_at > now %}Sent, expires {{ profile.invite_expires_at|date:"j M Y" }}{% else %}Expired{% endif %}</td>
         <td>
           <div class="btn-row">
           <form method="post" action="{% url 'review:behalf-new' program=program.slug %}">
@@ -25,7 +25,13 @@
           </form>
           <form method="post" action="{% url 'workspace:students-invite' program=program.slug profile_id=profile.pk %}">
             {% csrf_token %}
+            {% if profile.invite_email %}
             <button type="submit" class="btn btn--secondary">Send again<span class="visually-hidden"> to {{ profile.full_name }}</span></button>
+            {% else %}
+            <label class="visually-hidden" for="invite-email-{{ profile.pk }}">Email address for {{ profile.full_name }}</label>
+            <input class="input" type="email" id="invite-email-{{ profile.pk }}" name="email" autocomplete="off" placeholder="Email address" required>
+            <button type="submit" class="btn btn--secondary">Send invitation<span class="visually-hidden"> to {{ profile.full_name }}</span></button>
+            {% endif %}
           </form>
           </div>
         </td>
