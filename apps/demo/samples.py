@@ -90,3 +90,15 @@ SAMPLE_SCHOLARS: tuple[SampleScholar, ...] = (
 )
 
 HOLD_REASON = "Waiting for the registrar to confirm enrolment."
+
+
+@dataclass(frozen=True)
+class ManualScholar:
+    first_name: str
+    last_name: str
+    birth_date: date
+    gwa: Decimal  # on TCU's percent scale
+
+
+# A walk-in staff gave a TCU CEAA award by hand (M9b Add scholar): no account, never invited.
+MANUAL_SCHOLAR = ManualScholar("Felipe", "Manalo", date(2005, 6, 18), Decimal("87.25"))

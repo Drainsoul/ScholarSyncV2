@@ -5,6 +5,7 @@ import logging
 import uuid
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 
 from allauth.account.models import EmailAddress
 from django.core.exceptions import ObjectDoesNotExist, PermissionDenied, ValidationError
@@ -19,11 +20,12 @@ from apps.applications import behalf, review
 from apps.applications.models import Application
 from apps.applications.services import attach_document, start_application, submit_application
 from apps.awards.models import Award, ScholarTerm
-from apps.awards.services import change_status
+from apps.awards.services import AwardData, TermData, change_status, create_award
 from apps.demo.accounts import ACCOUNTS, PASSWORD, DemoAccount
 from apps.demo.samples import (
     DECLINE_REASON,
     HOLD_REASON,
+    MANUAL_SCHOLAR,
     OVERRIDE_REASON,
     PDF_TYPE,
     PNG_TYPE,
@@ -41,13 +43,16 @@ from apps.demo.samples import (
 from apps.files import storage
 from apps.files.models import StoredFile
 from apps.programs.models import AcademicTerm, BenefitTier, Program, School
-from apps.programs.selectors import application_term, required_documents_for
+from apps.programs.selectors import application_term, current_term, required_documents_for
 from apps.programs.services import add_membership
 from apps.programs.terms import school_year_terms
 from apps.students import services as students
 from apps.students.models import EducationRecord, FamilyMember, ProfileInvite, StudentProfile
 
 logger = logging.getLogger(__name__)
+
+# Five valid TCU CEAA rows (Faker en_PH names) for trying Scholars > Import.
+SAMPLE_IMPORT = Path(__file__).resolve().parent / "data" / "scholars-import.csv"
 
 
 def _create(account: DemoAccount) -> None:
@@ -489,6 +494,60 @@ def _give_staff_scholars() -> None:
         logger.warning("Demo scholar samples skipped (%s).", type(error).__name__)
 
 
+def _give_staff_a_manual_scholar() -> None:
+    """Felipe: a TCU CEAA walk-in given an award by hand, with no account (idempotent)."""
+    program = Program.objects.get(slug="tcu-ceaa")
+    found = StudentProfile.objects.filter(
+        created_for=program,
+        first_name=MANUAL_SCHOLAR.first_name,
+        last_name=MANUAL_SCHOLAR.last_name,
+        birth_date=MANUAL_SCHOLAR.birth_date,
+    )
+    if found.exists():
+        return
+    term = current_term()
+    if term is None:
+        return
+    staff = User.objects.get(email__iexact="staff@scholarsync.test")
+    try:
+        with transaction.atomic():
+            # Written with the ORM: the profile services always send an invite, and Felipe
+            # stands for the walk-ins who never give an address (an import makes the same rows).
+            profile = StudentProfile.objects.create(
+                first_name=MANUAL_SCHOLAR.first_name,
+                last_name=MANUAL_SCHOLAR.last_name,
+                birth_date=MANUAL_SCHOLAR.birth_date,
+                created_by=staff,
+                created_for=program,
+            )
+            create_award(
+                actor=staff,
+                program=program,
+                profile_id=profile.pk,
+                data=AwardData(
+                    tier_code="standard",
+                    student_number="2026-0042",
+                    notes="Walk-in at the scholarship office.",
+                    record=TermData(
+                        term=term,
+                        school=School.objects.get(name="Taguig City University"),
+                        school_name="",
+                        school_type="",
+                        gwa_scale="",
+                        course="BS Accountancy",
+                        year_level=1,
+                        gwa=MANUAL_SCHOLAR.gwa,
+                        units=21,
+                        compliance_checked=True,
+                    ),
+                ),
+                source=Award.Source.MANUAL,
+            )
+    except (ValidationError, Http404, PermissionDenied, ObjectDoesNotExist) as error:
+        # Log only the error class: service sentences can hold profile values.
+        logger.warning("Demo manual scholar skipped (%s).", type(error).__name__)
+
+
 def load() -> int:
     """Create the demo accounts that are missing and return how many were created."""
     with transaction.atomic():
@@ -509,4 +568,5 @@ def load() -> int:
         )
         _give_staff_on_behalf_samples()
         _give_staff_scholars()
+        _give_staff_a_manual_scholar()
     return created

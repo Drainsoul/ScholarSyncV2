@@ -19,12 +19,16 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.applications.models import Application
+from apps.awards.importing import check_import
 from apps.awards.models import Award
 from apps.awards.selectors import RenewalStatus, at_risk_q, renewal_for, with_latest_term
 from apps.demo import loader
 from apps.demo.accounts import ACCOUNTS, PASSWORD
-from apps.demo.samples import HOLD_REASON, SAMPLE_SCHOLARS
+from apps.demo.loader import SAMPLE_IMPORT
+from apps.demo.samples import HOLD_REASON, MANUAL_SCHOLAR, SAMPLE_SCHOLARS
+from apps.files import storage
 from apps.files.models import StoredFile
+from apps.files.policy import CSV
 from apps.matching.selectors import match_page
 from apps.programs.models import AcademicTerm, Program
 from apps.programs.selectors import application_term
@@ -522,3 +526,50 @@ def test_demo_does_not_change_program_config(demo_app, settings, frozen_today):
     before = list(Program.objects.order_by("pk").values(*fields))
     loader.load()
     assert list(Program.objects.order_by("pk").values(*fields)) == before
+
+
+# --- Manual scholar and the sample import file (M9b) ---
+
+
+@pytest.mark.django_db
+def test_felipe_manual_scholar(demo_app, settings, frozen_today):
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    award = Award.objects.select_related("profile", "program").get(
+        profile__first_name=MANUAL_SCHOLAR.first_name,
+        profile__last_name=MANUAL_SCHOLAR.last_name,
+    )
+    assert award.source == Award.Source.MANUAL
+    assert award.program.slug == "tcu-ceaa"
+    assert award.profile.user is None
+    assert award.profile.created_for == award.program
+    assert not ProfileInvite.objects.filter(profile=award.profile).exists()
+    assert award.terms.count() == 1
+
+
+@pytest.mark.django_db
+def test_felipe_load_is_idempotent(demo_app, settings, frozen_today):
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    loader.load()
+    assert (
+        Award.objects.filter(
+            profile__first_name=MANUAL_SCHOLAR.first_name,
+            profile__last_name=MANUAL_SCHOLAR.last_name,
+        ).count()
+        == 1
+    )
+
+
+@pytest.mark.django_db
+def test_sample_import_previews_ok(demo_app, settings, frozen_today, monkeypatch):
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    body = SAMPLE_IMPORT.read_bytes()
+    monkeypatch.setattr(storage, "read_all", lambda key: body)
+    program = Program.objects.get(slug="tcu-ceaa")
+    stored = StoredFile(key="files/import/sample", sniffed_type=CSV)
+    preview = check_import(program, stored)
+    assert preview.problem == ""
+    assert [row.errors for row in preview.rows] == [[]] * 5
+    assert preview.ok
