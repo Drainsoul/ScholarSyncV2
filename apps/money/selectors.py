@@ -1,13 +1,18 @@
 """Money reads: amounts, schedules and what may be paid. Every staff lookup is program-scoped."""
 
+from dataclasses import dataclass
 from decimal import Decimal
 
-from django.db.models import Count, Exists, OuterRef, Q, QuerySet
-from django.http import Http404
+from django.db.models import Count, DecimalField, Exists, OuterRef, Q, QuerySet, Sum, Value
+from django.db.models.functions import Coalesce
+from django.http import Http404, QueryDict
 
 from apps.awards.models import Award, ScholarTerm
 from apps.money.models import Disbursement, DistributionSchedule
 from apps.programs.models import Program
+
+MONEY = DecimalField(max_digits=14, decimal_places=2)
+ZERO = Decimal("0")
 
 NOT_ACTIVE = "This scholar's award is {status}."
 DOCUMENTS_UNCHECKED = "Check this scholar's documents for {term} first."
@@ -31,13 +36,20 @@ def schedules_for(program: Program) -> QuerySet[DistributionSchedule]:
     return DistributionSchedule.objects.filter(program=program).select_related("term")
 
 
+def money_sum(field: str, condition: Q | None = None) -> Coalesce:
+    """A Decimal sum that is 0, never None, over an empty set."""
+    return Coalesce(Sum(field, filter=condition), Value(ZERO), output_field=MONEY)
+
+
 def schedule_list(program: Program) -> QuerySet[DistributionSchedule]:
-    """The program's schedules with a count of payouts per status (`n_<status>`)."""
-    counts = {
-        f"n_{status}": Count("disbursements", filter=Q(disbursements__status=status))
-        for status in Disbursement.Status.values
-    }
-    return schedules_for(program).annotate(**counts)
+    """The program's schedules with a count (`n_<status>`) and a sum (`s_<status>`) of payouts
+    per status."""
+    totals: dict[str, Count | Coalesce] = {}
+    for status in Disbursement.Status.values:
+        condition = Q(disbursements__status=status)
+        totals[f"n_{status}"] = Count("disbursements", filter=condition)
+        totals[f"s_{status}"] = money_sum("disbursements__amount", condition)
+    return schedules_for(program).annotate(**totals)
 
 
 def staff_schedule(program: Program, pk: int) -> DistributionSchedule:
@@ -74,3 +86,73 @@ def eligible_terms(schedule: DistributionSchedule) -> QuerySet[ScholarTerm]:
         )
         .order_by("pk")
     )
+
+
+@dataclass(frozen=True)
+class RowFilters:
+    q: str = ""
+    status: str = ""
+    tier: str = ""
+
+
+def parse_row_filters(params: QueryDict, program: Program) -> RowFilters:
+    """Unknown values fall back to "all", never an error."""
+    status = params.get("status", "")
+    if status not in Disbursement.Status.values:
+        status = ""
+    tier = params.get("tier", "")
+    if tier and not program.tiers.filter(code=tier).exists():
+        tier = ""
+    return RowFilters(
+        q=params.get("q", "").replace("\x00", "").strip()[:200], status=status, tier=tier
+    )
+
+
+def schedule_rows(schedule: DistributionSchedule, filters: RowFilters) -> QuerySet[Disbursement]:
+    rows = schedule.disbursements.select_related(
+        "scholar_term__award__profile",
+        "scholar_term__award__tier",
+        "scholar_term__tier",
+        "scholar_term__term",
+    )
+    if filters.status:
+        rows = rows.filter(status=filters.status)
+    if filters.tier:
+        rows = rows.filter(
+            Q(scholar_term__tier__code=filters.tier)
+            | Q(scholar_term__tier__isnull=True, scholar_term__award__tier__code=filters.tier)
+        )
+    for word in filters.q.split():
+        rows = rows.filter(
+            Q(scholar_term__award__profile__first_name__icontains=word)
+            | Q(scholar_term__award__profile__last_name__icontains=word)
+        )
+    return rows.order_by(
+        "scholar_term__award__profile__last_name",
+        "scholar_term__award__profile__first_name",
+        "pk",
+    )
+
+
+def schedule_totals(schedule: DistributionSchedule) -> dict[str, tuple[int, Decimal]]:
+    """Count and sum of the schedule's payouts per status."""
+    values: dict[str, Count | Coalesce] = {}
+    for status in Disbursement.Status.values:
+        values[f"n_{status}"] = Count("pk", filter=Q(status=status))
+        values[f"s_{status}"] = money_sum("amount", Q(status=status))
+    found = schedule.disbursements.aggregate(**values)
+    return {
+        status: (found[f"n_{status}"], found[f"s_{status}"])
+        for status in Disbursement.Status.values
+    }
+
+
+def schedule_disbursement(schedule: DistributionSchedule, pk: int) -> Disbursement:
+    row = (
+        schedule.disbursements.select_related("scholar_term__award__profile", "scholar_term__term")
+        .filter(pk=pk)
+        .first()
+    )
+    if row is None:
+        raise Http404("This payout isn't in this schedule.")
+    return row

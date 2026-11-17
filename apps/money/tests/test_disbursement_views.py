@@ -66,7 +66,7 @@ def test_schedule_page_rows_and_flags(client: Any) -> None:
     assert row.scholar_term.award.profile.full_name in html
     assert "Prepared" in html
     assert "Merit" in html and "₱10,000.00" in html
-    assert "Not eligible: This scholar's award is suspended." in html
+    assert "Not eligible: This scholar&#x27;s award is suspended." in html
     assert held.scholar_term.award.profile.full_name in html
     assert "Releasing needs a program head and asks for your password again." in html
 

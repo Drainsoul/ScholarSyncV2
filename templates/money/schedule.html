@@ -1,0 +1,90 @@
+{% extends "layouts/staff.html" %}{% load ui %}
+{% block title %}Disbursements, {{ schedule.distribution_date|date:"j F Y" }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><p class="text-sm"><a href="{% url 'money:overview' program=program.slug %}">Disbursements</a></p><h1>{{ schedule.distribution_date|date:"j F Y" }}</h1><p class="page-header__meta">{{ program.name }}, {{ schedule.term }} · {{ schedule.claim_location }} · {% if schedule.is_published %}Published{% else %}Draft{% endif %}</p></div>
+  <div class="btn-row">
+    <a class="btn btn--secondary" href="{% url 'money:schedule-edit' program=program.slug pk=schedule.pk %}">{% icon "pencil" %}Edit schedule</a>
+    <form method="post" action="{% url 'money:generate' program=program.slug schedule=schedule.pk %}">
+      {% csrf_token %}
+      <button class="btn btn--primary" type="submit">{% icon "plus" %}Generate disbursements</button>
+    </form>
+  </div>
+</div>
+{% include "money/_tabs.html" %}
+{% include "components/figures.html" with figures=figures %}
+<div class="stack">
+<section class="card list-card" aria-labelledby="list-heading">
+  <h2 class="visually-hidden" id="list-heading">Disbursement list</h2>
+  <form class="table-toolbar" method="get" action="" role="search" aria-label="Filter disbursements">
+    <div class="table-toolbar__search">
+      <label class="visually-hidden" for="d-q">Search by scholar</label>
+      {% icon "search" %}<input class="input" type="search" id="d-q" name="q" value="{{ filters.q }}" placeholder="Search by scholar">
+    </div>
+    <label class="visually-hidden" for="d-status">Status</label>
+    <select class="input" id="d-status" name="status"><option value="">All statuses</option>{% for value, label in statuses %}<option value="{{ value }}"{% if filters.status == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    <label class="visually-hidden" for="d-tier">Tier</label>
+    <select class="input" id="d-tier" name="tier"><option value="">All tiers</option>{% for code, name in tiers %}<option value="{{ code }}"{% if filters.tier == code %} selected{% endif %}>{{ name }}</option>{% endfor %}</select>
+    <button class="btn btn--secondary" type="submit">{% icon "filter" %}Apply filters</button>
+  </form>
+  <p class="table-count">Releasing needs a program head and asks for your password again.</p>
+  {% if can_decide %}
+  <form method="post" action="{% url 'money:bulk' program=program.slug schedule=schedule.pk %}" class="btn-row">
+    {% csrf_token %}
+    {% if prepared_count %}<button class="btn btn--secondary" type="submit" name="action" value="approve_all">Approve all prepared ({{ prepared_count }})</button>{% endif %}
+    {% if approved_count %}<button class="btn btn--secondary" type="submit" name="action" value="release_all">Release all approved ({{ approved_count }})</button>{% endif %}
+  </form>
+  {% endif %}
+  {% if rows %}
+  <form method="post" action="{% url 'money:bulk' program=program.slug schedule=schedule.pk %}" id="bulk-form"{% if can_decide %} data-bulk{% endif %}>
+    {% csrf_token %}
+    {% if can_decide %}
+    <div class="bulk-bar" data-bulk-bar>
+      <p class="bulk-bar__count" data-bulk-count aria-live="polite">Select disbursements, then choose an action.</p>
+      <div class="btn-row">
+        <button class="btn btn--primary" type="submit" name="action" value="approve">Approve selected</button>
+        <button class="btn btn--secondary" type="submit" name="action" value="release">Release selected</button>
+      </div>
+    </div>
+    {% endif %}
+    <div class="table-wrap" role="region" aria-labelledby="list-heading" tabindex="0">
+      <table class="table table--stack" aria-labelledby="list-heading">
+        <thead><tr>{% if can_decide %}<th scope="col" class="select"><input type="checkbox" data-bulk-all aria-label="Select all disbursements on this page"></th>{% endif %}<th scope="col">Scholar</th><th scope="col">Tier</th><th scope="col" class="num">Amount</th><th scope="col">Status</th>{% if can_decide %}<th scope="col"><span class="visually-hidden">Actions</span></th>{% endif %}</tr></thead>
+        <tbody>{% for item in rows %}{% with row=item.row %}<tr>
+          {% if can_decide %}<td class="select"><input type="checkbox" name="ids" value="{{ row.pk }}" data-bulk-item aria-label="Select {{ row.scholar_term.award.profile.full_name }}"></td>{% endif %}
+          <th scope="row"><a href="{% url 'scholars:detail' program=program.slug pk=row.scholar_term.award_id %}">{{ row.scholar_term.award.profile.full_name }}</a></th>
+          <td data-label="Tier">{{ item.tier.name }}</td>
+          <td class="num" data-label="Amount">{{ row.amount|peso }}{% if row.merit %} <span class="text-sm">Merit</span>{% endif %}</td>
+          <td data-label="Status">{% status item.tone row.get_status_display %}
+            {% if item.flag %}<p class="text-sm">Not eligible: {{ item.flag }}</p>{% endif %}
+            {% if row.status == "rejected" and row.decision_reason %}<p class="text-sm">{{ row.decision_reason }}</p>{% endif %}
+          </td>
+          {% if can_decide %}<td data-label="Actions"><div class="btn-row">
+            {% if row.status == "pending" %}
+            <button class="btn btn--secondary" type="submit" form="act-{{ row.pk }}" name="action" value="approve">Approve</button>
+            <a class="btn btn--secondary" href="{% url 'money:reject' program=program.slug schedule=schedule.pk pk=row.pk %}">Reject</a>
+            {% elif row.status == "approved" %}
+            <button class="btn btn--secondary" type="submit" form="act-{{ row.pk }}" name="action" value="release">Release</button>
+            <button class="btn btn--secondary" type="submit" form="revert-{{ row.pk }}">Revert</button>
+            {% elif row.status == "rejected" %}
+            <button class="btn btn--secondary" type="submit" form="revert-{{ row.pk }}">Revert</button>
+            {% endif %}
+          </div></td>{% endif %}
+        </tr>{% endwith %}{% endfor %}</tbody>
+      </table>
+    </div>
+  </form>
+  {% if can_decide %}{% for item in rows %}
+  <form method="post" action="{% url 'money:bulk' program=program.slug schedule=schedule.pk %}" id="act-{{ item.row.pk }}">{% csrf_token %}<input type="hidden" name="ids" value="{{ item.row.pk }}"></form>
+  <form method="post" action="{% url 'money:revert' program=program.slug schedule=schedule.pk pk=item.row.pk %}" id="revert-{{ item.row.pk }}">{% csrf_token %}</form>
+  {% endfor %}{% endif %}
+  <div class="list-card__foot">
+    <p class="table-count num">Showing {{ page.start_index }}–{{ page.end_index }} of {{ page.paginator.count }}</p>
+    {% pagination page %}
+  </div>
+  {% else %}
+  {% include "components/empty_state.html" with title="No payouts here yet. Generate disbursements to prepare them." %}
+  {% endif %}
+</section>
+</div>
+{% endblock %}

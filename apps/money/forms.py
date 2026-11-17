@@ -60,3 +60,31 @@ class ScheduleForm(forms.Form):
             "frequency_label": schedule.frequency_label,
             "notes": schedule.notes,
         }
+
+
+BULK_ACTIONS = ["approve", "release", "approve_all", "release_all"]
+SELECT_FIRST = "Select payouts, then choose an action."
+
+
+class BulkForm(forms.Form):
+    action = forms.ChoiceField(choices=[(a, a) for a in BULK_ACTIONS])
+
+    def clean(self) -> dict[str, Any]:
+        cleaned = super().clean() or {}
+        raw = self.data.getlist("ids") if hasattr(self.data, "getlist") else []
+        try:
+            cleaned["ids"] = [int(value) for value in raw]
+        except ValueError:
+            raise forms.ValidationError(SELECT_FIRST) from None
+        if not str(cleaned.get("action", "")).endswith("_all") and not cleaned["ids"]:
+            raise forms.ValidationError(SELECT_FIRST)
+        return cleaned
+
+
+class RejectForm(forms.Form):
+    reason = forms.CharField(
+        label="Why isn't this paid?",
+        required=False,
+        help_text="The scholar reads this. At most 1,000 characters.",
+        widget=forms.Textarea(attrs={"rows": 4, "maxlength": 1000}),
+    )

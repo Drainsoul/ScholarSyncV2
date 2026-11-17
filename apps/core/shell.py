@@ -81,7 +81,7 @@ def shell_context(
             students = reverse("workspace:students", kwargs={"program": program.slug})
             queue = reverse("review:queue", kwargs={"program": program.slug})
             scholar_list = reverse("scholars:list", kwargs={"program": program.slug})
-            money = reverse("money:schedules", kwargs={"program": program.slug})
+            money = reverse("money:overview", kwargs={"program": program.slug})
             path = request.path
             nav = [
                 {"label": label, "url": home, "current": path == home, "count": 0, "icon": icon},

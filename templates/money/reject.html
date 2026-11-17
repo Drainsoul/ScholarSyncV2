@@ -1,0 +1,18 @@
+{% extends "layouts/staff.html" %}{% load ui %}
+{% block title %}Reject payout{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><p class="text-sm"><a href="{% url 'money:schedule' program=program.slug schedule=schedule.pk %}">{{ schedule.distribution_date|date:"j F Y" }}</a></p><h1>Reject the payout for {{ row.scholar_term.award.profile.full_name }}</h1><p class="page-header__meta">{{ row.amount|peso }} for {{ row.scholar_term.term }}</p></div>
+</div>
+<section class="card">
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% include "components/form_errors.html" with form=form %}
+    {% for bound_field in form %}{% field bound_field %}{% endfor %}
+    <div class="btn-row">
+      <button type="submit" class="btn btn--primary">Reject payout</button>
+      <a class="btn btn--secondary" href="{% url 'money:schedule' program=program.slug schedule=schedule.pk %}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

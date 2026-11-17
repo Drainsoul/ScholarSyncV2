@@ -1,0 +1,32 @@
+{% extends "layouts/staff.html" %}{% load ui %}
+{% block title %}Disbursements{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Disbursements</h1><p class="page-header__meta">Payouts for {{ program.name }}, by distribution day.</p></div>
+  <div class="btn-row">
+    <a class="btn btn--primary" href="{% url 'money:schedule-new' program=program.slug %}">{% icon "plus" %}New schedule</a>
+  </div>
+</div>
+{% include "money/_tabs.html" %}
+<section class="card list-card" aria-labelledby="list-heading">
+  <h2 class="visually-hidden" id="list-heading">Distribution days</h2>
+  {% if schedules %}
+  <div class="table-wrap" role="region" aria-labelledby="list-heading" tabindex="0">
+    <table class="table table--stack" aria-labelledby="list-heading">
+      <thead><tr><th scope="col">Distribution day</th><th scope="col">Term</th><th scope="col">Status</th><th scope="col" class="num">Prepared</th><th scope="col" class="num">Approved</th><th scope="col" class="num">Released</th></tr></thead>
+      <tbody>{% for schedule in schedules %}<tr>
+        <th scope="row"><a href="{% url 'money:schedule' program=program.slug schedule=schedule.pk %}">{{ schedule.distribution_date|date:"j F Y" }}</a></th>
+        <td data-label="Term">{{ schedule.term }}</td>
+        <td data-label="Status">{% if schedule.is_published %}{% status "success" "Published" %}{% else %}{% status "neutral" "Draft" %}{% endif %}</td>
+        <td class="num" data-label="Prepared">{{ schedule.n_pending }} · {{ schedule.s_pending|peso }}</td>
+        <td class="num" data-label="Approved">{{ schedule.n_approved }} · {{ schedule.s_approved|peso }}</td>
+        <td class="num" data-label="Released">{{ schedule.n_released }} · {{ schedule.s_released|peso }}</td>
+      </tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% else %}
+  {% url 'money:schedule-new' program=program.slug as new_url %}
+  {% include "components/empty_state.html" with title="No schedules yet. Add a distribution day first." action_url=new_url action_label="New schedule" %}
+  {% endif %}
+</section>
+{% endblock %}
