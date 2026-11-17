@@ -29,6 +29,9 @@
 - **Revision:** 16 (2026-11-17): M10 decisions: one live payout per term, amounts from the term's tier and confirmed
   merit, head-only approve and release, budget year from the distribution date, the student payout view (§4.7, §5,
   §6, §9, §16, §18).
+- **Revision:** 17 (2026-11-17): M11 decisions: M11 split into M11 (dashboards, notifications, tasks, support), M11b
+  (office management and program settings) and M11c (reports and analytics); notifications, personal tasks, the
+  support inbox (§3, §4.8, §5, §9, §12, §16).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -146,7 +149,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - only a super admin (via a service) or `create_office_admin` can create staff or super admins;
   - emails are stored stripped and lower-cased, and are unique on `Lower(email)`;
   - `create_superuser` exists only for Django's interface: `is_staff` + `is_superuser`, `role=staff`, no memberships.
-    Django admin stays out until M11.
+    Django admin stays out until M11b.
 - **`ConsentRecord`:**
   - fields: `user` FK, `notice_version`, `consented_at`, `ip_hash`;
   - recorded at signup and whenever the privacy notice changes;
@@ -490,8 +493,25 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
     `review_note`;
   - transitions: `submitted` → `accepted` or `returned`; `returned` → `submitted`.
 - **`ReportFile`:** `report`, `file` FK `StoredFile`.
-- **`Task`:** `owner`, `program` (nullable), `title`, `notes`, `due_on`, `done_at`.
-- **`Notification`:** `recipient`, `kind`, `title`, `body`, `url`, `read_at`.
+- **`Task`** (M11): `owner`, `program` (nullable), `title`, `notes` (≤ 2,000), `due_on`, `done_at`.
+  - A personal to-do of one staff member in one program. M11's screens always set `program`; a program-less (office)
+    task waits for M11c.
+  - Only the owner sees, edits, completes or deletes it; anyone else, heads and the office included, gets a 404.
+    Deleting is allowed (a to-do is not a record). Every change is audited with the id and program, never the title.
+  - `tasks/` has Open (overdue first, then by due date, undated last) and Done (newest first) tabs, 25 a page; the
+    staff nav item "Tasks" counts open tasks due on or before today.
+- **`Notification`** (M11): `recipient` (CASCADE), `kind`, `title`, `body`, `url` (site-relative), `read_at`,
+  `created_at`.
+  - Title, body and url come from the app, never from free text: a reason is never stored on a notification.
+  - A profile with no user gets neither a notification nor an email.
+  - `workspace.services.notify()` writes the row and, given an email context, the outbox row.
+- **`SupportRequest`** (M11): `sender` FK User, `topic` ∈ {account, profile, application, allowance, other},
+  `program` (nullable), `message` (1–2,000 characters), `status` ∈ {open, answered}, `answered_by`, `answered_at`,
+  `created_at`.
+  - Students only, at most 5 per student in any 24 hours ("You've sent 5 messages today. The office will reply by
+    email; try again tomorrow.").
+  - Messages go to the office inbox `/office/support/`; the office replies by email from its own mail client.
+  - Audited as `support.sent` and `support.answered` (ids, topic, program id), never the message.
 - **`EmailOutbox`:** `to`, `kind`, `context` (JSON, whitelisted strings only; see §9), `status` ∈ {queued, sent, failed}, `attempts`,
   `last_error`, `provider_message_id`, `sent_at`.
 - **`AuditEvent`:** `actor`, `action` (dotted, e.g. `application.approved`), `program` (nullable), `target_type`,
@@ -505,15 +525,15 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 | Accounts | `/accounts/…` (allauth: signup, login, logout POST, email confirm, password reset, Google), `/accounts/claim/<token>/` | anyone |
 | Student | `/me/` (dashboard), `/me/profile/` (+ `personal/`, `family/`, `family/<id>/` + `…/delete/`, `education/`, `education/<id>/` + `…/delete/`, `photo/`) | student (own records only) |
 | Student | `/me/match/`, `/me/applications/`, `/me/applications/new/<slug>/` (GET: confirm page; POST: creates the draft), `/me/applications/<id>/`, `/me/applications/<id>/documents/<requirement>/` (POST), `…/submit/` (POST), `…/withdraw/` | student (own records only) |
-| Student | `/me/scholarships/` (awards, terms, renewals, payouts and the next distribution), `/me/scholarships/<award>/renew/` (POST), `/me/notifications/` | student |
+| Student | `/me/scholarships/` (awards, terms, renewals, payouts and the next distribution), `/me/scholarships/<award>/renew/` (POST), `/me/notifications/` (+ `<id>/`, which marks it read and redirects; `read/` POST), `/me/support/` (M11) | student |
 | Staff | `/staff/<slug>/` (dashboard) | program staff/head |
 | Staff | `students/` (unclaimed profiles created for this program), `students/new/`, `students/<id>/invite/` | program staff/head |
 | Staff | `applications/` (queue), `applications/<id>/` (review), `applications/<id>/start/`, `applications/<id>/documents/<document>/approve/`, `applications/<id>/documents/<document>/decline/`, `applications/<id>/decide/` (approve, return or reject), `applications/bulk/` (start review, approve; POST) | program staff/head |
 | Staff | `applications/new/` (in progress + profile picker; POST starts), `applications/behalf/<id>/` (filing page), `…/academics/`, `…/documents/<requirement>/`, `…/submit/`, `…/withdraw/` (POST) | program staff/head |
 | Staff | `scholars/`, `scholars/<award>/`, `…/edit/`, `…/status/`, `…/terms/new/`, `…/terms/<term>/`, `…/terms/<term>/merit/` (POST); `scholars/new/`, `scholars/import/`, `scholars/import/template/`, `scholars/export/` (M9b) | program staff/head |
 | Staff | `schedules/`, `schedules/new/`, `schedules/<id>/`, `schedules/<id>/publish/` (POST); `disbursements/`, `disbursements/<schedule>/`, `…/generate/` (POST), `…/bulk/` (POST), `…/<id>/reject/`, `…/<id>/revert/` (POST); `budget/`, `budget/edit/` | program staff/head (see §6) |
-| Staff | `reports/`, `tasks/`, `settings/` (tiers, documents, rules, window) | staff; `settings/` is head only |
-| Office | `/office/` (dashboard), `programs/`, `staff/`, `scholars/`, `reports/`, `analytics/`, `audit/`, `schools/`, `terms/` (M9: list, `add/` POST, `<term>/current/`) | super admin |
+| Staff | `tasks/` (+ `<id>/`, `<id>/done/` POST, `<id>/delete/` POST; owner only, M11), `reports/` (M11c), `settings/` (tiers, documents, rules, window; M11b) | staff; `settings/` is head only |
+| Office | `/office/` (dashboard), `programs/`, `staff/`, `scholars/`, `reports/`, `analytics/`, `audit/`, `schools/`, `terms/` (M9: list, `add/` POST, `<term>/current/`), `support/` (+ `<id>/answer/` POST; M11) | super admin |
 | Files | `POST /files/uploads/` (intent), `POST /files/uploads/<id>/confirm/`, `GET /files/<id>/` (authorize → 302) | owner or authorized staff |
 | Django admin | `/_admin/` | technical superuser only |
 
@@ -632,7 +652,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 - **Exports (M9b):** a program's scholar list (at most a few thousand rows) is built in the request and sent as an
   attachment with `Cache-Control: no-store`. Birth dates are left out; string cells starting with `=`, `+`, `-`, `@`,
   a tab or a carriage return get a leading `'`; the audit event records format, tab, tier and row count, never the
-  name search. `StoredFile.Purpose.EXPORT` and `exports/` keys stay reserved for M11's office-wide exports.
+  name search. `StoredFile.Purpose.EXPORT` and `exports/` keys stay reserved for M11c's office-wide exports.
 - **Bucket:** private; CORS allows PUT and GET from the app's origins only; encryption at rest is the provider's.
 - **Public endpoint:** presigned URLs must point at an address the browser can reach. An optional public endpoint
   setting covers the case where the app reaches storage by an internal name (inside compose); CSP `connect-src` and
@@ -704,6 +724,18 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
     `sent` or reaches 5 attempts.
   - Sending locks the row (`select_for_update(skip_locked=True)`) so it goes out once. The message's `Message-ID` is
     stored as `provider_message_id`.
+- **Notifications (M11):** each of the five student emails is also a notification, through `notify()`:
+
+  | Kind | Title | Body | Url |
+  |---|---|---|---|
+  | `application_received` | "We received your {program} application" | "We'll email you when it's reviewed." | the application |
+  | `application_returned` | "{program} returned your application" | "Open it to see what to fix." | the application |
+  | `application_decided` (approved) | "Your {program} application was approved" | "" | the application |
+  | `application_decided` (not approved) | "Your {program} application was not approved" | "Open it to see the reason." | the application |
+  | `allowance_approved` | "Your {program} allowance is ready to claim" | "{amount} for {term}. Claim it on {claim date} at {location}." | `/me/scholarships/` |
+  | `allowance_released` | "Your {program} allowance was released" | "{amount} for {term}." | `/me/scholarships/` |
+
+  Staff and the office get no notifications in M11. Support messages are never emailed (free text).
 - **Templates:** `templates/emails/<kind>.{html,txt}`, autoescaped.
   - v1 messages to port: application received, application decided, allowance approved/released, password reset (from
     allauth).
@@ -713,8 +745,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
     (unchanged). There is no `application_returned` for an on-behalf application, because staff fix it, not the
     student.
   - M7 sends only `application_received`, on submit and on resubmit. Its context whitelist is `full_name`,
-    `program_name` and `application_url` (a name is allowed because the address is verified). There is no `Notification`
-    model before M11.
+    `program_name` and `application_url` (a name is allowed because the address is verified).
   - M8 adds:
     - `application_returned`, whose whitelist is `full_name`, `program_name` and `application_url`;
     - `application_decided`, the same keys plus `outcome` ∈ {`approved`, `not approved`}.
@@ -892,6 +923,19 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
   - toasts come from `HX-Trigger: {"toast": …}`, read by `toast.ts` into an `aria-live` region;
   - bulk actions are a form with checkboxes;
   - every form also works as a normal POST without JS.
+- **Dashboards (M11):**
+  - **student** (`/me/`, the approved mockup): returned banners (not on-behalf), one award card per active or
+    suspended award ("To renew:" from the program's renewal rules), profile, the 5 newest applications, the 3 newest
+    payouts with M10's student labels, the 3 newest notifications; the bell shows the unread count on every student
+    page;
+  - **staff** (`/staff/<slug>/`, kit figures and attention rows): "Active scholars", "Applications waiting",
+    "Released this year", "At risk"; "Needs attention" (waiting over 7 days from `submitted_at`, own overdue tasks,
+    at risk, prepared payouts, approved payouts, the window); "Applications by month" (6 months by
+    `first_submitted_at` in Manila, zero-filled, CSS bars in 5 % steps + "View as table"); "Your tasks";
+  - **office** (`/office/`, the approved mockup) without "Download report" (M11c), "New program" and "Manage
+    programs" (M11b) and "Reports to review" (M11c, replaced by "Support requests"); needs attention per program
+    (waiting over 7 days, budget used ≥ 75 %) and open support requests; recent activity from audit events with a
+    sentence, where a student actor reads "A student".
 - **Staff review screens (M8):**
   - the queue (§5) is a filter toolbar over a table with a checkbox column; the bulk form wraps the table, and the
     count above it is a live region outside the swapped partial;
@@ -1093,12 +1137,24 @@ starts, and ends with every acceptance item checked.
     schedules screens, disbursement screens with reauthenticated release, budget, student payouts.
 - [ ] Extend the demo loader for this milestone's screens.
 
-**M11: Dashboards + office**
-- [ ] Staff dashboards (stats, trends, at-risk, tasks); office: programs CRUD, staff + memberships, schools, terms,
-  cross-program scholars, reports review, analytics (trends, success rate, approval time, top feeder school), audit
-  viewer; notifications center; support form.
+**M11: Dashboards, notifications, tasks and support**
+- [ ] Notifications and `notify()`; the student notification center and bell; personal staff tasks; the staff,
+  student and office dashboards; the student support form and the office inbox.
+- [ ] Extend the demo loader for this milestone's screens.
+
+**M11b: Office management and program settings**
+- [ ] Office: programs (create, edit, activate, deactivate), staff accounts + memberships, schools and other reference
+  data, cross-program scholars, the audit viewer; Django admin at `/_admin/` decided.
 - [ ] Head program settings at `/staff/<slug>/settings/` (tiers, documents, rules, window; reauth for money settings
   per §10).
+- [ ] The M9 fixes that need these screens: the Renew button of an inactive program; double-submits of "Make
+  current" and "Add school year".
+- [ ] Extend the demo loader for this milestone's screens.
+
+**M11c: Reports and analytics**
+- [ ] Reports (`Report`, `ReportFile`, staff upload at `reports/`, office review); office analytics (trends, success
+  rate, approval time, top feeder school); office-wide exports (`StoredFile.Purpose.EXPORT`); staff and office
+  notification centers; the office overview's "Reports to review" and "Download report".
 - [ ] Extend the demo loader for this milestone's screens.
 
 **M12: Hardening + hosting guide**
