@@ -133,8 +133,16 @@ def start_upload(
     return UploadIntent(file=file, url=url, headers={"Content-Type": content_type})
 
 
-def _sniff(head: bytes) -> str:
-    return filetype.guess_mime(head) or ""
+def _sniff(head: bytes, purpose: str) -> str:
+    guessed = filetype.guess_mime(head) or ""
+    if purpose != StoredFile.Purpose.IMPORT:
+        return guessed
+    if guessed == policy.XLSX:
+        return policy.XLSX
+    # CSV has no signature: accept text only (a legacy binary .xls is full of NUL bytes).
+    if not guessed and b"\x00" not in head:
+        return policy.CSV
+    return ""
 
 
 def _verify_object(file: StoredFile) -> tuple[str, int, str]:
@@ -149,8 +157,8 @@ def _verify_object(file: StoredFile) -> tuple[str, int, str]:
         storage.delete(file.key)
         if storage.head_size(final) != file.size:
             raise _Rejected("size")
-        sniffed = _sniff(storage.read_range(final, policy.SNIFF_BYTES))
-        if sniffed != file.declared_type:
+        sniffed = _sniff(storage.read_range(final, policy.SNIFF_BYTES), file.purpose)
+        if sniffed != policy.canonical_type(file.declared_type):
             raise _Rejected("type")
         digest = hashlib.sha256()
         for chunk in storage.iter_chunks(final):
@@ -205,7 +213,7 @@ def _verify_photo(file: StoredFile) -> tuple[str, int, str]:
     try:
         if len(body) != file.size:
             raise _Rejected("size")
-        sniffed = _sniff(body[: policy.SNIFF_BYTES])
+        sniffed = _sniff(body[: policy.SNIFF_BYTES], file.purpose)
         if sniffed != file.declared_type:
             raise _Rejected("type")
         clean = _reencode(body, sniffed)

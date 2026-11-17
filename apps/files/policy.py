@@ -15,14 +15,22 @@ MAX_IMAGE_PIXELS = 40_000_000
 PDF = "application/pdf"
 JPEG = "image/jpeg"
 PNG = "image/png"
+CSV = "text/csv"
+CSV_EXCEL = "application/vnd.ms-excel"  # what Windows browsers with Excel declare for .csv
+XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 EXTENSIONS: dict[str, tuple[str, ...]] = {
     PDF: (".pdf",),
     JPEG: (".jpg", ".jpeg"),
     PNG: (".png",),
+    CSV: (".csv",),
+    CSV_EXCEL: (".csv",),
+    XLSX: (".xlsx",),
 }
 
-_LABELS = {PDF: "PDF", JPEG: "JPG", PNG: "PNG"}
+_LABELS = {PDF: "PDF", JPEG: "JPG", PNG: "PNG", CSV: "CSV", CSV_EXCEL: "CSV", XLSX: "XLSX"}
+
+_CANONICAL = {CSV_EXCEL: CSV}
 
 _ALL_ROLES = frozenset({User.Role.STUDENT, User.Role.STAFF, User.Role.SUPER_ADMIN})
 
@@ -42,7 +50,17 @@ RULES: dict[str, PurposeRule] = {
         max_bytes=20 * MB,
         roles=frozenset({User.Role.STAFF, User.Role.SUPER_ADMIN}),
     ),
+    "import": PurposeRule(
+        types=(CSV, CSV_EXCEL, XLSX),
+        max_bytes=2 * MB,
+        roles=frozenset({User.Role.STAFF, User.Role.SUPER_ADMIN}),
+    ),
 }
+
+
+def canonical_type(declared: str) -> str:
+    """The type a declared type is checked as: Excel's CSV type is plain CSV."""
+    return _CANONICAL.get(declared, declared)
 
 
 def types_phrase(purpose: str) -> str:
@@ -51,9 +69,11 @@ def types_phrase(purpose: str) -> str:
 
 
 def join_types(types: Iterable[str]) -> str:
-    """Known types in words, always in PDF, JPG, PNG order: ("image/png", PDF) is "PDF or PNG"."""
+    """Known types in words, always in PDF, JPG, PNG order: ("image/png", PDF) is "PDF or PNG".
+
+    Types sharing a label (both CSV types) are named once."""
     wanted = set(types)
-    labels = [label for mime, label in _LABELS.items() if mime in wanted]
+    labels = list(dict.fromkeys(label for mime, label in _LABELS.items() if mime in wanted))
     if len(labels) == 1:
         return labels[0]
     return f"{', '.join(labels[:-1])} or {labels[-1]}"

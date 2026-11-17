@@ -509,3 +509,77 @@ def test_student_upload_rate_still_20(s3, student):
     with pytest.raises(UploadRejected) as excinfo:
         start(student, b"x" * 10)
     assert excinfo.value.status == 429
+
+
+# M9b: the import purpose (CSV and XLSX).
+
+STAFF_CSV = "last_name,first_name\nPe\xf1a,Ana\n".encode("cp1252")
+
+
+def _staff():
+    return UserFactory.create(verified=True, role=User.Role.STAFF)
+
+
+def _xlsx_bytes() -> bytes:
+    import openpyxl
+
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    assert sheet is not None
+    sheet.append(["last_name", "first_name"])
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+    return buffer.getvalue()
+
+
+def _confirm_import(body: bytes, content_type: str) -> StoredFile:
+    staff = _staff()
+    intent = services.start_upload(
+        user=staff, purpose="import", name="s.csv", content_type=content_type, size=len(body)
+    )
+    upload(intent, body)
+    return services.confirm_upload(user=staff, file_id=intent.file.id)
+
+
+def test_import_purpose_phrase():
+    assert policy.types_phrase("import") == "CSV or XLSX"
+    assert policy.help_text("import") == "CSV or XLSX, up to 2 MB."
+
+
+def test_import_rule_is_staff_only(s3, student):
+    with pytest.raises(UploadRejected) as excinfo:
+        services.start_upload(
+            user=student, purpose="import", name="s.csv", content_type="text/csv", size=10
+        )
+    assert excinfo.value.status == 403
+
+
+def test_csv_declared_as_excel_confirms_as_csv(s3):
+    file = _confirm_import(STAFF_CSV, policy.CSV_EXCEL)
+    assert file.status == StoredFile.Status.READY
+    assert file.sniffed_type == "text/csv"
+
+
+def test_csv_declared_as_csv_confirms(s3):
+    file = _confirm_import(STAFF_CSV, policy.CSV)
+    assert file.status == StoredFile.Status.READY
+    assert file.sniffed_type == policy.CSV
+
+
+def test_xls_binary_rejected(s3):
+    body = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + b"\x00" * 600
+    file = _confirm_import(body, policy.CSV_EXCEL)
+    assert file.status == StoredFile.Status.REJECTED
+    assert file.rejected_reason == "type"
+
+
+def test_xlsx_confirms(s3):
+    file = _confirm_import(_xlsx_bytes(), policy.XLSX)
+    assert file.status == StoredFile.Status.READY
+    assert file.sniffed_type == policy.XLSX
+
+
+def test_pdf_declared_as_csv_rejected(s3):
+    file = _confirm_import(pdf_bytes(), policy.CSV)
+    assert file.status == StoredFile.Status.REJECTED
+    assert file.rejected_reason == "type"

@@ -18,7 +18,22 @@ const TYPE_LABELS: Readonly<Record<string, string>> = {
   "application/pdf": "PDF",
   "image/jpeg": "JPG",
   "image/png": "PNG",
+  "text/csv": "CSV",
+  "application/vnd.ms-excel": "CSV",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "XLSX",
 };
+// Some browsers give no type for these; the server checks the bytes either way.
+const EXTENSION_TYPES: Readonly<Record<string, string>> = {
+  ".csv": "text/csv",
+  ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+};
+
+/** The type to declare: the browser's, else one from the file name's extension. */
+function declaredType(file: File): string {
+  if (file.type) return file.type;
+  const dot = file.name.lastIndexOf(".");
+  return dot >= 0 ? (EXTENSION_TYPES[file.name.slice(dot).toLowerCase()] ?? "") : "";
+}
 
 class UploadError extends Error {}
 
@@ -54,7 +69,7 @@ function fieldOf(control: HTMLInputElement): Field | null {
 }
 
 function typesPhrase(types: readonly string[]): string {
-  const labels = types.map((type) => TYPE_LABELS[type] ?? type);
+  const labels = [...new Set(types.map((type) => TYPE_LABELS[type] ?? type))];
   if (labels.length === 1) return labels[0] ?? "";
   return `${labels.slice(0, -1).join(", ")} or ${labels.at(-1) ?? ""}`;
 }
@@ -65,7 +80,7 @@ function check(file: File, control: HTMLInputElement): string | null {
     .split(",")
     .map((type) => type.trim())
     .filter(Boolean);
-  if (types.length > 0 && !types.includes(file.type)) {
+  if (types.length > 0 && !types.includes(declaredType(file))) {
     return `You can upload a ${typesPhrase(types)} file here.`;
   }
   if (file.size <= 0) return EMPTY;
@@ -272,7 +287,7 @@ async function upload(field: Field, file: File): Promise<void> {
     const intent = await post(field.control.dataset.uploadUrl ?? "", {
       purpose: field.control.dataset.uploadPurpose ?? "",
       name: file.name,
-      type: file.type,
+      type: declaredType(file),
       size: file.size,
     });
     if (!current()) return;

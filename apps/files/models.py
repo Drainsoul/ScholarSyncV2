@@ -20,6 +20,7 @@ class StoredFile(models.Model):
         PHOTO = "photo", "Photo"
         REPORT = "report", "Report"
         EXPORT = "export", "Export"
+        IMPORT = "import", "Import"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     key = models.CharField(max_length=255, unique=True)
@@ -46,7 +47,7 @@ class StoredFile(models.Model):
                 name="storedfile_status_valid",
             ),
             models.CheckConstraint(
-                condition=Q(purpose__in=["document", "photo", "report", "export"]),
+                condition=Q(purpose__in=["document", "photo", "report", "export", "import"]),
                 name="storedfile_purpose_valid",
             ),
             models.CheckConstraint(
