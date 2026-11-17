@@ -14,7 +14,7 @@ from django.views import View
 from django.views.generic import TemplateView
 
 from apps.accounts.models import User
-from apps.awards import importing, services
+from apps.awards import exporting, importing, services
 from apps.awards.models import Award, ScholarTerm
 from apps.awards.selectors import (
     DEFAULT_SCHOLAR_TAB,
@@ -41,6 +41,7 @@ from apps.awards.staff_forms import (
     TermRecordForm,
 )
 from apps.awards.views import AWARD_TONES
+from apps.core import audit
 from apps.core.params import positive_id
 from apps.core.permissions import ProgramStaffRequiredMixin
 from apps.core.shell import shell_context
@@ -114,6 +115,7 @@ class ScholarListView(ProgramStaffRequiredMixin, TemplateView):
         rows = scholars(self.program, filters, term=term, today=today)
         page = Paginator(rows, PAGE_SIZE).get_page(self.request.GET.get("page"))
         base = reverse("scholars:list", kwargs={"program": self.program.slug})
+        export_base = reverse("scholars:export", kwargs={"program": self.program.slug})
         list_query = _query(filters, page=str(page.number) if page.number > 1 else "")
         tiers = (
             self.program.tiers.order_by("code", "sort_order").values_list("code", "name").distinct()
@@ -123,6 +125,8 @@ class ScholarListView(ProgramStaffRequiredMixin, TemplateView):
             **shell_context(self.request, area="staff", program=self.program),
             "term": term,
             "filters": filters,
+            "export_csv_url": f"{export_base}?{_query(filters, format='csv')}",
+            "export_xlsx_url": f"{export_base}?{_query(filters, format='xlsx')}",
             "page": page,
             "rows": [
                 {"award": award, "tone": AWARD_TONES[award.status]} for award in page.object_list
@@ -549,5 +553,37 @@ class ImportTemplateView(ProgramStaffRequiredMixin, View):
     def get(self, request: HttpRequest, program: str) -> HttpResponse:
         response = HttpResponse(importing.TEMPLATE_CSV, content_type="text/csv; charset=utf-8")
         response["Content-Disposition"] = 'attachment; filename="scholars-import-template.csv"'
+        response["Cache-Control"] = "no-store"
+        return response
+
+
+class ScholarExportView(ProgramStaffRequiredMixin, View):
+    """The filtered scholar list as CSV or XLSX, built in the request (spec §7, M9b)."""
+
+    http_method_names = ["get", "head", "options"]
+
+    def get(self, request: HttpRequest, program: str) -> HttpResponse:
+        today = timezone.localdate()
+        filters = parse_scholar_filters(request.GET, self.program)
+        fmt = request.GET.get("format", "csv")
+        body, content_type, filename, count = exporting.export_file(
+            self.program, filters, fmt, term=application_term(today), today=today
+        )
+        audit.record(
+            actor=_actor(request),
+            action="scholars.exported",
+            target=self.program,
+            program=self.program,
+            request=request,
+            # Never the name search: it is a name.
+            data={
+                "format": "xlsx" if fmt == "xlsx" else "csv",
+                "status": filters.status,
+                "tier": filters.tier,
+                "rows": count,
+            },
+        )
+        response = HttpResponse(body, content_type=content_type)
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
         response["Cache-Control"] = "no-store"
         return response

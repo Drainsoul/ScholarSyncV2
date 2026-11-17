@@ -4,6 +4,8 @@
 <div class="page-header">
   <div><h1>Scholars</h1><p class="page-header__meta">Everyone with a {{ program.name }} award{% if term %}, {{ term }}{% endif %}.</p></div>
   <div class="btn-row">
+    <a class="btn btn--secondary" href="{{ export_csv_url }}">{% icon "download" %}Export CSV</a>
+    <a class="btn btn--secondary" href="{{ export_xlsx_url }}">{% icon "download" %}Export XLSX</a>
     <a class="btn btn--secondary" href="{% url 'scholars:import' program=program.slug %}">{% icon "upload" %}Import</a>
     <a class="btn btn--primary" href="{% url 'scholars:new' program=program.slug %}">{% icon "plus" %}Add scholar</a>
   </div>

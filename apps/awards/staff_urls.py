@@ -8,6 +8,7 @@ urlpatterns = [
     path("", staff_views.ScholarListView.as_view(), name="list"),
     path("new/", staff_views.NewScholarView.as_view(), name="new"),
     path("import/", staff_views.ScholarImportView.as_view(), name="import"),
+    path("export/", staff_views.ScholarExportView.as_view(), name="export"),
     path(
         "import/template/",
         staff_views.ImportTemplateView.as_view(),
