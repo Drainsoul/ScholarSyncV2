@@ -26,6 +26,9 @@
   into M9b (§4.5, §4.6, §5, §6, §8, §16, §18).
 - **Revision:** 15 (2026-11-17): M9b decisions: manual and imported awards, the import purpose, direct-download
   exports (§2, §4.4, §4.6, §5, §6, §7, §16, §18).
+- **Revision:** 16 (2026-11-17): M10 decisions: one live payout per term, amounts from the term's tier and confirmed
+  merit, head-only approve and release, budget year from the distribution date, the student payout view (§4.7, §5,
+  §6, §9, §16, §18).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -441,23 +444,45 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - it replaces v1's bulk `update_years`.
 
 ### 4.7 money
-- **`DistributionSchedule`:** `program`, `term`, `distribution_date`, `claim_location`, `notes`, `frequency_label`,
-  `is_published` (students only see published schedules).
+- **`DistributionSchedule`:** `program`, `term`, `distribution_date`, `claim_location`, `notes`, `frequency_label`
+  (display text only, e.g. "Once a semester"), `is_published` (students only see published schedules), `created_by`.
 - **`Disbursement`:**
-  - fields: `scholar_term`, `schedule`, `amount` (snapshot from `BenefitTier` + merit at generation), `status`,
-    `approved_by`, `approved_at`, `released_at`, `decision_reason`;
-  - constraint: unique (`scholar_term`, `schedule`);
+  - fields: `scholar_term`, `schedule`, `amount` (snapshot at generation), `merit` (whether the amount paid merit),
+    `status` ∈ {pending ("Prepared"), approved, rejected, released}, `approved_by`, `approved_at`, `released_at`,
+    `decision_reason`;
+  - constraints: unique (`scholar_term`, `schedule`); **one live payout per term (M10):** unique (`scholar_term`)
+    where status is pending, approved or released. A second schedule in the same term (a make-up claim day) picks up
+    only scholar terms with no live row;
   - transitions:
-    - `pending` → `approved` or `rejected`;
+    - `pending` → `approved` or `rejected` (a reason, at most 1,000 characters);
     - `approved` → `released`, or back to `pending` (revert; needs reauthentication, and only before release);
-    - `rejected` → `pending` (revert, needs reauthentication);
+    - `rejected` → `pending` (revert, needs reauthentication; refused when the term has a live payout elsewhere);
     - `released` is final.
-- **`Budget`:** `program`, `fiscal_year` (City fiscal year, January–December), `amount`.
+  - **amount:** the term's tier (`ScholarTerm.tier`, else the award's tier). Merit confirmed (`merit` and
+    `merit_confirmed_by` set) and `merit_amount > 0` pays `merit_amount` (the full amount with merit, not an add-on);
+    otherwise `base_amount`. A proposed merit is not paid.
+  - **generation** (staff) creates a pending row for every scholar term of the schedule's program and term whose award
+    is `active`, whose `compliance` is `complete` and which has no live payout. It reports what it skipped and how many
+    have merit to confirm. Generating again adds newly eligible rows and recalculates the amount of the schedule's
+    pending rows; other rows never change, and nothing is deleted (an ineligible pending row is flagged and rejected
+    by a head). One summary audit event per run.
+  - **re-checks under the lock:** approve needs an active award, complete compliance and a published schedule;
+    release needs an active award and `today >= distribution_date`.
+  - **a schedule freezes once money moves:** with an approved or released row, its term and date are fixed and it
+    stays published; with any row, its term is fixed.
+  - **batch:** selected rows (at most 100) or "all prepared" / "all approved" (at most 500 per click), each row in its
+    own savepoint; refused rows are reported.
+- **`Budget`:** `program`, `fiscal_year` (City fiscal year, January–December), `amount`, `updated_by`.
+  - a disbursement counts in the year of its schedule's `distribution_date`;
   - spent = released disbursements in that year;
   - committed = approved but not released;
   - remaining = amount − spent − committed;
-  - utilization = (spent + committed) / amount.
-- **Student view:** times claimed, total received, remaining for the current award year, next published schedule.
+  - utilization = (spent + committed) / amount ("—" with no budget or a zero budget);
+  - over budget is shown ("Over budget by ₱{n}"), never blocked (§18 Q9).
+- **Student view** (`/me/scholarships/`, published schedules and the student's own awards only): times claimed
+  (released rows), total received, still to come this school year (pending + approved rows of the current school
+  year's terms), the next published distribution of the program (date ≥ today, for a term the award has a record in),
+  and each payout's status: "Being prepared", "Ready to claim", "Received {date}", or "Not paid" with the reason.
 
 ### 4.8 reports, workspace, core
 - **`Report`:**
@@ -480,13 +505,13 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 | Accounts | `/accounts/…` (allauth: signup, login, logout POST, email confirm, password reset, Google), `/accounts/claim/<token>/` | anyone |
 | Student | `/me/` (dashboard), `/me/profile/` (+ `personal/`, `family/`, `family/<id>/` + `…/delete/`, `education/`, `education/<id>/` + `…/delete/`, `photo/`) | student (own records only) |
 | Student | `/me/match/`, `/me/applications/`, `/me/applications/new/<slug>/` (GET: confirm page; POST: creates the draft), `/me/applications/<id>/`, `/me/applications/<id>/documents/<requirement>/` (POST), `…/submit/` (POST), `…/withdraw/` | student (own records only) |
-| Student | `/me/scholarships/` (awards, terms, renewals; disbursements and schedules in M10), `/me/scholarships/<award>/renew/` (POST), `/me/notifications/` | student |
+| Student | `/me/scholarships/` (awards, terms, renewals, payouts and the next distribution), `/me/scholarships/<award>/renew/` (POST), `/me/notifications/` | student |
 | Staff | `/staff/<slug>/` (dashboard) | program staff/head |
 | Staff | `students/` (unclaimed profiles created for this program), `students/new/`, `students/<id>/invite/` | program staff/head |
 | Staff | `applications/` (queue), `applications/<id>/` (review), `applications/<id>/start/`, `applications/<id>/documents/<document>/approve/`, `applications/<id>/documents/<document>/decline/`, `applications/<id>/decide/` (approve, return or reject), `applications/bulk/` (start review, approve; POST) | program staff/head |
 | Staff | `applications/new/` (in progress + profile picker; POST starts), `applications/behalf/<id>/` (filing page), `…/academics/`, `…/documents/<requirement>/`, `…/submit/`, `…/withdraw/` (POST) | program staff/head |
 | Staff | `scholars/`, `scholars/<award>/`, `…/edit/`, `…/status/`, `…/terms/new/`, `…/terms/<term>/`, `…/terms/<term>/merit/` (POST); `scholars/new/`, `scholars/import/`, `scholars/import/template/`, `scholars/export/` (M9b) | program staff/head |
-| Staff | `schedules/`, `disbursements/`, `disbursements/<schedule>/`, `budget/` | program staff/head (see §6) |
+| Staff | `schedules/`, `schedules/new/`, `schedules/<id>/`, `schedules/<id>/publish/` (POST); `disbursements/`, `disbursements/<schedule>/`, `…/generate/` (POST), `…/bulk/` (POST), `…/<id>/reject/`, `…/<id>/revert/` (POST); `budget/`, `budget/edit/` | program staff/head (see §6) |
 | Staff | `reports/`, `tasks/`, `settings/` (tiers, documents, rules, window) | staff; `settings/` is head only |
 | Office | `/office/` (dashboard), `programs/`, `staff/`, `scholars/`, `reports/`, `analytics/`, `audit/`, `schools/`, `terms/` (M9: list, `add/` POST, `<term>/current/`) | super admin |
 | Files | `POST /files/uploads/` (intent), `POST /files/uploads/<id>/confirm/`, `GET /files/<id>/` (authorize → 302) | owner or authorized staff |
@@ -550,6 +575,8 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   current term is office-only.
 - **M9b:** head and staff may both add, import and export scholars. Like every staff screen, all of them answer 404
   for an inactive program (`ProgramStaffRequiredMixin`); `create_award` and `import_scholars` re-check it.
+- **M10:** staff manage schedules and generate; heads (and the office) approve, reject, release, revert and set the
+  budget; release, revert and the budget ask for the password again.
 - **Permission-matrix test:** `tests/test_permission_matrix.py` enumerates `get_resolver()` and checks each URL name
   against an expected-access table for anonymous, student, other-student, staff, other-program staff, head and super
   admin. A new URL fails the test until it's added to the table.
@@ -691,6 +718,9 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - M8 adds:
     - `application_returned`, whose whitelist is `full_name`, `program_name` and `application_url`;
     - `application_decided`, the same keys plus `outcome` ∈ {`approved`, `not approved`}.
+  - M10 adds `allowance_approved` (`full_name`, `program_name`, `term_label`, `amount`, `claim_date`,
+    `claim_location`, `scholarships_url`) and `allowance_released` (`full_name`, `program_name`, `term_label`,
+    `amount`, `scholarships_url`). None on generate, reject or revert.
   - The staff reason is never in the email (free text; the student reads it signed in). A profile with no user gets no
     email.
   - There is no separate "document declined" email: the student can't re-upload until the application is returned, so
@@ -1059,6 +1089,8 @@ starts, and ends with every acceptance item checked.
 **M10: Money**
 - [ ] Schedules (publish); disbursement generation from tiers; approve/reject/release/revert (reauth); batch; budget,
   spent, committed, utilization; student distribution view; emails.
+  - Scope: models + head guard, generation, decisions + emails,
+    schedules screens, disbursement screens with reauthenticated release, budget, student payouts.
 - [ ] Extend the demo loader for this milestone's screens.
 
 **M11: Dashboards + office**
@@ -1110,7 +1142,8 @@ starts, and ends with every acceptance item checked.
 7. Head vs staff powers (§6 proposal).
 8. Maximum terms per program; graduation rules. M9: the summer term never renews; awards graduate at `max_terms`
    on rollover, and by hand for the final year.
-9. Budget figures; confirm the City fiscal year (January–December) as the budget period.
+9. Budget figures; confirm the City fiscal year (January–December) as the budget period. M10: a disbursement counts
+   in the year of its schedule's distribution date; over budget is shown, not blocked.
 10. RA 10173 retention period for documents and closed records.
 11. Can staff create student accounts, or only profiles that students claim?
 12. ~~Vercel plan~~ Obsolete (revision 5): nobody hosts an official copy.
