@@ -295,7 +295,7 @@ def test_edit_round_trip(client, world: World) -> None:
 def test_record_query_budget(client, world: World, django_assert_max_num_queries) -> None:
     award = world.scholar("Ana", "Cruz", terms=[world.previous, world.current])
     client.force_login(world.staff)
-    with django_assert_max_num_queries(16):
+    with django_assert_max_num_queries(17):  # +1: reports count (M11c)
         assert client.get(record_url(world, award)).status_code == 200
 
 

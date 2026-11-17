@@ -1,0 +1,40 @@
+{% extends "layouts/staff.html" %}{% load ui reports %}
+{% block title %}{{ report.title }}{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div>
+      <p class="text-sm"><a href="{% url 'reports:list' program=program.slug %}">Reports</a></p>
+      <h1>{{ report.title }}</h1>
+      <p class="page-header__meta">{% status report.status|report_tone report.get_status_display %}</p>
+    </div>
+  </div>
+  <div class="stack">
+    <section class="card" aria-labelledby="facts-title">
+      <h2 class="card__title" id="facts-title">Report</h2>
+      <dl class="details details--grid">
+        <div><dt>Period</dt><dd>{{ report.period_start|date:"j F Y" }} to {{ report.period_end|date:"j F Y" }}</dd></div>
+        <div><dt>Sent by</dt><dd>{{ report.submitted_by.full_name|default:"A staff member" }}</dd></div>
+        <div><dt>Sent on</dt><dd><time datetime="{{ report.submitted_at|date:'c' }}">{{ report.submitted_at|date:"j M Y, g:i A" }}</time></dd></div>
+        <div><dt>Status</dt><dd>{{ report.get_status_display }}</dd></div>
+      </dl>
+      {% if report.description %}<p>{{ report.description|linebreaksbr }}</p>{% endif %}
+    </section>
+    {% if report.review_note and report.status != "submitted" %}
+    <section class="card" aria-labelledby="note-title">
+      <h2 class="card__title" id="note-title">Office note</h2>
+      <p>{{ report.review_note|linebreaksbr }}</p>
+    </section>
+    {% endif %}
+    {% include "reports/_files.html" %}
+    {% if form and report.status == "returned" %}
+    <section class="card" aria-labelledby="resend-title">
+      <h2 class="card__title" id="resend-title">Fix and send again</h2>
+      <form method="post" action="{% url 'reports:resubmit' program=program.slug pk=report.pk %}" novalidate>
+        {% csrf_token %}
+        {% include "reports/_form_fields.html" with file_help="Leave empty to keep the current file." %}
+        <div class="btn-row"><button type="submit" class="btn btn--primary">Send again</button></div>
+      </form>
+    </section>
+    {% endif %}
+  </div>
+{% endblock %}

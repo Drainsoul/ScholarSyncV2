@@ -6,6 +6,7 @@ from apps.accounts.models import User
 from apps.applications.review_selectors import waiting_count
 from apps.programs.models import Program, ProgramMembership
 from apps.programs.selectors import membership_for, programs_for
+from apps.reports.selectors import returned_count
 from apps.workspace.selectors import unread_count
 from apps.workspace.support import open_count
 from apps.workspace.tasks import due_count
@@ -87,6 +88,7 @@ def shell_context(
             scholar_list = reverse("scholars:list", kwargs={"program": program.slug})
             money = reverse("money:overview", kwargs={"program": program.slug})
             task_list = reverse("workspace:tasks", kwargs={"program": program.slug})
+            report_list = reverse("reports:list", kwargs={"program": program.slug})
             path = request.path
             nav = [
                 {"label": label, "url": home, "current": path == home, "count": 0, "icon": icon},
@@ -117,6 +119,13 @@ def shell_context(
                     "current": path.startswith(students),
                     "count": 0,
                     "icon": "users",
+                },
+                {
+                    "label": "Reports",
+                    "url": report_list,
+                    "current": path.startswith(report_list),
+                    "count": returned_count(program),
+                    "icon": "chart-column",
                 },
                 {
                     "label": "Tasks",

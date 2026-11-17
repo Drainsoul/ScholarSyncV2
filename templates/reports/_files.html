@@ -1,0 +1,9 @@
+<section class="card" aria-labelledby="files-title">
+  <h2 class="card__title" id="files-title">Files</h2>
+  {% if files %}
+  <ul class="list">{% for row in files %}
+    <li><p><a href="{% url 'files:download' row.file_id %}">{{ row.file.original_name }}</a>{% if forloop.first %} <span class="text-sm text-muted">(latest)</span>{% endif %}</p>
+      <p class="text-sm text-muted">Uploaded <time datetime="{{ row.created_at|date:'c' }}">{{ row.created_at|date:"j M Y, g:i A" }}</time></p></li>{% endfor %}
+  </ul>
+  {% else %}<p>No files.</p>{% endif %}
+</section>

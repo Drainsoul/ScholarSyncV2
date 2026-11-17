@@ -1,0 +1,25 @@
+{% extends "layouts/staff.html" %}{% load ui reports %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div><h1>Reports</h1><p class="page-header__meta">{{ program.name }}'s reports to the scholarship office.</p></div>
+    <div class="btn-row"><a class="btn btn--primary" href="{% url 'reports:new' program=program.slug %}">{% icon "plus" %}Send a report</a></div>
+  </div>
+  {% include "components/tabs.html" with tabs_label="Report lists" %}
+  {% if page.object_list %}
+  <div class="table-wrap" role="region" aria-label="Reports" tabindex="0">
+    <table class="table table--stack">
+      <thead><tr><th scope="col">Report</th><th scope="col">Period</th><th scope="col">Sent</th><th scope="col">Status</th></tr></thead>
+      <tbody>{% for report in page.object_list %}<tr>
+        <th scope="row" data-label="Report"><a href="{% url 'reports:detail' program=program.slug pk=report.pk %}">{{ report.title }}</a></th>
+        <td data-label="Period">{{ report.period_start|date:"j M Y" }} to {{ report.period_end|date:"j M Y" }}</td>
+        <td data-label="Sent"><time datetime="{{ report.submitted_at|date:'c' }}">{{ report.submitted_at|date:"j M Y" }}</time></td>
+        <td data-label="Status">{% status report.status|report_tone report.get_status_display %}</td>
+      </tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% pagination page %}
+  {% else %}
+  {% include "components/empty_state.html" with title="No reports here yet." %}
+  {% endif %}
+{% endblock %}

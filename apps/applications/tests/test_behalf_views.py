@@ -90,7 +90,7 @@ def test_new_page_query_budget(client: Any, django_assert_max_num_queries: Any) 
     for profile in profiles[:5]:
         ApplicationFactory.create(profile=profile, program=program, on_behalf=True)
     client.force_login(membership.user)
-    with django_assert_max_num_queries(12):
+    with django_assert_max_num_queries(13):  # +1: reports count (M11c)
         response = client.get(_url())
     assert response.status_code == 200
     assert len(response.context["profile_rows"]) == 25

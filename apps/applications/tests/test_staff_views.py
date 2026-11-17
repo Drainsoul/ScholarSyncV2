@@ -99,7 +99,7 @@ def test_queue_query_budget(client: Any, django_assert_max_num_queries: Any) -> 
     for index in range(30):
         _row(membership.program, days_ago=index)
     client.force_login(membership.user)
-    with django_assert_max_num_queries(12):
+    with django_assert_max_num_queries(13):  # +1: reports count (M11c)
         response = client.get(_url())
     assert len(response.context["rows"]) == 25
 
@@ -117,6 +117,7 @@ def test_staff_nav_shows_applications_count(client: Any) -> None:
         "Scholars",
         "Disbursements",
         "Students",
+        "Reports",
         "Tasks",
     ]
     assert nav[1]["count"] == 1
