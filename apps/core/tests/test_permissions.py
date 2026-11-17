@@ -171,3 +171,41 @@ def test_require_program_staff(case: str, allowed: bool) -> None:
     else:
         with pytest.raises(PermissionDenied, match="Only this program's staff can do that."):
             require_program_staff(actor, target)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("case", "allowed"),
+    [
+        ("head", True),
+        ("office", True),
+        ("staff", False),
+        ("other_program_head", False),
+        ("inactive_program_head", False),
+        ("inactive_head_user", False),
+        ("student", False),
+    ],
+)
+def test_require_program_head(case: str, allowed: bool) -> None:
+    from apps.core.permissions import require_program_head
+
+    program = ProgramFactory.create(is_active=case != "inactive_program_head")
+    head = ProgramMembership.Level.HEAD
+    if case in {"head", "inactive_program_head", "inactive_head_user"}:
+        actor = MembershipFactory.create(program=program, level=head).user
+        if case == "inactive_head_user":
+            actor.is_active = False
+            actor.save()
+    elif case == "office":
+        actor = UserFactory.create(role=User.Role.SUPER_ADMIN)
+    elif case == "staff":
+        actor = MembershipFactory.create(program=program).user
+    elif case == "other_program_head":
+        actor = MembershipFactory.create(program=ProgramFactory.create(), level=head).user
+    else:
+        actor = UserFactory.create()
+    if allowed:
+        require_program_head(actor, program)
+    else:
+        with pytest.raises(PermissionDenied, match="Only this program's head can do that."):
+            require_program_head(actor, program)

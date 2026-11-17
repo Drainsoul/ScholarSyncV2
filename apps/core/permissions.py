@@ -28,6 +28,18 @@ def require_program_staff(actor: User, program: Program | None) -> None:
     raise PermissionDenied("Only this program's staff can do that.")
 
 
+def require_program_head(actor: User, program: Program) -> None:
+    """The office, or the head of an active program (money decisions, spec §6)."""
+    if actor.is_active and program.is_active:
+        if actor.is_super_admin:
+            return
+        if actor.is_program_staff:
+            membership = membership_for(actor, program)
+            if membership is not None and membership.level == ProgramMembership.Level.HEAD:
+                return
+    raise PermissionDenied("Only this program's head can do that.")
+
+
 class _RoleRequiredMixin:
     """Anonymous visitors go to sign in; the wrong role gets the 403 page."""
 
