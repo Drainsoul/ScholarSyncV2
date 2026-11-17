@@ -1,6 +1,7 @@
 import csv
 import io
 import zipfile
+from collections.abc import Sequence
 from datetime import date, datetime
 from decimal import Decimal
 
@@ -14,12 +15,12 @@ from apps.files.policy import CSV, XLSX
 UNREADABLE = "We couldn't read this spreadsheet. Save it again as XLSX or CSV."
 
 
-def xlsx(*rows: list[object]) -> bytes:
+def xlsx(*rows: Sequence[object]) -> bytes:
     workbook = openpyxl.Workbook()
     sheet = workbook.active
     assert sheet is not None
     for row in rows:
-        sheet.append(row)
+        sheet.append(list(row))
     buffer = io.BytesIO()
     workbook.save(buffer)
     return buffer.getvalue()
