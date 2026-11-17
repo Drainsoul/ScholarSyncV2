@@ -8,7 +8,7 @@ class NotificationFactory(factory.django.DjangoModelFactory[Notification]):
     class Meta:
         model = Notification
 
-    recipient = factory.SubFactory(UserFactory)
+    recipient = factory.declarations.SubFactory(UserFactory)
     kind = "application_received"
-    title = factory.Sequence(lambda n: f"Notice {n}")
+    title = factory.declarations.Sequence(lambda n: f"Notice {n}")
     url = "/me/applications/"
