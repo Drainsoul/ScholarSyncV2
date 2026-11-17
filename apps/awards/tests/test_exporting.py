@@ -216,3 +216,11 @@ def test_decimal_gwa_kept_exact_in_csv(client, world: World):
     abad = dict(zip(HEADERS, csv_rows(client.get(world.url()))[1], strict=True))
     assert abad["GWA"] == "1.75"
     assert abad["Grading scale"] == "1.00 to 5.00 (1.00 highest)"
+
+
+def test_inactive_program_404(client, world: World):
+    """Like the rest of the staff area (the mixin), export answers 404 for an inactive program."""
+    world.program.is_active = False
+    world.program.save()
+    assert client.get(world.url()).status_code == 404
+    assert not AuditEvent.objects.filter(action="scholars.exported").exists()

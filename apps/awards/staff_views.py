@@ -488,10 +488,6 @@ class ScholarImportView(ProgramStaffRequiredMixin, View):
 
     template_name = "scholars/import.html"
 
-    def _active(self) -> None:
-        if not self.program.is_active:
-            raise Http404("No such program.")
-
     def _render(
         self,
         request: HttpRequest,
@@ -516,11 +512,9 @@ class ScholarImportView(ProgramStaffRequiredMixin, View):
         return render(request, self.template_name, context, status=status)
 
     def get(self, request: HttpRequest, program: str) -> HttpResponse:
-        self._active()
         return self._render(request)
 
     def post(self, request: HttpRequest, program: str) -> HttpResponse:
-        self._active()
         action = request.POST.get("action", "")
         if action not in ("check", "import"):
             return self._render(request, error=UPLOAD_AGAIN, status=400)
