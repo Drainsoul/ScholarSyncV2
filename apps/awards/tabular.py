@@ -20,7 +20,7 @@ from apps.files.policy import XLSX
 MAX_ROWS = 500
 MAX_COLUMNS = 30
 MAX_CELL = 200
-MAX_UNPACKED = 50 * 1024 * 1024
+MAX_UNPACKED = 10 * 1024 * 1024  # a full 500 x 30 x 200 file unpacks to about 3 MB
 MAX_SCANNED = MAX_ROWS * 20  # every row read, empty ones included, so blank padding can't run long
 
 TOO_MANY_ROWS = f"This file has more than {MAX_ROWS} rows. Split it into smaller files."

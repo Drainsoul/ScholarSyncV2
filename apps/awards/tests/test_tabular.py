@@ -198,3 +198,27 @@ def test_blank_rows_count_toward_a_hard_limit_xlsx(monkeypatch):
     with pytest.raises(TableError) as excinfo:
         read_table(body, XLSX)
     assert "too many rows, counting empty ones" in str(excinfo.value)
+
+
+def test_unpacked_cap_is_10_mb():
+    """A small file that unpacks past 10 MB is refused before openpyxl parses it (a 50 MB
+    sharedStrings part took 22 s and about 250 MB to read; a full 500 x 30 x 200 file is ~3 MB)."""
+    source = zipfile.ZipFile(io.BytesIO(xlsx(["last_name"], ["Cruz"])))
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as target:
+        for info in source.infolist():
+            target.writestr(info, source.read(info.filename))
+        target.writestr("xl/padding.xml", b" " * (10 * 1024 * 1024 + 1))
+    assert len(out.getvalue()) < 100_000
+    with pytest.raises(TableError) as excinfo:
+        read_table(out.getvalue(), XLSX)
+    assert str(excinfo.value) == (
+        "This spreadsheet is too large to read. Save it as CSV and try again."
+    )
+
+
+def test_full_size_legitimate_xlsx_fits_the_cap():
+    header = [f"c{n}" for n in range(16)]
+    rows = [[f"{r:03d}{c:02d}" + "x" * 195 for c in range(16)] for r in range(500)]
+    table = read_table(xlsx(header, *rows), XLSX)
+    assert len(table.rows) == 500
