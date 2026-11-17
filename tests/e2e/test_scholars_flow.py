@@ -89,7 +89,9 @@ def test_scholar_renews_and_staff_approves(
     expect(page.get_by_text("Application submitted.").first).to_be_visible()
 
     switch_user(page, live_server.url, world.staff.email, f"/staff/{SLUG}/applications/")
-    page.get_by_label("Kind").select_option("renewal")
+    # Picking a filter swaps the table by htmx; let that finish, or the click below aborts it.
+    with page.expect_response(lambda response: "kind=renewal" in response.url):
+        page.get_by_label("Kind").select_option("renewal")
     page.get_by_role("button", name="Apply filters").click()
     page.get_by_role("link", name=award.profile.full_name).click()
     expect(page.get_by_text(f"Renewal for {world.current}.").first).to_be_visible()
