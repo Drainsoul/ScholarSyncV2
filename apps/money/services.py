@@ -1,20 +1,50 @@
 """Money writes. Audit data holds ids, codes, counts, statuses and amounts as strings only."""
 
 from dataclasses import dataclass
+from datetime import date
+from typing import Literal
 
+from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.http import HttpRequest
+from django.http import Http404, HttpRequest
+from django.urls import reverse
 from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.awards.models import Award, ScholarTerm
 from apps.core import audit
-from apps.core.permissions import require_program_staff
+from apps.core.permissions import require_program_head, require_program_staff
+from apps.core.templatetags.ui import peso
+from apps.core.transitions import assert_transition
 from apps.money.models import Disbursement, DistributionSchedule
-from apps.money.selectors import amount_for, eligible_terms, merit_confirmed, staff_schedule
+from apps.money.selectors import (
+    NOT_ACTIVE,
+    amount_for,
+    eligible_terms,
+    ineligible_reason,
+    merit_confirmed,
+    staff_schedule,
+)
 from apps.programs.models import Program
+from apps.workspace.emails import enqueue
 
 ONE_LIVE_PAYOUT = "money_one_live_payout_per_term"
+MAX_REASON = 1000
+NEED_REASON = "Give a reason."
+REASON_TOO_LONG = "Keep the reason under 1,000 characters."
+NOT_PUBLISHED = "Publish the schedule first."
+TOO_EARLY = "Release after the distribution day, {date}."
+PAID_ELSEWHERE = "This scholar already has a payout for {term}."
+NOT_IN_SCHEDULE = "This payout isn't in this schedule."
+BULK_TOO_MANY = "Choose at most 100 payouts at a time."
+MAX_BULK = 100
+MAX_ALL = 500
+
+
+def long_date(day: date) -> str:
+    """14 March 2027 (no leading zero)."""
+    return f"{day.day} {day:%B %Y}"
 
 
 def _violates(exc: IntegrityError, constraint: str) -> bool:
@@ -23,10 +53,15 @@ def _violates(exc: IntegrityError, constraint: str) -> bool:
 
 
 def _locked_schedule(program: Program, schedule_id: int) -> DistributionSchedule:
-    staff_schedule(program, schedule_id)  # Http404 outside the program
-    return (
-        DistributionSchedule.objects.select_for_update().select_related("term").get(pk=schedule_id)
+    schedule = (
+        DistributionSchedule.objects.select_for_update(of=("self",))
+        .select_related("term", "program")
+        .filter(pk=schedule_id, program=program)
+        .first()
     )
+    if schedule is None:
+        raise Http404("No such schedule.")
+    return schedule
 
 
 @dataclass(frozen=True)
@@ -124,3 +159,235 @@ def generate(
         },
     )
     return result
+
+
+def _locked_row(
+    program: Program, schedule_id: int, disbursement_id: int
+) -> tuple[DistributionSchedule, Disbursement]:
+    """The schedule, then the payout, both locked. Http404 when either is outside the URL's."""
+    schedule = _locked_schedule(program, schedule_id)
+    row = (
+        Disbursement.objects.select_for_update(of=("self",))
+        .select_related(
+            "scholar_term__award__profile__user", "scholar_term__term", "scholar_term__tier"
+        )
+        .filter(pk=disbursement_id, schedule=schedule)
+        .first()
+    )
+    if row is None:
+        raise Http404(NOT_IN_SCHEDULE)
+    row.schedule = schedule
+    return schedule, row
+
+
+def allowance_email(
+    row: Disbursement, kind: Literal["allowance_approved", "allowance_released"]
+) -> None:
+    """Tell the scholar; a profile nobody has claimed gets no email. Never the reason."""
+    profile = row.scholar_term.award.profile
+    if profile.user is None:
+        return
+    schedule = row.schedule
+    context = {
+        "full_name": profile.full_name,
+        "program_name": schedule.program.name,
+        "term_label": str(schedule.term),
+        "amount": peso(row.amount),
+        "scholarships_url": settings.SITE_URL + reverse("scholarships:list"),
+    }
+    if kind == "allowance_approved":
+        context["claim_date"] = long_date(schedule.distribution_date)
+        context["claim_location"] = schedule.claim_location
+    enqueue(to=profile.user.email, kind=kind, context=context)
+
+
+_ACTIONS = {
+    Disbursement.Status.APPROVED: "disbursement.approved",
+    Disbursement.Status.REJECTED: "disbursement.rejected",
+    Disbursement.Status.RELEASED: "disbursement.released",
+    Disbursement.Status.PENDING: "disbursement.reverted",
+}
+
+
+def _record(
+    actor: User,
+    program: Program,
+    row: Disbursement,
+    previous: str,
+    request: HttpRequest | None,
+) -> None:
+    audit.record(
+        actor=actor,
+        action=_ACTIONS[Disbursement.Status(row.status)],
+        target=row,
+        program=program,
+        request=request,
+        data={"from": previous, "to": row.status, "amount": str(row.amount)},
+    )
+
+
+@transaction.atomic
+def approve(
+    *,
+    actor: User,
+    program: Program,
+    schedule_id: int,
+    disbursement_id: int,
+    request: HttpRequest | None = None,
+) -> Disbursement:
+    """A head approves a prepared payout; the scholar is told when and where to claim."""
+    require_program_head(actor, program)
+    schedule, row = _locked_row(program, schedule_id, disbursement_id)
+    assert_transition(row, Disbursement.Status.APPROVED)
+    if not schedule.is_published:
+        raise ValidationError(NOT_PUBLISHED)
+    reason = ineligible_reason(row.scholar_term)
+    if reason:
+        raise ValidationError(reason)
+    previous = row.status
+    row.status = Disbursement.Status.APPROVED
+    row.approved_by = actor
+    row.approved_at = timezone.now()
+    row.save(update_fields=["status", "approved_by", "approved_at", "updated_at"])
+    _record(actor, program, row, previous, request)
+    allowance_email(row, "allowance_approved")
+    return row
+
+
+@transaction.atomic
+def reject(
+    *,
+    actor: User,
+    program: Program,
+    schedule_id: int,
+    disbursement_id: int,
+    reason: str,
+    request: HttpRequest | None = None,
+) -> Disbursement:
+    """A head refuses a prepared payout. The reason is free text: it stays out of audit data."""
+    require_program_head(actor, program)
+    _, row = _locked_row(program, schedule_id, disbursement_id)
+    assert_transition(row, Disbursement.Status.REJECTED)
+    reason = reason.strip()
+    if not reason:
+        raise ValidationError(NEED_REASON)
+    if len(reason) > MAX_REASON:
+        raise ValidationError(REASON_TOO_LONG)
+    previous = row.status
+    row.status = Disbursement.Status.REJECTED
+    row.decision_reason = reason
+    row.save(update_fields=["status", "decision_reason", "updated_at"])
+    _record(actor, program, row, previous, request)
+    return row
+
+
+@transaction.atomic
+def release(
+    *,
+    actor: User,
+    program: Program,
+    schedule_id: int,
+    disbursement_id: int,
+    request: HttpRequest | None = None,
+) -> Disbursement:
+    """A head records that an approved payout was claimed, on or after the distribution day."""
+    require_program_head(actor, program)
+    schedule, row = _locked_row(program, schedule_id, disbursement_id)
+    assert_transition(row, Disbursement.Status.RELEASED)
+    award = row.scholar_term.award
+    if award.status != Award.Status.ACTIVE:
+        raise ValidationError(NOT_ACTIVE.format(status=award.get_status_display().lower()))
+    if timezone.localdate() < schedule.distribution_date:
+        raise ValidationError(TOO_EARLY.format(date=long_date(schedule.distribution_date)))
+    previous = row.status
+    row.status = Disbursement.Status.RELEASED
+    row.released_at = timezone.now()
+    row.save(update_fields=["status", "released_at", "updated_at"])
+    _record(actor, program, row, previous, request)
+    allowance_email(row, "allowance_released")
+    return row
+
+
+@transaction.atomic
+def revert(
+    *,
+    actor: User,
+    program: Program,
+    schedule_id: int,
+    disbursement_id: int,
+    request: HttpRequest | None = None,
+) -> Disbursement:
+    """Back to prepared, from approved (before release) or rejected."""
+    require_program_head(actor, program)
+    schedule, row = _locked_row(program, schedule_id, disbursement_id)
+    assert_transition(row, Disbursement.Status.PENDING)
+    previous = row.status
+    row.status = Disbursement.Status.PENDING
+    row.approved_by = None
+    row.approved_at = None
+    row.decision_reason = ""
+    fields = ["status", "approved_by", "approved_at", "decision_reason", "updated_at"]
+    try:
+        with transaction.atomic():  # a savepoint, so the outer transaction survives the error
+            row.save(update_fields=fields)
+    except IntegrityError as exc:
+        if not _violates(exc, ONE_LIVE_PAYOUT):
+            raise
+        raise ValidationError(PAID_ELSEWHERE.format(term=schedule.term)) from None
+    _record(actor, program, row, previous, request)
+    return row
+
+
+@dataclass(frozen=True)
+class BulkResult:
+    done: int
+    skipped: list[tuple[str, str]]
+    remaining: int
+
+
+def bulk(
+    *,
+    actor: User,
+    program: Program,
+    schedule_id: int,
+    action: Literal["approve", "release"],
+    ids: list[int] | None,
+    request: HttpRequest | None = None,
+) -> BulkResult:
+    """Approve or release the chosen payouts, or (ids=None) up to MAX_ALL in the action's source
+    status. Each row runs in its own transaction, in pk order; refused rows are reported."""
+    require_program_head(actor, program)  # a PermissionDenied is not a per-row skip
+    staff_schedule(program, schedule_id)
+    source = Disbursement.Status.PENDING if action == "approve" else Disbursement.Status.APPROVED
+    rows = Disbursement.objects.filter(schedule_id=schedule_id).select_related(
+        "scholar_term__award__profile"
+    )
+    if ids is None:
+        found = list(rows.filter(status=source).order_by("pk")[:MAX_ALL])
+        wanted = [row.pk for row in found]
+    else:
+        wanted = list(dict.fromkeys(ids))
+        if len(wanted) > MAX_BULK:
+            raise ValidationError(BULK_TOO_MANY)
+        found = list(rows.filter(pk__in=wanted).order_by("pk"))
+    act = approve if action == "approve" else release
+    skipped: list[tuple[str, str]] = []
+    done = 0
+    for row in found:
+        try:
+            act(
+                actor=actor,
+                program=program,
+                schedule_id=schedule_id,
+                disbursement_id=row.pk,
+                request=request,
+            )
+        except (ValidationError, Http404) as error:  # InvalidTransition is a ValidationError
+            reason = " ".join(error.messages) if isinstance(error, ValidationError) else str(error)
+            skipped.append((row.scholar_term.award.profile.full_name, reason))
+        else:
+            done += 1
+    found_ids = {row.pk for row in found}
+    skipped.extend(("", NOT_IN_SCHEDULE) for pk in wanted if pk not in found_ids)
+    remaining = rows.filter(status=source).count() if ids is None else 0
+    return BulkResult(done=done, skipped=skipped, remaining=remaining)

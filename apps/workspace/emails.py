@@ -48,6 +48,20 @@ KINDS: dict[str, frozenset[str]] = {
     "application_received": frozenset({"full_name", "program_name", "application_url"}),
     "application_returned": frozenset({"full_name", "program_name", "application_url"}),
     "application_decided": frozenset({"full_name", "program_name", "application_url", "outcome"}),
+    "allowance_approved": frozenset(
+        {
+            "full_name",
+            "program_name",
+            "term_label",
+            "amount",
+            "claim_date",
+            "claim_location",
+            "scholarships_url",
+        }
+    ),
+    "allowance_released": frozenset(
+        {"full_name", "program_name", "term_label", "amount", "scholarships_url"}
+    ),
 }
 
 

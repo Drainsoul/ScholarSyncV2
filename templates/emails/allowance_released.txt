@@ -1,0 +1,5 @@
+{% extends "emails/base.txt" %}
+{% block body %}Hi {{ full_name }}, your {{ program_name }} allowance of {{ amount }} for {{ term_label }} was released.
+
+See your scholarships: {{ scholarships_url }}
+{% endblock %}

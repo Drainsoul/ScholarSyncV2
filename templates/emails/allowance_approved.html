@@ -1,0 +1,5 @@
+{% extends "emails/base.html" %}
+{% block body %}
+    <p>Hi {{ full_name }}, your {{ program_name }} allowance of {{ amount }} for {{ term_label }} is ready to claim on {{ claim_date }} at {{ claim_location }}. Bring a valid ID.</p>
+    <p><a href="{{ scholarships_url }}">See your scholarships</a></p>
+{% endblock %}
