@@ -196,7 +196,14 @@ def shell_context(
             }
         ]
         context["notifications_count"] = unread_count(user)
+    if area == "office":
+        context["notifications_url"] = reverse("office:notifications")
+        context["notifications_count"] = unread_count(user)
     if area == "staff" and program is not None:
+        context["notifications_url"] = reverse(
+            "notifications-staff:list", kwargs={"program": program.slug}
+        )
+        context["notifications_count"] = unread_count(user)
         context["program"] = program
         context["programs"] = [
             {
