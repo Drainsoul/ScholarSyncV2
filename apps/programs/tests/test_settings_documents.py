@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import Any
 
 import pytest
@@ -156,3 +157,39 @@ def test_documents_page_query_count(client: Any, django_assert_max_num_queries: 
     client.force_login(_head(program))
     with django_assert_max_num_queries(14):
         assert client.get(_url("documents", program)).status_code == 200
+
+
+@pytest.mark.parametrize("change", ["optional_to_required", "restored", "widened"])
+def test_changing_an_old_requirement_does_not_block_review(client: Any, change: str) -> None:
+    """Switching an old optional document to required, restoring a stopped one,
+    or widening who it applies to must not block an application already in review."""
+    from apps.applications.selectors import undecided_documents
+
+    program = ProgramFactory.create()
+    application = approvable(program)
+    kwargs: dict[str, object] = {"program": program}
+    if change == "optional_to_required":
+        kwargs["is_required"] = False
+    elif change == "restored":
+        kwargs["is_active"] = False
+    else:
+        kwargs["applies_to"] = RequiredDocument.AppliesTo.RENEWAL
+    old = RequiredDocumentFactory.create(**kwargs)
+    assert application.first_submitted_at is not None
+    earlier = application.first_submitted_at - timedelta(minutes=5)
+    RequiredDocument.objects.filter(pk=old.pk).update(created_at=earlier, required_since=earlier)
+    assert undecided_documents(application) == []
+    client.force_login(_head(program))
+    if change == "restored":
+        client.post(_url("document-active", program, pk=old.pk), {"active": "1"})
+    else:
+        old.refresh_from_db()
+        data = _form(
+            label=old.label,
+            is_required="on",
+            applies_to="both",
+            accepted_types=old.accepted_types,
+            max_mb="10",
+        )
+        client.post(_url("document-edit", program, pk=old.pk), data)
+    assert undecided_documents(application) == []

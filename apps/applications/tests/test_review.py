@@ -655,7 +655,9 @@ def existing_requirement(application: Application, **kwargs: object) -> Required
     requirement = RequiredDocumentFactory.create(program=application.program, **kwargs)
     assert application.first_submitted_at is not None
     earlier = application.first_submitted_at - timedelta(minutes=1)
-    RequiredDocument.objects.filter(pk=requirement.pk).update(created_at=earlier)
+    RequiredDocument.objects.filter(pk=requirement.pk).update(
+        created_at=earlier, required_since=earlier
+    )
     requirement.refresh_from_db()
     return requirement
 

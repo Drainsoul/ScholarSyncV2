@@ -3,6 +3,7 @@ from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models import F, Q
 from django.db.models.functions import Lower
+from django.utils import timezone
 
 from apps.files.policy import JPEG, MB, PDF, PNG
 
@@ -224,6 +225,9 @@ class RequiredDocument(models.Model):
     max_bytes = models.PositiveIntegerField(default=10 * MB)
     # Switched off, never deleted (M11b): uploads point to it.
     is_active = models.BooleanField(default=True)
+    # When it last started to be asked of everyone (created, restored, made required or widened):
+    # an application submitted before then doesn't answer to it (M11b).
+    required_since = models.DateTimeField(null=True, blank=True, default=timezone.now)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

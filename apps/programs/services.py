@@ -4,6 +4,7 @@ from decimal import Decimal
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import connection, transaction
 from django.http import Http404, HttpRequest
+from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.core.audit import record
@@ -525,8 +526,16 @@ def update_document(
     changed = [name for name in DOCUMENT_FIELDS if getattr(locked, name) != data[name]]
     if not changed:
         return locked
+    asks_more = (not locked.is_required and bool(data["is_required"])) or (
+        locked.applies_to != RequiredDocument.AppliesTo.BOTH
+        and data["applies_to"] != locked.applies_to
+    )
     for name in changed:
         setattr(locked, name, data[name])
+    if asks_more:
+        # Applications already sent don't answer to what they were never asked for.
+        locked.required_since = timezone.now()
+        changed.append("required_since")
     locked.save(update_fields=[*changed, "updated_at"])
     _document_audit(actor, program, locked, "document.updated", request)
     return locked
@@ -547,7 +556,11 @@ def set_document_active(
     if locked.is_active == active:
         return locked
     locked.is_active = active
-    locked.save(update_fields=["is_active", "updated_at"])
+    fields = ["is_active", "updated_at"]
+    if active:
+        locked.required_since = timezone.now()
+        fields.append("required_since")
+    locked.save(update_fields=fields)
     _document_audit(
         actor, program, locked, "document.restored" if active else "document.stopped", request
     )
