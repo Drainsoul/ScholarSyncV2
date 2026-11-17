@@ -21,6 +21,7 @@ from apps.applications.selectors import (
     open_application,
     own_application,
 )
+from apps.applications.wording import APPLICATION_TONES
 from apps.core.permissions import StudentRequiredMixin
 from apps.core.shell import shell_context
 from apps.matching.checklist import checklist_items
@@ -30,15 +31,6 @@ from apps.programs.models import BenefitTier, Program, RequiredDocument
 from apps.programs.selectors import application_term
 from apps.students.selectors import current_education, profile_for
 
-APPLICATION_TONES: dict[str, str] = {
-    Application.Status.DRAFT: "warning",
-    Application.Status.RETURNED: "warning",
-    Application.Status.SUBMITTED: "info",
-    Application.Status.UNDER_REVIEW: "info",
-    Application.Status.APPROVED: "success",
-    Application.Status.REJECTED: "neutral",
-    Application.Status.WITHDRAWN: "neutral",
-}
 DOCUMENT_TONES: dict[str, str] = {
     Document.Status.PENDING: "info",
     Document.Status.APPROVED: "success",

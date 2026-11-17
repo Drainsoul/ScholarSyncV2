@@ -1,12 +1,69 @@
-{% extends "layouts/student.html" %}
+{% extends "layouts/student.html" %}{% load ui %}
 {% block title %}Your scholarships{% endblock %}
 {% block content %}
-  <h1>Your scholarships</h1>
+<div class="page-header">
+  <div><h1>Your scholarships</h1><p class="page-header__meta">{{ viewer.name }}{% if board.term_label %}, {{ board.term_label }}{% endif %}</p></div>
+</div>
+{% for application in board.returned %}
+<div class="banner banner--warning" role="status">{% icon "triangle-alert" %}<div><p class="banner__title">{{ application.program.name }} returned your application</p>{% if application.decision_reason %}<p>{{ application.decision_reason }}</p>{% endif %}</div><a class="btn btn--primary banner__action" href="{% url 'applications:detail' application.pk %}">Fix application</a></div>
+{% endfor %}
+<div class="split">
+  {% for card in board.awards %}
+  <section class="award-card" aria-labelledby="award-title-{{ forloop.counter }}">
+    <div class="award-card__head">
+      <div><p class="award-card__eyebrow">Scholarship</p><h2 class="award-card__title" id="award-title-{{ forloop.counter }}">{{ card.program_name }}</h2></div>
+      <span class="award-card__status">{{ card.status_label }}</span>
+    </div>
+    <dl class="award-card__facts">
+      <div><dt>Tier</dt><dd>{{ card.tier_name }}</dd></div>
+      <div><dt>Allowance per term</dt><dd class="num">{{ card.amount|peso }}</dd></div>
+      <div><dt>Next release</dt><dd class="award-card__release">{% if card.next_release %}<time datetime="{{ card.next_release|date:'Y-m-d' }}">{{ card.next_release|date:"j M Y" }}</time>{% else %}Not scheduled yet{% endif %}</dd></div>
+    </dl>
+    {% if card.renew_text %}<p class="award-card__renew"><strong>To renew:</strong> {{ card.renew_text }}</p>{% endif %}
+  </section>
+  {% endfor %}
   <section class="card" aria-labelledby="profile-title">
     <h2 class="card__title" id="profile-title">Your profile</h2>
     <p class="profile-figure"><span class="profile-figure__value num">{{ completion.percent }}%</span> complete</p>
     <progress class="progress progress--secondary" max="100" value="{{ completion.percent }}" aria-label="Profile complete">{{ completion.percent }}%</progress>
+    {% if next_section %}<p>Next: {{ next_section }}.</p>{% endif %}
     <a class="btn btn--soft" href="{% url 'students:profile' %}">{% if completion.percent == 100 %}View your profile{% else %}Complete your profile{% endif %}</a>
   </section>
-  {% include "components/empty_state.html" with title="Your applications and allowances will show here." %}
+</div>
+<div class="split split--even">
+  <section class="card" aria-labelledby="apps-title">
+    <div class="card__header"><h2 class="card__title" id="apps-title">Applications</h2><a href="{% url 'matching:match' %}">Find programs</a></div>
+    {% if board.applications %}
+    <div class="table-wrap" role="region" aria-labelledby="apps-title" tabindex="0">
+      <table class="table">
+        <thead><tr><th scope="col">Program</th><th scope="col">Submitted</th><th scope="col">Status</th></tr></thead>
+        <tbody>{% for item in board.applications %}<tr><th scope="row"><a href="{% url 'applications:detail' item.application.pk %}">{{ item.application.program.name }}</a></th><td>{{ item.submitted }}</td><td>{% status item.tone item.application.get_status_display %}</td></tr>{% endfor %}</tbody>
+      </table>
+    </div>
+    {% else %}
+    {% url 'matching:match' as match_url %}{% include "components/empty_state.html" with title="You haven't applied yet." action_url=match_url action_label="Find programs" %}
+    {% endif %}
+  </section>
+  <section class="card" aria-labelledby="money-title">
+    <div class="card__header"><h2 class="card__title" id="money-title">Allowances</h2><a href="{% url 'scholarships:list' %}">See all</a></div>
+    {% if board.allowances %}
+    <div class="table-wrap" role="region" aria-labelledby="money-title" tabindex="0">
+      <table class="table table--stack">
+        <thead><tr><th scope="col">Term</th><th scope="col" class="num">Amount</th><th scope="col">Status</th></tr></thead>
+        <tbody>{% for item in board.allowances %}<tr><th scope="row">{{ item.term }}</th><td class="num" data-label="Amount">{{ item.amount|peso }}</td><td>{% status item.tone item.label %}</td></tr>{% endfor %}</tbody>
+      </table>
+    </div>
+    {% else %}
+    {% include "components/empty_state.html" with title="No allowances yet." %}
+    {% endif %}
+  </section>
+</div>
+<section class="card" aria-labelledby="notices-title">
+  <div class="card__header"><h2 class="card__title" id="notices-title">Notifications</h2><a href="{% url 'notifications:list' %}">See all</a></div>
+  {% if board.notices %}
+  <ul class="list">{% for item in board.notices %}<li><p><a href="{% url 'notifications:open' item.pk %}">{{ item.title }}</a></p><p class="text-sm text-muted"><time datetime="{{ item.created_at|date:'c' }}">{{ item.created_at|date:"j M" }}</time></p></li>{% endfor %}</ul>
+  {% else %}
+  {% include "components/empty_state.html" with title="No notifications yet." %}
+  {% endif %}
+</section>
 {% endblock %}

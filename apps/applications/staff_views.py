@@ -34,7 +34,8 @@ from apps.applications.staff_forms import (
     DeclineForm,
 )
 from apps.applications.staff_wording import staff_items
-from apps.applications.views import APPLICATION_TONES, DOCUMENT_TONES
+from apps.applications.views import DOCUMENT_TONES
+from apps.applications.wording import APPLICATION_TONES
 from apps.awards.models import ScholarTerm
 from apps.awards.selectors import other_active_awards
 from apps.core.htmx import HtmxHttpRequest, close_dialog, toast

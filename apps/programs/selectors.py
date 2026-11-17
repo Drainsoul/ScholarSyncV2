@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 from typing import Literal
 
 from django.db.models import QuerySet
@@ -65,3 +66,32 @@ def required_documents_for(
     return program.required_documents.filter(
         applies_to__in=[kind, RequiredDocument.AppliesTo.BOTH]
     ).order_by("sort_order", "pk")
+
+
+def _plain(value: Decimal) -> str:
+    """80.00 → "80", 2.50 → "2.5": a rule's number without trailing zeros."""
+    return format(value.normalize(), "f")
+
+
+def renewal_rule_text(program: Program) -> str:
+    """What a scholar keeps up to renew, after "To renew:"; "" when the program sets no rule."""
+    marks = []
+    if program.renewal_min_gwa_percent is not None:
+        marks.append(f"a GWA of {_plain(program.renewal_min_gwa_percent)}% or better")
+    if program.renewal_max_gwa_one_to_five is not None:
+        marks.append(
+            f"a GWA of {_plain(program.renewal_max_gwa_one_to_five)} or better on the 1–5 scale"
+        )
+    rest = []
+    if program.renewal_min_units is not None:
+        rest.append(f"at least {program.renewal_min_units} units")
+    if program.renewal_no_failing_grades:
+        rest.append("no failing grades")
+    if marks:
+        text = "keep " + " or ".join(marks)
+        if rest:
+            text += " with " + " and ".join(rest)
+        return text + "."
+    if rest:
+        return "keep " + " and ".join(rest) + "."
+    return ""

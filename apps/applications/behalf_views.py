@@ -24,7 +24,8 @@ from apps.applications.selectors import document_rows
 from apps.applications.staff_forms import AcademicsForm, BehalfSubmitForm
 from apps.applications.staff_views import PAGE_SIZE, _actor, _error_text, _evaluated_on
 from apps.applications.staff_wording import staff_items
-from apps.applications.views import APPLICATION_TONES, DOCUMENT_TONES, DocumentCard
+from apps.applications.views import DOCUMENT_TONES, DocumentCard
+from apps.applications.wording import APPLICATION_TONES
 from apps.core.params import positive_id
 from apps.core.permissions import ProgramStaffRequiredMixin
 from apps.core.shell import shell_context

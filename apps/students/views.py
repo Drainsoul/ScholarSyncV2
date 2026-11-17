@@ -8,6 +8,7 @@ from django.http import Http404, HttpRequest, HttpResponse
 from django.http.response import HttpResponseBase
 from django.shortcuts import redirect, render
 from django.urls import NoReverseMatch, reverse
+from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
 from django.views import View
 from django.views.defaults import page_not_found
@@ -17,6 +18,7 @@ from apps.accounts.models import User
 from apps.core.permissions import StudentRequiredMixin
 from apps.core.shell import shell_context
 from apps.students import services
+from apps.students.dashboard import student_dashboard
 from apps.students.forms import ClaimForm, EducationForm, FamilyMemberForm, PersonalForm, PhotoForm
 from apps.students.models import EducationRecord, FamilyMember, ProfileInvite
 from apps.students.selectors import (
@@ -50,11 +52,15 @@ class HomeView(StudentRequiredMixin, TemplateView):
     template_name = "students/home.html"
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
-        _, completion = profile_page(_student(self.request))
+        user = _student(self.request)
+        _, completion = profile_page(user)
+        missing = next((section for section in completion.sections if not section.done), None)
         return {
             **super().get_context_data(**kwargs),
             **shell_context(self.request, area="student"),
             "completion": completion,
+            "next_section": missing.label if missing is not None else "",
+            "board": student_dashboard(user, today=timezone.localdate()),
         }
 
 
