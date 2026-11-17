@@ -111,7 +111,13 @@ def test_staff_nav_shows_applications_count(client: Any) -> None:
     client.force_login(membership.user)
     response = client.get(reverse("workspace:dashboard", kwargs={"program": "tcu-ceaa"}))
     nav = response.context["nav_items"]
-    assert [item["label"] for item in nav] == ["Dashboard", "Applications", "Scholars", "Students"]
+    assert [item["label"] for item in nav] == [
+        "Dashboard",
+        "Applications",
+        "Scholars",
+        "Disbursements",
+        "Students",
+    ]
     assert nav[1]["count"] == 1
     assert nav[1]["url"] == _url()
 
