@@ -1,2 +1,14 @@
-{% extends "programs/settings/base.html" %}
-{% block settings %}{% endblock %}
+{% extends "programs/settings/base.html" %}{% load ui %}
+{% block settings %}
+<form method="post" novalidate>
+  {% csrf_token %}
+  {% include "components/form_errors.html" %}
+  {% for title, fields in form.fieldsets %}
+  <section class="card" aria-labelledby="rules-{{ forloop.counter }}">
+    <h2 class="card__title" id="rules-{{ forloop.counter }}">{{ title }}</h2>
+    {% for bound_field in fields %}{% field bound_field %}{% endfor %}
+  </section>
+  {% endfor %}
+  <div class="btn-row"><button type="submit" class="btn btn--primary">Save rules</button></div>
+</form>
+{% endblock %}

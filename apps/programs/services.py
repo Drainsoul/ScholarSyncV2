@@ -6,7 +6,7 @@ from django.http import HttpRequest
 
 from apps.accounts.models import User
 from apps.core.audit import record
-from apps.core.permissions import require_office
+from apps.core.permissions import require_office, require_settings_editor
 from apps.core.text import counted
 
 from .models import AcademicTerm, Program, ProgramMembership
@@ -196,3 +196,43 @@ def set_program_active(
         request=request,
     )
     return locked
+
+
+@transaction.atomic
+def update_rules(
+    *,
+    actor: User,
+    program: Program,
+    data: dict[str, object],
+    request: HttpRequest | None = None,
+) -> list[str]:
+    """Save a program's rules and window; return the changed field names (one event, or none).
+
+    Submitted applications keep their frozen `match_snapshot`, so nothing is re-checked."""
+    require_settings_editor(actor, program)
+    locked = Program.objects.select_for_update().get(pk=program.pk)
+    changed: list[str] = []
+    schools = data.get("allowed_schools")
+    for name, value in data.items():
+        if name == "allowed_schools":
+            continue
+        if getattr(locked, name) != value:
+            setattr(locked, name, value)
+            changed.append(name)
+    if changed:
+        locked.save(update_fields=[*changed, "updated_at"])
+    if schools is not None:
+        wanted = {school.pk for school in schools}  # type: ignore[attr-defined]
+        if set(locked.allowed_schools.values_list("pk", flat=True)) != wanted:
+            locked.allowed_schools.set(wanted)
+            changed.append("allowed_schools")
+    if changed:
+        record(
+            actor=actor,
+            action="program.rules_changed",
+            target=locked,
+            program=locked,
+            data={"fields": sorted(changed)},
+            request=request,
+        )
+    return changed

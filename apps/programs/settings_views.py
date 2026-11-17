@@ -2,12 +2,24 @@
 
 from typing import Any, ClassVar
 
-from django.http import HttpRequest
-from django.views.generic import TemplateView
+from django.contrib import messages
+from django.http import HttpRequest, HttpResponse
+from django.shortcuts import redirect, render
+from django.views import View
 
+from apps.accounts.models import User
 from apps.core.permissions import ProgramStaffRequiredMixin
 from apps.core.shell import shell_context
-from apps.programs.models import ProgramMembership
+from apps.programs import services
+from apps.programs.models import Program, ProgramMembership
+
+from .settings_forms import RulesForm
+
+
+def _actor(request: HttpRequest) -> User:
+    user = request.user
+    assert isinstance(user, User)
+    return user
 
 
 class SettingsMixin(ProgramStaffRequiredMixin):
@@ -23,8 +35,28 @@ class SettingsMixin(ProgramStaffRequiredMixin):
         return {**shell_context(request, area="staff", program=self.program), "tab": self.tab}
 
 
-class RulesView(SettingsMixin, TemplateView):
+class RulesView(SettingsMixin, View):
     template_name = "programs/settings/rules.html"
 
-    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
-        return {**super().get_context_data(**kwargs), **self.settings_context(self.request)}
+    def _render(self, request: HttpRequest, form: RulesForm) -> HttpResponse:
+        context = {**self.settings_context(request), "form": form}
+        return render(request, self.template_name, context)
+
+    def _form(self, request: HttpRequest | None = None) -> RulesForm:
+        # A separate copy: a bound ModelForm writes into its instance while validating, and the
+        # service compares the saved program with the new values.
+        instance = Program.objects.get(pk=self.program.pk)
+        return RulesForm(request.POST if request else None, instance=instance)
+
+    def get(self, request: HttpRequest, program: str) -> HttpResponse:
+        return self._render(request, self._form())
+
+    def post(self, request: HttpRequest, program: str) -> HttpResponse:
+        form = self._form(request)
+        if not form.is_valid():
+            return self._render(request, form)
+        services.update_rules(
+            actor=_actor(request), program=self.program, data=form.cleaned_data, request=request
+        )
+        messages.success(request, "Rules saved.")
+        return redirect("settings:rules", program=self.program.slug)

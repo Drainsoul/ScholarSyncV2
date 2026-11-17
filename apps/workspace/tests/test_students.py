@@ -151,7 +151,7 @@ def test_list_uses_at_most_8_queries_with_10_profiles(
     for index in range(10):
         _profile(membership, email=f"s{index}@example.com", first_name=f"Kid{index}")
     client.force_login(membership.user)
-    with django_assert_max_num_queries(8):
+    with django_assert_max_num_queries(9):  # +1: the head check for the Settings link (M11b)
         response = client.get(_list_url())
     assert response.content.decode().count("Send again") == 10
 
