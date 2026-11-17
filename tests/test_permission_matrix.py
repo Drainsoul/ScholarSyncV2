@@ -168,6 +168,9 @@ URLS: dict[str, str] = {
     "applications:submit": "student_post_only",
     "applications:withdraw": "own_record",
     "students:home": "student",
+    "notifications:list": "student",
+    "notifications:open": "own_record",
+    "notifications:read-all": "student_post_only",
     "students:profile": "student",
     "students:profile-personal": "student",
     "students:profile-photo": "student",
@@ -264,6 +267,7 @@ URLS: dict[str, str] = {
 }
 URL_KWARGS: dict[str, dict[str, str]] = {
     "workspace:dashboard": {"program": "tcu-ceaa"},
+    "notifications:open": {"pk": "999999"},
     "workspace:students": {"program": "tcu-ceaa"},
     "scholarships:renew": {"pk": "999999"},
     "scholars:list": {"program": "tcu-ceaa"},

@@ -1,0 +1,22 @@
+{% extends "layouts/student.html" %}{% load ui %}
+{% block title %}Notifications{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div><h1>Notifications</h1></div>
+    {% if has_unread %}<form method="post" action="{% url 'notifications:read-all' %}">{% csrf_token %}<button class="btn btn--secondary" type="submit">{% icon "check" %}Mark all as read</button></form>{% endif %}
+  </div>
+  {% if page.object_list %}
+  <section class="card" aria-label="Notifications">
+    <ul class="list">{% for item in page.object_list %}
+      <li>
+        <p>{% if item.read_at %}<a href="{% url 'notifications:open' item.pk %}">{{ item.title }}</a>{% else %}<strong><a href="{% url 'notifications:open' item.pk %}">{{ item.title }}</a></strong> {% status "info" "New" %}{% endif %}</p>
+        {% if item.body %}<p>{{ item.body }}</p>{% endif %}
+        <p class="text-sm text-muted"><time datetime="{{ item.created_at|date:'c' }}">{{ item.created_at|date:"j M Y, g:i A" }}</time></p>
+      </li>{% endfor %}
+    </ul>
+  </section>
+  {% pagination page %}
+  {% else %}
+  {% include "components/empty_state.html" with title="No notifications yet." %}
+  {% endif %}
+{% endblock %}

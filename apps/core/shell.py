@@ -5,6 +5,7 @@ from apps.accounts.models import User
 from apps.applications.review_selectors import waiting_count
 from apps.programs.models import Program
 from apps.programs.selectors import programs_for
+from apps.workspace.selectors import unread_count
 
 # The staff "Disbursements" item is current on every money section (under the dashboard URL).
 MONEY_SECTIONS = ("schedules/", "disbursements/", "budget/")
@@ -139,6 +140,9 @@ def shell_context(
         "home_url": home,
         "nav_items": nav,
     }
+    if area == "student":
+        context["notifications_url"] = reverse("notifications:list")
+        context["notifications_count"] = unread_count(user)
     if area == "staff" and program is not None:
         context["program"] = program
         context["programs"] = [
