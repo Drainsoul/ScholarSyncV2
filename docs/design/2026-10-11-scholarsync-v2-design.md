@@ -38,6 +38,11 @@
 - **Revision:** 19 (2026-11-18): M11c decisions: program reports and their review, staff and office notifications,
   analytics and the program summary, cross-program scholars, the audit log for the office and heads; exports stay
   direct downloads; office tasks and Chart.js are not planned (§4.4, §4.8, §5, §6, §7, §9, §12, §16).
+- **Revision:** 20 (2026-11-18): M12 decisions: CSP enforced by default with no report-uri; secret URLs redacted in
+  logs, the access log and Sentry; no-store on signed-in pages; sign-in events audited; file access by purpose; import
+  files removed after 7 days; double posts never 500; the ASVS 5.0 L2 review; the WCAG 2.2 AA audit with axe-core;
+  query budgets on every page; the hosting guide walked on a clean checkout, with backups, a runbook and HSTS preload
+  guidance (§7, §10, §11, §12, §13, §16, §17, §18).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -696,6 +701,13 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 - **Report files (M11c):** active staff of the report's program (the `staff_can_download` rule) and the office may
   download every version, even after the uploader leaves; anyone else gets 404. The `file.viewed` event names the
   report's program.
+- **Access by purpose (M12):** `import` files are never downloadable, by anyone, the office included; `report` files
+  answer the office and active staff of the report's program only (no uploader shortcut); `document` and `photo`
+  files keep the rules above.
+- **Retention (M12, while §18 Q10 is open):** `cleanup` deletes the storage object of every `import` file older than
+  7 days, and its row unless a `ScholarImport` points at it (that row becomes `rejected`, reason `expired`). Nothing
+  happens without storage; an object already gone counts as deleted; a storage error leaves the row for the next run.
+  An expired file reads "Upload the file again.".
 - **Bucket:** private; CORS allows PUT and GET from the app's origins only; encryption at rest is the provider's.
 - **Public endpoint:** presigned URLs must point at an address the browser can reach. An optional public endpoint
   setting covers the case where the app reaches storage by an internal name (inside compose); CSP `connect-src` and
@@ -845,18 +857,34 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - redirects are validated with `url_has_allowed_host_and_scheme`.
 - **Headers:**
   - HSTS: 1 year, includeSubDomains; preload after launch;
-  - `nosniff`, `Referrer-Policy: same-origin`, `Cross-Origin-Opener-Policy: same-origin`, a strict `Permissions-Policy`.
+  - `nosniff`, `Referrer-Policy: same-origin`, `Cross-Origin-Opener-Policy: same-origin`, a strict `Permissions-Policy`;
+  - `Cache-Control: no-store, private` on every response to a signed-in request and on the secret routes (claim,
+    email confirmation, password reset), unless the view set its own (M12).
 - **CSP:**
   - `default-src 'self'`; `script-src 'self'`; `style-src 'self'`;
   - `img-src 'self' data: <storage-origin>`; `connect-src 'self' <storage-origin> <sentry-ingest>`;
   - `frame-ancestors 'none'`; `form-action 'self'`;
+  - enforced by default; report-only only with `VITE_DEV_MODE` (the Vite dev server serves scripts from another
+    origin) or `CSP_REPORT_ONLY=true` while debugging; no `report-uri`, because browsers would post full page URLs
+    and Referers straight to Sentry, past `scrub_event` (M12);
   - htmx config (a `<meta name="htmx-config">`): `allowEval: false`, `allowScriptTags: false`,
     `includeIndicatorStyles: false`, `selfRequestsOnly: true`, and `historyCacheSize: 0` so page snapshots holding
     personal data never land in `localStorage`; no `hx-on`, no inline scripts or styles.
 - **Errors:** `DEBUG=False` in every deployment; custom 400/403/404/500 pages; nothing internal reaches the client.
 - **Logging:**
   - JSON to stdout, with user IDs but no names, emails or document contents;
-  - Sentry's `before_send` scrubs request bodies and cookies.
+  - Sentry's `before_send` scrubs request bodies and cookies;
+  - secret URLs (`/accounts/claim/<token>/`, `/accounts/confirm-email/<key>/`,
+    `/accounts/password/reset/key/<uidb36>-<key>/`) read `…/[redacted]/` in log lines, the gunicorn access log
+    (request line, path, query and Referer; `RedactingLogger`) and Sentry events (URL, transaction, Referer) (M12).
+- **Audit of sign-ins (M12):** `user.signed_in` and `user.signed_out` (the user, with `ip_hash`) and
+  `user.sign_in_failed` (no actor, empty data: the typed email is never stored). They appear in the audit log's
+  Accounts group, not in the overview feed.
+- **Robustness (M12):** double posts never answer 500. A unique clash inside a savepoint becomes the form error;
+  `create_account` also refuses any user's allauth `EmailAddress`; deactivation locks every active office account
+  first, so one always stays active; an upload to a switched-off requirement answers 404.
+- **ASVS (M12):** `docs/security/asvs-l2.md` reviews OWASP ASVS 5.0.0 Level 1 and 2, with evidence per requirement;
+  open gaps are listed there and in the project's known issues.
 - **Dependencies:** `pip-audit` (on `uv export`) and `npm audit` in CI; Dependabot.
 - **RA 10173 (Data Privacy Act):**
   - a privacy notice and a consent record;
@@ -899,6 +927,10 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
 - **Guides:** `README.md` (quick start, test accounts), `docs/SETUP.md` (local run, developer workflow) and
   `docs/HOSTING.md` (self-hosting checklist, M12). `compose.production.yaml` (web and worker only) is the hosting
   example.
+- **Proven guide (M12):** the guide is walked through on a fresh clone with local stand-ins (PostgreSQL 17, MinIO,
+  Mailpit, Caddy with `tls internal`) and the walk is recorded in `docs/hosting-walkthrough.md`. It gains a tested
+  restore, a runbook (deploy, roll back, restore, rotate each secret and what that breaks) and HSTS preload guidance
+  (off by default; only once every subdomain is HTTPS for good).
 - **Public information pages:** `/about/`, `/privacy/` (RA 10173), `/terms/`, `/cookies/`, `/help/`, `/contact/`, linked
   from a footer on every layout with the line "Independent portfolio project. Not affiliated with or endorsed by the
   City of Taguig. All sample people and data are fictional." They are template text, not legal advice. In production,
@@ -1029,7 +1061,10 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
   - every input labelled; controls at least 32 px (2.5.8 asks for 24);
   - status shown as text, not colour alone;
   - `prefers-reduced-motion` respected;
-  - tables with `th scope`.
+  - tables with `th scope`;
+  - checked in M12 by `axe-core` (pinned npm dev dependency) on every key screen at 1280 and 375 px (tags
+    `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, `wcag22aa`; injected in a `bypass_csp` test context) and by hand in
+    `docs/accessibility/wcag-22-aa.md` (keyboard, focus, target size, zoom, reflow, motion, names).
 
 ## 13. Testing
 - **Database:** tests run against real Postgres 17 (compose locally, a service container in CI), in parallel with
@@ -1050,6 +1085,9 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
   - office creates a program and a staff member.
 - **Test data:** factory_boy + Faker `en_PH` only; time-machine for terms, windows and fiscal years.
 - **Coverage:** at least 90% on `services`, `selectors` and `matching`; at least 80% overall.
+- **Every page (M12):** a rendered-page scan of every GET route for every persona (no inline script or style, no
+  `on…=` attribute, no `javascript:` URL) and a query budget of at most 25 queries per page, both over a seeded
+  world; exceptions carry their reason in the test.
 
 ## 14. Settings and environment variables (names only)
 - **Mode:** `SCHOLARSYNC_EXPLORE` (set by compose only), `DJANGO_DEBUG`.
@@ -1227,6 +1265,9 @@ starts, and ends with every acceptance item checked.
 - [ ] Extend the demo loader for this milestone's screens.
 
 **M12: Hardening + hosting guide**
+- One milestone (the maintainer, 2026-11-18): enforced CSP,
+  secret-URL redaction, no-store, sign-in audit, file access by purpose, import retention, double posts, the ASVS L2
+  review, the WCAG audit, page query budgets, information pages, the hosting walk, runbook and HSTS preload.
 - [ ] Security review (OWASP ASVS L2 checklist), CSP enforced, headers, `check --deploy` clean in production mode.
 - [ ] WCAG 2.2 AA audit; query budgets; Playwright suite green; the information pages (M3.5) reviewed against the
   finished product.
@@ -1269,7 +1310,8 @@ starts, and ends with every acceptance item checked.
    on rollover, and by hand for the final year.
 9. Budget figures; confirm the City fiscal year (January–December) as the budget period. M10: a disbursement counts
    in the year of its schedule's distribution date; over budget is shown, not blocked.
-10. RA 10173 retention period for documents and closed records.
+10. RA 10173 retention period for documents and closed records. M12 default: import files leave storage after 7 days;
+    everything else is kept.
 11. Can staff create student accounts, or only profiles that students claim?
 12. ~~Vercel plan~~ Obsolete (revision 5): nobody hosts an official copy.
 13. ~~Domain and sender domain~~ Obsolete (revision 5): each self-hoster chooses their own.
