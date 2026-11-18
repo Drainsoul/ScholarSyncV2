@@ -82,6 +82,7 @@ def test_office_signs_staff_out_everywhere_after_password(client: Client) -> Non
     replay = replay_after_password(client, response)
     assert replay.status_code == 302
     assert _signed_in_as(staff) == set()
+    assert not UserSession.objects.filter(user=staff).exists()
     event = AuditEvent.objects.get(action="user.sessions_ended")
     assert event.actor == office
     assert event.data == {"account": staff.pk, "sessions_ended": 2}
@@ -120,3 +121,16 @@ def test_end_sessions_command_by_email_audited() -> None:
 def test_end_sessions_command_unknown_email() -> None:
     with pytest.raises(CommandError):
         call_command("end_sessions", "--email", "nobody@example.invalid")
+
+
+def test_cleanup_drops_session_list_rows_whose_session_ended() -> None:
+    kept = UserFactory.create(verified=True)
+    gone = UserFactory.create(verified=True)
+    _sign_in(HttpsClient(), kept)
+    _sign_in(HttpsClient(), gone)
+    Session.objects.filter(
+        session_key__in=UserSession.objects.filter(user=gone).values("session_key")
+    ).delete()
+    call_command("cleanup")
+    assert UserSession.objects.filter(user=kept).count() == 1
+    assert not UserSession.objects.filter(user=gone).exists()

@@ -3,6 +3,7 @@ from allauth.account.internal.stagekit import LOGIN_SESSION_KEY
 from allauth.account.models import EmailAddress, EmailConfirmation
 from allauth.account.utils import user_pk_to_url_str
 from allauth.socialaccount.models import SocialAccount
+from allauth.usersessions.models import UserSession
 from django.conf import settings
 from django.contrib.auth import SESSION_KEY
 from django.contrib.auth.password_validation import validate_password
@@ -58,6 +59,7 @@ def _end_sessions(user: User) -> int:
         ):
             session.delete()
             ended += 1
+    UserSession.objects.filter(user=user).delete()
     return ended
 
 

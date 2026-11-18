@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta
 from typing import Any
 
+from allauth.usersessions.models import UserSession
+from django.contrib.sessions.models import Session
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db.models import Q
@@ -55,6 +57,8 @@ class Command(BaseCommand):
 
     def handle(self, *args: Any, **options: Any) -> None:
         call_command("clearsessions")
+        # The session list's rows (IP address, browser) go once their session has ended (M13).
+        UserSession.objects.exclude(session_key__in=Session.objects.values("session_key")).delete()
         now = timezone.now()
         cutoff = now - timedelta(days=90)
         EmailOutbox.objects.filter(
