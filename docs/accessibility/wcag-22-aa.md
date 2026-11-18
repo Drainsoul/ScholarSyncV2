@@ -28,7 +28,7 @@ WCAG 2.2 removed 4.1.1 Parsing, so it has no row.
 | 2.1.1 Keyboard | Met | `tests/e2e/test_accessibility.py::test_keyboard_only_sign_in`; dialogs, drawers, menus and the nav toggle are native `<dialog>`, `<details>` and buttons (`tests/e2e/test_overlays.py`) |
 | 2.1.2 No Keyboard Trap | Met | Native `<dialog>` closes on Escape and returns focus (`tests/e2e/test_overlays.py`) |
 | 2.1.4 Character Key Shortcuts | Not applicable | No single-key shortcuts |
-| 2.2.1 Timing Adjustable | Gap | Sessions end 12 hours after sign-in (`SESSION_COOKIE_AGE`, `config/settings.py`) with no warning; see Open gaps |
+| 2.2.1 Timing Adjustable | Met | Idle limits (30 minutes for staff, 60 for students) warn 2 minutes ahead in a dialog whose "Stay signed in" extends the session with one action (`frontend/src/session.ts`, `templates/layouts/app.html`, `apps/accounts/session_policy.py`; `tests/e2e/test_session_warning.py`). The 12-hour limit from sign-in can't be extended: it is essential to the security of staff access to many people's data (the "essential" exception), and the same dialog warns 5 minutes ahead to save work |
 | 2.2.2 Pause, Stop, Hide | Met | Toasts are short and dismissible; nothing moves or auto-updates for more than 5 s (`frontend/src/toast.ts`) |
 | 2.3.1 Three Flashes | Met | No flashing content |
 | 2.4.1 Bypass Blocks | Met | "Skip to content" link first in `templates/base.html`; landmarks (`apps/core/tests/test_layouts.py`) |
@@ -79,7 +79,4 @@ WCAG 2.2 removed 4.1.1 Parsing, so it has no row.
 
 ## Open gaps
 
-- **2.2.1 Timing Adjustable** (larger): a session ends 12 hours after sign-in with no warning, so someone mid-form
-  at that moment is sent to sign in and loses the post. Options: warn a few minutes before with a "Stay signed in"
-  button (needs a small script and a keep-alive endpoint), or keep the session alive while the person is active
-  (`SESSION_SAVE_EVERY_REQUEST`, at the cost of a write per request). The maintainer decides.
+None. M13 (2026-11-19) closed 2.2.1 with a warning before every session limit.

@@ -8,9 +8,14 @@ here are read from the code on 2026-11-18. If code and this page disagree, the c
 - **Passwords:**
   - Argon2id first (`PASSWORD_HASHERS`);
   - at least 10 characters;
-  - checked against the common-password list, the account's own name and email, all-numeric passwords, and the
-    site's own words (`apps/accounts/validators.py`: "scholarsync", "scholarship", "taguig", "tcu-ceaa"). Short
-    program codes are only refused as that slug, so ordinary words containing them pass.
+  - checked against the common-password list, the account's own name and email, and the site's own words (`apps/accounts/validators.py`: "scholarsync", "scholarship", "taguig", "tcu-ceaa"). Short
+    program codes are only refused as that slug, so ordinary words containing them pass. No composition rules;
+  - in production, refused when Have I Been Pwned's range API lists them as breached (`apps/accounts/breach.py`;
+    only five hex characters of the SHA-1 leave the server; if the API is down the check is skipped and logged).
+- **Two-factor sign-in:** TOTP with recovery codes (`allauth.mfa`). In production, staff and office accounts must set
+  it up before any other page (`apps/accounts/mfa_policy.py`, `MFA_REQUIRED_FOR_STAFF`); students may. The office can
+  remove a staff member's authenticators (a lost phone) behind its own password, which also ends that account's
+  sessions.
 - **Rate limits** (allauth's defaults, `ACCOUNT_RATE_LIMITS` unset; counted per client IP and per key):
 
   | Action | Limit |
@@ -30,18 +35,24 @@ here are read from the code on 2026-11-18. If code and this page disagree, the c
 - **Uploads:** 20 upload starts an hour for a student and 100 for staff (`apps/files/policy.py`).
 - **Support messages:** 5 a day per student.
 
-## Sessions (V7.1.1, V7.1.2, V7.1.3, V7.6.1)
+## Sessions (V7.1.1, V7.1.2, V7.1.3, V7.3.1, V7.3.2, V7.4.5, V7.5.2, V7.6.1)
 
-- **Lifetime:**
+- **Lifetime** (`apps/accounts/session_policy.py`):
   - sessions are stored in the database;
-  - the cookie lasts 12 hours (`SESSION_COOKIE_AGE`), counted from the last time the session was written (sign-in or
-    any change);
-  - there is no separate idle timeout;
-  - sign-out ends the session;
-  - deactivating an account ends all of its sessions.
-
-  An idle timeout and a hard cap from sign-in are open decisions (`asvs-l2.md` V7.3.1, V7.3.2). They interact with
-  WCAG 2.2.1, which asks for a warning before a session ends.
+  - idle limit: 30 minutes for staff and the office, 60 for students (`SESSION_IDLE_MINUTES_STAFF`,
+    `SESSION_IDLE_MINUTES_STUDENT`); activity is recorded at most once a minute;
+  - absolute limit: 12 hours after sign-in, whatever the activity (`SESSION_COOKIE_AGE`);
+  - a dialog warns 2 minutes before the idle limit ("Stay signed in" extends it) and 5 minutes before the absolute
+    one (WCAG 2.2.1);
+  - sign-out ends the session; deactivating an account ends all of its sessions.
+- **Key rotation:** sign-in and reauthentication both issue a new session key (`apps/accounts/reauth.py`).
+- **Seeing and ending sessions:**
+  - everyone sees their sessions at `/accounts/sessions/` (account menu) and can sign the others out, behind the
+    password;
+  - the office signs a staff or office account out everywhere from its account page, behind the password (audit
+    `user.sessions_ended`);
+  - the operator ends any account's sessions with `manage.py end_sessions --email ADDRESS` (audited by account id;
+    the address is never printed or stored).
 - **Concurrent sessions:** unlimited. Staff and students often use a phone and a shared office computer. A password
   change keeps only the session that made it, because Django rotates the session hash.
 - **Sensitive actions** (money release and revert, accounts, memberships, tier changes): the password is asked again
@@ -55,6 +66,14 @@ Optional, and the operator's choice: with `CLAMAV_HOST` set, upload confirm stre
 before re-encoding. A hit rejects the file (reason `malware`; the signature is not recorded). An unreachable or
 erroring clamd fails closed: the confirm answers 503 and the file stays pending until it can be checked. Unset, files
 are not scanned; type sniffing, size checks, photo re-encoding and attachment-only downloads still apply.
+
+## Database roles (V13.2.2)
+`docs/HOSTING.md` (section 4) sets up two roles: the owner runs migrations through `DATABASE_URL_MIGRATIONS`, and the
+app and worker connect as a role that can only read and write rows, with `UPDATE`, `DELETE` and `TRUNCATE` revoked on
+`core_auditevent` so the audit log is append-only in the database too. The entrypoint unsets the owner's URL before the
+app starts, and the image's code is root-owned, so the app can't change itself. Production refuses unencrypted
+connections to other machines (database, SMTP, storage, clamd) unless `ALLOW_PLAINTEXT_SERVICES=true`
+(`config/plaintext.py`; V12.3.1, V12.3.3).
 
 ## Who reads and writes what (V8.1.2)
 
@@ -102,8 +121,8 @@ email or password.
 
 | Log | What it records | Where it goes | Who reads it | Kept |
 |---|---|---|---|---|
-| App log | warnings and errors, JSON, with emails masked and secret URLs redacted | stdout | the operator | the operator's log store |
-| Access log | one line per request (gunicorn), secret URLs and name searches redacted | stdout | the operator | the operator's log store |
+| App log | warnings and errors, JSON, with `request_id` and `user_id` on every line, emails masked and secret URLs redacted | stdout | the operator | the operator's log store |
+| Access log | one line per request (gunicorn) ending in its `X-Request-ID`, secret URLs and name searches redacted | stdout | the operator | the operator's log store |
 | Sentry (optional) | errors, scrubbed of bodies, cookies, query strings and personal data | Sentry | the operator | Sentry's retention |
 | Audit log (`AuditEvent`) | every state change, sign-ins and file views: who, what, which record, ids only, a hashed IP | the app database, append-only | the office (all) and heads (own program) | kept with the database |
 

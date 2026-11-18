@@ -8,7 +8,7 @@ This review checks ScholarSync against every Level 1 and Level 2 requirement of 
 
 Evidence is a repo-relative path with a line number, a test node id, or both. Where it names a Django or library default, it names the setting or mechanism.
 
-**Summary:** 253 requirements: 166 Met, 73 Not applicable, 14 Gap (after the M12 fixes; the first pass found 42 gaps).
+**Summary:** 253 requirements: 179 Met, 73 Not applicable, 1 Gap, accepted (after the M13 follow-ups; M12 left 14 gaps, and the first pass found 42).
 
 ## V1 Encoding and Sanitization
 
@@ -119,7 +119,7 @@ Evidence is a repo-relative path with a line number, a test node id, or both. Wh
 | V5.3.2 | L1 | File paths use internal data, never user-supplied names. | Met | Object keys are `pending/<uuid>` and `files/<purpose>/<uuid>` (`apps/files/models.py:8`, `apps/files/models.py:68`). |
 | V5.4.1 | L2 | Ignore user filenames and set a Content-Disposition filename on download. | Met | Names cleaned (`apps/files/names.py:14`) and sent as an attachment (`apps/files/services.py:285`). |
 | V5.4.2 | L2 | Served file names are encoded or sanitised (RFC 6266). | Met | `apps/files/names.py:37`; `apps/files/tests/test_names.py::test_content_disposition_has_ascii_fallback_and_utf8`. |
-| V5.4.3 | L2 | Scan untrusted files with an antivirus before serving them. | Gap | No antivirus scan on confirm. |
+| V5.4.3 | L2 | Scan untrusted files with an antivirus before serving them. | Met | Optional, the operator's choice: with `CLAMAV_HOST` set, confirm streams each file to clamd (`apps/files/scanning.py:39`, `apps/files/services.py:150`) and rejects a hit; clamd down fails closed (503, file stays pending). `apps/files/tests/test_scanning.py::test_infected_file_is_rejected_with_malware_reason`, `apps/files/tests/test_scanning.py::test_clamd_down_answers_503_and_leaves_pending`; `docs/HOSTING.md` shows the `clamav/clamav` service. |
 
 ## V6 Authentication
 
@@ -134,17 +134,17 @@ Evidence is a repo-relative path with a line number, a test node id, or both. Wh
 | V6.2.2 | L1 | Users can change their password. | Met | allauth's password change view (`config/urls.py:26`); `apps/accounts/tests/test_login.py::test_password_reset_and_change_are_audited`. |
 | V6.2.3 | L1 | Password change requires the current and new password. | Met | allauth `ChangePasswordForm.oldpassword`, checked with `check_password` (allauth 65.20.1, `uv.lock`). |
 | V6.2.4 | L1 | New passwords are checked against at least the top 3000 passwords. | Met | `CommonPasswordValidator` (20,000 common passwords, `config/settings.py:320`). |
-| V6.2.5 | L1 | Passwords of any composition are allowed; no character-class rules. | Gap | `NumericPasswordValidator` (`config/settings.py:321`) refuses passwords made only of digits. |
+| V6.2.5 | L1 | Passwords of any composition are allowed; no character-class rules. | Met | No composition rules: `NumericPasswordValidator` is gone; length, similarity, common-password and site-word checks remain (`config/settings.py:355`). `config/tests/test_settings.py::test_numeric_validator_removed`. |
 | V6.2.6 | L1 | Password fields use type=password. | Met | allauth `PasswordField` renders `PasswordInput` (allauth pinned at `pyproject.toml:17`); `apps/accounts/tests/test_pages.py::test_every_input_has_a_label` renders the login, signup and reset forms. |
 | V6.2.7 | L1 | Paste, browser helpers and password managers are permitted. | Met | No script touches password inputs: `frontend/src/` has no paste or key handlers, and `tests/test_rendered_pages.py::test_every_get_page_is_csp_clean` rejects inline `on*` handlers; allauth sets `autocomplete` on password fields. |
 | V6.2.8 | L1 | The password is verified exactly as received, without changes. | Met | allauth `PasswordField` sets `strip=False` (allauth pinned at `pyproject.toml:17`); Django hashes the raw value. |
 | V6.2.9 | L2 | Passwords of at least 64 characters are permitted. | Met | No maximum length in `AUTH_PASSWORD_VALIDATORS` (`config/settings.py:314`) or on allauth's `PasswordField`. |
 | V6.2.10 | L2 | No periodic password rotation is required. | Met | No password-age setting or expiry code exists; validators are length and content only (`config/settings.py:314`). |
 | V6.2.11 | L2 | The context-specific word list is used to block easy passwords. | Met | `apps/accounts/validators.py` (`SiteWordsValidator`, in `AUTH_PASSWORD_VALIDATORS`); `tests/test_asvs_gaps.py::test_password_with_a_site_word_is_refused`. |
-| V6.2.12 | L2 | New passwords are checked against breached-password sets. | Gap | No breached-password check. |
+| V6.2.12 | L2 | New passwords are checked against breached-password sets. | Met | New passwords are checked against Have I Been Pwned's k-anonymity range API in production (`apps/accounts/breach.py:39`, `config/settings.py:360`); only five hex characters of the SHA-1 leave the server; fails open with a log line. `apps/accounts/tests/test_breach.py::test_breached_password_refused`, `apps/accounts/tests/test_breach.py::test_only_five_hex_characters_are_sent`. |
 | V6.3.1 | L1 | Credential-stuffing and brute-force controls are implemented. | Met | allauth `login_failed` limit (5 per 5 minutes per account, 10 per minute per IP); `apps/accounts/tests/test_login.py::test_repeated_failed_logins_are_rate_limited`. |
 | V6.3.2 | L1 | No default accounts such as root or admin exist. | Met | Production never installs the demo accounts (`config/settings.py:162`); the first office account is created with its own password (`docs/HOSTING.md:195`). |
-| V6.3.3 | L2 | Multi-factor authentication (or combined factors) is required. | Gap | No MFA: `allauth.mfa` is not installed (`config/settings.py:130`). |
+| V6.3.3 | L2 | Multi-factor authentication (or combined factors) is required. | Met | `allauth.mfa` (TOTP and recovery codes); staff and office accounts must set it up before any other page in production (`apps/accounts/mfa_policy.py:25`, `config/settings.py:312`). Students are not required (risk-based: own data only). `apps/accounts/tests/test_mfa.py::test_staff_without_authenticator_is_sent_to_activation`, `apps/accounts/tests/test_mfa.py::test_totp_sign_in_round_trip`. |
 | V6.3.4 | L2 | No undocumented pathways; strength enforced consistently. | Met | Google sign-in can never reach staff or office accounts (`apps/accounts/adapters.py:96`; `apps/accounts/tests/test_google.py::test_a_google_email_match_never_signs_in_a_privileged_account`); every URL is in `tests/test_permission_matrix.py::test_every_url_is_in_the_matrix`. |
 | V6.4.1 | L1 | Initial passwords and activation codes are random, short-lived or single-use. | Met | Claim tokens are `secrets.token_urlsafe(32)`, stored hashed, single-use (`apps/students/services.py:296`); staff set-password links are Django reset tokens (`apps/accounts/services.py:144`) that die once a password is set. |
 | V6.4.2 | L1 | No password hints or secret questions. | Met | Signup asks only email and password (`config/settings.py:267`). |
@@ -175,16 +175,16 @@ Evidence is a repo-relative path with a line number, a test node id, or both. Wh
 | V7.2.1 | L1 | Session tokens are verified by a trusted backend. | Met | Database-backed Django sessions (`config/settings.py:171`). |
 | V7.2.2 | L1 | Session tokens are dynamic, not static API secrets. | Met | Django session keys are generated per sign-in (`config/settings.py:171`). |
 | V7.2.3 | L1 | Reference tokens are unique, CSPRNG-made, with 128+ bits of entropy. | Met | Django database sessions (`config/settings.py:171`): keys are 32 characters from `get_random_string` (`secrets`), about 165 bits. |
-| V7.2.4 | L1 | A new session token is issued on authentication and re-authentication. | Gap | Sign-in rotates the key (Django `login()` calls `cycle_key`), but allauth reauthentication (`apps/money/staff_views.py:320`) only records a timestamp and keeps the key. |
-| V7.3.1 | L2 | An inactivity timeout forces re-authentication per risk analysis. | Gap | No idle timeout: the 12-hour expiry (`config/settings.py:371`) is counted from the last session write, not the last request (`SESSION_SAVE_EVERY_REQUEST` unset). |
-| V7.3.2 | L2 | An absolute maximum session lifetime forces re-authentication. | Gap | No absolute cap: allauth's `set_expiry(SESSION_COOKIE_AGE)` (`config/settings.py:271`) is relative, so each session write extends it. |
+| V7.2.4 | L1 | A new session token is issued on authentication and re-authentication. | Met | Sign-in rotates the key (Django `login()`); reauthentication now does too (`apps/accounts/reauth.py:14`, mounted at allauth's path in `config/urls.py`). `apps/accounts/tests/test_sessions.py::test_reauthentication_cycles_the_session_key`. |
+| V7.3.1 | L2 | An inactivity timeout forces re-authentication per risk analysis. | Met | Idle limits: 30 minutes for staff and the office, 60 for students (`config/settings.py:413`), enforced per request (`apps/accounts/session_policy.py:48`), with a warning dialog first. `apps/accounts/tests/test_session_policy.py::test_staff_idle_31_minutes_is_signed_out_with_message`, `apps/accounts/tests/test_session_policy.py::test_student_idle_59_minutes_is_still_signed_in`. |
+| V7.3.2 | L2 | An absolute maximum session lifetime forces re-authentication. | Met | Every session ends 12 hours after sign-in whatever the activity (`signed_in_at`, `apps/accounts/session_policy.py:48`, `config/settings.py:411`). `apps/accounts/tests/test_session_policy.py::test_absolute_12_hours_ends_session_even_when_active`. |
 | V7.4.1 | L1 | Logout or expiry stops any further use of the session. | Met | Django `logout()` flushes the database session; `cleanup` runs `clearsessions` (`apps/core/tests/test_commands.py::test_cleanup_clears_expired_sessions`). |
 | V7.4.2 | L1 | Disabling or deleting an account ends all its sessions. | Met | `apps/accounts/services.py:227`; `apps/office/tests/test_staff.py::test_deactivate_ends_sessions_and_blocks_sign_in`. |
 | V7.4.3 | L2 | Offer to end other sessions after an authentication factor changes. | Met | `AuthenticationMiddleware` (`config/settings.py:174`) checks the session auth hash, which ends every other session on a password change or reset; allauth keeps only the current one (`LOGOUT_ON_PASSWORD_CHANGE` default `False`). |
 | V7.4.4 | L2 | Every authenticated page has visible logout. | Met | App layouts (`templates/layouts/app.html`) and signed-in account pages (`templates/layouts/auth.html`) offer Sign out (`tests/test_asvs_gaps.py::test_signed_in_account_pages_offer_sign_out`). |
-| V7.4.5 | L2 | Administrators can end sessions for one user or all users. | Gap | The office can end staff and office sessions by deactivating (`apps/accounts/services.py:213` refuses students); no action ends a student's sessions or everyone's. |
+| V7.4.5 | L2 | Administrators can end sessions for one user or all users. | Met | The office signs a staff or office account out everywhere, behind the password (`apps/office/staff_views.py:123`, `apps/accounts/services.py:199`); the operator ends any account's sessions with `manage.py end_sessions --email` (`apps/accounts/management/commands/end_sessions.py`); both audited by id. `apps/accounts/tests/test_sessions.py::test_office_signs_staff_out_everywhere_after_password`, `apps/accounts/tests/test_sessions.py::test_end_sessions_command_by_email_audited`. |
 | V7.5.1 | L2 | Full re-authentication before changing email or other auth attributes. | Met | `ACCOUNT_REAUTHENTICATION_REQUIRED` (`config/settings.py:274`); `apps/accounts/tests/test_login.py::test_email_change_asks_to_reauthenticate_after_five_minutes`. |
-| V7.5.2 | L2 | Users can view and terminate their active sessions. | Gap | No session list: `allauth.usersessions` is not installed (`config/settings.py:130`). |
+| V7.5.2 | L2 | Users can view and terminate their active sessions. | Met | `allauth.usersessions` lists the account's sessions at `/accounts/sessions/` (account menu); signing the others out asks for the password again (`apps/accounts/reauth.py:30`). `apps/accounts/tests/test_sessions.py::test_user_lists_and_ends_other_sessions`. |
 | V7.6.1 | L2 | RP/IdP session lifetimes and termination behave as documented. | Met | Behaviour as documented in `docs/security/controls.md` (Sessions): signing out here or at Google affects only that side. |
 | V7.6.2 | L2 | Creating a session needs user consent or explicit action. | Met | Google sign-in starts only from a POST on allauth's confirm page; `tests/test_permission_matrix.py::test_google_with_keys_shows_confirm_page_and_rejects_a_bare_callback`. |
 
@@ -284,9 +284,9 @@ Evidence is a repo-relative path with a line number, a test node id, or both. Wh
 | V12.1.3 | L2 | mTLS client certificates are validated before use. | Not applicable | No mTLS. |
 | V12.2.1 | L1 | TLS for all client connections, with no plaintext fallback. | Met | `SECURE_SSL_REDIRECT` and HSTS in production (`config/settings.py:358`); `apps/core/tests/test_security_headers.py::test_plain_http_redirects_to_https`. |
 | V12.2.2 | L1 | External services use publicly trusted certificates. | Not applicable | The certificate belongs to the operator's proxy. |
-| V12.3.1 | L2 | All inbound and outbound connections (database, mail, storage) use TLS. | Gap | Production accepts a plaintext database, `smtp://` and an `http://` storage endpoint; `docs/HOSTING.md:88` makes TLS optional and `:119` offers plain SMTP. |
+| V12.3.1 | L2 | All inbound and outbound connections (database, mail, storage) use TLS. | Met | Production refuses to start with a plaintext database (no `sslmode`), `smtp://`, an `http://` storage endpoint or a clamd on another machine, unless `ALLOW_PLAINTEXT_SERVICES=true` (`config/plaintext.py`, `config/settings.py:265`); loopback and Docker service names are exempt. `config/tests/test_settings.py::test_production_refuses_plaintext_smtp_to_another_host`, `config/tests/test_settings.py::test_production_refuses_database_without_tls_to_another_host`, `config/tests/test_settings.py::test_production_refuses_clamd_on_another_host`. |
 | V12.3.2 | L2 | TLS clients validate server certificates. | Met | `docs/HOSTING.md` step 4 recommends `sslmode=verify-full` with the provider's CA; SMTP and S3 clients verify certificates by default. |
-| V12.3.3 | L2 | Internal HTTP services use TLS with no fallback. | Gap | `S3_ENDPOINT_URL` may be `http://` in production (`config/settings.py:235`); nothing refuses it. |
+| V12.3.3 | L2 | Internal HTTP services use TLS with no fallback. | Met | The same guard refuses an `http://` `S3_ENDPOINT_URL` or `S3_PUBLIC_ENDPOINT_URL` on another host (`config/plaintext.py`). `config/tests/test_settings.py::test_production_refuses_http_storage_to_another_host`. |
 | V12.3.4 | L2 | Internal TLS uses trusted certificates or pinned internal CAs. | Met | boto3 verifies certificates by default and `apps/files/storage.py:43` never sets `verify=False`; Django's SMTP backend uses `ssl.create_default_context()`. |
 
 ## V13 Configuration
@@ -297,7 +297,7 @@ Evidence is a repo-relative path with a line number, a test node id, or both. Wh
 |---|---|---|---|---|
 | V13.1.1 | L2 | All communication needs and external services are documented. | Met | `docs/design/2026-10-11-scholarsync-v2-design.md` §11 Providers (line 921) and `docs/HOSTING.md:83`. |
 | V13.2.1 | L2 | Backend component communications are authenticated. | Met | Database, storage and SMTP credentials in `DATABASE_URL`, `S3_*` and `EMAIL_URL` (`config/settings.py:202`, `config/settings.py:234`, `config/settings.py:214`). |
-| V13.2.2 | L2 | Backend communications use least-privilege accounts. | Gap | The runtime database user owns the schema (it migrates on start, `docker/entrypoint.sh:10`), and the image's app code is owned by the runtime user (`Dockerfile:26`). |
+| V13.2.2 | L2 | Backend communications use least-privilege accounts. | Met | Migrations run as the owner through `DATABASE_URL_MIGRATIONS` (`docker/entrypoint.sh:12`), which is unset before the app starts; `docs/HOSTING.md` gives the row-only runtime role, with `UPDATE`, `DELETE` and `TRUNCATE` revoked on `core_auditevent`; the image's code is root-owned (`Dockerfile:27`). `tests/test_docker_files.py::test_entrypoint_prefers_the_migrations_url`, `tests/test_docker_files.py::test_app_code_is_not_owned_by_the_runtime_user`. |
 | V13.2.3 | L2 | Service credentials are never defaults. | Met | Production refuses the public explore storage key and placeholder secret keys (`config/settings.py:244`, `config/settings.py:60`, `config/settings.py:66`). |
 | V13.2.4 | L2 | An allowlist defines external resources the app may contact. | Met | Outbound destinations are fixed by settings (`config/settings.py:234`, `config/settings.py:214`, `config/settings.py:297`, `config/settings.py:423`); no user-supplied destination exists. |
 | V13.2.5 | L2 | The server has an allowlist for outbound requests and loads. | Met | Same fixed destinations; the CSP limits browser loads to self and the storage origin (`config/settings.py:397`). |
@@ -317,7 +317,7 @@ Evidence is a repo-relative path with a line number, a test node id, or both. Wh
 |---|---|---|---|---|
 | V14.1.1 | L2 | Sensitive data is identified and classified into protection levels. | Met | `docs/security/controls.md` (Data classification). |
 | V14.1.2 | L2 | Each protection level has documented protection requirements. | Met | `docs/security/controls.md` (Data classification): protection per level. |
-| V14.2.1 | L1 | Sensitive data never travels in URLs or query strings. | Gap | Name searches go in the query string (`?q=`, `apps/awards/staff_views.py:399`, `apps/applications/behalf_views.py:46`); claim and reset tokens in emailed links are redacted and `no-store`. |
+| V14.2.1 | L1 | Sensitive data never travels in URLs or query strings. | Gap (accepted) | Name searches stay in the query string (`?q=`, `apps/awards/staff_views.py:399`, `apps/applications/behalf_views.py:46`): staff screens, signed in, `no-store`, and dropped from the access log (V16.2.5). Accepted in M13; claim and reset tokens in emailed links are redacted and `no-store`. |
 | V14.2.2 | L2 | Sensitive data is not cached in server components. | Met | `Cache-Control: no-store, private` on signed-in and secret pages (`apps/core/middleware.py:22`); `apps/core/tests/test_security_headers.py::test_signed_in_pages_are_no_store`. |
 | V14.2.3 | L2 | Sensitive data is not sent to untrusted parties such as trackers. | Met | No analytics or trackers (CSP `default-src 'self'`, `config/settings.py:394`); Sentry events are scrubbed (`apps/core/sentry.py:92`; `apps/core/tests/test_sentry.py::test_init_sentry_never_collects_locals_bodies_or_pii`). |
 | V14.2.4 | L2 | Sensitive-data controls (retention, logging, privacy) follow each level. | Met | `docs/security/controls.md` (Data classification) maps each control to its level. |
@@ -352,7 +352,7 @@ Evidence is a repo-relative path with a line number, a test node id, or both. Wh
 | ID | Level | Requirement | Status | Evidence |
 |---|---|---|---|---|
 | V16.1.1 | L2 | A logging inventory covers layers, events, formats, storage, access, retention. | Met | `docs/security/controls.md` (Logs): the inventory. |
-| V16.2.1 | L2 | Each log entry has when, where, who and what. | Gap | Audit rows have all four (`apps/core/models.py:23`), but JSON log lines carry only time, level, logger and message (`apps/core/logging.py:21`): no user or request id. |
+| V16.2.1 | L2 | Each log entry has when, where, who and what. | Met | Every JSON log line carries `request_id` and `user_id` (`apps/core/request_context.py:33`, `apps/core/logging.py`), the response echoes `X-Request-ID`, and the access log prints it. `apps/core/tests/test_request_context.py::test_request_id_echoed_and_logged`, `apps/core/tests/test_request_context.py::test_log_line_has_user_id_after_sign_in`. |
 | V16.2.2 | L2 | Log time sources are synced; timestamps are UTC or carry an offset. | Met | UTC ISO timestamps (`apps/core/logging.py:22`); audit `at` is timezone-aware (`USE_TZ`, `config/settings.py:327`). |
 | V16.2.3 | L2 | Logs go only to documented destinations. | Met | stdout (`config/settings.py:418`) and optional Sentry (`config/settings.py:423`), both in spec §10. |
 | V16.2.4 | L2 | Logs use a common format a processor can read. | Met | One JSON object per line (`apps/core/logging.py:29`); `apps/core/tests/test_logging.py::test_json_formatter_emits_one_json_object`. |
@@ -384,19 +384,6 @@ Evidence is a repo-relative path with a line number, a test node id, or both. Wh
 
 ## Open gaps
 
-These are the gaps left after the M12 fixes. Each needs a product or hosting decision, so they wait for the maintainer. One bullet per gap, in requirement order. Size: **small** is one commit with a test, under about 40 lines; **larger** is anything more.
+M13 (2026-11-19) closed 13 of the 14 gaps M12 left; the maintainer's decisions are recorded in the design spec. One stays, accepted:
 
-- **V5.4.3** (larger): Uploads are not scanned for malware. Fix: scan the copied object on confirm (ClamAV sidecar, or the storage provider's scanning) and reject on a hit; an optional service in both compose files.
-- **V6.2.5** (small): `NumericPasswordValidator` rules out all-digit passwords, a composition rule. Fix: drop it; `CommonPasswordValidator` and the minimum length already catch weak digit strings. Adjust any test.
-- **V6.2.12** (larger): No breached-password check. Fix: check new passwords against Have I Been Pwned's k-anonymity range API (or an offline list), failing open with a log line when the API is down.
-- **V6.3.3** (larger): No multi-factor authentication. Fix: install `allauth.mfa` (TOTP and recovery codes) and require it for staff and office accounts first.
-- **V7.2.4** (small): Reauthentication keeps the same session key. Fix: call `request.session.cycle_key()` after a successful reauthentication (an allauth adapter or view override), with a test that the key changes.
-- **V7.3.1** (small): No inactivity timeout. Fix: a middleware that stores the last request time in the session and signs the user out after the documented idle period, with a test.
-- **V7.3.2** (small): No absolute session lifetime: each session write extends the 12 hours. Fix: store the sign-in time in the session and end sessions older than the cap in the same middleware, with a test.
-- **V7.4.5** (larger): Nobody can end a student's sessions, or all sessions at once. Fix: an office action "Sign out everywhere" for any account, reusing `_end_sessions`, audited, in the permission matrix.
-- **V7.5.2** (larger): Users can't see or end their other sessions. Fix: install `allauth.usersessions` (behind reauthentication) and style its page.
-- **V12.3.1** (small): Production accepts plaintext database, SMTP and storage connections, and the guide offers them. Fix: refuse `http://` storage endpoints and `smtp://` in production (except loopback), and make the guide require TLS for the database, with settings tests.
-- **V12.3.3** (small): The storage endpoint may be plain HTTP in production. Fix: same settings check as V12.3.1.
-- **V13.2.2** (larger): The runtime database user owns the schema, and the runtime user owns the app code. Fix: use a migration role through `DATABASE_URL_UNPOOLED` and a DML-only runtime role; copy the app code root-owned in the `Dockerfile`.
-- **V14.2.1** (small): Student names travel in query strings (`?q=`). Since M12 the access log drops them (V16.2.5), but they stay in browser history. Fix if wanted: send name searches as POST, or keep them (staff screens, signed-in, `no-store`).
-- **V16.2.1** (small): App log lines have no user or request id. Fix: put the user id and a request id in a context variable from middleware and add them to `JsonFormatter`, with a test.
+- **V14.2.1** (accepted): student names travel in the query string of staff name searches (`?q=`). They stay in the staff member's browser history, but the screens are signed-in staff screens sent `no-store`, and the access log drops the parameter (V16.2.5). Sentry drops query strings too. Searches stay GET for bookmarkable filters and HTMX history.
