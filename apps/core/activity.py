@@ -80,6 +80,9 @@ VERBS.update(
         "school.added": "added a school",
         "school.updated": "edited a school",
         "user.signed_up": "signed up",
+        "user.signed_in": "signed in",
+        "user.signed_out": "signed out",
+        "user.sign_in_failed": "failed to sign in",
         "user.created": "created an account",
         "user.promoted": "promoted an account",
         "user.deactivated": "deactivated an account",
@@ -146,6 +149,8 @@ def actor_name(actor: User | None) -> str:
 
 def describe(event: AuditEvent) -> str:
     who = actor_name(event.actor)
+    if event.actor is None and event.action == "user.sign_in_failed":
+        who = "Someone"
     verb = VERBS.get(event.action)
     if verb is None:
         return f"{who}: {event.action}"

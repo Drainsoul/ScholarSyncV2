@@ -60,11 +60,12 @@ def test_office_sees_all_events_newest_first_50_a_page(client: Any) -> None:
     for n in range(55):
         event = record(actor=actor, action="award.created", program=program, data={"n": n})
         _at(event, now - timedelta(minutes=n))
-    html = client.get(OFFICE_URL).content.decode()
+    # The office's own sign-in is an event too (M12); the Scholars group holds only these.
+    html = client.get(OFFICE_URL + "?group=scholars").content.decode()
     assert html.count("Added a scholar") == 50
     assert html.index("n: 0<") < html.index("n: 1<")
     assert "n: 50<" not in html
-    assert "n: 50<" in client.get(OFFICE_URL + "?page=2").content.decode()
+    assert "n: 50<" in client.get(OFFICE_URL + "?group=scholars&page=2").content.decode()
 
 
 def test_filters_group_dates_who_program(client: Any) -> None:
