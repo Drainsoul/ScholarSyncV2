@@ -23,6 +23,7 @@ from apps.awards.models import Award, ScholarTerm
 from apps.awards.services import AwardData, TermData, change_status, create_award
 from apps.demo.accounts import ACCOUNTS, PASSWORD, DemoAccount
 from apps.demo.office import give_office_samples
+from apps.demo.reports import give_report_samples
 from apps.demo.samples import (
     DECLINE_REASON,
     DEMO_BUDGET,
@@ -640,4 +641,5 @@ def load() -> int:
         _give_staff_money()
         give_workspace_samples()
         give_office_samples()
+        give_report_samples()
     return created

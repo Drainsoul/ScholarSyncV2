@@ -685,3 +685,42 @@ def test_demo_has_office_samples(demo_app, settings, frozen_today):
     assert (change.base_amount, change.merit_amount) == (Decimal("5500.00"), Decimal("11000.00"))
     assert Program.objects.filter(slug="youth-grant").count() == 1
     assert User.objects.filter(email="former.staff@scholarsync.test").count() == 1
+
+
+@pytest.mark.django_db
+def test_demo_has_report_samples(demo_app, settings, frozen_today, stored):
+    from apps.reports.models import Report
+    from apps.workspace.models import Notification
+
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    loader.load()
+    reports = {report.title: report for report in Report.objects.filter(program__slug="tcu-ceaa")}
+    assert {title: report.status for title, report in reports.items()} == {
+        "Semester disbursement summary": "accepted",
+        "Monthly applications report": "returned",
+        "Quarterly scholar update": "submitted",
+    }
+    assert reports["Monthly applications report"].review_note
+    accepted = reports["Semester disbursement summary"]
+    assert accepted.period_end < reports["Quarterly scholar update"].period_start
+    for report in reports.values():
+        (version,) = report.files.all()
+        assert version.file.purpose == "report"
+        assert version.file.key == f"files/report/{version.file.pk}"
+    assert len([key for key, _body, _type in stored if key.startswith("files/report/")]) == 3
+    unread = Notification.objects.filter(read_at=None)
+    office = unread.filter(recipient__email="office@scholarsync.test", kind="report_submitted")
+    assert office.count() == 1
+    head = unread.filter(recipient__email="head@scholarsync.test", kind="report_returned")
+    assert head.count() == 1
+
+
+@pytest.mark.django_db
+def test_demo_skips_report_samples_without_storage(demo_app, settings, frozen_today, monkeypatch):
+    from apps.reports.models import Report
+
+    monkeypatch.setattr("apps.files.storage.is_configured", lambda: False)
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    assert not Report.objects.exists()
