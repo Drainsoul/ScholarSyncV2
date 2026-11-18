@@ -48,6 +48,11 @@
   with a warning; session-key rotation on reauthentication; a session list, the office's Sign out everywhere and
   `end_sessions`; unencrypted services refused in production; a least-privilege database role; request ids in
   logs; names in search URLs accepted; the numeric-password rule dropped (§6, §7, §10, §12, §14, §16).
+- **Revision:** 22 (2026-11-19): settled while building M13: a clamd on another machine counts as an unencrypted
+  service; the owner's database URL is removed from the environment before the app starts; email URLs use
+  `submission://` or `?ssl=true` (`smtp+tls://` was never a parser scheme) and an unknown scheme stops startup;
+  both reauthentication pages rotate the session key; signing out other sessions is audited; session-list rows go
+  once their session ends; privacy notice version 2026-11-19 (§7, §10, §14).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -711,7 +716,8 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 - **Malware scanning (M13, optional):** with `CLAMAV_HOST` (and `CLAMAV_PORT`, default 3310), confirm streams the
   copied object to clamd (`INSTREAM`) before the file is ready: `FOUND` rejects it (reason `malware`, "This file can't
   be accepted. Upload a different one."); clamd unreachable answers 503 ("Files can't be checked right now. Try again
-  in a few minutes.") and leaves the file pending.
+  in a few minutes.") and leaves the file pending. clamd's protocol has no TLS, so production refuses a
+  `CLAMAV_HOST` on another machine like any unencrypted service (rev 22).
 - **Access by purpose (M12):** `import` files are never downloadable, by anyone, the office included; `report` files
   answer the office and active staff of the report's program only (no uploader shortcut); `document` and `photo`
   files keep the rules above.
@@ -899,14 +905,18 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - **Session limits:** idle 30 minutes for staff and the office, 60 for students (`SESSION_IDLE_MINUTES_STAFF`,
     `SESSION_IDLE_MINUTES_STUDENT`); 12 hours from sign-in whatever the activity; a warning dialog 2 minutes before an
     idle sign-out with "Stay signed in" (`POST /accounts/session/keep-alive/`), and 5 minutes before the absolute
-    limit; the session key rotates after reauthentication.
-  - **Sessions:** `/accounts/sessions/` lists one's sessions with "Sign out other sessions" (`allauth.usersessions`);
-    the office's "Sign out everywhere" on a staff account (`user.sessions_ended`); `manage.py end_sessions --email`.
-  - **Encrypted services:** production refuses `smtp://`, `http://` storage endpoints and a database URL without
-    `sslmode=require|verify-ca|verify-full`, except for loopback, single-label service names and
-    `host.docker.internal`, or with `ALLOW_PLAINTEXT_SERVICES=true`.
-  - **Least privilege:** migrations run with `DATABASE_URL_MIGRATIONS` when set; the runtime role has DML only and
-    no `UPDATE`/`DELETE` on audit events; the app code is root-owned in the image.
+    limit; the session key rotates after reauthentication, by password or by authenticator code (rev 22).
+  - **Sessions:** `/accounts/sessions/` lists one's sessions with "Sign out other sessions" (`allauth.usersessions`;
+    behind the password; audited `user.other_sessions_ended`); the office's "Sign out everywhere" on a staff account
+    (`user.sessions_ended`); `manage.py end_sessions --email`. Each row keeps the start time, IP address and browser
+    string, and goes once its session has ended (`cleanup`, and at once when sessions are ended); the privacy notice
+    (version 2026-11-19) says so.
+  - **Encrypted services:** production refuses an email URL without STARTTLS or TLS, `http://` storage endpoints, a
+    database URL without `sslmode=require|verify-ca|verify-full` and a `CLAMAV_HOST`, except for loopback,
+    single-label service names and `host.docker.internal`, or with `ALLOW_PLAINTEXT_SERVICES=true`.
+  - **Least privilege:** migrations run with `DATABASE_URL_MIGRATIONS` when set, and the entrypoint unsets it (and
+    `DATABASE_URL_UNPOOLED`) before the app starts; the runtime role has DML only and no `UPDATE`/`DELETE`/`TRUNCATE`
+    on audit events; the app code is root-owned in the image.
   - **Request ids:** an `X-Request-ID` (kept when valid, else generated) and the user id on every log line and in
     the access log.
   - **Accepted:** name searches stay in `GET ?q=` on signed-in, `no-store` staff pages (dropped from logs).
@@ -1135,7 +1145,8 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
   `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_ADDRESSING_STYLE`. `.env.example` carries the local compose storage
   values; production refuses the explore storage secret `scholarsync-explore-secret`.
 - **Email:** `EMAIL_URL` (SMTP, URL-style), `DEFAULT_FROM_EMAIL`. Production requires a real SMTP `EMAIL_URL`: blank,
-  `console://`, `memory://`, `dummy://` and `file://` refuse to start.
+  `console://`, `memory://`, `dummy://` and `file://` refuse to start. STARTTLS is `submission://` (or `?tls=true`),
+  implicit TLS `smtp://...:465?ssl=true`; a scheme the parser doesn't know stops startup in every mode (rev 22).
 - **Google sign-in (optional):** `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
 - **Operator (required in production):** `SITE_OPERATOR_NAME`, `PRIVACY_CONTACT_EMAIL`. In explore and developer modes
   they default to "This local copy" and no email.
