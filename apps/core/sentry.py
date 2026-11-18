@@ -1,7 +1,7 @@
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
-from apps.core.redaction import redact
+from apps.core.redaction import redact, redact_secret_paths
 
 SAFE_HEADERS = {"User-Agent", "Referer", "Content-Type", "Accept", "Host"}
 
@@ -33,8 +33,12 @@ def scrub_event(event: dict[str, Any], hint: dict[str, Any]) -> dict[str, Any]:
         if isinstance(headers, dict):
             kept = {k: v for k, v in headers.items() if k in SAFE_HEADERS}
             if "Referer" in kept:
-                kept["Referer"] = _path_only(str(kept["Referer"]))
+                kept["Referer"] = redact_secret_paths(_path_only(str(kept["Referer"])))
             request["headers"] = kept
+        if isinstance(request.get("url"), str):
+            request["url"] = redact_secret_paths(request["url"])
+    if isinstance(event.get("transaction"), str):
+        event["transaction"] = redact_secret_paths(event["transaction"])
     user = event.get("user")
     if isinstance(user, dict):
         event["user"] = {"id": user["id"]} if "id" in user else {}

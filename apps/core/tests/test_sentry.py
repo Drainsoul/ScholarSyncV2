@@ -82,3 +82,23 @@ def test_init_sentry_never_collects_locals_bodies_or_pii():
         assert options["before_send"] is scrub_event
     finally:
         sentry_sdk.init()  # reset to a disabled client so other tests never report
+
+
+def test_scrub_event_redacts_url_transaction_and_referer() -> None:
+    event = {
+        "transaction": "/accounts/claim/S3cr3t/",
+        "request": {
+            "url": "https://scholarsync.example/accounts/confirm-email/MQ:abc/",
+            "headers": {
+                "Referer": "https://scholarsync.example/accounts/claim/S3cr3t/?x=1",
+                "Host": "scholarsync.example",
+            },
+        },
+    }
+    scrubbed = scrub_event(event, {})
+    assert "S3cr3t" not in str(scrubbed)
+    assert "MQ:abc" not in str(scrubbed)
+    assert scrubbed["request"]["url"] == (
+        "https://scholarsync.example/accounts/confirm-email/[redacted]/"
+    )
+    assert scrubbed["transaction"] == "/accounts/claim/[redacted]/"

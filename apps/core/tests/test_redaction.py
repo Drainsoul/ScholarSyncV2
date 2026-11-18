@@ -2,8 +2,10 @@ import json
 import logging
 import sys
 
+import pytest
+
 from apps.core.logging import JsonFormatter
-from apps.core.redaction import redact
+from apps.core.redaction import redact, redact_secret_paths
 from apps.core.sentry import scrub_event
 
 PSYCOPG_MESSAGE = (
@@ -121,3 +123,33 @@ def test_redact_masks_non_ascii_names_entirely():
     for address in ("juán.dela.cruz@example.com", "ana@exämple.ph"):
         result = redact(f"for {address} now")
         assert result == "for [email] now", address
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("/accounts/claim/AbC-123_x/", "/accounts/claim/[redacted]/"),
+        ("/accounts/confirm-email/MQ:1v:abc-d_e/", "/accounts/confirm-email/[redacted]/"),
+        ("/accounts/password/reset/key/1a-c3x-9f2/", "/accounts/password/reset/key/[redacted]/"),
+        (
+            "https://host.example/accounts/claim/tok3n/?next=/me/",
+            "https://host.example/accounts/claim/[redacted]/?next=/me/",
+        ),
+        ("Not Found: /accounts/claim/zzz/", "Not Found: /accounts/claim/[redacted]/"),
+        ("GET /accounts/claim/abc/ HTTP/1.1", "GET /accounts/claim/[redacted]/ HTTP/1.1"),
+        ("/accounts/claim/", "/accounts/claim/"),
+        ("/accounts/password/reset/", "/accounts/password/reset/"),
+        ("/accounts/password/reset/done/", "/accounts/password/reset/done/"),
+        ("/me/applications/12/", "/me/applications/12/"),
+    ],
+)
+def test_redact_secret_paths(text: str, expected: str) -> None:
+    assert redact_secret_paths(text) == expected
+
+
+def test_redact_includes_secret_paths() -> None:
+    from apps.core.redaction import redact
+
+    assert redact("Forbidden (CSRF token missing.): /accounts/claim/s3cret/") == (
+        "Forbidden (CSRF token missing.): /accounts/claim/[redacted]/"
+    )

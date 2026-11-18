@@ -41,4 +41,5 @@ USER scholarsync
 EXPOSE 8000
 ENTRYPOINT ["sh", "/app/docker/entrypoint.sh"]
 # No control socket: the user has no home directory to hold it, and nothing uses it.
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--access-logfile", "-", "--no-control-socket"]
+# The access log redacts claim tokens and reset keys (apps/core/gunicorn_logging.py, M12).
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--access-logfile", "-", "--logger-class", "apps.core.gunicorn_logging.RedactingLogger", "--no-control-socket"]
