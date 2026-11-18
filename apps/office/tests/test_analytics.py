@@ -262,3 +262,15 @@ def test_analytics_nav_item(client: Any, office: User) -> None:
         "Audit log",
         "Support",
     ]
+
+
+def test_summary_keeps_a_closed_program_with_money_in_the_year(
+    client: Any, office: User, world: dict[str, Any]
+) -> None:
+    closed = ProgramFactory.create(name="Old Grant", is_active=False)
+    schedule = ScheduleFactory.create(program=closed, term=world["term"])
+    payout(schedule, status=Disbursement.Status.RELEASED, amount=Decimal("3000.00"))
+    response = client.get(EXPORT + "?year=2026&format=csv")
+    rows = list(csv.reader(io.StringIO(response.content.decode("utf-8-sig"))))
+    old = next(row for row in rows if row[0] == "Old Grant")
+    assert old[8] == "3000.00"

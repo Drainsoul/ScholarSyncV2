@@ -14,6 +14,7 @@ from django.http import QueryDict
 
 from apps.applications.models import Application
 from apps.applications.review_selectors import applications_by_month
+from apps.awards.models import ScholarTerm
 from apps.awards.selectors import active_counts
 from apps.awards.tabular import write_csv, write_xlsx
 from apps.core.charts import MonthBar, first_month, month_bars
@@ -130,7 +131,8 @@ def _durations(counted: QuerySet[Application]) -> list[tuple[int, timedelta]]:
 
 
 def _rows(year: int | None, program: Program | None) -> list[ProgramRow]:
-    """One row per program: the chosen one, or every active program plus any with applications."""
+    """One row per program: the chosen one, or every open program plus any with applications,
+    scholars or released money in the year (a closed program keeps its row)."""
     counted = _counted(year, program)
     totals: dict[int, dict[str, int]] = {
         row["program_id"]: {
@@ -149,27 +151,32 @@ def _rows(year: int | None, program: Program | None) -> list[ProgramRow]:
     durations: dict[int, list[timedelta]] = {}
     for program_id, duration in _durations(counted):
         durations.setdefault(program_id, []).append(duration)
-    if program is not None:
-        programs = [program]
-    else:
-        programs = list(
-            Program.objects.filter(Q(is_active=True) | Q(pk__in=list(totals))).order_by("name")
-        )
-    ids = [item.pk for item in programs]
-    scholars = active_counts(ids)
     released: dict[int, Decimal] = {}
+    held: set[int] = set()
     if year is not None:
+        payouts = Disbursement.objects.filter(
+            status=Disbursement.Status.RELEASED, scholar_term__term__school_year_start=year
+        )
+        records = ScholarTerm.objects.filter(term__school_year_start=year)
+        if program is not None:
+            payouts = payouts.filter(scholar_term__award__program=program)
+            records = records.filter(award__program=program)
         released = {
             row["scholar_term__award__program_id"]: row["total"]
-            for row in Disbursement.objects.filter(
-                status=Disbursement.Status.RELEASED,
-                scholar_term__term__school_year_start=year,
-                scholar_term__award__program_id__in=ids,
-            )
-            .values("scholar_term__award__program_id")
+            for row in payouts.values("scholar_term__award__program_id")
             .order_by()
             .annotate(total=Sum("amount"))
         }
+        held = set(records.values_list("award__program_id", flat=True).distinct())
+    if program is not None:
+        programs = [program]
+    else:
+        # Every open program, and any program with applications, scholars or money in the year.
+        ids_in_year = {*totals, *released, *held}
+        programs = list(
+            Program.objects.filter(Q(is_active=True) | Q(pk__in=ids_in_year)).order_by("name")
+        )
+    scholars = active_counts([item.pk for item in programs])
     result = []
     for item in programs:
         total: dict[str, int] = totals.get(item.pk, {})
