@@ -4,16 +4,23 @@ The Dockerfile runs gunicorn with `--logger-class apps.core.gunicorn_logging.Red
 A page opened from a claim link sends the token in its Referer, so every string atom (request
 line, path, query, Referer, request and response headers) is redacted, not only the path."""
 
+import re
 from datetime import timedelta
 from typing import Any
 
 from apps.core.redaction import redact_secret_paths
 
+# A name search is personal data (ASVS V14.2.1, V16.2.5): keep that it happened, not what.
+NAME_SEARCH = re.compile(r"(^|[?&])q=[^&\s]*")
+
+
+def _redact(text: str) -> str:
+    return NAME_SEARCH.sub(r"\1q=[redacted]", redact_secret_paths(text))
+
 
 def redact_atoms(atoms: dict[str, Any]) -> dict[str, Any]:
     return {
-        key: redact_secret_paths(value) if isinstance(value, str) else value
-        for key, value in atoms.items()
+        key: _redact(value) if isinstance(value, str) else value for key, value in atoms.items()
     }
 
 

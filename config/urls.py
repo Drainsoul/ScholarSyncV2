@@ -1,4 +1,12 @@
+from django.http import Http404, HttpRequest, HttpResponse
 from django.urls import include, path
+
+
+def not_offered(request: HttpRequest) -> HttpResponse:
+    """Google One Tap isn't used, and allauth's token route trusts the token header's `alg`
+    (ASVS V9.1.2, V10.5.1): it answers 404 like any unknown page."""
+    raise Http404("Not offered.")
+
 
 urlpatterns = [
     path("", include("apps.core.urls")),
@@ -23,6 +31,7 @@ urlpatterns = [
     path("office/", include("apps.office.urls")),
     path("files/", include("apps.files.urls")),
     path("accounts/claim/", include("apps.students.claim_urls")),
+    path("accounts/google/login/token/", not_offered, name="google_login_by_token"),
     path("accounts/", include("allauth.urls")),
     path("_kit/", include("apps.kit.urls")),
 ]

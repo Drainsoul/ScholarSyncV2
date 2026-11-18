@@ -19,6 +19,7 @@ from .models import StoredFile
 UNREADABLE = "We couldn't read that upload request."
 NOT_CONFIGURED = "File uploads aren't set up on this copy of ScholarSync."
 UNAVAILABLE = "File storage isn't available right now. Try again in a few minutes."
+TEXT = "text/plain; charset=utf-8"
 
 
 def _error(message: str, status: int) -> JsonResponse:
@@ -124,9 +125,9 @@ def download(request: HttpRequest, file_id: uuid.UUID) -> HttpResponse:
     try:
         url = services.download_url(user=user, file=file, request=request)
     except storage.StorageNotConfigured:
-        return HttpResponse(NOT_CONFIGURED, status=503, content_type="text/plain")
+        return HttpResponse(NOT_CONFIGURED, status=503, content_type=TEXT)
     except storage.StorageUnavailable:
-        return HttpResponse(UNAVAILABLE, status=503, content_type="text/plain")
+        return HttpResponse(UNAVAILABLE, status=503, content_type=TEXT)
     response = redirect(url)
     add_never_cache_headers(response)
     return response

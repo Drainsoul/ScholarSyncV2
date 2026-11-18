@@ -21,6 +21,9 @@ MAX_ROWS = 500
 MAX_COLUMNS = 30
 MAX_CELL = 200
 MAX_UNPACKED = 10 * 1024 * 1024  # a full 500 x 30 x 200 file unpacks to about 3 MB
+# A spreadsheet has a few dozen parts; far more is a zip bomb or not a spreadsheet (ASVS V5.2.3).
+MAX_ENTRIES = 100
+TOO_MANY_ENTRIES = "This file has too many parts to be a spreadsheet. Save it again as XLSX or CSV."
 MAX_SCANNED = MAX_ROWS * 20  # every row read, empty ones included, so blank padding can't run long
 
 TOO_MANY_ROWS = f"This file has more than {MAX_ROWS} rows. Split it into smaller files."
@@ -138,9 +141,12 @@ def _xlsx_rows(body: bytes) -> Iterator[tuple[object, ...]]:
 def _read_xlsx(body: bytes) -> Table:
     try:
         with zipfile.ZipFile(io.BytesIO(body)) as archive:
-            unpacked = sum(info.file_size for info in archive.infolist())
+            entries = archive.infolist()
+            unpacked = sum(info.file_size for info in entries)
     except (zipfile.BadZipFile, ValueError):
         raise TableError(UNREADABLE) from None
+    if len(entries) > MAX_ENTRIES:
+        raise TableError(TOO_MANY_ENTRIES)
     if unpacked > MAX_UNPACKED:
         raise TableError(TOO_LARGE)
     try:

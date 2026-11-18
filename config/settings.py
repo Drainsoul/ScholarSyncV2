@@ -319,6 +319,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+    {"NAME": "apps.accounts.validators.SiteWordsValidator"},
 ]
 
 LANGUAGE_CODE = "en-us"
@@ -370,6 +371,14 @@ SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_AGE = 12 * 60 * 60
 CSRF_COOKIE_SECURE = PRODUCTION
+# htmx sends the token from `hx-headers` on <body>; no script reads the cookie (ASVS V3.3.4).
+CSRF_COOKIE_HTTPONLY = True
+# `__Host-` cookies are HTTPS-only and bound to this host (ASVS V3.3.1, V3.3.3); browsers refuse
+# them over plain HTTP, so only production uses the prefix.
+SESSION_COOKIE_NAME = "__Host-sessionid" if PRODUCTION else "sessionid"
+CSRF_COOKIE_NAME = "__Host-csrftoken" if PRODUCTION else "csrftoken"
+# Flash messages live in the session: no separate messages cookie.
+MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
 
 PERMISSIONS_POLICY = (
     "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), "

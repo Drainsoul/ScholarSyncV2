@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Weekly, so the dependency audits catch new advisories between pushes (ASVS V15.2.1).
+  schedule:
+    - cron: "17 2 * * 1"
 
 permissions:
   contents: read
