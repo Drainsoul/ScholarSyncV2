@@ -686,6 +686,14 @@ def test_production_refuses_database_without_tls_to_another_host(tmp_path):
     assert not ok
 
 
+def test_production_refuses_clamd_on_another_host(tmp_path):
+    refused, stderr = _refused(tmp_path, CLAMAV_HOST="clamd.example.org")
+    assert refused
+    assert "CLAMAV_HOST is clamd.example.org" in stderr
+    ok, stderr = _refused(tmp_path, CLAMAV_HOST="clamav")
+    assert not ok, stderr
+
+
 @pytest.mark.parametrize("host", ["127.0.0.1", "localhost", "db", "host.docker.internal"])
 def test_plaintext_allowed_for_loopback_and_service_names(tmp_path, host):
     refused, stderr = _refused(

@@ -20,7 +20,7 @@ def _local(host: str) -> bool:
 
 
 def plaintext_refusals(
-    *, database_url: str, email_url: str, storage_urls: dict[str, str]
+    *, database_url: str, email_url: str, storage_urls: dict[str, str], clamav_host: str = ""
 ) -> list[str]:
     """One sentence per setting that would send data unencrypted to another machine."""
     refusals: list[str] = []
@@ -44,4 +44,10 @@ def plaintext_refusals(
             refusals.append(
                 f"{name} uses http:// to {parts.hostname}. Use an https:// endpoint, {FIX}."
             )
+    # clamd's protocol has no TLS: uploads would cross the network in the clear.
+    if clamav_host and not _local(clamav_host):
+        refusals.append(
+            f"CLAMAV_HOST is {clamav_host}, and files sent to clamd are unencrypted. Run clamd on "
+            f"this machine or the app's Docker network (for example CLAMAV_HOST=clamav), {FIX}."
+        )
     return refusals

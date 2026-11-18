@@ -269,6 +269,7 @@ if PRODUCTION and not ALLOW_PLAINTEXT_SERVICES:
             "S3_ENDPOINT_URL": S3_STORAGE["endpoint_url"],
             "S3_PUBLIC_ENDPOINT_URL": S3_STORAGE["public_endpoint_url"],
         },
+        clamav_host=CLAMAV_HOST,
     )
     if _refusals:
         raise ImproperlyConfigured(" ".join(_refusals))
