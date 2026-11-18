@@ -673,7 +673,9 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 
   `import` (M9b) accepts `text/csv`, `application/vnd.ms-excel` (what Windows browsers with Excel declare for `.csv`)
   and XLSX; `upload.ts` declares the type from the extension when the browser gives none. Confirm sniffs XLSX; CSV
-  must have no known signature and no NUL byte in its first 4 KB. Import files are never downloadable.
+  must have no known signature and no NUL byte in its first 4 KB. Import files are never downloadable. An XLSX file is
+  refused before it is read when its archive holds more than 100 entries or unpacks to more than 10 MB (M12, ASVS
+  V5.1.1, V5.2.3).
 
   A student may start at most 20 uploads per hour. Staff may start 100 (`STAFF_STARTS_PER_HOUR`), since five documents
   for each of five walk-ins would otherwise hit the limit (M8b).

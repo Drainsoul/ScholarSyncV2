@@ -85,7 +85,8 @@ Use any provider. Names below are examples only.
 
 **PostgreSQL 17.** Create an empty database and a user that owns it. Set
 `DATABASE_URL=postgres://USER:PASSWORD@HOST:5432/DBNAME` (URL-encode special characters in the password). Add
-`?sslmode=require` if the server needs TLS. If your URL goes through a transaction pooler such as PgBouncer, also set
+`?sslmode=verify-full&sslrootcert=/path/to/ca.pem` (your provider's CA certificate, mounted into both containers) when the server is on another
+machine. `sslmode=require` encrypts but does not check who answers. If your URL goes through a transaction pooler such as PgBouncer, also set
 `DATABASE_URL_UNPOOLED` to the direct URL; migrations use it.
 
 **S3-compatible storage.** Create a bucket, then:
@@ -182,6 +183,11 @@ docker compose -f compose.production.yaml run --rm -e SKIP_PREPARE=1 web python 
 docker compose -f compose.production.yaml run --rm -e SKIP_PREPARE=1 web python manage.py cleanup
 ```
 Remove the `worker` service from the compose file in that case.
+
+**Logs.** Both containers log to stdout: JSON app lines and one access line per request, with secret links and name
+searches already redacted. Send them to a log store off this machine (your platform's log service, or Docker's
+`journald`, `syslog` or `fluentd` logging driver), so the record survives the host. The audit log lives in the
+database and is in every backup.
 
 ## 7. Run the deploy check
 ```

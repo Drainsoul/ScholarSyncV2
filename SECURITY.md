@@ -13,6 +13,19 @@ Please report it **privately**. Do not open a public issue, pull request or disc
 You will get an answer as soon as the maintainer can give one. This is a one-person project, so there is no fixed
 response time. Please allow a reasonable period to fix the problem before you share it publicly.
 
+## Fix targets
+Once a report is confirmed, or a dependency advisory affects code that runs (Dependabot and the weekly CI audit
+watch them):
+- **critical:** a fix on `main` within 7 days;
+- **high:** within 30 days;
+- **anything else:** with the next release.
+
+An advisory in build-only tooling (never shipped to browsers or run in production) is fixed when upstream publishes a
+patch.
+
+The security review is in `docs/security/asvs-l2.md`, and the controls it relies on are in
+`docs/security/controls.md`.
+
 ## Scope
 This repository's code. A hosted copy's configuration and data are the responsibility of its operator: report problems
 with a particular site to that site's operator (see its contact page).
