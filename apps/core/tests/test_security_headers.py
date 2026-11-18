@@ -69,3 +69,43 @@ def test_plain_http_redirects_to_https():
     response = Client().get("/healthz")
     assert response.status_code == 301
     assert response["Location"] == "https://testserver/healthz"
+
+
+@pytest.mark.django_db
+def test_signed_in_pages_are_no_store(client, vite_build):
+    from apps.accounts.models import User
+    from apps.accounts.tests.factories import UserFactory
+
+    client.force_login(UserFactory.create(verified=True))
+    response = client.get("/me/")
+    assert response.status_code == 200
+    assert "no-store" in response["Cache-Control"]
+    assert "private" in response["Cache-Control"]
+    client.force_login(UserFactory.create(role=User.Role.SUPER_ADMIN, verified=True))
+    assert "no-store" in client.get("/office/")["Cache-Control"]
+
+
+@pytest.mark.django_db
+def test_secret_route_is_no_store_when_anonymous(client, vite_build):
+    response = client.get("/accounts/claim/unknown-token/")
+    assert "no-store" in response["Cache-Control"]
+    response = client.get("/accounts/password/reset/key/1a-x/")
+    assert "no-store" in response["Cache-Control"]
+
+
+@pytest.mark.django_db
+def test_public_pages_keep_default_caching(client, vite_build):
+    for path in ("/", "/programs/", "/about/"):
+        response = client.get(path)
+        assert response.status_code == 200, path
+        assert "no-store" not in response.get("Cache-Control", ""), path
+
+
+@pytest.mark.django_db
+def test_existing_cache_control_is_kept(client, settings, vite_build):
+    from apps.accounts.models import User
+    from apps.accounts.tests.factories import UserFactory
+
+    client.force_login(UserFactory.create(role=User.Role.SUPER_ADMIN, verified=True))
+    response = client.get("/office/scholars/export/?format=csv")
+    assert response["Cache-Control"] == "no-store"
