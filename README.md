@@ -10,9 +10,10 @@ scholarship office oversees every program, staff account and report.
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/Drainsoul/ScholarSyncV2)
 
-**Status:** M3.5 (open-source packaging) is in progress. You can run the app and browse the home page and the design
-kit. Sign-in, the test accounts and the first real features arrive in M4; the roadmap is in the
-[design spec](docs/design/2026-10-11-scholarsync-v2-design.md).
+**Status:** v2.0 is feature-complete (milestones M1 to M12 in the
+[design spec](docs/design/2026-10-11-scholarsync-v2-design.md)): student profiles, matching and applications;
+review, scholars, terms and renewals; disbursements and budgets; dashboards, notifications, program reports,
+analytics and the audit log. Run it locally and sign in with the test accounts below.
 
 ## Quick start
 You need [Git](https://git-scm.com/downloads) and [Docker Desktop](https://www.docker.com/products/docker-desktop/)
@@ -52,7 +53,7 @@ Every account uses the password `explore-taguig-2026`.
 | Student | `student@scholarsync.test` | the student area |
 | Program staff | `staff@scholarsync.test` | reviewing applications, scholars, disbursements |
 | Program head | `head@scholarsync.test` | staff features plus releasing money and program settings |
-| Scholarship office | `office@scholarsync.test` | all programs, staff, reports, analytics |
+| Scholarship office | `office@scholarsync.test` | all programs, staff, reports, analytics, the audit log |
 
 They are offered on the login page as one-click buttons. They appear automatically in explore copies (`docker compose up`) and in developer copies (`DJANGO_DEBUG=true`)
 after `python -m uv run python manage.py load_demo`. They never exist on a hosted copy.

@@ -132,10 +132,10 @@ def test_https_claim_only_on_hosted_copies(client, settings, vite_build, product
     assert ("Connections use HTTPS." in body) is expected
 
 
-def test_help_does_not_promise_test_accounts_before_sign_in(client, vite_build):
+def test_help_points_to_the_test_accounts(client, vite_build):
     body = client.get("/help/").content.decode()
-    assert "The README lists them" not in body
-    assert "arrive with sign-in (M4)" in body
+    assert "four fictional test accounts offered on the sign-in page" in body
+    assert "arrive with sign-in (M4)" not in body
 
 
 def test_local_copy_wording_covers_codespaces(client, settings, vite_build):
@@ -145,3 +145,17 @@ def test_local_copy_wording_covers_codespaces(client, settings, vite_build):
         body = client.get(url).content.decode()
         assert "local or personal copy" in body
         assert "runs on your computer" not in body
+
+
+def test_privacy_page_describes_m11c_and_m12_processing(client, vite_build):
+    privacy = client.get("/privacy/").content.decode()
+    for words in ("sign-ins", "deleted after 7 days", "reports", "audit log"):
+        assert words in privacy, words
+    assert "Version 2026-11-18" in privacy
+
+
+def test_help_page_answers_notifications_and_reports(client, vite_build):
+    page = client.get("/help/").content.decode()
+    assert "Where do I see notices?" in page
+    assert "How do program reports work?" in page
+    assert "(M4)" not in page

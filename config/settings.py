@@ -120,7 +120,7 @@ if PRODUCTION:
             f"PRIVACY_CONTACT_EMAIL is blank or a placeholder. {_PLACEHOLDER_HELP}"
         )
 # The privacy notice version. M4's ConsentRecord.notice_version stores it; bump it on changes.
-PRIVACY_NOTICE_VERSION = "2026-10-30"
+PRIVACY_NOTICE_VERSION = "2026-11-18"
 
 # Design kit (spec §12): /_kit/ answers 404 unless enabled, and is never allowed in production.
 KIT_ENABLED = env.bool("DJANGO_KIT", DEBUG or EXPLORE)
