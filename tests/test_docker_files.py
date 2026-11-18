@@ -121,6 +121,10 @@ def test_entrypoint_prefers_the_migrations_url():
         'DATABASE_URL="${DATABASE_URL_MIGRATIONS:-${DATABASE_URL_UNPOOLED:-$DATABASE_URL}}"'
         " python manage.py prepare"
     ) in entrypoint
+    # Removed before the container command starts, in the web and the worker alike.
+    unset = entrypoint.index("unset DATABASE_URL_MIGRATIONS DATABASE_URL_UNPOOLED")
+    assert entrypoint.index("\nfi\n", entrypoint.index("manage.py prepare")) < unset
+    assert unset < entrypoint.index('exec "$@"')
     hosting = (ROOT / "docs" / "HOSTING.md").read_text(encoding="utf-8")
     assert "REVOKE UPDATE, DELETE, TRUNCATE ON core_auditevent" in hosting
 

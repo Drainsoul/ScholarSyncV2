@@ -18,4 +18,8 @@ if [ "${SKIP_PREPARE:-0}" != "1" ]; then
   esac
 fi
 
+# The app and the worker never see the owner's URL: only prepare needs it, and anything running in
+# the app process could otherwise read it from the environment.
+unset DATABASE_URL_MIGRATIONS DATABASE_URL_UNPOOLED
+
 exec "$@"
