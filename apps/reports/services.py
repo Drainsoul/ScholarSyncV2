@@ -5,7 +5,7 @@ Audit data and notifications never hold the title, description or note (free tex
 from datetime import date
 
 from django.core.exceptions import ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.http import HttpRequest
 from django.utils import timezone
 
@@ -47,9 +47,18 @@ def _check_period(start: date, end: date) -> None:
 def _attach(report: Report, file: StoredFile) -> None:
     if file.purpose != StoredFile.Purpose.REPORT or file.status != StoredFile.Status.READY:
         raise ValidationError(NEED_PDF)
-    if ReportFile.objects.filter(file=file).exists():
+    if _already_attached(file):
         raise ValidationError(FILE_USED)
-    ReportFile.objects.create(report=report, file=file)
+    try:
+        with transaction.atomic():
+            ReportFile.objects.create(report=report, file=file)
+    except IntegrityError:
+        # A second post raced past the check (a double click): the file is taken.
+        raise ValidationError(FILE_USED) from None
+
+
+def _already_attached(file: StoredFile) -> bool:
+    return ReportFile.objects.filter(file=file).exists()
 
 
 def _tell_office(report: Report, title: str) -> None:

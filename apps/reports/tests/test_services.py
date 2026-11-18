@@ -320,3 +320,17 @@ def test_concurrent_decisions_one_wins(monkeypatch: pytest.MonkeyPatch) -> None:
     decisions = AuditEvent.objects.filter(action__in=["report.accepted", "report.returned"])
     assert decisions.count() == 1
     assert Notification.objects.filter(kind__in=["report_accepted", "report_returned"]).count() == 1
+
+
+@pytest.mark.django_db
+def test_double_submit_of_one_file_is_refused_not_a_500(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Two posts racing past the "already used" check hit the unique file column."""
+    program = _program()
+    staff = _staff(program)
+    file = ready_report_file(staff)
+    _send(staff, program, file=file)
+    monkeypatch.setattr(services, "_already_attached", lambda file: False)
+    with pytest.raises(ValidationError) as caught:
+        _send(staff, program, file=file)
+    assert caught.value.messages == ["Upload the file again."]
+    assert Report.objects.count() == 1
