@@ -11,6 +11,12 @@ from apps.files import policy
 register = template.Library()
 
 
+@register.filter
+def types_label(types: list[str]) -> str:
+    """MIME types in words: ["application/pdf", "image/png"] is "PDF or PNG"."""
+    return policy.join_types(types) if types else ""
+
+
 @register.inclusion_tag("components/file_input.html")
 def upload_field(
     purpose: str, id: str, name: str, label: str, help: str = "", error: str = ""

@@ -82,7 +82,10 @@ def shell_context(
             label, icon = "Dashboard", "layout-dashboard"
         else:
             home, label, icon = reverse("workspace:no_programs"), "Dashboard", "layout-dashboard"
-        if area == "staff" and program is not None:
+        if area == "staff" and program is not None and not program.is_active:
+            # The office on a closed program's settings: the staff screens would 404 (M14).
+            nav = []
+        elif area == "staff" and program is not None:
             students = reverse("workspace:students", kwargs={"program": program.slug})
             queue = reverse("review:queue", kwargs={"program": program.slug})
             scholar_list = reverse("scholars:list", kwargs={"program": program.slug})
@@ -249,7 +252,10 @@ def shell_context(
         context["programs"] = [
             {
                 "name": item.name,
-                "url": reverse("workspace:dashboard", kwargs={"program": item.slug}),
+                "url": reverse(
+                    "workspace:dashboard" if item.is_active else "settings:rules",
+                    kwargs={"program": item.slug},
+                ),
                 "current": item.pk == program.pk,
             }
             for item in programs_for(user).order_by("name")
@@ -276,4 +282,17 @@ def shell_context(
                     "icon": "shield",
                 },
             ]
+            if not program.is_active:
+                # A closed program: only Settings answers (its staff screens and audit log 404),
+                # and the logo goes back to the office.
+                context["nav_secondary"] = [
+                    {
+                        "label": "Settings",
+                        "url": settings_url,
+                        "current": request.path.startswith(settings_url),
+                        "count": 0,
+                        "icon": "sliders-horizontal",
+                    }
+                ]
+                context["home_url"] = reverse("office:home")
     return context

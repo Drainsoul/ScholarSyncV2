@@ -138,3 +138,27 @@ def test_office_saves_rules_of_a_closed_program(client: Any) -> None:
 
 def test_normalize_newlines() -> None:
     assert normalize_newlines("a\r\nb\rc\n") == "a\nb\nc\n"
+
+
+def test_rules_save_ignores_school_type_order(client: Any) -> None:
+    from apps.programs import services
+
+    program = ProgramFactory.create(allowed_school_types=["public", "private"])
+    changed = services.update_rules(
+        actor=_head(program), program=program, data={"allowed_school_types": ["private", "public"]}
+    )
+    assert changed == []
+    assert not AuditEvent.objects.filter(action="program.rules_changed").exists()
+
+
+def test_settings_links_work_for_a_closed_program(client: Any) -> None:
+    import re
+
+    program = ProgramFactory.create(is_active=False)
+    client.force_login(UserFactory.create(role=User.Role.SUPER_ADMIN))
+    page = client.get(_url(program)).content.decode()
+    nav = page[page.index('<nav class="sidebar') : page.index("</nav>")]
+    links = set(re.findall(r'href="(/staff/[^"]+)"', nav))
+    assert _url(program) in links  # Settings stays
+    for link in links:
+        assert client.get(link).status_code == 200, link

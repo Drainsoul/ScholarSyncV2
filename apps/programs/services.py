@@ -291,6 +291,10 @@ def update_rules(
     for name, value in data.items():
         if name == "allowed_schools":
             continue
+        if name == "allowed_school_types" and sorted(getattr(locked, name) or []) == sorted(
+            value or []  # type: ignore[call-overload]
+        ):
+            continue  # the same types in another order
         if getattr(locked, name) != value:
             setattr(locked, name, value)
             changed.append(name)
@@ -465,12 +469,22 @@ def stop_tier(
     require_settings_editor(actor, program)
     _tier_term(effective_from)
     latest, _ = _tier_row_for(program, code, effective_from)
+    # The stopping row carries the amounts in force for that term (records priced from it keep
+    # their amounts), not the newest row's, which may start later.
+    in_force = (
+        BenefitTier.objects.filter(
+            program=program, code=code, effective_from__sort_key__lte=effective_from.sort_key
+        )
+        .order_by("-effective_from__sort_key")
+        .first()
+        or latest
+    )
     tier = _write_tier_row(
         program,
         code,
         effective_from,
-        base_amount=latest.base_amount,
-        merit_amount=latest.merit_amount,
+        base_amount=in_force.base_amount,
+        merit_amount=in_force.merit_amount,
         is_active=False,
     )
     _tier_audit(actor, program, tier, "tier.stopped", request)

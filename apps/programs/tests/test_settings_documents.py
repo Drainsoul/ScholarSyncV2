@@ -193,3 +193,13 @@ def test_changing_an_old_requirement_does_not_block_review(client: Any, change: 
         )
         client.post(_url("document-edit", program, pk=old.pk), data)
     assert undecided_documents(application) == []
+
+
+def test_documents_table_shows_type_labels(client: Any) -> None:
+    program = ProgramFactory.create()
+    RequiredDocumentFactory.create(
+        program=program, label="Grades", accepted_types=["application/pdf", "image/png"]
+    )
+    client.force_login(_head(program))
+    html = client.get(_url("documents", program)).content.decode()
+    assert '<td data-label="Types">PDF or PNG</td>' in html

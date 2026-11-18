@@ -177,7 +177,10 @@ class TierForm(forms.Form):
         self.fields["effective_from"] = _term_field()
 
     def clean_code(self) -> str:
-        return str(self.cleaned_data["code"]).lower()
+        code = str(self.cleaned_data["code"]).lower()
+        if code == "new":  # /tiers/new/ is the add page
+            raise forms.ValidationError("That code is reserved. Choose another.")
+        return code
 
 
 class TierChangeForm(forms.Form):

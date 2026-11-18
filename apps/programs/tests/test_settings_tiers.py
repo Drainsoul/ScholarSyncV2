@@ -245,3 +245,42 @@ def test_tiers_page_query_count(
     reauthenticated(client, _head(program))
     with django_assert_max_num_queries(14):
         assert client.get(_url("tiers", program)).status_code == 200
+
+
+def test_tier_code_new_is_reserved(client: Any, terms: Any, program: Program) -> None:
+    _, current, _ = terms
+    reauthenticated(client, _head(program))
+    response = client.post(
+        _url("tier-new", program),
+        {
+            "code": "New",
+            "name": "New",
+            "base_amount": "1.00",
+            "merit_amount": "0",
+            "effective_from": str(current.pk),
+            "sort_order": "0",
+        },
+    )
+    assert "That code is reserved. Choose another." in response.content.decode()
+    assert not BenefitTier.objects.filter(program=program).exists()
+
+
+def test_stop_tier_keeps_the_amounts_in_force(client: Any, terms: Any, program: Program) -> None:
+    """Stopping from a term copies the amounts in force then, not the newest row's."""
+    from apps.programs import services
+
+    past, current, later = terms
+    _standard(program, past)  # 5,000 / 10,000 in force for the current term
+    BenefitTierFactory.create(
+        program=program,
+        code="standard",
+        name="Standard",
+        effective_from=later,
+        base_amount=Decimal("9000.00"),
+        merit_amount=Decimal("0.00"),
+    )
+    stopped = services.stop_tier(
+        actor=_head(program), program=program, code="standard", effective_from=current
+    )
+    assert (stopped.base_amount, stopped.merit_amount) == (Decimal("5000.00"), Decimal("10000.00"))
+    assert stopped.is_active is False

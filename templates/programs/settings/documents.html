@@ -1,4 +1,4 @@
-{% extends "programs/settings/base.html" %}{% load ui %}
+{% extends "programs/settings/base.html" %}{% load ui uploads %}
 {% block settings %}
 <section class="card" aria-labelledby="documents-title">
   <h2 class="card__title" id="documents-title">Required documents</h2>
@@ -11,7 +11,7 @@
         <th scope="row">{{ document.label }} <span class="text-sm text-muted">{{ document.code }}</span></th>
         <td data-label="For">{{ document.get_applies_to_display }}</td>
         <td data-label="Required">{% if document.is_required %}Yes{% else %}Optional{% endif %}</td>
-        <td data-label="Types">{{ document.accepted_types|join:", " }}</td>
+        <td data-label="Types">{{ document.accepted_types|types_label }}</td>
         <td class="num" data-label="Max size">{{ document.max_bytes|filesizeformat }}</td>
         <td data-label="Status">{% if document.is_active %}{% status "success" "Asked" %}{% else %}{% status "neutral" "Not asked" %}{% endif %}</td>
         <td><div class="btn-row">
