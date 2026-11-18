@@ -20,6 +20,8 @@ os.environ.setdefault("DJANGO_ALLOWED_HOSTS", "scholarsync.example")
 # Production refuses a blank or console EMAIL_URL. Nothing connects to it: pytest-django swaps in
 # the locmem backend for every test (the `mailoutbox` fixture reads it).
 os.environ.setdefault("EMAIL_URL", "smtp://localhost:25")
+# The CSP as production enforces it, whatever a local .env says (a debugging host may set true).
+os.environ["CSP_REPORT_ONLY"] = "false"
 
 from config.settings import *  # noqa: E402, F403
 

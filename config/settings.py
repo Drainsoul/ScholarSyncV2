@@ -340,9 +340,11 @@ STORAGES = {
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
 
+# The Vite dev server serves scripts from its own origin, so the CSP is report-only with it.
+VITE_DEV_MODE = env.bool("VITE_DEV_MODE", False)
 DJANGO_VITE = {
     "default": {
-        "dev_mode": env.bool("VITE_DEV_MODE", False),
+        "dev_mode": VITE_DEV_MODE,
         "manifest_path": BASE_DIR / "static" / "dist" / ".vite" / "manifest.json",
         "static_url_prefix": "dist",
     }
@@ -400,11 +402,12 @@ _CSP_DIRECTIVES = {
     "object-src": [NONE],
 }
 # Not a CSP_* setting name: django-csp 4 treats those as legacy config (csp.E001).
-_csp_report_only = env.bool("CSP_REPORT_ONLY", True)
-if _csp_report_only:
-    CONTENT_SECURITY_POLICY_REPORT_ONLY = {"DIRECTIVES": _CSP_DIRECTIVES}
-else:
-    CONTENT_SECURITY_POLICY = {"DIRECTIVES": _CSP_DIRECTIVES}
+# Enforced by default (M12); report-only only with the Vite dev server or while debugging. No
+# report-uri: browsers would post full page URLs and Referers straight to Sentry, past scrub_event.
+_csp_report_only = env.bool("CSP_REPORT_ONLY", VITE_DEV_MODE)
+_csp_policy = {"DIRECTIVES": _CSP_DIRECTIVES}
+CONTENT_SECURITY_POLICY = None if _csp_report_only else _csp_policy
+CONTENT_SECURITY_POLICY_REPORT_ONLY = _csp_policy if _csp_report_only else None
 
 # Logging and errors (spec §10) ---------------------------------------------------------------
 LOGGING = {

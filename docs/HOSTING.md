@@ -48,7 +48,7 @@ At least:
 | `EMAIL_URL`, `DEFAULT_FROM_EMAIL` | your SMTP server and a From address it allows (step 4). Required: production will not start without a real SMTP URL |
 | `S3_ENDPOINT_URL`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_ADDRESSING_STYLE` | your storage (step 4) |
 | `TRUSTED_PROXY_COUNT` | the number of reverse proxies in front of the app: behind one HTTPS proxy, set `TRUSTED_PROXY_COUNT=1` (default 0). Without it, sign-in rate limits count every visitor as the proxy. `compose.production.yaml` defaults it to `1` for `web` when `.env` leaves it blank; behind two proxies (a CDN in front of yours), set `2` |
-| `CSP_REPORT_ONLY` | leave `true` at first; set `false` once pages load with no violation reports |
+| `CSP_REPORT_ONLY` | leave `false` (enforced); `true` only to debug a blocked resource |
 
 Also delete or replace the development-only values at the top of the file. The app refuses to start in production if
 the secret key still starts with `local-dev-only-` or `explore-only-`, or if `DJANGO_KIT` is on. Production always redirects HTTP to HTTPS, so your proxy must send

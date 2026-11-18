@@ -336,10 +336,10 @@ def test_demo_detection_needs_the_apps_module(tmp_path):
 def test_csp_allows_the_storage_origin(tmp_path):
     values = settings_values(
         tmp_path,
-        ["CONTENT_SECURITY_POLICY_REPORT_ONLY"],
+        ["CONTENT_SECURITY_POLICY"],
         S3_PUBLIC_ENDPOINT_URL="http://localhost:9000/",
     )
-    directives = values["CONTENT_SECURITY_POLICY_REPORT_ONLY"]["DIRECTIVES"]
+    directives = values["CONTENT_SECURITY_POLICY"]["DIRECTIVES"]
     assert "http://localhost:9000" in directives["img-src"]
     assert "http://localhost:9000" in directives["connect-src"]
 
@@ -347,12 +347,12 @@ def test_csp_allows_the_storage_origin(tmp_path):
 def test_csp_allows_the_bucket_subdomain_with_virtual_addressing(tmp_path):
     values = settings_values(
         tmp_path,
-        ["CONTENT_SECURITY_POLICY_REPORT_ONLY"],
+        ["CONTENT_SECURITY_POLICY"],
         S3_ENDPOINT_URL="https://s3.ap-southeast-1.amazonaws.com",
         S3_BUCKET="scholars",
         S3_ADDRESSING_STYLE="virtual",
     )
-    directives = values["CONTENT_SECURITY_POLICY_REPORT_ONLY"]["DIRECTIVES"]
+    directives = values["CONTENT_SECURITY_POLICY"]["DIRECTIVES"]
     origin = "https://scholars.s3.ap-southeast-1.amazonaws.com"
     assert origin in directives["img-src"]
     assert origin in directives["connect-src"]
@@ -362,31 +362,31 @@ def test_csp_allows_the_bucket_subdomain_with_virtual_addressing(tmp_path):
 def test_csp_virtual_addressing_follows_the_public_endpoint(tmp_path):
     values = settings_values(
         tmp_path,
-        ["CONTENT_SECURITY_POLICY_REPORT_ONLY"],
+        ["CONTENT_SECURITY_POLICY"],
         S3_ENDPOINT_URL="http://storage:9000",
         S3_PUBLIC_ENDPOINT_URL="http://localhost:9000",
         S3_BUCKET="b",
         S3_ADDRESSING_STYLE="virtual",
     )
-    directives = values["CONTENT_SECURITY_POLICY_REPORT_ONLY"]["DIRECTIVES"]
+    directives = values["CONTENT_SECURITY_POLICY"]["DIRECTIVES"]
     assert directives["connect-src"] == ["'self'", "http://b.localhost:9000"]
 
 
 def test_csp_path_addressing_keeps_the_endpoint_origin(tmp_path):
     values = settings_values(
         tmp_path,
-        ["CONTENT_SECURITY_POLICY_REPORT_ONLY"],
+        ["CONTENT_SECURITY_POLICY"],
         S3_ENDPOINT_URL="https://acct.r2.cloudflarestorage.com",
         S3_BUCKET="scholars",
         S3_ADDRESSING_STYLE="path",
     )
-    directives = values["CONTENT_SECURITY_POLICY_REPORT_ONLY"]["DIRECTIVES"]
+    directives = values["CONTENT_SECURITY_POLICY"]["DIRECTIVES"]
     assert directives["connect-src"] == ["'self'", "https://acct.r2.cloudflarestorage.com"]
 
 
 def test_storage_origin_is_absent_from_csp_when_unset(tmp_path):
-    values = settings_values(tmp_path, ["CONTENT_SECURITY_POLICY_REPORT_ONLY", "S3_STORAGE"])
-    directives = values["CONTENT_SECURITY_POLICY_REPORT_ONLY"]["DIRECTIVES"]
+    values = settings_values(tmp_path, ["CONTENT_SECURITY_POLICY", "S3_STORAGE"])
+    directives = values["CONTENT_SECURITY_POLICY"]["DIRECTIVES"]
     assert directives["connect-src"] == ["'self'"]
     assert values["S3_STORAGE"]["addressing_style"] == "path"
 
@@ -609,3 +609,27 @@ def test_developer_mode_allows_an_http_site_url(tmp_path):
         tmp_path, ["SITE_URL"], DJANGO_DEBUG="true", SITE_URL="http://127.0.0.1:8000"
     )
     assert values["SITE_URL"] == "http://127.0.0.1:8000"
+
+
+CSP_NAMES = ["CONTENT_SECURITY_POLICY", "CONTENT_SECURITY_POLICY_REPORT_ONLY"]
+CSP_UNSET = ["CSP_REPORT_ONLY", "VITE_DEV_MODE"]
+
+
+def test_csp_is_enforced_by_default(tmp_path):
+    values = settings_values(tmp_path, CSP_NAMES, _unset=CSP_UNSET)
+    assert values["CONTENT_SECURITY_POLICY"] is not None
+    assert values["CONTENT_SECURITY_POLICY_REPORT_ONLY"] is None
+
+
+def test_csp_is_report_only_with_the_vite_dev_server(tmp_path):
+    values = settings_values(
+        tmp_path, CSP_NAMES, _unset=["CSP_REPORT_ONLY"], DJANGO_DEBUG="true", VITE_DEV_MODE="true"
+    )
+    assert values["CONTENT_SECURITY_POLICY"] is None
+    assert values["CONTENT_SECURITY_POLICY_REPORT_ONLY"] is not None
+
+
+def test_csp_report_only_can_be_asked_for_while_debugging(tmp_path):
+    values = settings_values(tmp_path, CSP_NAMES, _unset=["VITE_DEV_MODE"], CSP_REPORT_ONLY="true")
+    assert values["CONTENT_SECURITY_POLICY"] is None
+    assert values["CONTENT_SECURITY_POLICY_REPORT_ONLY"] is not None

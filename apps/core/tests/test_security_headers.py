@@ -22,22 +22,36 @@ def test_security_headers_on_404(client, vite_build):
 
 
 @pytest.mark.django_db
-def test_csp_report_only_by_default(client, settings):
+def test_csp_enforced_by_default(client, settings):
     response = client.get("/healthz")
-    policy = response["Content-Security-Policy-Report-Only"]
+    policy = response["Content-Security-Policy"]
     assert "default-src 'self'" in policy
     assert "script-src 'self'" in policy
     assert "frame-ancestors 'none'" in policy
     assert "object-src 'none'" in policy
+    assert "report-uri" not in policy
+    assert "Content-Security-Policy-Report-Only" not in response
+
+
+@pytest.mark.django_db
+def test_csp_report_only_when_asked(client, settings):
+    settings.CONTENT_SECURITY_POLICY_REPORT_ONLY = settings.CONTENT_SECURITY_POLICY
+    settings.CONTENT_SECURITY_POLICY = None
+    response = client.get("/healthz")
+    assert "default-src 'self'" in response["Content-Security-Policy-Report-Only"]
     assert "Content-Security-Policy" not in response
 
 
 @pytest.mark.django_db
-def test_csp_enforced_when_report_only_disabled(client, settings):
-    settings.CONTENT_SECURITY_POLICY = settings.CONTENT_SECURITY_POLICY_REPORT_ONLY
-    settings.CONTENT_SECURITY_POLICY_REPORT_ONLY = None
-    response = client.get("/healthz")
+def test_server_error_carries_security_headers(client, settings, vite_build):
+    settings.ROOT_URLCONF = "apps.core.tests.boom_urls"
+    client.raise_request_exception = False
+    response = client.get("/boom/")
+    assert response.status_code == 500
     assert "default-src 'self'" in response["Content-Security-Policy"]
+    assert response["X-Content-Type-Options"] == "nosniff"
+    assert response["Referrer-Policy"] == "same-origin"
+    assert response["Cross-Origin-Opener-Policy"] == "same-origin"
 
 
 @pytest.mark.django_db
