@@ -144,7 +144,7 @@ def test_rule_sentences_for_the_other_rules(db):
         "At least 15 units this term.",
         "Living in Taguig for at least 3 years.",
         "Studying at A College or B College.",
-        "Studying at a public or local college or university school.",
+        "Studying at a public school or local college or university.",
     ]
 
 
@@ -161,3 +161,10 @@ def test_database_refuses_unknown_allowed_school_types(db):
     with pytest.raises(IntegrityError), transaction.atomic():
         ProgramFactory.create(allowed_school_types=["public", "academy"])
     ProgramFactory.create(allowed_school_types=["public", "lcu"])
+
+
+def test_school_type_wording() -> None:
+    from apps.programs.rules import rule_sentence
+
+    program = ProgramFactory.build(allowed_school_types=["lcu"])
+    assert rule_sentence(program, "school_type") == "Studying at a local college or university."

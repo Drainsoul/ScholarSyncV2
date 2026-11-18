@@ -105,3 +105,13 @@ def test_remove_clears_the_photo(signed_in, student):
 
 def test_overview_links_to_the_photo_page(signed_in):
     assert URL in signed_in.get(reverse("students:profile")).content.decode()
+
+
+def test_removing_no_photo_says_nothing(client) -> None:
+    from apps.students.tests.factories import FullProfileFactory
+
+    profile = FullProfileFactory.create()
+    client.force_login(profile.user)
+    response = client.post(reverse("students:profile-photo"), {"action": "remove"})
+    assert response.status_code == 302
+    assert list(response.wsgi_request._messages) == []

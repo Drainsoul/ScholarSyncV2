@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from django.utils.dateformat import format as format_date
 
 from apps.programs.models import AcademicTerm, BenefitTier, Program, School
-from apps.programs.rules import TYPE_WORDS, join_or, rule_sentence
+from apps.programs.rules import TYPE_NOUNS, join_or, rule_sentence
 from apps.programs.selectors import window_state
 from apps.students.barangays import OUTSIDE_TAGUIG
 from apps.students.models import EducationRecord, StudentProfile
@@ -181,9 +181,13 @@ def _school_type_check(program: Program, academic: Academic | None) -> Check:
         )
     if academic.school_type in program.allowed_school_types:
         return _met("school_type", text)
-    words = join_or([TYPE_WORDS[School.Type(value)] for value in program.allowed_school_types])
+    words = join_or([TYPE_NOUNS[School.Type(value)] for value in program.allowed_school_types])
     return Check(
-        "school_type", CheckState.UNMET, text, f"This program is only for {words} schools.", ""
+        "school_type",
+        CheckState.UNMET,
+        text,
+        f"This program is only for students at a {words}.",
+        "",
     )
 
 

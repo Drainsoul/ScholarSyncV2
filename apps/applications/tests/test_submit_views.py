@@ -286,3 +286,22 @@ def test_withdraw_other_student_404(client, world):
     application.refresh_from_db()
     assert application.status == Application.Status.DRAFT
     assert not AuditEvent.objects.exclude(action="user.signed_in").exists()
+
+
+def test_withdraw_page_404_for_approved_application(client, world):
+    application = make_application(world, status=Application.Status.APPROVED)
+    client.force_login(world["user"])
+    assert client.get(withdraw_url(application)).status_code == 404
+
+
+def test_ineligible_draft_submit_is_disabled_with_reason(client, world):
+    world["program"].min_gwa_percent = Decimal("95.00")
+    world["program"].save()
+    application = make_application(world)
+    client.force_login(world["user"])
+    body = client.get(detail_url(application)).content.decode()
+    assert 'disabled aria-describedby="submit-blocked"' in body
+    assert "You can't submit yet:" in body
+    world["program"].min_gwa_percent = Decimal("85.00")
+    world["program"].save()
+    assert "submit-blocked" not in client.get(detail_url(application)).content.decode()

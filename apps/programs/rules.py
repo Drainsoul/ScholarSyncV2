@@ -12,6 +12,13 @@ TYPE_WORDS = {
     School.Type.SUC: "state university or college",
     School.Type.LCU: "local college or university",
 }
+# The same types as things one studies at: "a public school", "a local college or university".
+TYPE_NOUNS = {
+    School.Type.PUBLIC: "public school",
+    School.Type.PRIVATE: "private school",
+    School.Type.SUC: "state university or college",
+    School.Type.LCU: "local college or university",
+}
 
 
 def join_or(items: list[str]) -> str:
@@ -80,8 +87,8 @@ def rule_sentence(
     if code == "school_type":
         if not program.allowed_school_types:
             return ""
-        labels = [TYPE_WORDS[School.Type(value)] for value in program.allowed_school_types]
-        return f"Studying at a {join_or(labels)} school."
+        labels = [TYPE_NOUNS[School.Type(value)] for value in program.allowed_school_types]
+        return f"Studying at a {join_or(labels)}."
     if code == "window":
         # Neutral wording: it also heads the unmet row ("Applications closed on ...").
         if program.applications_close_on is None:

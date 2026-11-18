@@ -168,8 +168,8 @@ def test_school_type_unmet() -> None:
     c = check(run(academic=make_academic(school_type="private")), "school_type")
     assert c.state == CheckState.UNMET
     assert c.reason == (
-        "This program is only for state university or college or local college or "
-        "university schools."
+        "This program is only for students at a state university or college or local college "
+        "or university."
     )
 
 
@@ -337,7 +337,7 @@ def test_rule_sentences_unchanged() -> None:
         "At least 15 units this term.",
         "Living in Taguig for at least 1 year.",
         "A registered voter of Taguig.",
-        "Studying at a state university or college school.",
+        "Studying at a state university or college.",
     ]
 
 

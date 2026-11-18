@@ -118,8 +118,11 @@ class PhotoView(StudentRequiredMixin, View):
     def post(self, request: HttpRequest) -> HttpResponse:
         user = _student(request)
         if request.POST.get("action") == "remove":
+            profile = profile_for(user)
+            had_photo = profile is not None and profile.photo_id is not None
             services.remove_photo(user=user)
-            messages.success(request, "Photo removed.")
+            if had_photo:
+                messages.success(request, "Photo removed.")
             return redirect("students:profile-photo")
         form = PhotoForm(request.POST, user=user)
         if not form.is_valid():

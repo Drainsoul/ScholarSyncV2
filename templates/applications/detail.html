@@ -93,7 +93,8 @@
         {% elif submit_form.candidates %}<p>Allowance tier: {{ submit_form.candidates.0.name }}</p>{% endif %}
         {% if "declares_no_failing" in submit_form.fields %}{% field submit_form.declares_no_failing %}{% endif %}
         {% field submit_form.declaration %}
-        <div class="btn-row"><button type="submit" class="btn btn--primary">{% if application.status == "returned" %}Resubmit application{% else %}Submit application{% endif %}</button></div>
+        {% if submit_blocked %}<p class="field__help" id="submit-blocked">You can't submit yet: {{ submit_blocked }}</p>{% endif %}
+        <div class="btn-row"><button type="submit" class="btn btn--primary"{% if submit_blocked %} disabled aria-describedby="submit-blocked"{% endif %}>{% if application.status == "returned" %}Resubmit application{% else %}Submit application{% endif %}</button></div>
       </form>
     </section>
     {% endif %}

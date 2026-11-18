@@ -222,3 +222,17 @@ def test_first_invite_bad_email_is_refused(client: Any) -> None:
     response = client.post(_invite_url(profile), {"email": "not-an-email"})
     assert not ProfileInvite.objects.filter(profile=profile).exists()
     assert "Enter a valid email address." in client.get(response.url).content.decode()
+
+
+def test_staff_profile_without_invite_reads_not_invited(client) -> None:
+    from apps.students.tests.factories import ProfileFactory
+
+    program = ProgramFactory.create(slug="tcu-ceaa")
+    staff = MembershipFactory.create(program=program).user
+    ProfileFactory.create(user=None, created_for=program)
+    client.force_login(staff)
+    body = client.get(
+        reverse("workspace:students", kwargs={"program": "tcu-ceaa"})
+    ).content.decode()
+    assert "Not invited" in body
+    assert "Expired" not in body

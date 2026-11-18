@@ -3,7 +3,7 @@ from typing import Any
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.http import HttpRequest, HttpResponse, QueryDict
+from django.http import Http404, HttpRequest, HttpResponse, QueryDict
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -25,7 +25,7 @@ from apps.applications.wording import APPLICATION_TONES
 from apps.core.permissions import StudentRequiredMixin
 from apps.core.shell import shell_context
 from apps.matching.checklist import checklist_items
-from apps.matching.eligibility import Academic
+from apps.matching.eligibility import Academic, EligibilityResult
 from apps.matching.selectors import eligibility_for, renewal_eligibility_with
 from apps.programs.models import BenefitTier, Program, RequiredDocument
 from apps.programs.selectors import application_term
@@ -169,15 +169,35 @@ WITHDRAWABLE = (
 )
 
 
+def _live_eligibility(user: User, application: Application) -> EligibilityResult | None:
+    """The draft's live eligibility, worked out once per request (tiers and the submit button
+    both read it)."""
+    cached: EligibilityResult | None = getattr(application, "_live_eligibility", None)
+    if cached is None:
+        profile = profile_for(user)
+        if profile is None:
+            return None
+        cached = eligibility_for(profile, application.program, today=timezone.localdate())
+        application._live_eligibility = cached  # type: ignore[attr-defined]
+    return cached
+
+
 def _candidates(user: User, application: Application) -> list[BenefitTier]:
     """The tiers the student can pick: live for a draft, the requested one once returned."""
     if application.status != Application.Status.DRAFT:
         return [application.requested_tier] if application.requested_tier is not None else []
-    profile = profile_for(user)
-    if profile is None:
-        return []
-    result = eligibility_for(profile, application.program, today=timezone.localdate())
-    return list(result.tier_candidates)
+    result = _live_eligibility(user, application)
+    return list(result.tier_candidates) if result is not None else []
+
+
+def _blocked_reason(user: User, application: Application) -> str:
+    """Why a new draft can't be submitted yet (the first unmet rule), or ""."""
+    if application.kind != Application.Kind.NEW or application.status != Application.Status.DRAFT:
+        return ""
+    result = _live_eligibility(user, application)
+    if result is None or result.eligible or not result.reasons:
+        return ""
+    return result.reasons[0]
 
 
 def _submit_form(
@@ -248,6 +268,7 @@ def render_detail(
         submit_form = _submit_form(_student(request), application)
     context = {
         "submit_form": submit_form,
+        "submit_blocked": _blocked_reason(_student(request), application) if submit_form else "",
         "banner": banner,
         "error_card": error_card,
         "can_withdraw": application.status in WITHDRAWABLE and not application.on_behalf,
@@ -302,6 +323,8 @@ class WithdrawView(StudentRequiredMixin, View):
         if application.on_behalf:
             messages.error(request, services.ON_BEHALF_LOCKED)
             return redirect("applications:detail", pk=application.pk)
+        if application.status not in WITHDRAWABLE:
+            raise Http404("This application can't be withdrawn.")
         context = {
             **shell_context(request, area="student"),
             "application": application,
