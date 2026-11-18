@@ -411,10 +411,14 @@ _CSP_DIRECTIVES = {
     "base-uri": [SELF],
     "object-src": [NONE],
 }
+# Google sign-in posts a form to /accounts/google/login/, which redirects to Google; browsers apply
+# form-action to that redirect, so Google is allowed there only when sign-in with Google is on.
+if SOCIALACCOUNT_PROVIDERS:
+    _CSP_DIRECTIVES["form-action"] = [SELF, "https://accounts.google.com"]
 # Not a CSP_* setting name: django-csp 4 treats those as legacy config (csp.E001).
 # Enforced by default (M12); report-only only with the Vite dev server or while debugging. No
 # report-uri: browsers would post full page URLs and Referers straight to Sentry, past scrub_event.
-_csp_report_only = env.bool("CSP_REPORT_ONLY", VITE_DEV_MODE)
+_csp_report_only = env.bool("CSP_REPORT_ONLY", False) or VITE_DEV_MODE
 _csp_policy = {"DIRECTIVES": _CSP_DIRECTIVES}
 CONTENT_SECURITY_POLICY = None if _csp_report_only else _csp_policy
 CONTENT_SECURITY_POLICY_REPORT_ONLY = _csp_policy if _csp_report_only else None

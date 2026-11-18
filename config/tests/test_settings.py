@@ -633,3 +633,26 @@ def test_csp_report_only_can_be_asked_for_while_debugging(tmp_path):
     values = settings_values(tmp_path, CSP_NAMES, _unset=["VITE_DEV_MODE"], CSP_REPORT_ONLY="true")
     assert values["CONTENT_SECURITY_POLICY"] is None
     assert values["CONTENT_SECURITY_POLICY_REPORT_ONLY"] is not None
+
+
+def test_csp_lets_forms_reach_google_when_google_sign_in_is_on(tmp_path):
+    """The Google button posts to /accounts/google/login/, which redirects to Google: browsers
+    apply form-action to that redirect."""
+    values = settings_values(
+        tmp_path, ["CONTENT_SECURITY_POLICY"], GOOGLE_CLIENT_ID="id", GOOGLE_CLIENT_SECRET="x"
+    )
+    assert (
+        "https://accounts.google.com"
+        in values["CONTENT_SECURITY_POLICY"]["DIRECTIVES"]["form-action"]
+    )
+    off = settings_values(tmp_path, ["CONTENT_SECURITY_POLICY"], _unset=["GOOGLE_CLIENT_ID"])
+    assert off["CONTENT_SECURITY_POLICY"]["DIRECTIVES"]["form-action"] == ["'self'"]
+
+
+def test_vite_dev_mode_is_report_only_even_with_the_example_line(tmp_path):
+    """A .env copied from .env.example must not undo the Vite dev server's report-only CSP."""
+    values = settings_values(
+        tmp_path, CSP_NAMES, DJANGO_DEBUG="true", VITE_DEV_MODE="true", CSP_REPORT_ONLY="false"
+    )
+    assert values["CONTENT_SECURITY_POLICY"] is None
+    assert values["CONTENT_SECURITY_POLICY_REPORT_ONLY"] is not None
