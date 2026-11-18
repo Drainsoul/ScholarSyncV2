@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from pathlib import Path
 
 import boto3
 import pytest
@@ -62,3 +63,34 @@ def e2e_storage(live_server) -> Iterator[str]:
     )
     yield endpoint
     server.stop()
+
+
+AXE_SOURCE = (
+    Path(__file__).resolve().parents[2] / "frontend" / "node_modules" / "axe-core" / "axe.min.js"
+)
+AXE_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]
+
+
+@pytest.fixture(scope="session")
+def axe_source() -> str:
+    """axe-core (a pinned dev dependency), read once. Pages are checked in a `bypass_csp`
+    context: the injected checker is a test script; the app's policy stays enforced elsewhere."""
+    return AXE_SOURCE.read_text(encoding="utf-8")
+
+
+def axe_violations(page: Page, source: str) -> list[dict[str, str]]:
+    """WCAG 2.2 A/AA violations on the page: id, impact, the first target and the help text."""
+    page.evaluate(source)
+    violations: list[dict[str, str]] = page.evaluate(
+        """async (tags) => {
+            const result = await axe.run(document, {runOnly: {type: "tag", values: tags}});
+            return result.violations.map((v) => ({
+                id: v.id,
+                impact: v.impact || "",
+                target: v.nodes.length ? v.nodes[0].target.join(" ") : "",
+                help: v.help,
+            }));
+        }""",
+        AXE_TAGS,
+    )
+    return violations

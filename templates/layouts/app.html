@@ -16,7 +16,7 @@
         {% block topbar_extra %}{% endblock %}
         {% if terms %}
         <details class="switcher switcher--end">
-          <summary>{% icon "calendar" %}{% for term in terms %}{% if term.current %}<span><span class="visually-hidden">Term: </span>{{ term.name }}</span>{% endif %}{% endfor %}{% icon "chevron-down" %}</summary>
+          <summary>{% icon "calendar" %}<span class="visually-hidden">Term</span>{% for term in terms %}{% if term.current %}<span><span class="visually-hidden">: </span>{{ term.name }}</span>{% endif %}{% endfor %}{% icon "chevron-down" %}</summary>
           <ul role="list">{% for term in terms %}<li><a href="{{ term.url }}"{% if term.current %} aria-current="true"{% endif %}>{{ term.name }}</a></li>{% endfor %}</ul>
         </details>
         {% endif %}
