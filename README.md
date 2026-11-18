@@ -73,6 +73,10 @@ S3-compatible storage for files · any SMTP server for email · runs in Docker.
 - [Setup](docs/SETUP.md): running locally in depth (ports, reset, troubleshooting) and the developer workflow (tests,
   linting, front end).
 - [Hosting](docs/HOSTING.md): running your own copy for real, with your own database, storage and email, behind HTTPS.
+  It ends with a [runbook](docs/HOSTING.md#10-runbook) (update, roll back, restore, rotate secrets); the
+  [walkthrough](docs/hosting-walkthrough.md) records the guide followed once on a clean checkout.
+- Security and accessibility reviews: [OWASP ASVS 5.0 level 2](docs/security/asvs-l2.md),
+  [WCAG 2.2 AA](docs/accessibility/wcag-22-aa.md) and the [security policy](SECURITY.md).
 - [Design spec and roadmap](docs/design/2026-10-11-scholarsync-v2-design.md) and the
   [open-source and self-hosting design](docs/design/2026-10-30-open-source-self-hosting-design.md).
 - [Legacy audit](docs/legacy-audit.md): what v1 does, its business rules and its problems.

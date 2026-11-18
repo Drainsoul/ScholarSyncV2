@@ -98,7 +98,9 @@ Use any provider. Names below are examples only.
   presigned upload link stays valid for 10 minutes, so this rule is what removes abandoned or re-sent uploads;
   downloads are 5-minute links;
 - create an access key limited to that bucket, and set the `S3_*` variables. The endpoint must be reachable from the
-  browser as well as from the app. Only if the browser needs a different address than the app, set
+  browser as well as from the app, **over HTTPS**: browsers block uploads from an HTTPS page to a plain-HTTP address.
+  Hosted providers already use HTTPS. If you run your own S3 server on the same machine, put it behind your proxy (see
+  `docs/examples/Caddyfile`). Only if the browser needs a different address than the app, set
   `S3_PUBLIC_ENDPOINT_URL`.
 
 Example, with the AWS CLI against any S3 API (the same commands the explore stack runs):
@@ -144,6 +146,7 @@ scholarships.example.org {
     reverse_proxy 127.0.0.1:8000
 }
 ```
+`docs/examples/Caddyfile` adds a self-run storage server behind the same proxy.
 `compose.production.yaml` publishes the port on `127.0.0.1` only, so only a proxy on the same machine can reach the app.
 If the proxy runs on another host, edit the `ports` line of `web` to `"${APP_PORT:-8000}:8000"` (all interfaces) or
 `"PRIVATE_IP:${APP_PORT:-8000}:8000"` (one private interface), and firewall the port so only the proxy can connect.
@@ -218,10 +221,53 @@ Back up the database and the bucket. Test a restore once.
   pg_dump --format=custom --file=scholarsync-$(date +%F).dump "$DATABASE_URL"
   ```
   Many managed PostgreSQL services also offer point-in-time recovery; turn it on. Restore with
-  `pg_restore --clean --no-owner --dbname "$DATABASE_URL" FILE`.
+  `pg_restore --clean --if-exists --no-owner --dbname "$DATABASE_URL" FILE`, into the old database or a new empty one
+  (`--if-exists` keeps an empty target from reporting hundreds of harmless "does not exist" errors).
 - **Files:** enable versioning on the bucket, or copy it regularly (`aws s3 sync` or `rclone`).
 - **Secrets:** keep `.env` in a password manager or secrets store. Losing `DJANGO_SECRET_KEY` signs everyone out, and
   nothing else.
+- **Test a restore** (`docs/hosting-walkthrough.md` records one): dump; stop the app
+  (`docker compose -f compose.production.yaml stop`); restore into the database; start it again (`start`); sign in and
+  open a stored file.
+
+## 10. Runbook
+Short steps for the jobs you will repeat. All commands run in your clone, on the `hosting` branch.
+
+**Deploy an update.**
+1. Back up the database (step 9).
+2. Tag the image that is running now, so you can go back: `docker tag scholarsync:production scholarsync:previous`.
+3. Merge and rebuild: `git fetch origin`, `git merge origin/main`, `docker compose -f compose.production.yaml up -d --build`.
+   The web container migrates on start.
+4. Check: `docker compose -f compose.production.yaml ps` shows `web` healthy, the deploy check (step 7) passes, and you
+   can sign in.
+
+**Roll back.**
+1. Put the previous image back and start it without building:
+   `docker tag scholarsync:previous scholarsync:production`, then
+   `docker compose -f compose.production.yaml up -d --no-build`.
+2. Migrations are expand-only (they add, never remove or rename), so the previous code runs on the newer database.
+   Restore a backup only if the update itself damaged data.
+3. Reset your branch to the commit you rolled back to (`git reset --hard COMMIT`) before the next update, or the
+   next build brings the bad version back.
+
+**Restore.** Step 9. The bucket keeps its files: restore the bucket too only if files were lost.
+
+**Rotate a secret.** Change the value in `.env`, then `docker compose -f compose.production.yaml up -d` (it recreates
+both containers). What each one changes:
+- `DJANGO_SECRET_KEY`: everyone is signed out, and open password-reset, set-password and email-confirmation links stop
+  working (people ask for new ones). Claim links for student profiles keep working.
+- `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY`: create the new key at your provider first, switch `.env`, then delete
+  the old key. Download links already handed out stop working when the old key goes (they last 5 minutes anyway).
+- `EMAIL_URL` password: queued email is retried by the worker with the new value.
+- `GOOGLE_CLIENT_SECRET`: rotate it in the Google console and here at the same time; sign-ins in progress fail once.
+- The database password: change it on the server and in `DATABASE_URL` together; the app reconnects on restart.
+
+## 11. HSTS preload
+Production sends `Strict-Transport-Security: max-age=31536000; includeSubDomains` but not `preload`. Preloading puts
+your domain into browsers' built-in HTTPS-only lists. It is hard to undo (removal takes months) and applies to every
+subdomain. Only consider it when the whole domain, every subdomain included, will stay HTTPS for good. It needs a code
+change (`SECURE_HSTS_PRELOAD = True` in `config/settings.py`) and a submission at hstspreload.org. Most copies never
+need it.
 
 ## Troubleshooting
 - **The app exits at start with `ImproperlyConfigured`:** the message names the variable. Fix `.env` and run `up -d`

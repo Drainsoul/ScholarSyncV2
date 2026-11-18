@@ -1,0 +1,16 @@
+# An example Caddy configuration for a self-hosted copy (docs/HOSTING.md step 5).
+# Caddy gets and renews the certificates itself, and sends X-Forwarded-Proto and X-Forwarded-For.
+# Replace the host names with yours. With one proxy in front of the app, keep TRUSTED_PROXY_COUNT=1.
+
+# The app: compose.production.yaml publishes it on 127.0.0.1:APP_PORT (default 8000).
+scholarships.example.org {
+	reverse_proxy 127.0.0.1:8000
+}
+
+# Only if you run your own S3-compatible server on this machine (MinIO, RustFS, Garage …):
+# serve it over HTTPS too, because browsers block uploads from an HTTPS page to plain HTTP.
+# Point S3_PUBLIC_ENDPOINT_URL at https://files.example.org and allow your site's origin in the
+# bucket's CORS rules. A hosted provider (R2, S3, B2 …) already has an HTTPS endpoint: skip this.
+files.example.org {
+	reverse_proxy 127.0.0.1:9000
+}
