@@ -120,7 +120,7 @@ def test_demo_toast_over_htmx_returns_204_with_a_trigger(client, kit_on):
     assert json.loads(response["HX-Trigger"]) == {"toast": {"message": "Saved", "tone": "warning"}}
 
 
-def test_demo_toast_without_htmx_uses_messages(client, kit_on, vite_build):
+def test_demo_toast_without_htmx_uses_messages(client, db, kit_on, vite_build):
     response = client.post("/_kit/demo/toast/", {"message": "Saved", "tone": "danger"}, follow=True)
     body = response.content.decode()
     assert '<div class="toast toast--danger" data-toast data-tone="danger">' in body
@@ -196,7 +196,7 @@ def test_demo_bulk_unknown_action_warns_about_the_action(client, kit_on):
     }
 
 
-def test_demo_bulk_without_htmx_redirects_and_shows_a_toast(client, kit_on, vite_build):
+def test_demo_bulk_without_htmx_redirects_and_shows_a_toast(client, db, kit_on, vite_build):
     response = client.post("/_kit/demo/bulk/", {"ids": ["1"], "action": "approve"})
     assert response.status_code == 302
     assert response["Location"] == "/_kit/#overlays"
