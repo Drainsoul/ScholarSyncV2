@@ -169,7 +169,8 @@ does. The app has no switch to turn the redirect off; set the header at the prox
 
 ## 6. Background jobs
 The `worker` service runs `manage.py send_outbox` (retries failed email and sends any left queued) and
-`manage.py cleanup` (expired sessions, outbox rows older than 90 days). Nothing else is needed.
+`manage.py cleanup` (expired sessions, outbox rows older than 90 days, and scholar import files 7 days after upload:
+they hold names and birth dates). Nothing else is needed.
 
 If you do not run the worker, schedule the same commands yourself, for example every 5 minutes from cron or your
 host's scheduler:
