@@ -1,3 +1,4 @@
+import time
 from typing import Any
 
 from allauth.account.signals import email_confirmed, password_changed, password_reset, password_set
@@ -39,6 +40,11 @@ def on_password_set(request: HttpRequest | None, user: User, **kwargs: Any) -> N
 # stored, so a mistyped password can't leave someone's address in the audit log.
 @receiver(user_logged_in)
 def on_signed_in(request: HttpRequest | None, user: User, **kwargs: Any) -> None:
+    if request is not None and hasattr(request, "session"):
+        # Session limits count from here (apps/accounts/session_policy.py).
+        now = time.time()
+        request.session["signed_in_at"] = now
+        request.session["last_seen"] = now
     record(actor=user, action="user.signed_in", target=user, request=request)
 
 

@@ -9,6 +9,8 @@
   <meta name="theme-color" content="#b8132a">
   {% vite_hmr_client %}
   {% vite_asset 'src/main.ts' %}
+  {% if request.session_policy %}<meta name="session-idle-seconds" content="{{ request.session_policy.idle }}">
+  <meta name="session-absolute-seconds" content="{{ request.session_policy.absolute }}">{% endif %}
   {% block head %}{% endblock %}
 </head>
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>

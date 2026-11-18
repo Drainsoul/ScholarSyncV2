@@ -57,6 +57,13 @@
     </div>
     {% endif %}
   </nav>
+  <dialog id="session-dialog" class="dialog" aria-labelledby="session-dialog-title" data-session-dialog>
+    <div class="dialog__body">
+      <h2 id="session-dialog-title">Still there?</h2>
+      <p data-session-message>You'll be signed out in 2 minutes because you haven't done anything.</p>
+      <form method="post" action="{% url 'session_keep_alive' %}" data-session-keep-alive>{% csrf_token %}<button type="submit" class="btn btn--primary">Stay signed in</button></form>
+    </div>
+  </dialog>
   <main id="main" tabindex="-1" class="page">
     {% block breadcrumbs %}{% if crumbs %}{% include "components/breadcrumbs.html" %}{% endif %}{% endblock %}
     {% block content %}{% endblock %}

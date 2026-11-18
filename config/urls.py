@@ -1,6 +1,8 @@
 from django.http import Http404, HttpRequest, HttpResponse
 from django.urls import include, path
 
+from apps.accounts.session_policy import keep_alive
+
 
 def not_offered(request: HttpRequest) -> HttpResponse:
     """Google One Tap isn't used, and allauth's token route trusts the token header's `alg`
@@ -32,6 +34,7 @@ urlpatterns = [
     path("files/", include("apps.files.urls")),
     path("accounts/claim/", include("apps.students.claim_urls")),
     path("accounts/google/login/token/", not_offered, name="google_login_by_token"),
+    path("accounts/session/keep-alive/", keep_alive, name="session_keep_alive"),
     path("accounts/", include("allauth.urls")),
     path("_kit/", include("apps.kit.urls")),
 ]

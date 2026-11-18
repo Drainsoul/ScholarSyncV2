@@ -179,6 +179,7 @@ MIDDLEWARE = [
     "apps.accounts.mfa_policy.RequireStaffMfaMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "apps.accounts.session_policy.SessionPolicyMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
@@ -398,7 +399,10 @@ X_FRAME_OPTIONS = "DENY"
 SESSION_COOKIE_SECURE = PRODUCTION
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
-SESSION_COOKIE_AGE = 12 * 60 * 60
+SESSION_COOKIE_AGE = 12 * 60 * 60  # also the absolute limit from sign-in (M13)
+# Idle limits (spec §10, M13): staff and the office handle many people's data.
+SESSION_IDLE_MINUTES_STAFF = env.float("SESSION_IDLE_MINUTES_STAFF", 30)
+SESSION_IDLE_MINUTES_STUDENT = env.float("SESSION_IDLE_MINUTES_STUDENT", 60)
 CSRF_COOKIE_SECURE = PRODUCTION
 # htmx sends the token from `hx-headers` on <body>; no script reads the cookie (ASVS V3.3.4).
 CSRF_COOKIE_HTTPONLY = True

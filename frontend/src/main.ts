@@ -12,6 +12,7 @@ import { initBulk } from "./bulk";
 import { initDialogs } from "./dialog";
 import { initFill } from "./fill";
 import { initNav } from "./nav";
+import { initSessionWarning } from "./session";
 import { initToasts } from "./toast";
 import { initUploads } from "./upload";
 
@@ -22,3 +23,4 @@ initBulk();
 initNav();
 initFill();
 initUploads();
+initSessionWarning();
