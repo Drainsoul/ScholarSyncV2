@@ -1,0 +1,16 @@
+# gitleaks findings checked by hand (M14): none is a live secret.
+# One fingerprint per line (commit:file:rule:line), each with its reason above it.
+# the compose smoke test's throwaway signup password
+57074d2039507d10d848e1f3239d2ca7b8d21ed0:scripts/smoke_signup.sh:generic-api-key:24
+# the compose smoke test's throwaway signup password
+57074d2039507d10d848e1f3239d2ca7b8d21ed0:scripts/smoke_signup.sh:generic-api-key:25
+# the explore demo password, public by design (shown on the login page)
+2f8f82c9c81eeb2f0524151066a3070369882d23:apps/demo/accounts.py:generic-api-key:8
+# test fixture passwords
+b26ecab4bec8337a9dcae142187ebb2428703c8e:apps/accounts/tests/test_login.py:generic-api-key:88
+# test fixture passwords
+b26ecab4bec8337a9dcae142187ebb2428703c8e:apps/accounts/tests/test_login.py:generic-api-key:89
+# test fixture password
+0aba2a408adba492a8255a34a4da939c9e534ab2:apps/accounts/tests/test_services.py:generic-api-key:10
+# the public demo password, quoted in a working document
+# false positive: the word after 'django-allauth,' in the stack list
