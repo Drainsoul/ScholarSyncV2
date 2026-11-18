@@ -43,6 +43,11 @@
   files removed after 7 days; double posts never 500; the ASVS 5.0 L2 review; the WCAG 2.2 AA audit with axe-core;
   query budgets on every page; the hosting guide walked on a clean checkout, with backups, a runbook and HSTS preload
   guidance (§7, §10, §11, §12, §13, §16, §17, §18).
+- **Revision:** 21 (2026-11-19): M13 decisions: two-factor sign-in required for staff and the office in
+  production; a breached-password check; optional ClamAV scanning; idle (30/60 min) and 12-hour session limits
+  with a warning; session-key rotation on reauthentication; a session list, the office's Sign out everywhere and
+  `end_sessions`; unencrypted services refused in production; a least-privilege database role; request ids in
+  logs; names in search URLs accepted; the numeric-password rule dropped (§6, §7, §10, §12, §14, §16).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -703,6 +708,10 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 - **Report files (M11c):** active staff of the report's program (the `staff_can_download` rule) and the office may
   download every version, even after the uploader leaves; anyone else gets 404. The `file.viewed` event names the
   report's program.
+- **Malware scanning (M13, optional):** with `CLAMAV_HOST` (and `CLAMAV_PORT`, default 3310), confirm streams the
+  copied object to clamd (`INSTREAM`) before the file is ready: `FOUND` rejects it (reason `malware`, "This file can't
+  be accepted. Upload a different one."); clamd unreachable answers 503 ("Files can't be checked right now. Try again
+  in a few minutes.") and leaves the file pending.
 - **Access by purpose (M12):** `import` files are never downloadable, by anyone, the office included; `report` files
   answer the office and active staff of the report's program only (no uploader shortcut); `document` and `photo`
   files keep the rules above.
@@ -879,6 +888,29 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - secret URLs (`/accounts/claim/<token>/`, `/accounts/confirm-email/<key>/`,
     `/accounts/password/reset/key/<uidb36>-<key>/`) read `…/[redacted]/` in log lines, the gunicorn access log
     (request line, path, query and Referer; `RedactingLogger`) and Sentry events (URL, transaction, Referer) (M12).
+- **M13 additions:**
+  - **Two-factor sign-in:** TOTP and recovery codes (`allauth.mfa`), required for program staff and the office when
+    `MFA_REQUIRED_FOR_STAFF` (default on in production, off in developer and explore modes); a required account
+    without an authenticator reaches only the 2FA, reauthentication and sign-out pages. The office can remove a staff
+    account's authenticator (password asked again; `mfa.removed`).
+  - **Breached passwords:** Have I Been Pwned's k-anonymity range API (5 hex characters of the SHA-1 leave the
+    server), on when `PASSWORD_BREACH_CHECK` (default on in production); 3 s timeout; fails open, logging no password
+    data.
+  - **Session limits:** idle 30 minutes for staff and the office, 60 for students (`SESSION_IDLE_MINUTES_STAFF`,
+    `SESSION_IDLE_MINUTES_STUDENT`); 12 hours from sign-in whatever the activity; a warning dialog 2 minutes before an
+    idle sign-out with "Stay signed in" (`POST /accounts/session/keep-alive/`), and 5 minutes before the absolute
+    limit; the session key rotates after reauthentication.
+  - **Sessions:** `/accounts/sessions/` lists one's sessions with "Sign out other sessions" (`allauth.usersessions`);
+    the office's "Sign out everywhere" on a staff account (`user.sessions_ended`); `manage.py end_sessions --email`.
+  - **Encrypted services:** production refuses `smtp://`, `http://` storage endpoints and a database URL without
+    `sslmode=require|verify-ca|verify-full`, except for loopback, single-label service names and
+    `host.docker.internal`, or with `ALLOW_PLAINTEXT_SERVICES=true`.
+  - **Least privilege:** migrations run with `DATABASE_URL_MIGRATIONS` when set; the runtime role has DML only and
+    no `UPDATE`/`DELETE` on audit events; the app code is root-owned in the image.
+  - **Request ids:** an `X-Request-ID` (kept when valid, else generated) and the user id on every log line and in
+    the access log.
+  - **Accepted:** name searches stay in `GET ?q=` on signed-in, `no-store` staff pages (dropped from logs).
+  - **Passwords:** the all-numeric rule is dropped (common list, length, site words and the breach check cover it).
 - **Audit of sign-ins (M12):** `user.signed_in` and `user.signed_out` (the user, with `ip_hash`) and
   `user.sign_in_failed` (no actor, empty data: the typed email is never stored). They appear in the audit log's
   Accounts group, not in the overview feed.
@@ -1094,6 +1126,9 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
 ## 14. Settings and environment variables (names only)
 - **Mode:** `SCHOLARSYNC_EXPLORE` (set by compose only), `DJANGO_DEBUG`.
 - **Core:** `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`, `SITE_URL`.
+- **Security (M13):** `MFA_REQUIRED_FOR_STAFF`, `PASSWORD_BREACH_CHECK`, `SESSION_IDLE_MINUTES_STAFF`,
+  `SESSION_IDLE_MINUTES_STUDENT`, `ALLOW_PLAINTEXT_SERVICES`, `CLAMAV_HOST`, `CLAMAV_PORT`,
+  `DATABASE_URL_MIGRATIONS`.
 - **Proxy:** `TRUSTED_PROXY_COUNT` (default 0; set to the number of proxies in front of the app, usually 1).
 - **Database:** `DATABASE_URL`, `DATABASE_URL_UNPOOLED` (optional).
 - **Files (S3-compatible):** `S3_ENDPOINT_URL`, `S3_PUBLIC_ENDPOINT_URL` (optional), `S3_REGION`, `S3_BUCKET`,
@@ -1265,6 +1300,10 @@ starts, and ends with every acceptance item checked.
   notification centers; the office overview's "Reports to review" and "Download report"; cross-program scholars and
   the audit viewer (office: all; head: own program), moved from M11b.
 - [ ] Extend the demo loader for this milestone's screens.
+
+**M13: Security follow-ups**
+- Scope: the ASVS gaps and WCAG 2.2.1 left by M12
+  (§10 M13 additions).
 
 **M12: Hardening + hosting guide**
 - One milestone (the maintainer, 2026-11-18): enforced CSP,
