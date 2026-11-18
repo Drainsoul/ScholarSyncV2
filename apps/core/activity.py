@@ -96,6 +96,7 @@ VERBS.update(
         "membership.changed": "changed a program membership",
         "membership.removed": "removed a program membership",
         "mfa.removed": "removed an account's two-factor sign-in",
+        "user.sessions_ended": "signed an account out everywhere",
         "profile.created": "started a profile",
         "profile.updated": "edited a profile",
         "profile.claimed": "claimed a profile",

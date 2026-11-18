@@ -1,6 +1,7 @@
 from django.http import Http404, HttpRequest, HttpResponse
 from django.urls import include, path
 
+from apps.accounts.reauth import ReauthenticateView, SessionListView
 from apps.accounts.session_policy import keep_alive
 
 
@@ -35,6 +36,12 @@ urlpatterns = [
     path("accounts/claim/", include("apps.students.claim_urls")),
     path("accounts/google/login/token/", not_offered, name="google_login_by_token"),
     path("accounts/session/keep-alive/", keep_alive, name="session_keep_alive"),
+    path(
+        "accounts/reauthenticate/",
+        ReauthenticateView.as_view(),
+        name="account_reauthenticate",
+    ),
+    path("accounts/sessions/", SessionListView.as_view(), name="usersessions_list"),
     path("accounts/", include("allauth.urls")),
     path("_kit/", include("apps.kit.urls")),
 ]

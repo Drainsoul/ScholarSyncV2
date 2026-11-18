@@ -137,6 +137,7 @@ INSTALLED_APPS = [
     "allauth.account",
     "allauth.socialaccount",
     "allauth.mfa",
+    "allauth.usersessions",
     "allauth.socialaccount.providers.google",
     "django_vite",
     "csp",
@@ -298,6 +299,8 @@ ACCOUNT_ADAPTER = "apps.accounts.adapters.AccountAdapter"
 # Two-factor sign-in (spec §10, M13): TOTP and recovery codes; required for staff and the office
 # in production, off in developer and explore modes so the demo keeps one-click sign-in.
 MFA_SUPPORTED_TYPES = ["totp", "recovery_codes"]
+# The session list at /accounts/sessions/ (M13); no per-request activity writes.
+USERSESSIONS_TRACK_ACTIVITY = False
 MFA_TOTP_ISSUER = "ScholarSync"
 # Production only, so a .env copied from .env.example never forces it on a developer copy.
 MFA_REQUIRED_FOR_STAFF = PRODUCTION and env.bool("MFA_REQUIRED_FOR_STAFF", True)

@@ -47,6 +47,7 @@
       <details class="account-menu">
         <summary>{% if viewer %}{% avatar viewer.name 1 %}<span class="sidebar__viewer"><span class="sidebar__name">{{ viewer.name }}</span><span class="sidebar__role">{{ viewer.role }}</span></span>{% else %}<span class="sidebar__viewer"><span class="sidebar__name">Account</span></span>{% endif %}{% icon "ellipsis-vertical" %}<span class="visually-hidden">Account menu</span></summary>
         <div class="account-menu__panel">
+          <a class="btn btn--ghost" href="{% url 'usersessions_list' %}">Your sessions</a>
           <a class="btn btn--ghost" href="{% url 'mfa_index' %}">Two-factor sign-in</a>
           <form method="post" action="{{ logout_url }}">{% csrf_token %}<button type="submit" class="btn btn--ghost">{% icon "log-out" %}Sign out</button></form>
         </div>

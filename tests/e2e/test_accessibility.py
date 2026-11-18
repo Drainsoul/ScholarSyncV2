@@ -29,6 +29,7 @@ SCREENS: dict[str, list[str]] = {
         "/me/applications/",
         "/me/scholarships/",
         "/me/notifications/",
+        "/accounts/sessions/",
     ],
     "staff": [
         "/staff/tcu-ceaa/",

@@ -1,0 +1,17 @@
+{% extends "usersessions/base_manage.html" %}
+{% block head_title %}Your sessions{% endblock %}
+{% block content %}
+  <h1>Your sessions</h1>
+  <p>Places where your account is signed in. If you don't recognise one, sign the others out and change your password.</p>
+  <ul class="list list--wrap">{% for session in sessions %}
+    <li>
+      <p><strong>Signed in {{ session.created_at|date:"j M Y, g:i A" }}</strong>{% if session.is_current %} <span class="text-sm">(this browser)</span>{% endif %}</p>
+      <p class="text-sm">{{ session.ip }} · {{ session.user_agent|default:"Unknown browser"|truncatechars:120 }}</p>
+    </li>{% endfor %}
+  </ul>
+  {% if session_count > 1 %}
+  <form method="post" action="{% url 'usersessions_list' %}">{% csrf_token %}
+    <div class="btn-row"><button type="submit" class="btn btn--primary">Sign out other sessions</button></div>
+  </form>
+  {% endif %}
+{% endblock %}

@@ -196,6 +196,22 @@ def create_account(
 
 
 @transaction.atomic
+def end_all_sessions(*, actor: User | None, user: User, request: HttpRequest | None = None) -> int:
+    """Sign an account out everywhere. `actor=None` is the operator's command line."""
+    if actor is not None:
+        require_office(actor)
+    ended = _end_sessions(user)
+    record(
+        actor=actor,
+        action="user.sessions_ended",
+        target=user,
+        data={"account": user.pk, "sessions_ended": ended},
+        request=request,
+    )
+    return ended
+
+
+@transaction.atomic
 def remove_mfa(*, actor: User, user: User, request: HttpRequest | None = None) -> None:
     """Remove a staff or office account's authenticators (a lost phone) and end its sessions; the
     person sets up a new one at the next sign-in."""

@@ -681,6 +681,11 @@ meter::-moz-meter-bar {
   margin: 0;
 }
 
+/* Long unbroken values (an IPv6 address, a browser string) wrap instead of widening the page. */
+.list--wrap p {
+  overflow-wrap: anywhere;
+}
+
 .checklist {
   display: grid;
   gap: var(--space-3);

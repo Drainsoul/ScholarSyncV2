@@ -25,6 +25,11 @@ urlpatterns = [
     path("staff/<int:pk>/welcome/", staff_views.StaffWelcomeView.as_view(), name="staff-welcome"),
     path("staff/<int:pk>/mfa/", staff_views.StaffMfaView.as_view(), name="staff-mfa"),
     path(
+        "staff/<int:pk>/sessions/",
+        staff_views.StaffSessionsView.as_view(),
+        name="staff-sessions",
+    ),
+    path(
         "staff/<int:pk>/memberships/",
         staff_views.MembershipAddView.as_view(),
         name="membership-add",

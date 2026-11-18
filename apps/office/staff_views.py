@@ -120,6 +120,19 @@ class StaffActiveView(SuperAdminRequiredMixin, View):
 
 
 @method_decorator(reauthentication_required, name="post")
+class StaffSessionsView(SuperAdminRequiredMixin, View):
+    """Sign a staff or office account out everywhere; asks for the password again."""
+
+    http_method_names = ["post", "options"]
+
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        account = _account(pk)
+        ended = services.end_all_sessions(actor=_actor(request), user=account, request=request)
+        messages.success(request, f"Signed out of {ended} session{'s' if ended != 1 else ''}.")
+        return redirect("office:staff-detail", pk=account.pk)
+
+
+@method_decorator(reauthentication_required, name="post")
 class StaffMfaView(SuperAdminRequiredMixin, View):
     """Remove an account's two-factor sign-in (a lost phone); asks for the password again."""
 
