@@ -10,6 +10,18 @@ from apps.files.selectors import usable_file
 from .services import NEED_PDF, PERIOD_ORDER
 
 DATE = forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")
+DESCRIPTION_MAX = 2000
+NOTE_MAX = 1000
+
+
+def _fit(value: str, limit: int) -> str:
+    """Store LF, then check the length: a text that fit the box (CRLF counted as one) fits."""
+    text = normalize_newlines(value)
+    if len(text) > limit:
+        raise forms.ValidationError(
+            f"Ensure this value has at most {limit:,} characters (it has {len(text):,})."
+        )
+    return text
 
 
 class ReportForm(forms.Form):
@@ -21,8 +33,7 @@ class ReportForm(forms.Form):
     description = forms.CharField(
         label="Description",
         required=False,
-        max_length=2000,
-        widget=forms.Textarea(attrs={"rows": 4, "maxlength": 2000}),
+        widget=forms.Textarea(attrs={"rows": 4, "maxlength": DESCRIPTION_MAX}),
     )
     file = forms.CharField(required=False, widget=forms.HiddenInput)
 
@@ -32,7 +43,7 @@ class ReportForm(forms.Form):
         super().__init__(*args, **kwargs)
 
     def clean_description(self) -> str:
-        return normalize_newlines(self.cleaned_data.get("description", ""))
+        return _fit(self.cleaned_data.get("description", ""), DESCRIPTION_MAX)
 
     def clean_file(self) -> StoredFile | None:
         raw = self.cleaned_data.get("file", "")
@@ -64,9 +75,8 @@ class DecideForm(forms.Form):
         label="Note to the program",
         help_text="Required when you return it.",
         required=False,
-        max_length=1000,
-        widget=forms.Textarea(attrs={"rows": 3, "maxlength": 1000}),
+        widget=forms.Textarea(attrs={"rows": 3, "maxlength": NOTE_MAX}),
     )
 
     def clean_note(self) -> str:
-        return normalize_newlines(self.cleaned_data.get("note", ""))
+        return _fit(self.cleaned_data.get("note", ""), NOTE_MAX)

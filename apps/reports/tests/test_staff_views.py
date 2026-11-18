@@ -155,3 +155,29 @@ def test_notification_urls_match_routes() -> None:
     assert services.staff_url(report) == reverse(
         "reports:detail", kwargs={"program": report.program.slug, "pk": report.pk}
     )
+
+
+def test_crlf_text_that_fits_the_box_is_accepted(client: Any) -> None:
+    user, program = _setup(client)
+    file = ready_report_file(user)
+    text = ("a" * 99 + "\r\n") * 20  # 2,000 characters in the box; 2,020 with CRLF
+    response = client.post(_url("new", program), _form(file.pk, description=text))
+    assert response.status_code == 302
+    assert Report.objects.get().description == text.replace("\r\n", "\n").strip()
+    too_long = client.post(
+        _url("new", program), _form(ready_report_file(user).pk, description="b" * 2001)
+    )
+    assert "at most 2,000 characters" in too_long.content.decode()
+
+
+def test_office_note_crlf_fits(client: Any) -> None:
+    office = UserFactory.create(role=User.Role.SUPER_ADMIN)
+    client.force_login(office)
+    report = ReportFactory.create()
+    note = ("n" * 99 + "\r\n") * 10  # 1,000 in the box; 1,010 with CRLF
+    response = client.post(
+        reverse("office:report-decide", args=[report.pk]), {"decision": "return", "note": note}
+    )
+    assert response.status_code == 302
+    report.refresh_from_db()
+    assert report.status == "returned"
