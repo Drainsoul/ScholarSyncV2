@@ -44,7 +44,11 @@ def test_add_and_edit_school_audits(client: Any, office: User) -> None:
     client.post(reverse("office:school-edit", args=[school.pk]), _data(is_in_taguig="on"))
     school.refresh_from_db()
     assert school.is_in_taguig
-    actions = list(AuditEvent.objects.order_by("pk").values_list("action", flat=True))
+    actions = list(
+        AuditEvent.objects.exclude(action="user.signed_in")
+        .order_by("pk")
+        .values_list("action", flat=True)
+    )
     assert actions == ["school.added", "school.updated"]
     assert "Technological" not in str(AuditEvent.objects.first().data)  # type: ignore[union-attr]
 

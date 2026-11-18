@@ -406,7 +406,7 @@ def test_academics_post_invalid_rerenders_400(client: Any) -> None:
     assert 'value="BS Biology"' in body  # the bound form keeps what was typed
     filing.application.refresh_from_db()
     assert filing.application.course == ""
-    assert not AuditEvent.objects.exists()
+    assert not AuditEvent.objects.exclude(action="user.signed_in").exists()
 
 
 def test_academics_post_after_submit_redirects_to_review(client: Any) -> None:

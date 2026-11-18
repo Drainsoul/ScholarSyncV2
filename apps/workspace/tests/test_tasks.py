@@ -94,7 +94,7 @@ def test_blank_title_and_long_notes_rejected(client: Any, now: datetime) -> None
     response = client.post(_url("tasks", program), {"title": "Ok", "notes": "x" * 2001})
     assert response.status_code == 200
     assert not Task.objects.exists()
-    assert not AuditEvent.objects.exists()
+    assert not AuditEvent.objects.exclude(action="user.signed_in").exists()
 
 
 def test_edit_done_reopen_delete_round_trip(client: Any, now: datetime) -> None:
@@ -113,7 +113,11 @@ def test_edit_done_reopen_delete_round_trip(client: Any, now: datetime) -> None:
     assert Task.objects.get(pk=task.pk).done_at is None
     client.post(_url("task-delete", program, task))
     assert not Task.objects.exists()
-    actions = list(AuditEvent.objects.order_by("pk").values_list("action", flat=True))
+    actions = list(
+        AuditEvent.objects.exclude(action="user.signed_in")
+        .order_by("pk")
+        .values_list("action", flat=True)
+    )
     assert actions == [
         "task.updated",
         "task.completed",
@@ -139,7 +143,7 @@ def test_another_users_task_is_404_for_head_and_office(
     assert client.post(_url("task-delete", program, task)).status_code == 404
     task.refresh_from_db()
     assert (task.title, task.done_at) == ("Mine", None)
-    assert not AuditEvent.objects.exists()
+    assert not AuditEvent.objects.exclude(action="user.signed_in").exists()
     assert "Mine" not in client.get(_url("tasks", program)).content.decode()
 
 

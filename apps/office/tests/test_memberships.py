@@ -44,7 +44,7 @@ def test_add_change_remove_round_trip(client: Any, office: User) -> None:
     response = client.post(change, {"remove": "1"}, follow=True)
     assert "Removed from LANI." in response.content.decode()
     assert not ProgramMembership.objects.exists()
-    events = AuditEvent.objects.order_by("pk")
+    events = AuditEvent.objects.exclude(action="user.signed_in").order_by("pk")
     assert [event.action for event in events] == [
         "membership.added",
         "membership.changed",

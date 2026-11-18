@@ -89,14 +89,14 @@ def test_out_of_range_values_rejected(client: Any, changes: dict[str, str]) -> N
     client.force_login(_head(program))
     response = client.post(_url(program), _data(**changes))
     assert response.status_code == 200
-    assert not AuditEvent.objects.exists()
+    assert not AuditEvent.objects.exclude(action="user.signed_in").exists()
 
 
 def test_saving_unchanged_writes_no_event(client: Any) -> None:
     program = ProgramFactory.create(min_gwa_percent=Decimal("80"))
     client.force_login(_head(program))
     client.post(_url(program), _data(min_gwa_percent="80.00"))
-    assert not AuditEvent.objects.exists()
+    assert not AuditEvent.objects.exclude(action="user.signed_in").exists()
 
 
 def test_window_and_new_rules_reach_the_public_page(client: Any) -> None:

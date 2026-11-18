@@ -153,7 +153,7 @@ def test_submit_other_student_404(client, world):
     assert response.status_code == 404
     application.refresh_from_db()
     assert application.status == Application.Status.DRAFT
-    assert not AuditEvent.objects.exists()
+    assert not AuditEvent.objects.exclude(action="user.signed_in").exists()
     assert not EmailOutbox.objects.exists()
 
 
@@ -285,4 +285,4 @@ def test_withdraw_other_student_404(client, world):
     assert client.post(withdraw_url(application)).status_code == 404
     application.refresh_from_db()
     assert application.status == Application.Status.DRAFT
-    assert not AuditEvent.objects.exists()
+    assert not AuditEvent.objects.exclude(action="user.signed_in").exists()

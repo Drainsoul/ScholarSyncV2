@@ -89,7 +89,7 @@ def test_activate_needs_a_tier_and_a_document(client: Any, office: User) -> None
     assert NEED_SETUP.format(name="Arts Grant") in response.content.decode()
     program.refresh_from_db()
     assert not program.is_active
-    assert not AuditEvent.objects.exists()
+    assert not AuditEvent.objects.exclude(action="user.signed_in").exists()
 
 
 def test_activate_then_deactivate(client: Any, office: User) -> None:
@@ -101,7 +101,11 @@ def test_activate_then_deactivate(client: Any, office: User) -> None:
     _active(client, program, True)  # no change, no second event
     _active(client, program, False)
     assert not Program.objects.get(pk=program.pk).is_active
-    actions = list(AuditEvent.objects.order_by("pk").values_list("action", flat=True))
+    actions = list(
+        AuditEvent.objects.exclude(action="user.signed_in")
+        .order_by("pk")
+        .values_list("action", flat=True)
+    )
     assert actions == ["program.activated", "program.deactivated"]
 
 
