@@ -11,6 +11,7 @@ import io
 import math
 import uuid
 import warnings
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from datetime import timedelta
 
@@ -24,7 +25,7 @@ from apps.accounts.models import User
 from apps.core.audit import record
 from apps.programs.models import Program
 
-from . import policy, storage
+from . import policy, scanning, storage
 from .models import StoredFile, pending_key
 from .names import clean_filename, content_disposition, download_name
 
@@ -33,6 +34,7 @@ REJECTIONS: dict[str, str] = {
     "size": "The file we received isn't the size we expected. Try uploading it again.",
     "type": "This isn't a valid {types_phrase} file.",
     "image": "We couldn't read this image. Upload a different JPG or PNG.",
+    "malware": "This file can't be accepted. Upload a different one.",
 }
 
 # Pillow formats accepted per sniffed type. Phones export multi-picture JPEGs (depth or gain
@@ -145,6 +147,13 @@ def _sniff(head: bytes, purpose: str) -> str:
     return ""
 
 
+def _scan(chunks: Iterable[bytes]) -> None:
+    """Reject a file clamd flags. `ScannerUnavailable` propagates: confirm rolls back and the
+    file stays pending (fail closed)."""
+    if scanning.scan(chunks).infected:
+        raise _Rejected("malware")
+
+
 def _verify_object(file: StoredFile) -> tuple[str, int, str]:
     """Documents and reports: copy, then check only the copy. Returns (type, size, sha256)."""
     final = file.final_key
@@ -161,8 +170,17 @@ def _verify_object(file: StoredFile) -> tuple[str, int, str]:
         if sniffed != policy.canonical_type(file.declared_type):
             raise _Rejected("type")
         digest = hashlib.sha256()
-        for chunk in storage.iter_chunks(final):
-            digest.update(chunk)
+
+        def hashed() -> Iterator[bytes]:
+            for chunk in storage.iter_chunks(final):
+                digest.update(chunk)
+                yield chunk
+
+        if scanning.enabled():
+            _scan(hashed())
+        else:
+            for _chunk in hashed():
+                pass
     except _Rejected:
         storage.delete(final)
         raise
@@ -216,6 +234,8 @@ def _verify_photo(file: StoredFile) -> tuple[str, int, str]:
         sniffed = _sniff(body[: policy.SNIFF_BYTES], file.purpose)
         if sniffed != file.declared_type:
             raise _Rejected("type")
+        if scanning.enabled():
+            _scan([body])  # the upload as sent, before re-encoding changes it
         clean = _reencode(body, sniffed)
     except _Rejected:
         storage.delete(file.key)

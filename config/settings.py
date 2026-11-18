@@ -252,6 +252,11 @@ if PRODUCTION and S3_STORAGE["secret_access_key"] == "scholarsync-explore-secret
         "Use your own storage keys in production (docs/HOSTING.md)."
     )
 
+# Optional malware scanning (spec §10, M13): with a host, upload confirm streams each file to
+# clamd and refuses it while clamd is down; unset, nothing is scanned.
+CLAMAV_HOST = env.str("CLAMAV_HOST", "")
+CLAMAV_PORT = env.int("CLAMAV_PORT", 3310)
+
 # Unencrypted connections to other machines (spec §10, M13).
 ALLOW_PLAINTEXT_SERVICES = env.bool("ALLOW_PLAINTEXT_SERVICES", False)
 if PRODUCTION and not ALLOW_PLAINTEXT_SERVICES:

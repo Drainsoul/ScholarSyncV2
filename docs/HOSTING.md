@@ -125,6 +125,20 @@ DEFAULT_FROM_EMAIL=ScholarSync <no-reply@your-domain.example>
 Use `smtps://` for port 465 and `smtp://` for an unencrypted relay. Set up SPF and DKIM for your sending domain with
 your provider, or mail lands in spam.
 
+**Malware scanning (optional).** Set `CLAMAV_HOST` (and `CLAMAV_PORT`, default 3310) to a clamd that accepts
+`INSTREAM`, and every upload is scanned before it is accepted; a file ClamAV flags is refused with "This file can't
+be accepted. Upload a different one." While the variable is set and clamd is down, uploads can't be finished
+(people see "Files can't be checked right now"), so run it next to the app and watch it. For example, add to
+`compose.production.yaml`:
+```yaml
+  clamav:
+    image: clamav/clamav:1.4
+    restart: unless-stopped
+```
+and set `CLAMAV_HOST=clamav`. clamd needs about 1.5 GB of memory for its signatures and a few minutes to load them
+after it starts. Left unset (the default, and the explore stack), files are not scanned; whether to scan is your
+choice.
+
 **Google sign-in (optional, students only).** Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` to offer it. If you
 remove the keys later, students who signed in only with Google have no password: they must use "Forgot password" to
 set one before they can sign in again.

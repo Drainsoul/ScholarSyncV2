@@ -13,12 +13,13 @@ from django.urls import reverse
 from django.utils.cache import add_never_cache_headers
 from django.views.decorators.http import require_GET, require_POST
 
-from . import selectors, services, storage
+from . import scanning, selectors, services, storage
 from .models import StoredFile
 
 UNREADABLE = "We couldn't read that upload request."
 NOT_CONFIGURED = "File uploads aren't set up on this copy of ScholarSync."
 UNAVAILABLE = "File storage isn't available right now. Try again in a few minutes."
+SCANNER_UNAVAILABLE = "Files can't be checked right now. Try again in a few minutes."
 TEXT = "text/plain; charset=utf-8"
 
 
@@ -39,6 +40,8 @@ def _json_api(view: Callable[..., JsonResponse]) -> Callable[..., JsonResponse]:
             return _error(NOT_CONFIGURED, 503)
         except storage.StorageUnavailable:
             return _error(UNAVAILABLE, 503)
+        except scanning.ScannerUnavailable:
+            return _error(SCANNER_UNAVAILABLE, 503)
 
     return wrapper
 

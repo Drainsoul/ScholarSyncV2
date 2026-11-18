@@ -49,6 +49,13 @@ here are read from the code on 2026-11-18. If code and this page disagree, the c
 - **Google sign-in** (students only): Google is used once, to prove the email. It starts a local session, which then
   follows the rules above. Signing out of Google does not end it; signing out here does not sign anyone out of Google.
 
+## Malware scanning (V5.4.3)
+Optional, and the operator's choice: with `CLAMAV_HOST` set, upload confirm streams each file to clamd
+(`apps/files/scanning.py`) before it is marked ready. Documents are scanned from the server-side copy; photos as sent,
+before re-encoding. A hit rejects the file (reason `malware`; the signature is not recorded). An unreachable or
+erroring clamd fails closed: the confirm answers 503 and the file stays pending until it can be checked. Unset, files
+are not scanned; type sniffing, size checks, photo re-encoding and attachment-only downloads still apply.
+
 ## Who reads and writes what (V8.1.2)
 
 | Data | Student (own) | Program staff and head | Scholarship office |
