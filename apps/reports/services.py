@@ -4,7 +4,7 @@ Audit data and notifications never hold the title, description or note (free tex
 
 from datetime import date
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 from django.http import HttpRequest
 from django.utils import timezone
@@ -67,6 +67,16 @@ def _tell_office(report: Report, title: str) -> None:
         notify(user=office, kind="report_submitted", title=title, body=body, url=office_url(report))
 
 
+OFFICE_CANT_SEND = "Reports come from programs. The office reviews them."
+
+
+def _require_sender(actor: User, program: Program) -> None:
+    """Program staff and heads send reports; the office reviews them (M14)."""
+    if actor.is_super_admin:
+        raise PermissionDenied(OFFICE_CANT_SEND)
+    require_program_staff(actor, program)
+
+
 @transaction.atomic
 def submit_report(
     *,
@@ -79,7 +89,7 @@ def submit_report(
     file: StoredFile,
     request: HttpRequest | None = None,
 ) -> Report:
-    require_program_staff(actor, program)
+    _require_sender(actor, program)
     _check_period(period_start, period_end)
     report = Report.objects.create(
         program=program,
@@ -115,7 +125,7 @@ def resubmit_report(
     file: StoredFile | None,
     request: HttpRequest | None = None,
 ) -> Report:
-    require_program_staff(actor, report.program)
+    _require_sender(actor, report.program)
     locked = Report.objects.select_for_update().select_related("program").get(pk=report.pk)
     if locked.status != Report.Status.RETURNED:
         raise ValidationError(NOT_RETURNED)

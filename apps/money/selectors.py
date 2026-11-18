@@ -237,17 +237,20 @@ def budget_summaries(programs: list[Program], year: int) -> dict[int, BudgetSumm
 
 def budget_figures(summary: BudgetSummary) -> list[dict[str, str]]:
     """The approved mockup's five tiles."""
-    if summary.amount is None:
+    tone = ""
+    if summary.amount is None or (not summary.amount and summary.over_by is None):
+        # None, or a zero budget with nothing spent or approved.
         available = "No budget set"
     elif summary.over_by is not None:
         available = f"Over budget by {peso(summary.over_by)}"
+        tone = "danger"
     else:
         available = peso(summary.remaining)
     return [
         {"label": f"Budget for {summary.year}", "value": peso(summary.amount)},
         {"label": "Released", "value": peso(summary.spent)},
         {"label": "Approved, not yet released", "value": peso(summary.committed)},
-        {"label": "Available", "value": available},
+        {"label": "Available", "value": available, "tone": tone},
         {
             "label": "Budget used",
             "value": "—" if summary.used_percent is None else f"{summary.used_percent}%",

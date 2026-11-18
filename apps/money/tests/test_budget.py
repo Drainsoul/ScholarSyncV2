@@ -173,3 +173,22 @@ def test_budget_form_posts_to_a_url_without_a_query(client: Any) -> None:
     client.force_login(head_of(program))
     html = client.get(_budget_url(program, "budget-edit") + "?year=2026").content.decode()
     assert f'action="{_budget_url(program, "budget-edit")}"' in html
+
+
+def test_zero_budget_reads_no_budget_set() -> None:
+    from apps.money.selectors import _summary, budget_figures
+
+    figures = budget_figures(_summary(2026, Decimal("0.00"), Decimal("0"), Decimal("0")))
+    assert next(f for f in figures if f["label"] == "Available")["value"] == "No budget set"
+
+
+def test_over_budget_figure_is_danger_toned() -> None:
+    from django.template.loader import render_to_string
+
+    from apps.money.selectors import _summary, budget_figures
+
+    figures = budget_figures(_summary(2026, Decimal("100.00"), Decimal("150.00"), Decimal("0")))
+    available = next(f for f in figures if f["label"] == "Available")
+    assert available["tone"] == "danger"
+    html = render_to_string("components/figures.html", {"figures": figures})
+    assert "figure__value--danger" in html

@@ -17,3 +17,24 @@ def test_staff_wording_renewal_unmet_names_the_student() -> None:
         form=False,
     )
     assert reworded["detail"] == "The student has 12 units; renewing needs at least 15."
+
+
+def test_staff_wording_for_residency_and_gwa_scale() -> None:
+    residency, scale = staff_items(
+        [
+            item(
+                "residency",
+                "unmet",
+                "This program needs at least 3 years in Taguig; your profile says since 2025.",
+            ),
+            item(
+                "gwa",
+                "unmet",
+                "This program has no grade rule yet for schools that grade on a 1-5 scale. "
+                "Ask the scholarship office.",
+            ),
+        ],
+        form=False,
+    )
+    assert residency["detail"] == "Residency since 2025 is under the 3-year rule."
+    assert scale["detail"] == "This program has no rule for 1-5 grades."

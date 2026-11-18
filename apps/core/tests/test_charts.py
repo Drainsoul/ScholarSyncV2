@@ -30,3 +30,9 @@ def test_window_crosses_the_year() -> None:
         "February 2027",
     ]
     assert first_month(date(2027, 2, 10)) == date(2026, 9, 1)
+
+
+def test_tiny_month_gets_a_visible_bar() -> None:
+    bars = month_bars({date(2026, 10, 1): 1, date(2026, 11, 1): 100}, today=date(2026, 11, 17))
+    assert [bar.percent for bar in bars][-2:] == [5, 100]
+    assert bars[0].percent == 0

@@ -3,7 +3,7 @@
 {% block content %}
   <div class="page-header">
     <div><h1>Reports</h1><p class="page-header__meta">{{ program.name }}'s reports to the scholarship office.</p></div>
-    <div class="btn-row"><a class="btn btn--primary" href="{% url 'reports:new' program=program.slug %}">{% icon "plus" %}Send a report</a></div>
+    {% if not request.user.is_super_admin %}<div class="btn-row"><a class="btn btn--primary" href="{% url 'reports:new' program=program.slug %}">{% icon "plus" %}Send a report</a></div>{% endif %}
   </div>
   {% include "components/tabs.html" with tabs_label="Report lists" %}
   {% if page.object_list %}

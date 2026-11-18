@@ -86,6 +86,10 @@
 }
 
 /* Money never breaks mid-number. */
+.figure__value--danger {
+  color: var(--danger);
+}
+
 .figure__value {
   font-family: var(--font-heading);
   font-size: var(--text-lg);

@@ -27,7 +27,7 @@
     <div class="card__header"><h2 class="card__title" id="programs-title">By program</h2></div>
     <div class="table-wrap" role="region" aria-labelledby="programs-title" tabindex="0">
       <table class="table table--stack">
-        <thead><tr><th scope="col">Program</th><th scope="col" class="num">Applications</th><th scope="col" class="num">Approved</th><th scope="col" class="num">Not approved</th><th scope="col" class="num">Success rate</th><th scope="col" class="num">Median days</th><th scope="col" class="num">Active scholars</th></tr></thead>
+        <thead><tr><th scope="col">Program</th><th scope="col" class="num">Applications</th><th scope="col" class="num">Approved</th><th scope="col" class="num">Not approved</th><th scope="col" class="num">Success rate</th><th scope="col" class="num">Median days</th><th scope="col" class="num">Active scholars (now)</th></tr></thead>
         <tbody>{% for row in board.rows %}<tr>
           <th scope="row">{{ row.program.name }}</th>
           <td class="num" data-label="Applications">{{ row.applications }}</td>
@@ -35,7 +35,7 @@
           <td class="num" data-label="Not approved">{{ row.rejected }}</td>
           <td class="num" data-label="Success rate">{% if row.success_percent is None %}—{% else %}{{ row.success_percent }}%{% endif %}</td>
           <td class="num" data-label="Median days">{{ row.median_days|default_if_none:"—" }}</td>
-          <td class="num" data-label="Active scholars">{{ row.active_scholars }}</td>
+          <td class="num" data-label="Active scholars (now)">{{ row.active_scholars }}</td>
         </tr>{% empty %}<tr><td colspan="7">No programs yet.</td></tr>{% endfor %}</tbody>
       </table>
     </div>

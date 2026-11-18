@@ -1,4 +1,4 @@
 <div class="figure">
-  <p class="figure__value num">{{ value }}</p>
+  <p class="figure__value num{% if tone %} figure__value--{{ tone }}{% endif %}">{{ value }}</p>
   <p class="figure__label">{{ label }}</p>
 </div>

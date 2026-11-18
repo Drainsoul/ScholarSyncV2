@@ -210,7 +210,10 @@ class GenerateView(ProgramStaffRequiredMixin, View):
         result = services.generate(
             actor=_actor(request), program=self.program, schedule_id=schedule, request=request
         )
-        messages.success(request, f"Generated {_plural(result.created, 'disbursement')}.")
+        if result.created:
+            messages.success(request, f"Generated {_plural(result.created, 'disbursement')}.")
+        else:
+            messages.info(request, "No new disbursements to generate.")
         if result.refreshed:
             messages.info(request, f"Recalculated {_plural(result.refreshed, 'prepared payout')}.")
         skips = [

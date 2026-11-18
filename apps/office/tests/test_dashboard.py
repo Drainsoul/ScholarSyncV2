@@ -223,3 +223,11 @@ def test_exactly_seven_days_is_not_waiting_over_seven() -> None:
     assert waiting_over([application.program_id], days=7, now=NOW) == {
         application.program_id: (1, older.submitted_at)
     }
+
+
+def test_greeting_without_a_name() -> None:
+    from apps.office.dashboard import greeting
+
+    nameless = UserFactory.create(role=User.Role.SUPER_ADMIN, full_name="")
+    now = datetime(2026, 11, 17, 9, 0, tzinfo=TZ)
+    assert greeting(nameless, now) == "Good morning"

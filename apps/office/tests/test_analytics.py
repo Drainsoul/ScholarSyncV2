@@ -225,7 +225,7 @@ def test_summary_csv_xlsx_columns_and_audit(
         "Not approved",
         "Success rate",
         "Median days to approve",
-        "Active scholars",
+        "Active scholars (now)",
         "Released",
     ]
     tcu = next(row for row in rows if row[0] == "TCU CEAA")
@@ -274,3 +274,9 @@ def test_summary_keeps_a_closed_program_with_money_in_the_year(
     rows = list(csv.reader(io.StringIO(response.content.decode("utf-8-sig"))))
     old = next(row for row in rows if row[0] == "Old Grant")
     assert old[8] == "3000.00"
+
+
+def test_analytics_column_reads_active_scholars_now(client: Any) -> None:
+    client.force_login(UserFactory.create(role=User.Role.SUPER_ADMIN))
+    html = client.get(reverse("office:analytics")).content.decode()
+    assert "Active scholars (now)" in html

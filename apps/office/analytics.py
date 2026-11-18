@@ -35,7 +35,7 @@ SUMMARY_HEADERS = (
     "Not approved",
     "Success rate",
     "Median days to approve",
-    "Active scholars",
+    "Active scholars (now)",
     "Released",
 )
 CSV_TYPE = "text/csv; charset=utf-8"

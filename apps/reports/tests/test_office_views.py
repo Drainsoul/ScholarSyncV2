@@ -141,3 +141,14 @@ def test_office_nav_order(client: Any) -> None:
 def test_office_url_matches_route() -> None:
     report = ReportFactory.create()
     assert services.office_url(report) == reverse("office:report-detail", args=[report.pk])
+
+
+def test_office_report_list_says_to_review(client: Any) -> None:
+    _office(client)
+    report = _sent(2, title="Quarterly")
+    html = client.get(reverse("office:reports")).content.decode()
+    assert "To review" in html and "Waiting for the office" not in html
+    detail = client.get(reverse("office:report-detail", args=[report.pk])).content.decode()
+    assert "To review" in detail
+    staff_html = client.get(reverse("reports:list", kwargs={"program": report.program.slug}))
+    assert "Send a report" not in staff_html.content.decode()

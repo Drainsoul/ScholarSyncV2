@@ -40,7 +40,8 @@ class OfficeDashboard:
 def greeting(user: User, now: datetime) -> str:
     hour = timezone.localtime(now).hour
     part = "morning" if hour < 12 else "afternoon" if hour < 18 else "evening"
-    return f"Good {part}, {user.get_short_name()}"
+    name = user.get_short_name() if user.full_name else ""  # never the email
+    return f"Good {part}, {name}" if name else f"Good {part}"
 
 
 def window_text(program: Program, today: date) -> str:

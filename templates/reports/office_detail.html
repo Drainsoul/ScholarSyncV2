@@ -5,7 +5,7 @@
     <div>
       <p class="text-sm"><a href="{% url 'office:reports' %}">Program reports</a></p>
       <h1>{{ report.title }}</h1>
-      <p class="page-header__meta">{% status report.status|report_tone report.get_status_display %} {{ report.program.name }}</p>
+      <p class="page-header__meta">{% status report.status|report_tone report|office_report_label %} {{ report.program.name }}</p>
     </div>
   </div>
   {% if report.status == "submitted" and report.review_note %}<div class="banner banner--warning" role="note"><div><p>Returned earlier: {{ report.review_note }}</p></div></div>{% endif %}
@@ -23,7 +23,7 @@
     {% if report.status != "submitted" %}
     <section class="card" aria-labelledby="decision-title">
       <h2 class="card__title" id="decision-title">Decision</h2>
-      <p>{{ report.get_status_display }}{% if report.reviewed_at %} on <time datetime="{{ report.reviewed_at|date:'c' }}">{{ report.reviewed_at|date:"j M Y" }}</time>{% endif %}{% if report.reviewed_by %} by {{ report.reviewed_by.full_name|default:"the office" }}{% endif %}.</p>
+      <p>{{ report|office_report_label }}{% if report.reviewed_at %} on <time datetime="{{ report.reviewed_at|date:'c' }}">{{ report.reviewed_at|date:"j M Y" }}</time>{% endif %}{% if report.reviewed_by %} by {{ report.reviewed_by.full_name|default:"the office" }}{% endif %}.</p>
       {% if report.review_note %}<p>{{ report.review_note|linebreaksbr }}</p>{% endif %}
     </section>
     {% endif %}

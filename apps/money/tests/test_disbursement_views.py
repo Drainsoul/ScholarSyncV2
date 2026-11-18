@@ -231,3 +231,15 @@ def test_schedule_page_query_count(client: Any, django_assert_max_num_queries: A
     c = _as(client, head_of(first.schedule.program))
     with django_assert_max_num_queries(20):
         assert c.get(_url("schedule", first.schedule)).status_code == 200
+
+
+def test_generated_zero_is_an_info_toast(client: Any) -> None:
+    from django.contrib.messages import INFO, get_messages
+
+    schedule = ScheduleFactory.create()
+    c = _as(client, staff_of(schedule.program))
+    response = c.post(_url("generate", schedule))
+    stored = list(get_messages(response.wsgi_request))
+    assert [(m.level, m.message) for m in stored][:1] == [
+        (INFO, "No new disbursements to generate.")
+    ]

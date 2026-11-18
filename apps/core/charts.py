@@ -34,7 +34,8 @@ def month_bars(counts: dict[date, int], *, today: date, months: int = 6) -> list
             label=day.strftime("%B %Y"),
             short=day.strftime("%b"),
             count=value,
-            percent=min(100, round(value / peak * 20) * 5) if peak else 0,
+            # A month with any count shows at least a 5 % sliver.
+            percent=max(5, min(100, round(value / peak * 20) * 5)) if value and peak else 0,
             current=index == months - 1,
         )
         for index, (day, value) in enumerate(zip(days, values, strict=True))

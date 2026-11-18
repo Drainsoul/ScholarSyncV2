@@ -334,3 +334,14 @@ def test_double_submit_of_one_file_is_refused_not_a_500(monkeypatch: pytest.Monk
         _send(staff, program, file=file)
     assert caught.value.messages == ["Upload the file again."]
     assert Report.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_office_cannot_send_reports() -> None:
+    from django.core.exceptions import PermissionDenied
+
+    program = ProgramFactory.create()
+    office = _office()
+    with pytest.raises(PermissionDenied):
+        _send(office, program)
+    assert not Report.objects.exists()
