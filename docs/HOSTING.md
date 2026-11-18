@@ -92,6 +92,30 @@ Use any provider. Names below are examples only.
 machine. `sslmode=require` encrypts but does not check who answers. If your URL goes through a transaction pooler such as PgBouncer, also set
 `DATABASE_URL_UNPOOLED` to the direct URL; migrations use it.
 
+**A limited role for the app (recommended).** The app needs only to read and write rows. Give it its own role, so a
+flaw in the app can't change tables or rewrite the audit log, and keep the owner for migrations:
+1. Connected as the database owner (the user above), create the role and the grants for every table migrations
+   will create:
+   ```sql
+   CREATE ROLE scholarsync_app LOGIN PASSWORD 'a-long-random-password';
+   GRANT CONNECT ON DATABASE dbname TO scholarsync_app;
+   GRANT USAGE ON SCHEMA public TO scholarsync_app;
+   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO scholarsync_app;
+   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO scholarsync_app;
+   GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO scholarsync_app;
+   GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO scholarsync_app;
+   ```
+2. Set `DATABASE_URL_MIGRATIONS` to the owner's URL and `DATABASE_URL` to `scholarsync_app`'s (same host and
+   database). The web container migrates as the owner on every start; the app and the worker run as
+   `scholarsync_app`.
+3. After the first start (once the tables exist), make the audit log append-only in the database too:
+   ```sql
+   REVOKE UPDATE, DELETE, TRUNCATE ON core_auditevent FROM scholarsync_app;
+   ```
+   Later migrations never recreate that table, so this stays in place.
+
+Check it: as `scholarsync_app`, `UPDATE core_auditevent SET action = action;` must fail with "permission denied".
+
 **S3-compatible storage.** Create a bucket, then:
 - keep it **private** (no public access); files are served through short-lived presigned links;
 - set **CORS** to allow your site's origin to `PUT`, `GET` and `HEAD` from the browser, and expose the `ETag` header:

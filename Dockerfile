@@ -22,9 +22,10 @@ RUN useradd --system --no-create-home --uid 10001 scholarsync
 COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-dev --no-install-project
 
-# The app runs as scholarsync; the virtualenv and collected static files stay root-owned (read-only).
-COPY --chown=scholarsync . .
-COPY --chown=scholarsync --from=frontend /build/static/dist ./static/dist
+# The app runs as scholarsync; its code, the virtualenv and static files stay root-owned, so the
+# runtime user can read them but not change them. Nothing writes under /app at run time.
+COPY . .
+COPY --from=frontend /build/static/dist ./static/dist
 
 # collectstatic needs settings to import; these values exist only for this build step.
 RUN DJANGO_SECRET_KEY=build-only-not-a-secret \

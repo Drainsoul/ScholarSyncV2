@@ -106,12 +106,23 @@ def test_production_web_is_published_on_loopback_by_default():
     assert "ports:" not in _service_block("compose.production.yaml", "worker")
 
 
-def test_dockerfile_sets_ownership_without_a_recursive_chown():
+def test_app_code_is_not_owned_by_the_runtime_user():
+    # Root-owned code: the runtime user can read the app but never change it (M13, ASVS V13.2.2).
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
-    assert "chown -R" not in dockerfile
-    assert "COPY --chown=scholarsync . ." in dockerfile
-    assert dockerfile.index("useradd") < dockerfile.index("COPY --chown=scholarsync")
+    assert "chown" not in dockerfile
+    assert "\nCOPY . .\n" in dockerfile
     assert "USER scholarsync" in dockerfile
+    assert dockerfile.index("COPY . .") < dockerfile.index("USER scholarsync")
+
+
+def test_entrypoint_prefers_the_migrations_url():
+    entrypoint = (ROOT / "docker" / "entrypoint.sh").read_text(encoding="utf-8")
+    assert (
+        'DATABASE_URL="${DATABASE_URL_MIGRATIONS:-${DATABASE_URL_UNPOOLED:-$DATABASE_URL}}"'
+        " python manage.py prepare"
+    ) in entrypoint
+    hosting = (ROOT / "docs" / "HOSTING.md").read_text(encoding="utf-8")
+    assert "REVOKE UPDATE, DELETE, TRUNCATE ON core_auditevent" in hosting
 
 
 def test_gunicorn_runs_without_a_control_socket():
