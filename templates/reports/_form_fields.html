@@ -3,4 +3,4 @@
 {% field form.period_start %}
 {% field form.period_end %}
 {% field form.description %}
-{% upload_field "report" "report-file" "file" "Report file" help=file_help error=form.file.errors.0|default:"" %}
+{% upload_field "report" "report-file" "file" "Report file" help=file_help error=form.file.errors.0|default:"" required=True %}

@@ -143,3 +143,20 @@ def test_budget_page(page: Page, live_server, vite_build, console_errors):
     page.goto(f"{base}/staff/{SLUG}/budget/?year={year + 1}")
     expect(page.get_by_text("No budget set")).to_be_visible()
     assert not console_errors
+
+
+def test_disbursement_table_bulk_fits_at_375(page: Page, live_server, vite_build):
+    world = World()
+    schedule = ScheduleFactory.create(program=world.program, term=world.term)
+    for _ in range(2):
+        award = world.scholar()
+        DisbursementFactory.create(
+            schedule=schedule, scholar_term=award.terms.get(), amount=Decimal("5000.00")
+        )
+    page.set_viewport_size({"width": 375, "height": 812})
+    log_in(page, live_server.url, world.head.email, f"/staff/{SLUG}/disbursements/{schedule.pk}/")
+    assert page.evaluate("document.documentElement.scrollWidth") <= 375
+    select_all = page.get_by_label("Select all on this page")
+    expect(select_all).to_be_visible()
+    select_all.check()
+    expect(page.locator("[data-bulk-count]")).to_have_text("2 selected")

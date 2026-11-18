@@ -716,6 +716,10 @@
   line-height: var(--leading-tight);
 }
 
+.switcher__value {
+  overflow-wrap: anywhere;
+}
+
 .switcher__label {
   color: var(--text-muted);
   font-size: var(--text-xs);
@@ -728,6 +732,7 @@
   top: calc(100% + var(--space-1));
   left: 0;
   min-width: 100%;
+  max-width: min(24rem, calc(100vw - 2 * var(--space-4)));
   margin: 0;
   padding: var(--space-1);
   border: 1px solid var(--border);
@@ -747,9 +752,10 @@
   align-items: center;
   min-height: var(--control-height);
   padding: 0 var(--space-3);
+  padding-block: var(--space-2);
   border-radius: var(--radius-sm);
   color: var(--text);
-  white-space: nowrap;
+  overflow-wrap: anywhere;
   text-decoration: none;
 }
 

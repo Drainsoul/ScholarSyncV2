@@ -19,7 +19,13 @@ def types_label(types: list[str]) -> str:
 
 @register.inclusion_tag("components/file_input.html")
 def upload_field(
-    purpose: str, id: str, name: str, label: str, help: str = "", error: str = ""
+    purpose: str,
+    id: str,
+    name: str,
+    label: str,
+    help: str = "",
+    error: str = "",
+    required: bool = False,
 ) -> dict[str, Any]:
     rule = policy.RULES.get(purpose)
     if rule is None:
@@ -28,6 +34,7 @@ def upload_field(
         "id": id,
         "name": name,
         "label": label,
+        "required": required,
         "help": help or policy.help_text(purpose),
         "state": "error" if error else "idle",
         "error": error,

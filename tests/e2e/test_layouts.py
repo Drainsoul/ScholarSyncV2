@@ -125,3 +125,64 @@ def test_phone_menu_opens_under_its_toggle_and_tab_enters_it(
     assert sidebar["y"] >= after["y"] + after["height"]
     page.keyboard.press("Tab")
     assert page.evaluate("document.activeElement.closest('nav.sidebar') !== null")
+
+
+def test_nav_closes_on_escape(page: Page, live_server, vite_build, console_errors):
+    page.set_viewport_size(PHONE)
+    page.goto(f"{live_server.url}/_kit/layouts/staff/")
+    toggle = page.get_by_role("button", name="Menu")
+    toggle.click()
+    expect(toggle).to_have_attribute("aria-expanded", "true")
+    page.keyboard.press("Escape")
+    expect(toggle).to_have_attribute("aria-expanded", "false")
+    expect(page.get_by_role("navigation", name="Main")).to_be_hidden()
+    expect(toggle).to_be_focused()
+    assert console_errors == []
+
+
+def test_page_load_toast_is_announced(page: Page, live_server, vite_build):
+    """A toast rendered with the page is added to the live region after load, so it is read."""
+    from apps.accounts.tests.factories import UserFactory
+    from tests.e2e.flows import log_in
+
+    page.add_init_script(
+        """
+        window.__toastAdds = 0;
+        document.addEventListener("DOMContentLoaded", () => {
+          const region = document.getElementById("toasts");
+          if (region) new MutationObserver((records) => {
+            for (const record of records) window.__toastAdds += record.addedNodes.length;
+          }).observe(region, { childList: true });
+        });
+        """
+    )
+    student = UserFactory.create(verified=True)
+    log_in(page, live_server.url, student.email, "/me/")  # sign-in leaves a "Signed in" toast
+    # The enforced CSP refuses wait_for_function's string evaluation; poll instead.
+    for _ in range(50):
+        if page.evaluate("() => window.__toastAdds") > 0:
+            break
+        page.wait_for_timeout(100)
+    assert page.evaluate("() => window.__toastAdds") > 0
+    expect(page.locator("#toasts [data-toast]").first).to_be_visible()
+
+
+def test_long_program_name_switcher_fits_at_375(page: Page, live_server, vite_build):
+    from apps.programs.tests.factories import MembershipFactory, ProgramFactory
+    from tests.e2e.flows import log_in
+
+    long_name = (
+        "Taguig City Scholarship for Exceptional Senior High School Graduates "
+        "and Returning Learners"
+    )
+    program = ProgramFactory.create(slug="long", name=long_name)
+    staff = MembershipFactory.create(program=program, user__verified=True).user
+    MembershipFactory.create(
+        program=ProgramFactory.create(slug="other", name="Other program"), user=staff
+    )
+    page.set_viewport_size(PHONE)
+    log_in(page, live_server.url, staff.email, "/staff/long/")
+    page.get_by_role("button", name="Menu").click()
+    page.locator(".switcher summary").first.click()
+    expect(page.locator(".switcher ul").first).to_be_visible()
+    assert page.evaluate("document.documentElement.scrollWidth") <= PHONE["width"]

@@ -107,11 +107,6 @@ def field(bound_field: BoundField, marker: bool = True) -> dict[str, object]:
         )
         if present
     ]
-    attrs: dict[str, str | bool] = {}
-    if described_by:
-        attrs["aria-describedby"] = " ".join(described_by)
-    if bound_field.errors:
-        attrs["aria-invalid"] = "true"
     widget_type = bound_field.widget_type
     layout = (
         "check"
@@ -120,8 +115,15 @@ def field(bound_field: BoundField, marker: bool = True) -> dict[str, object]:
         if widget_type in GROUP_WIDGETS
         else "stacked"
     )
+    attrs: dict[str, str | bool] = {}
+    # A group's help and errors describe its <fieldset> once, not every radio or checkbox in it.
+    if described_by and layout != "group":
+        attrs["aria-describedby"] = " ".join(described_by)
+    if bound_field.errors:
+        attrs["aria-invalid"] = "true"
     return {
         "field": bound_field,
+        "described_by": " ".join(described_by),
         "widget": bound_field.as_widget(attrs=attrs),
         "help_id": help_id,
         "error_id": error_id,

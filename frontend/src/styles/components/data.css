@@ -743,6 +743,23 @@ html:not(.js) [data-bulk-all] {
   visibility: hidden;
 }
 
+/* The bar's own select-all shows only where the stacked table hides its header row. */
+.bulk-bar__all {
+  display: none;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+@media (max-width: 40rem) {
+  .bulk-bar__all {
+    display: inline-flex;
+  }
+}
+
+html:not(.js) .bulk-bar__all {
+  display: none;
+}
+
 /* Row links: whole-row links for task lists. No underline; on hover a tint, the title underlined and
    the arrow darkened. The detail line is a status coloured by severity. */
 .row-links {

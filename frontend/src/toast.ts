@@ -16,6 +16,7 @@ export interface ToastDetail {
 
 const TONES: ReadonlySet<string> = new Set(["info", "success", "warning", "danger"]);
 const AUTO_HIDE_MS = 8000;
+const ANNOUNCE_DELAY_MS = 250;
 export const SERVER_ERROR = "Something went wrong on our side. Try again.";
 export const NETWORK_ERROR = "We couldn't reach the server. Check your connection and try again.";
 
@@ -65,7 +66,15 @@ export function showToast(detail: ToastDetail): HTMLElement | null {
 }
 
 export function initToasts(): void {
-  for (const toast of document.querySelectorAll<HTMLElement>("#toasts [data-toast]")) arm(toast);
+  // A live region announces changes, not what was there at load: take the server's toasts out
+  // and put them back a moment later so screen readers read them.
+  const page = document.getElementById("toasts");
+  const initial = [...document.querySelectorAll<HTMLElement>("#toasts [data-toast]")];
+  for (const toast of initial) toast.remove();
+  window.setTimeout(() => {
+    page?.append(...initial);
+    for (const toast of initial) arm(toast);
+  }, ANNOUNCE_DELAY_MS);
   document.addEventListener("click", (event) => {
     const button =
       event.target instanceof Element ? event.target.closest("[data-toast-close]") : null;

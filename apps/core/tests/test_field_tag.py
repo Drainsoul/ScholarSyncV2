@@ -67,3 +67,37 @@ def test_marker_can_be_left_out():
         Context({"f": form["full_name"]})
     )
     assert "(required)" not in html and 'for="id_full_name"' in html
+
+
+class HelpedGroupForm(forms.Form):
+    year_level = forms.ChoiceField(
+        label="Year level",
+        widget=forms.RadioSelect,
+        choices=[("1", "1st year"), ("2", "2nd year")],
+        help_text="This school year.",
+    )
+
+
+def test_radio_group_describedby_on_fieldset():
+    form = HelpedGroupForm(data={})
+    form.is_valid()
+    html = render_field(form, "year_level")
+    assert (
+        '<fieldset class="field field--group field--invalid" '
+        'aria-describedby="id_year_level-help id_year_level-error">' in html
+    )
+    assert html.count("aria-describedby") == 1  # not repeated on each radio
+
+
+def test_required_checkbox_and_file_input_show_required():
+    html = render_field(ApplicantForm(), "consent")
+    assert '<span class="field__required">(required)</span>' in html
+    upload = Template(
+        "{% load uploads %}"
+        '{% upload_field "report" "report-file" "file" "Report file" required=True %}'
+    ).render(Context({}))
+    assert 'Report file <span class="field__required">(required)</span>' in upload
+    optional = Template(
+        '{% load uploads %}{% upload_field "report" "report-file" "file" "Report file" %}'
+    ).render(Context({}))
+    assert "(required)" not in optional

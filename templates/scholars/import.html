@@ -64,7 +64,7 @@
   <form method="post" action="{{ import_url }}" novalidate>
     {% csrf_token %}
     <input type="hidden" name="action" value="check">
-    {% upload_field "import" "import-file" "file" "Scholar file" %}
+    {% upload_field "import" "import-file" "file" "Scholar file" required=True %}
     <div class="btn-row">
       <button type="submit" class="btn btn--primary">Check file</button>
     </div>

@@ -12,5 +12,13 @@ export function initNav(): void {
       toggle.setAttribute("aria-expanded", String(open));
       nav.classList.toggle("is-open", open);
     });
+    // Escape closes the open menu and puts focus back on its toggle (WCAG 2.1.2 pattern).
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape" || toggle.hidden) return;
+      if (toggle.getAttribute("aria-expanded") !== "true") return;
+      toggle.setAttribute("aria-expanded", "false");
+      nav.classList.remove("is-open");
+      toggle.focus();
+    });
   }
 }

@@ -8,8 +8,8 @@ const touched = new WeakSet<HTMLFormElement>();
 function update(form: HTMLFormElement): void {
   const items = [...form.querySelectorAll<HTMLInputElement>("input[data-bulk-item]")];
   const selected = items.filter((item) => item.checked).length;
-  const all = form.querySelector<HTMLInputElement>("input[data-bulk-all]");
-  if (all) {
+  // The header's select-all and, on a phone, the bar's.
+  for (const all of form.querySelectorAll<HTMLInputElement>("input[data-bulk-all]")) {
     all.checked = selected > 0 && selected === items.length;
     all.indeterminate = selected > 0 && selected < items.length;
   }

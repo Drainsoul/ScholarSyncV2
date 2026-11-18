@@ -1,6 +1,6 @@
 {% load ui %}
 <div class="file-input{% if state == 'error' %} field--invalid{% endif %}{% if state == 'done' %} file-input--done{% endif %}">
-  <label class="field__label" for="{{ id }}">{{ label }}</label>
+  <label class="field__label" for="{{ id }}">{{ label }}{% if required %} <span class="field__required">(required)</span>{% endif %}</label>
   {% if help %}<p class="field__help" id="{{ id }}-help">{{ help }}</p>{% endif %}
   {% if state == "error" %}<p class="field__error" id="{{ id }}-error"><span>{{ error }}</span></p>{% endif %}
   <input class="file-input__control" type="file" id="{{ id }}"{% if upload %} data-upload-purpose="{{ upload.purpose }}" data-upload-url="{{ upload.intent_url }}" data-upload-max="{{ upload.max_bytes }}" accept="{{ upload.accept }}"{% else %} name="{{ name }}" accept="application/pdf,image/jpeg,image/png"{% endif %}{% if help or state == 'error' %} aria-describedby="{% if help %}{{ id }}-help{% endif %}{% if help and state == 'error' %} {% endif %}{% if state == 'error' %}{{ id }}-error{% endif %}"{% endif %}{% if state == 'error' %} aria-invalid="true"{% endif %}>

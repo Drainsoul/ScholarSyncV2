@@ -73,7 +73,7 @@
         {% if card.editable %}
         <form method="post" action="{% url 'review:behalf-document' program=program.slug pk=application.pk requirement=card.row.requirement.pk %}" novalidate>
           {% csrf_token %}
-          {% upload_field "document" card.field_id "file" card.row.requirement.label card.row.requirement.help_text card.error %}
+          {% upload_field "document" card.field_id "file" card.row.requirement.label card.row.requirement.help_text card.error required=card.row.requirement.is_required %}
           <div class="btn-row"><button type="submit" class="btn btn--secondary">Save document</button></div>
         </form>
         {% else %}
