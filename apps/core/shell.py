@@ -254,10 +254,7 @@ def shell_context(
         context["programs"] = [
             {
                 "name": item.name,
-                "url": reverse(
-                    "workspace:dashboard" if item.is_active else "settings:rules",
-                    kwargs={"program": item.slug},
-                ),
+                "url": reverse("workspace:dashboard", kwargs={"program": item.slug}),
                 "current": item.pk == program.pk,
             }
             for item in programs_for(user).order_by("name")
@@ -297,4 +294,5 @@ def shell_context(
                     }
                 ]
                 context["home_url"] = reverse("office:home")
+                context["notifications_url"] = reverse("office:notifications")
     return context

@@ -607,3 +607,11 @@ def test_csv_declared_as_text_plain_is_accepted(s3):
     file = _confirm_import(STAFF_CSV, "text/plain")
     assert file.status == StoredFile.Status.READY
     assert file.sniffed_type == policy.CSV
+
+
+def test_text_plain_needs_a_csv_name():
+    staff = _staff()
+    with pytest.raises(UploadRejected):
+        services.start_upload(
+            user=staff, purpose="import", name="notes.txt", content_type="text/plain", size=10
+        )

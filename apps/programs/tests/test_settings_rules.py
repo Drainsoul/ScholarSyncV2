@@ -157,8 +157,7 @@ def test_settings_links_work_for_a_closed_program(client: Any) -> None:
     program = ProgramFactory.create(is_active=False)
     client.force_login(UserFactory.create(role=User.Role.SUPER_ADMIN))
     page = client.get(_url(program)).content.decode()
-    nav = page[page.index('<nav class="sidebar') : page.index("</nav>")]
-    links = set(re.findall(r'href="(/staff/[^"]+)"', nav))
+    links = set(re.findall(r'href="(/staff/[^"]+)"', page))  # sidebar, top bar and bell
     assert _url(program) in links  # Settings stays
     for link in links:
         assert client.get(link).status_code == 200, link

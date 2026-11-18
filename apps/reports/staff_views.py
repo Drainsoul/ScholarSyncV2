@@ -64,6 +64,13 @@ class ReportNewView(ProgramStaffRequiredMixin, View):
         context = {**shell_context(request, area="staff", program=self.program), "form": form}
         return render(request, self.template_name, context)
 
+    def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        # Reports come from programs (M14): the office goes back to the list.
+        if request.user.is_authenticated and request.user.is_super_admin:
+            messages.info(request, services.OFFICE_CANT_SEND)
+            return redirect("reports:list", program=kwargs["program"])
+        return super().dispatch(request, *args, **kwargs)
+
     def get(self, request: HttpRequest, program: str) -> HttpResponse:
         return self._render(request, ReportForm(_actor(request)))
 
@@ -88,7 +95,8 @@ class ReportNewView(ProgramStaffRequiredMixin, View):
 def _detail_context(
     request: HttpRequest, report: Report, form: ReportForm | None = None
 ) -> dict[str, Any]:
-    if form is None and report.status == Report.Status.RETURNED:
+    office = _actor(request).is_super_admin  # reviews reports; never resends them
+    if form is None and report.status == Report.Status.RETURNED and not office:
         form = ReportForm(
             _actor(request),
             require_file=False,

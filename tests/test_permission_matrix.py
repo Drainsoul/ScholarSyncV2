@@ -48,6 +48,16 @@ RULES: dict[str, dict[str, Any]] = {
         "head": 403,
         "office": 403,
     },
+    # A program page the office is sent away from (report sending, M14).
+    "staff_not_office": {
+        "anonymous": LOGIN,
+        "student": 403,
+        "other_student": 403,
+        "staff": 200,
+        "other_staff": 403,
+        "head": 200,
+        "office": (302, "/staff/tcu-ceaa/reports/"),
+    },
     "staff": {
         "anonymous": LOGIN,
         "student": 403,
@@ -226,7 +236,7 @@ URLS: dict[str, str] = {
     "notifications-staff:read-all": "staff_post_only",
     "notifications-staff:open": "staff_object",
     "reports:list": "staff",
-    "reports:new": "staff",
+    "reports:new": "staff_not_office",
     "reports:detail": "staff_object",
     "reports:resubmit": "staff_post_only",
     "office:programs": "office",

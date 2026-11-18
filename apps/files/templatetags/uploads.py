@@ -40,7 +40,8 @@ def upload_field(
         "error": error,
         "upload": {
             "purpose": purpose,
-            "accept": ",".join(rule.types),
+            # text/plain is accepted only as a .csv name: offer the extension, not every text file.
+            "accept": ",".join(".csv" if mime == policy.CSV_TEXT else mime for mime in rule.types),
             "max_bytes": rule.max_bytes,
             "intent_url": reverse("files:upload-intent"),
         },

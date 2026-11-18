@@ -165,3 +165,16 @@ def test_report_tab_counts_come_from_a_selector(client: Any) -> None:
     _office(client)
     html = client.get(reverse("office:reports") + f"?program={first.program.pk}&tab=all")
     assert html.status_code == 200
+
+
+def test_office_never_gets_a_send_form(client: Any) -> None:
+    _office(client)
+    report = _sent(3, status="returned", review_note="Fix it")
+    slug = report.program.slug
+    new = client.get(reverse("reports:new", kwargs={"program": slug}))
+    assert new.status_code == 302 and new["Location"] == reverse(
+        "reports:list", kwargs={"program": slug}
+    )
+    detail = client.get(reverse("reports:detail", kwargs={"program": slug, "pk": report.pk}))
+    assert "Fix and send again" not in detail.content.decode()
+    assert f"/reports/{report.pk}/resubmit/" not in detail.content.decode()

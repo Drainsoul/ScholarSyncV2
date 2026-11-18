@@ -72,13 +72,15 @@ def rejection_message(file: StoredFile) -> str:
     return template.format(types_phrase=phrase)
 
 
-def _check_start(*, user: User, purpose: str, content_type: str, size: int) -> None:
+def _check_start(*, user: User, purpose: str, content_type: str, size: int, name: str = "") -> None:
     rule = policy.RULES.get(purpose)
     if rule is None:
         raise UploadRejected("This upload isn't available.", 400)
     if user.role not in rule.roles:
         raise UploadRejected("You can't upload this kind of file.", 403)
-    if content_type not in rule.types:
+    if content_type not in rule.types or (
+        content_type == policy.CSV_TEXT and not name.lower().endswith(".csv")
+    ):
         raise UploadRejected(f"You can upload a {policy.types_phrase(purpose)} file here.", 400)
     if size <= 0:
         raise UploadRejected("This file is empty. Choose another file.", 400)
@@ -110,7 +112,7 @@ def start_upload(
     request: HttpRequest | None = None,
 ) -> UploadIntent:
     """Validate the request, create the pending row and return a presigned PUT for it."""
-    _check_start(user=user, purpose=purpose, content_type=content_type, size=size)
+    _check_start(user=user, purpose=purpose, content_type=content_type, size=size, name=name)
     if not storage.is_configured():
         raise storage.StorageNotConfigured("Object storage is not configured.")
     file_id = uuid.uuid4()
