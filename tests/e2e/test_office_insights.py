@@ -1,7 +1,7 @@
 """Analytics, scholars across programs and the audit log in a browser (M11c)."""
 
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page, ViewportSize, expect
 
 from apps.accounts.models import User
 from apps.accounts.tests.factories import UserFactory
@@ -13,7 +13,7 @@ from tests.e2e.flows import log_in
 
 pytestmark = pytest.mark.e2e
 
-PHONE = {"width": 375, "height": 800}
+PHONE: ViewportSize = {"width": 375, "height": 800}
 
 
 def test_office_analytics_scholars_and_audit_pages(
