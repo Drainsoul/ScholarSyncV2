@@ -144,6 +144,7 @@ def shell_context(
             audit = reverse("office:audit")
             insights = reverse("office:analytics")
             inbox = reverse("support:office")
+            support_open = open_count()  # once per request; the overview reuses it
             programs = reverse("office:programs")
             accounts = reverse("office:staff")
             office_scholars = reverse("office:scholars")
@@ -211,7 +212,7 @@ def shell_context(
                     "label": "Support",
                     "url": inbox,
                     "current": path.startswith(inbox),
-                    "count": open_count(),
+                    "count": support_open,
                     "icon": "inbox",
                 },
             ]
@@ -241,6 +242,7 @@ def shell_context(
         ]
         context["notifications_count"] = unread_count(user)
     if area == "office":
+        context["support_open"] = support_open
         context["notifications_url"] = reverse("office:notifications")
         context["notifications_count"] = unread_count(user)
     if area == "staff" and program is not None:

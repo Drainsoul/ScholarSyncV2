@@ -5,7 +5,6 @@ from typing import Any
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.db.models import Count
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -43,14 +42,9 @@ class OfficeReportListView(SuperAdminRequiredMixin, TemplateView):
         program_id = positive_id(params.get("program", ""))
         if program_id not in {program.pk for program in programs}:
             program_id = None
-        counted = Report.objects.all()
-        if program_id is not None:
-            counted = counted.filter(program_id=program_id)
-        counts = {
-            row["status"]: row["n"]
-            for row in counted.values("status").order_by().annotate(n=Count("pk"))
-        }
-        counts["all"] = sum(counts.values())
+        counts = selectors.status_counts(
+            next((program for program in programs if program.pk == program_id), None)
+        )
         base = reverse("office:reports")
         suffix = f"&program={program_id}" if program_id is not None else ""
         page = Paginator(selectors.office_reports(tab, program_id), PAGE_SIZE).get_page(

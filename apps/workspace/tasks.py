@@ -4,6 +4,7 @@ from datetime import date
 
 from django.db import transaction
 from django.db.models import BooleanField, Case, F, Q, QuerySet, Value, When
+from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
@@ -58,41 +59,55 @@ def task_status(task: Task, today: date) -> tuple[str, str] | None:
     return None
 
 
-def _audit(actor: User, task: Task, action: str) -> None:
-    record(actor=actor, action=action, target=task, program=task.program)
+def _audit(actor: User, task: Task, action: str, request: HttpRequest | None) -> None:
+    record(actor=actor, action=action, target=task, program=task.program, request=request)
 
 
 @transaction.atomic
 def create_task(
-    *, actor: User, program: Program, title: str, notes: str, due_on: date | None
+    *,
+    actor: User,
+    program: Program,
+    title: str,
+    notes: str,
+    due_on: date | None,
+    request: HttpRequest | None = None,
 ) -> Task:
     task = Task.objects.create(
         owner=actor, program=program, title=title, notes=notes, due_on=due_on
     )
-    _audit(actor, task, "task.created")
+    _audit(actor, task, "task.created", request)
     return task
 
 
 @transaction.atomic
-def update_task(*, actor: User, task: Task, title: str, notes: str, due_on: date | None) -> Task:
+def update_task(
+    *,
+    actor: User,
+    task: Task,
+    title: str,
+    notes: str,
+    due_on: date | None,
+    request: HttpRequest | None = None,
+) -> Task:
     task.title, task.notes, task.due_on = title, notes, due_on
     task.save(update_fields=["title", "notes", "due_on", "updated_at"])
-    _audit(actor, task, "task.updated")
+    _audit(actor, task, "task.updated", request)
     return task
 
 
 @transaction.atomic
-def set_done(*, actor: User, task: Task, done: bool) -> Task:
+def set_done(*, actor: User, task: Task, done: bool, request: HttpRequest | None = None) -> Task:
     """Complete or reopen a task; asking for the state it is already in changes nothing."""
     if (task.done_at is not None) == done:
         return task
     task.done_at = timezone.now() if done else None
     task.save(update_fields=["done_at", "updated_at"])
-    _audit(actor, task, "task.completed" if done else "task.reopened")
+    _audit(actor, task, "task.completed" if done else "task.reopened", request)
     return task
 
 
 @transaction.atomic
-def delete_task(*, actor: User, task: Task) -> None:
-    _audit(actor, task, "task.deleted")
+def delete_task(*, actor: User, task: Task, request: HttpRequest | None = None) -> None:
+    _audit(actor, task, "task.deleted", request)
     task.delete()

@@ -265,7 +265,7 @@ def _race(monkeypatch: pytest.MonkeyPatch, calls: list[Any]) -> list[str]:
     so without a row lock both would read "submitted" before either writes."""
     from django.db import connection
 
-    barrier = threading.Barrier(2, timeout=2)
+    barrier = threading.Barrier(2, timeout=1)
     real_record = services.record  # type: ignore[attr-defined]
 
     def paused_record(**kwargs: Any) -> Any:

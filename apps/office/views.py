@@ -44,10 +44,15 @@ class HomeView(SuperAdminRequiredMixin, TemplateView):
     template_name = "office/home.html"
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        shell = shell_context(self.request, area="office")
+        support_open = shell["support_open"]  # counted once, for the nav and the overview
+        assert isinstance(support_open, int)
         return {
             **super().get_context_data(**kwargs),
-            **shell_context(self.request, area="office"),
-            "board": office_dashboard(_actor(self.request), now=timezone.now()),
+            **shell,
+            "board": office_dashboard(
+                _actor(self.request), now=timezone.now(), support_open=support_open
+            ),
             "summary_url": summary_url(
                 term.school_year_start if (term := current_term()) else None
             ),

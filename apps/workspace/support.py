@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import QuerySet
+from django.http import HttpRequest
 
 from apps.accounts.models import User
 from apps.core.audit import record
@@ -23,7 +24,13 @@ OFFICE_TABS = {"open": "Open", "answered": "Answered"}
 
 @transaction.atomic
 def send(
-    *, sender: User, topic: str, program: Program | None, message: str, now: datetime
+    *,
+    sender: User,
+    topic: str,
+    program: Program | None,
+    message: str,
+    now: datetime,
+    request: HttpRequest | None = None,
 ) -> SupportRequest:
     """Send a message, at most `DAILY_LIMIT` in any 24 hours per student.
 
@@ -43,12 +50,19 @@ def send(
         target=row,
         program=program,
         data={"topic": topic, "program": program.pk if program is not None else None},
+        request=request,
     )
     return row
 
 
 @transaction.atomic
-def answer(*, actor: User, request_row: SupportRequest, now: datetime) -> SupportRequest:
+def answer(
+    *,
+    actor: User,
+    request_row: SupportRequest,
+    now: datetime,
+    request: HttpRequest | None = None,
+) -> SupportRequest:
     """Mark a request answered; one that already is stays as it was, with no second event."""
     row = SupportRequest.objects.select_for_update().get(pk=request_row.pk)
     if row.status == SupportRequest.Status.ANSWERED:
@@ -57,7 +71,7 @@ def answer(*, actor: User, request_row: SupportRequest, now: datetime) -> Suppor
     row.answered_by = actor
     row.answered_at = now
     row.save(update_fields=["status", "answered_by", "answered_at"])
-    record(actor=actor, action="support.answered", target=row, program=row.program)
+    record(actor=actor, action="support.answered", target=row, program=row.program, request=request)
     return row
 
 

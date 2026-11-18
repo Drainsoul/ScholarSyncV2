@@ -192,3 +192,29 @@ def test_tasks_page_query_count(
     client.force_login(user)
     with django_assert_max_num_queries(16):
         assert client.get(_url("tasks", program)).status_code == 200
+
+
+def test_task_and_support_events_have_ip_hash(client) -> None:
+    from apps.accounts.models import User as _User
+    from apps.accounts.tests.factories import UserFactory as _Users
+    from apps.core.models import AuditEvent as _Events
+    from apps.programs.tests.factories import MembershipFactory as _Members
+    from apps.programs.tests.factories import ProgramFactory as _Programs
+
+    program = _Programs.create(slug="tcu-ceaa")
+    staff = _Members.create(program=program).user
+    client.force_login(staff)
+    client.post("/staff/tcu-ceaa/tasks/", {"title": "Call the school", "notes": "", "due_on": ""})
+    task_event = _Events.objects.get(action="task.created")
+    assert task_event.ip_hash
+    student = _Users.create(verified=True)
+    client.force_login(student)
+    client.post("/me/support/", {"topic": "account", "program": "", "message": "Hello"})
+    office = _Users.create(role=_User.Role.SUPER_ADMIN)
+    client.force_login(office)
+    from apps.workspace.models import SupportRequest
+
+    row = SupportRequest.objects.get()
+    client.post(f"/office/support/{row.pk}/answer/")
+    assert _Events.objects.get(action="support.sent").ip_hash
+    assert _Events.objects.get(action="support.answered").ip_hash

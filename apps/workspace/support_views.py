@@ -43,7 +43,9 @@ class StudentSupportView(StudentRequiredMixin, View):
         if not form.is_valid():
             return self._render(request, form)
         try:
-            support.send(sender=_user(request), now=timezone.now(), **form.cleaned_data)
+            support.send(
+                sender=_user(request), now=timezone.now(), request=request, **form.cleaned_data
+            )
         except ValidationError as error:
             form.add_error(None, error)
             return self._render(request, form)
@@ -83,6 +85,6 @@ class AnswerView(SuperAdminRequiredMixin, View):
 
     def post(self, request: HttpRequest, pk: int) -> HttpResponse:
         row = get_object_or_404(SupportRequest, pk=pk)
-        support.answer(actor=_user(request), request_row=row, now=timezone.now())
+        support.answer(actor=_user(request), request_row=row, now=timezone.now(), request=request)
         messages.success(request, "Marked as answered.")
         return redirect("support:office")

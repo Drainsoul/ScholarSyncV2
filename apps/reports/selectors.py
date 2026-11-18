@@ -3,7 +3,7 @@
 from datetime import datetime
 
 from django.core.exceptions import PermissionDenied
-from django.db.models import Min, QuerySet
+from django.db.models import Count, Min, QuerySet
 from django.http import Http404
 
 from apps.accounts.models import User
@@ -100,3 +100,13 @@ def oldest_submitted() -> datetime | None:
         oldest=Min("submitted_at")
     )["oldest"]
     return value
+
+
+def status_counts(program: Program | None) -> dict[str, int]:
+    """Reports per status, and "all", for one program or (None) every program."""
+    rows = Report.objects.all() if program is None else Report.objects.filter(program=program)
+    counts = {
+        row["status"]: row["n"] for row in rows.values("status").order_by().annotate(n=Count("pk"))
+    }
+    counts["all"] = sum(counts.values())
+    return counts

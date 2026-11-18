@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import date
 from enum import StrEnum
 
+from django.contrib.postgres.aggregates import StringAgg
 from django.db.models import (
     Count,
     Exists,
@@ -19,6 +20,7 @@ from django.http import Http404, QueryDict
 from apps.accounts.models import User
 from apps.applications.models import Application
 from apps.awards.models import Award, ScholarTerm
+from apps.core.params import positive_id
 from apps.matching.eligibility import window_reason
 from apps.programs.models import AcademicTerm, BenefitTier, Program
 from apps.programs.selectors import application_term, tiers_in_force, window_state
@@ -476,8 +478,6 @@ class OfficeScholarFilters:
 
 def parse_office_scholar_filters(params: QueryDict) -> OfficeScholarFilters:
     """Unknown values fall back to the defaults, never an error."""
-    from apps.core.params import positive_id
-
     status = params.get("status", "")
     if status not in OFFICE_SCHOLAR_TABS:
         status = DEFAULT_SCHOLAR_TAB
@@ -492,8 +492,6 @@ def parse_office_scholar_filters(params: QueryDict) -> OfficeScholarFilters:
 def office_scholars(filters: OfficeScholarFilters) -> QuerySet[Award]:
     """Awards across programs, annotated with the latest term and `other_programs` (the names of
     the profile's other active awards' programs, by name)."""
-    from django.contrib.postgres.aggregates import StringAgg
-
     active = Award.objects.filter(profile_id=OuterRef("profile_id"), status=Award.Status.ACTIVE)
     others = Subquery(
         active.exclude(pk=OuterRef("pk"))

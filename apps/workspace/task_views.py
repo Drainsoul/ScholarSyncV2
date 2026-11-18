@@ -67,7 +67,9 @@ class TaskListView(ProgramStaffRequiredMixin, View):
         form = TaskForm(request.POST)
         if not form.is_valid():
             return self._render(request, form)
-        tasks.create_task(actor=_actor(request), program=self.program, **form.cleaned_data)
+        tasks.create_task(
+            actor=_actor(request), program=self.program, request=request, **form.cleaned_data
+        )
         messages.success(request, "Task added.")
         return redirect("workspace:tasks", program=self.program.slug)
 
@@ -94,7 +96,7 @@ class TaskEditView(ProgramStaffRequiredMixin, View):
         form = TaskForm(request.POST)
         if not form.is_valid():
             return self._render(request, task, form)
-        tasks.update_task(actor=_actor(request), task=task, **form.cleaned_data)
+        tasks.update_task(actor=_actor(request), task=task, request=request, **form.cleaned_data)
         messages.success(request, "Task saved.")
         return redirect("workspace:tasks", program=self.program.slug)
 
@@ -105,7 +107,7 @@ class TaskDoneView(ProgramStaffRequiredMixin, View):
     def post(self, request: HttpRequest, program: str, pk: int) -> HttpResponse:
         task = tasks.own_task(_actor(request), self.program, pk)
         done = request.POST.get("done") == "1"
-        tasks.set_done(actor=_actor(request), task=task, done=done)
+        tasks.set_done(actor=_actor(request), task=task, done=done, request=request)
         messages.success(request, "Task done." if done else "Task reopened.")
         tab = "?tab=done" if not done else ""
         return redirect(reverse("workspace:tasks", kwargs={"program": self.program.slug}) + tab)
@@ -116,6 +118,6 @@ class TaskDeleteView(ProgramStaffRequiredMixin, View):
 
     def post(self, request: HttpRequest, program: str, pk: int) -> HttpResponse:
         task = tasks.own_task(_actor(request), self.program, pk)
-        tasks.delete_task(actor=_actor(request), task=task)
+        tasks.delete_task(actor=_actor(request), task=task, request=request)
         messages.success(request, "Task deleted.")
         return redirect("workspace:tasks", program=self.program.slug)

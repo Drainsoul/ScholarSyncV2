@@ -5,7 +5,6 @@ from typing import Any
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.db.models import Count
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -37,14 +36,7 @@ class ReportListView(ProgramStaffRequiredMixin, TemplateView):
         if tab not in selectors.REPORT_TABS_STAFF:
             tab = "all"
         base = reverse("reports:list", kwargs={"program": self.program.slug})
-        counts = {
-            row["status"]: row["n"]
-            for row in Report.objects.filter(program=self.program)
-            .values("status")
-            .order_by()
-            .annotate(n=Count("pk"))
-        }
-        counts["all"] = sum(counts.values())
+        counts = selectors.status_counts(self.program)
         page = Paginator(selectors.program_reports(self.program, tab), PAGE_SIZE).get_page(
             self.request.GET.get("page")
         )

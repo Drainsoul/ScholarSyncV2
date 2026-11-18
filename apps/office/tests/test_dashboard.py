@@ -231,3 +231,14 @@ def test_greeting_without_a_name() -> None:
     nameless = UserFactory.create(role=User.Role.SUPER_ADMIN, full_name="")
     now = datetime(2026, 11, 17, 9, 0, tzinfo=TZ)
     assert greeting(nameless, now) == "Good morning"
+
+
+def test_office_pages_count_support_once(client: Any, office: User) -> None:
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    client.force_login(office)
+    with CaptureQueriesContext(connection) as queries:
+        assert client.get("/office/").status_code == 200
+    support = [q for q in queries if "workspace_supportrequest" in q["sql"]]
+    assert len(support) == 1

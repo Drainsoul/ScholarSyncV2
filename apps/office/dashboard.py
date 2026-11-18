@@ -55,7 +55,9 @@ def window_text(program: Program, today: date) -> str:
     return "Open"
 
 
-def office_dashboard(user: User, *, now: datetime) -> OfficeDashboard:
+def office_dashboard(
+    user: User, *, now: datetime, support_open: int | None = None
+) -> OfficeDashboard:
     today = timezone.localtime(now).date()
     programs = list(Program.objects.filter(is_active=True).order_by("name"))
     ids = [program.pk for program in programs]
@@ -66,7 +68,8 @@ def office_dashboard(user: User, *, now: datetime) -> OfficeDashboard:
     )
     waiting = waiting_over(ids, days=WAIT_DAYS, now=now)
     budgets = budget_summaries(programs, today.year)
-    support_open = open_count()
+    if support_open is None:  # the page's shell already counted it
+        support_open = open_count()
     reports_waiting = submitted_count()
 
     figures = [

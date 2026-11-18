@@ -152,3 +152,16 @@ def test_office_report_list_says_to_review(client: Any) -> None:
     assert "To review" in detail
     staff_html = client.get(reverse("reports:list", kwargs={"program": report.program.slug}))
     assert "Send a report" not in staff_html.content.decode()
+
+
+def test_report_tab_counts_come_from_a_selector(client: Any) -> None:
+    from apps.reports.selectors import status_counts
+
+    first = _sent(1)
+    _sent(2, program=first.program, status="accepted")
+    _sent(3)
+    assert status_counts(first.program) == {"submitted": 1, "accepted": 1, "all": 2}
+    assert status_counts(None)["all"] == 3
+    _office(client)
+    html = client.get(reverse("office:reports") + f"?program={first.program.pk}&tab=all")
+    assert html.status_code == 200
