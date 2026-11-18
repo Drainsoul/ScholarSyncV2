@@ -32,6 +32,7 @@ RUN DJANGO_SECRET_KEY=build-only-not-a-secret \
     PRIVACY_CONTACT_EMAIL=privacy@scholarsync.test \
     DJANGO_ALLOWED_HOSTS=build.invalid \
     EMAIL_URL=smtp://build.invalid:25 \
+    ALLOW_PLAINTEXT_SERVICES=true \
     DATABASE_URL=postgres://build:build@localhost:5432/build \
     DJANGO_ENV_FILE=/nonexistent \
     python manage.py collectstatic --noinput
