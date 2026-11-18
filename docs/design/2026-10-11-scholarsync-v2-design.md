@@ -53,6 +53,9 @@
   `submission://` or `?ssl=true` (`smtp+tls://` was never a parser scheme) and an unknown scheme stops startup;
   both reauthentication pages rotate the session key; signing out other sessions is audited; session-list rows go
   once their session ends; privacy notice version 2026-11-19 (§7, §10, §14).
+- **Revision:** 23 (2026-11-19): M14 decisions: the office doesn't send program reports; summer records don't count
+  toward `max_terms`; a renewal approved out of order never moves an award's tier back; a reverted payout's "ready to
+  claim" notice stays (§4.6, §4.8, §9).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -398,7 +401,9 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
       offered. Contact the scholarship office.");
     - approval needs the award `active` ("This award is on hold. Reinstate it before approving the renewal." / "This
       award has ended, so the renewal can't be approved.") and no term record for the term ("This scholar already has
-      a record for {term}."); it creates the next `ScholarTerm` and sets the award's tier to the chosen one;
+      a record for {term}."); it creates the next `ScholarTerm` and sets the award's tier to the chosen one, but
+      only when the renewal's term sorts after every term the award already has a record for: approving an older
+      term's renewal late never moves the award back to an older tier (rev 23);
     - **holding** includes a `suspended` award: starts, approval and the match page treat an award on hold as held;
     - **tiers are matched by code:** approval falls back from the requested row to the in-force row with the same
       code, so a re-price never makes staff re-pick (new applications too).
@@ -479,8 +484,9 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
     before the new one is set;
   - making a term current runs `awards.services.rollover(term)` for every program in the same transaction: `draft`
     and `returned` applications of earlier terms are withdrawn (`application.expired`; submitted and under-review
-    rows stay for staff); `active` and `suspended` awards with at least `program.max_terms` term records graduate
-    (blank means no limit; "final year" graduation is a manual status change, §18 Q8);
+    rows stay for staff); `active` and `suspended` awards with at least `program.max_terms` term records of the
+    first and second semesters graduate (summer records don't count, since summer never renews; rev 23; blank means
+    no limit; "final year" graduation is a manual status change, §18 Q8);
   - `year_level` is not advanced automatically: a renewal freezes the student's own updated education record, and a
     staff term record prefills year level + 1 in a later school year;
   - it replaces v1's bulk `update_years`.
@@ -531,6 +537,8 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - fields: `program`, `title` (1–200), `period_start`, `period_end` (≥ start: "The period must end on or after its
     start."), `description` (≤ 2,000, optional), `status` ∈ {submitted, accepted, returned}, `submitted_by`,
     `submitted_at`, `reviewed_by`, `reviewed_at`, `review_note` (≤ 1,000), `created_at`;
+  - reports come from programs: only program staff and heads submit or resubmit; the services refuse the office, and
+    the report pages hide "Send a report" from it (rev 23);
   - transitions: `submitted` → `accepted` or `returned` (office only); `returned` → `submitted` (program staff or
     head, any member; `submitted_by` becomes the resubmitter). Accepted is final. Every transition locks the row; a
     second decision is refused with "This report was already {accepted|returned}.";
@@ -807,7 +815,8 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   | `allowance_approved` | "Your {program} allowance is ready to claim" | "{amount} for {term}. Claim it on {claim date} at {location}." | `/me/scholarships/` |
   | `allowance_released` | "Your {program} allowance was released" | "{amount} for {term}." | `/me/scholarships/` |
 
-  Support messages are never emailed (free text).
+  Support messages are never emailed (free text). Notifications are a record of what was said: reverting a payout
+  leaves its "ready to claim" notice in place, and the scholarship page shows the payout's current status (rev 23).
 - **Staff and office notifications (M11c):** in the app only, never emailed. Centres at `/staff/<slug>/notifications/`
   (all of the user's notifications; the program only picks the layout) and `/office/notifications/`; the bell shows on
   every staff and office page.
