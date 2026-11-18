@@ -51,12 +51,13 @@ class AnalyticsExportView(SuperAdminRequiredMixin, View):
         year = parse_analytics_filters(request.GET).year
         fmt = "csv" if request.GET.get("format") == "csv" else "xlsx"
         body, content_type, filename, count = summary_file(year, fmt)
-        audit.record(
-            actor=user,
-            action="analytics.exported",
-            request=request,
-            data={"format": fmt, "year": year, "rows": count},
-        )
+        if request.method != "HEAD":  # a HEAD downloads nothing
+            audit.record(
+                actor=user,
+                action="analytics.exported",
+                request=request,
+                data={"format": fmt, "year": year, "rows": count},
+            )
         response = HttpResponse(body, content_type=content_type)
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         response["Cache-Control"] = "no-store"

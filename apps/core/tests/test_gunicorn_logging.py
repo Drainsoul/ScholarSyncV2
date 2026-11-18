@@ -69,3 +69,23 @@ def test_logger_class_redacts_atoms() -> None:
     response = SimpleNamespace(status="200 OK", sent=10, headers=[("Location", CLAIM)])
     atoms = logger.atoms(response, request, environ, datetime.timedelta(seconds=1))
     assert not [key for key, value in atoms.items() if TOKEN in str(value)]
+
+
+def test_redact_message_covers_the_line_and_its_arguments() -> None:
+    from apps.core.gunicorn_logging import redact_message
+
+    msg, args = redact_message(f"Error handling request {CLAIM}", (RESET_REFERER, 3))
+    assert TOKEN not in str(msg) and TOKEN not in str(args)
+    assert args[1] == 3
+
+
+def test_gunicorn_error_lines_are_redacted(caplog: pytest.LogCaptureFixture) -> None:
+    pytest.importorskip("grp", reason="gunicorn needs Unix modules")
+    from gunicorn.config import Config
+    from gunicorn.util import load_class
+
+    logger = load_class("apps.core.gunicorn_logging.RedactingLogger")(Config())
+    logger.error_log.propagate = True
+    with caplog.at_level("ERROR", logger="gunicorn.error"):
+        logger.error("Error handling request %s", CLAIM)
+    assert caplog.records and TOKEN not in caplog.text

@@ -34,7 +34,9 @@ def downloadable_file(user: User, file_id: uuid.UUID) -> StoredFile:
     - `import`: nobody, the office included (the rows were read once, at import);
     - `report`: the office and active staff of the report's program, whoever uploaded it;
     - `document` and `photo`: the uploader, the office, staff of a submitted or on-behalf
-      application's program, or the student whose application it is.
+      application's program, or the student whose application it is;
+    - `export`: unused (exports are built in the request and never stored); a row would follow
+      the document rules.
     """
     file = StoredFile.objects.filter(pk=file_id, status=StoredFile.Status.READY).first()
     if file is None or file.purpose == StoredFile.Purpose.IMPORT:

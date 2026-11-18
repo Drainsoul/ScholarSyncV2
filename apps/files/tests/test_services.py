@@ -583,3 +583,27 @@ def test_pdf_declared_as_csv_rejected(s3):
     file = _confirm_import(pdf_bytes(), policy.CSV)
     assert file.status == StoredFile.Status.REJECTED
     assert file.rejected_reason == "type"
+
+
+def test_confirm_omits_download_url_for_import_and_report(s3, client):
+    from django.urls import reverse as _reverse
+
+    staff = _staff()
+    client.force_login(staff)
+    for purpose, name, content_type, body in (
+        ("import", "s.csv", policy.CSV, STAFF_CSV),
+        ("report", "r.pdf", "application/pdf", pdf_bytes()),
+    ):
+        intent = services.start_upload(
+            user=staff, purpose=purpose, name=name, content_type=content_type, size=len(body)
+        )
+        upload(intent, body)
+        response = client.post(_reverse("files:upload-confirm", kwargs={"file_id": intent.file.id}))
+        assert response.status_code == 200, purpose
+        assert "download_url" not in response.json(), purpose
+
+
+def test_csv_declared_as_text_plain_is_accepted(s3):
+    file = _confirm_import(STAFF_CSV, "text/plain")
+    assert file.status == StoredFile.Status.READY
+    assert file.sniffed_type == policy.CSV

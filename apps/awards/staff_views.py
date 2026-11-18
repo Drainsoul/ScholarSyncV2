@@ -563,20 +563,21 @@ class ScholarExportView(ProgramStaffRequiredMixin, View):
         body, content_type, filename, count = exporting.export_file(
             self.program, filters, fmt, term=application_term(today), today=today
         )
-        audit.record(
-            actor=_actor(request),
-            action="scholars.exported",
-            target=self.program,
-            program=self.program,
-            request=request,
-            # Never the name search: it is a name.
-            data={
-                "format": "xlsx" if fmt == "xlsx" else "csv",
-                "status": filters.status,
-                "tier": filters.tier,
-                "rows": count,
-            },
-        )
+        if request.method != "HEAD":  # a HEAD downloads nothing
+            audit.record(
+                actor=_actor(request),
+                action="scholars.exported",
+                target=self.program,
+                program=self.program,
+                request=request,
+                # Never the name search: it is a name.
+                data={
+                    "format": "xlsx" if fmt == "xlsx" else "csv",
+                    "status": filters.status,
+                    "tier": filters.tier,
+                    "rows": count,
+                },
+            )
         response = HttpResponse(body, content_type=content_type)
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         response["Cache-Control"] = "no-store"

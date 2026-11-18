@@ -224,3 +224,11 @@ def test_inactive_program_404(client, world: World):
     world.program.save()
     assert client.get(world.url()).status_code == 404
     assert not AuditEvent.objects.filter(action="scholars.exported").exists()
+
+
+def test_export_head_writes_no_audit_event(client, world: World):
+    from apps.core.models import AuditEvent
+
+    response = client.head(world.url())
+    assert response.status_code == 200
+    assert not AuditEvent.objects.filter(action="scholars.exported").exists()

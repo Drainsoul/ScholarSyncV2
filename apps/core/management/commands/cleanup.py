@@ -5,7 +5,7 @@ from allauth.usersessions.models import UserSession
 from django.contrib.sessions.models import Session
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
-from django.db.models import Q
+from django.db.models import ProtectedError, Q
 from django.utils import timezone
 
 from apps.awards.models import ScholarImport
@@ -42,12 +42,16 @@ def purge_imports(now: datetime) -> int:
                 storage.delete(key)
         except storage.StorageUnavailable:
             break  # one timeout per run, not one per file: the worker also sends email
-        if file.pk in referenced:
-            StoredFile.objects.filter(pk=file.pk).update(
-                status=StoredFile.Status.REJECTED, rejected_reason=EXPIRED, updated_at=now
-            )
-        else:
-            file.delete()
+        if file.pk not in referenced:
+            try:
+                file.delete()
+                purged += 1
+                continue
+            except ProtectedError:
+                pass  # an import started from this file since the run began
+        StoredFile.objects.filter(pk=file.pk).update(
+            status=StoredFile.Status.REJECTED, rejected_reason=EXPIRED, updated_at=now
+        )
         purged += 1
     return purged
 

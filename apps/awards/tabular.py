@@ -6,6 +6,7 @@ text is a sentence for them.
 
 import csv
 import io
+import re
 import zipfile
 from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
@@ -34,6 +35,7 @@ TOO_MANY_LINES = (
 LONG_CELL = "Row {line} has a value longer than " + f"{MAX_CELL} characters."
 DUPLICATE_COLUMN = 'The column "{column}" appears twice.'
 UNDECODABLE = "We couldn't read this file's text. Save it as CSV UTF-8 and try again."
+MIXED_ENCODING = "This file mixes text encodings. Save it as CSV UTF-8 and upload it again."
 BROKEN_CSV = "We couldn't read this CSV file. Save it again from your spreadsheet app."
 TOO_LARGE = "This spreadsheet is too large to read. Save it as CSV and try again."
 UNREADABLE = "We couldn't read this spreadsheet. Save it again as XLSX or CSV."
@@ -108,11 +110,21 @@ def _table(raw_rows: Iterable[Sequence[object]]) -> Table:
     return Table(columns=[column for column in headers if column], rows=rows)
 
 
+# A UTF-8 multi-byte sequence: a file with these that still isn't valid UTF-8 mixes encodings.
+_UTF8_SEQUENCE = re.compile(
+    rb"[\xc2-\xdf][\x80-\xbf]|[\xe0-\xef][\x80-\xbf]{2}|[\xf0-\xf4][\x80-\xbf]{3}"
+)
+
+
 def _decode(body: bytes) -> str:
     try:
         return body.decode("utf-8-sig")
     except UnicodeDecodeError:
         pass
+    if _UTF8_SEQUENCE.search(body):
+        # Saved as UTF-8, then edited with a legacy-encoding tool (an "ñ" typed in Notepad):
+        # neither decoding would give the right names.
+        raise TableError(MIXED_ENCODING)
     try:
         return body.decode("cp1252")  # Excel's legacy "CSV (Comma delimited)" on Windows
     except UnicodeDecodeError:

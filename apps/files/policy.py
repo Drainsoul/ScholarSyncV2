@@ -17,6 +17,7 @@ JPEG = "image/jpeg"
 PNG = "image/png"
 CSV = "text/csv"
 CSV_EXCEL = "application/vnd.ms-excel"  # what Windows browsers with Excel declare for .csv
+CSV_TEXT = "text/plain"  # what some browsers declare for .csv; the sniff still refuses binaries
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 EXTENSIONS: dict[str, tuple[str, ...]] = {
@@ -25,12 +26,21 @@ EXTENSIONS: dict[str, tuple[str, ...]] = {
     PNG: (".png",),
     CSV: (".csv",),
     CSV_EXCEL: (".csv",),
+    CSV_TEXT: (".csv",),
     XLSX: (".xlsx",),
 }
 
-_LABELS = {PDF: "PDF", JPEG: "JPG", PNG: "PNG", CSV: "CSV", CSV_EXCEL: "CSV", XLSX: "XLSX"}
+_LABELS = {
+    PDF: "PDF",
+    JPEG: "JPG",
+    PNG: "PNG",
+    CSV: "CSV",
+    CSV_EXCEL: "CSV",
+    CSV_TEXT: "CSV",
+    XLSX: "XLSX",
+}
 
-_CANONICAL = {CSV_EXCEL: CSV}
+_CANONICAL = {CSV_EXCEL: CSV, CSV_TEXT: CSV}
 
 _ALL_ROLES = frozenset({User.Role.STUDENT, User.Role.STAFF, User.Role.SUPER_ADMIN})
 
@@ -51,7 +61,7 @@ RULES: dict[str, PurposeRule] = {
         roles=frozenset({User.Role.STAFF, User.Role.SUPER_ADMIN}),
     ),
     "import": PurposeRule(
-        types=(CSV, CSV_EXCEL, XLSX),
+        types=(CSV, CSV_EXCEL, CSV_TEXT, XLSX),
         max_bytes=2 * MB,
         roles=frozenset({User.Role.STAFF, User.Role.SUPER_ADMIN}),
     ),

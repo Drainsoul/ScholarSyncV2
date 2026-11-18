@@ -95,19 +95,20 @@ class OfficeScholarExportView(SuperAdminRequiredMixin, View):
         body, content_type, filename, count = exporting.office_export_file(
             filters, fmt, today=timezone.localdate()
         )
-        audit.record(
-            actor=user,
-            action="scholars.exported",
-            request=request,
-            # Never the name search: it is a name.
-            data={
-                "scope": "office",
-                "format": fmt,
-                "status": filters.status,
-                "program": str(filters.program) if filters.program is not None else "",
-                "rows": count,
-            },
-        )
+        if request.method != "HEAD":  # a HEAD downloads nothing
+            audit.record(
+                actor=user,
+                action="scholars.exported",
+                request=request,
+                # Never the name search: it is a name.
+                data={
+                    "scope": "office",
+                    "format": fmt,
+                    "status": filters.status,
+                    "program": str(filters.program) if filters.program is not None else "",
+                    "rows": count,
+                },
+            )
         response = HttpResponse(body, content_type=content_type)
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         response["Cache-Control"] = "no-store"

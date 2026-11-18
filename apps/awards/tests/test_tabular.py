@@ -222,3 +222,12 @@ def test_full_size_legitimate_xlsx_fits_the_cap():
     rows = [[f"{r:03d}{c:02d}" + "x" * 195 for c in range(16)] for r in range(500)]
     table = read_table(xlsx(header, *rows), XLSX)
     assert len(table.rows) == 500
+
+
+def test_mixed_encoding_csv_is_refused_with_a_sentence():
+    body = "last_name\nPeña\n".encode() + "Muñoz\n".encode("cp1252")
+    with pytest.raises(TableError) as caught:
+        read_table(body, CSV)
+    assert str(caught.value) == (
+        "This file mixes text encodings. Save it as CSV UTF-8 and upload it again."
+    )

@@ -109,3 +109,16 @@ def test_cleanup_stops_at_the_first_storage_error(s3: Any, monkeypatch: pytest.M
     for file in (first, second):
         file.refresh_from_db()
         assert file.status == StoredFile.Status.READY
+
+
+def test_purge_survives_an_import_created_mid_run(s3: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    from apps.awards.models import ScholarImport
+    from apps.core.management.commands import cleanup
+
+    file = _import_file(40)
+    ScholarImportFactory.create(file=file)
+    # The run read the referenced files before that import existed.
+    monkeypatch.setattr(ScholarImport.objects, "values_list", lambda *args, **kwargs: [])
+    assert cleanup.purge_imports(timezone.now()) == 1
+    file.refresh_from_db()
+    assert (file.status, file.rejected_reason) == (StoredFile.Status.REJECTED, "expired")

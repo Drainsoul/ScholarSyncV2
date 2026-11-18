@@ -109,14 +109,11 @@ def upload_confirm(request: HttpRequest, file_id: uuid.UUID) -> JsonResponse:
         return _error("Upload not found.", 404)
     if file.status != StoredFile.Status.READY:
         return _error(services.rejection_message(file), 400)
-    return JsonResponse(
-        {
-            "id": str(file.id),
-            "name": file.original_name,
-            "size": file.size,
-            "download_url": reverse("files:download", kwargs={"file_id": file.id}),
-        }
-    )
+    body: dict[str, object] = {"id": str(file.id), "name": file.original_name, "size": file.size}
+    # Import files are never downloadable, and report files only through the report pages.
+    if file.purpose not in (StoredFile.Purpose.IMPORT, StoredFile.Purpose.REPORT):
+        body["download_url"] = reverse("files:download", kwargs={"file_id": file.id})
+    return JsonResponse(body)
 
 
 @require_GET
