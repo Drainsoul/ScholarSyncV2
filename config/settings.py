@@ -247,6 +247,22 @@ if PRODUCTION and S3_STORAGE["secret_access_key"] == "scholarsync-explore-secret
         "Use your own storage keys in production (docs/HOSTING.md)."
     )
 
+# Unencrypted connections to other machines (spec §10, M13).
+ALLOW_PLAINTEXT_SERVICES = env.bool("ALLOW_PLAINTEXT_SERVICES", False)
+if PRODUCTION and not ALLOW_PLAINTEXT_SERVICES:
+    from config.plaintext import plaintext_refusals  # noqa: E402
+
+    _refusals = plaintext_refusals(
+        database_url=os.environ.get("DATABASE_URL", ""),
+        email_url=os.environ.get("EMAIL_URL", ""),
+        storage_urls={
+            "S3_ENDPOINT_URL": S3_STORAGE["endpoint_url"],
+            "S3_PUBLIC_ENDPOINT_URL": S3_STORAGE["public_endpoint_url"],
+        },
+    )
+    if _refusals:
+        raise ImproperlyConfigured(" ".join(_refusals))
+
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.db.DatabaseCache",
@@ -318,7 +334,6 @@ AUTH_PASSWORD_VALIDATORS = [
         "OPTIONS": {"min_length": 10},
     },
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
-    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
     {"NAME": "apps.accounts.validators.SiteWordsValidator"},
 ]
 

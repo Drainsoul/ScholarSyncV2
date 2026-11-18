@@ -656,3 +656,55 @@ def test_vite_dev_mode_is_report_only_even_with_the_example_line(tmp_path):
     )
     assert values["CONTENT_SECURITY_POLICY"] is None
     assert values["CONTENT_SECURITY_POLICY_REPORT_ONLY"] is not None
+
+
+def _refused(tmp_path, **env):
+    result = _run_settings(tmp_path, ["DEBUG"], **env)
+    return result.returncode != 0, result.stderr
+
+
+def test_production_refuses_plaintext_smtp_to_another_host(tmp_path):
+    refused, stderr = _refused(tmp_path, EMAIL_URL="smtp://mail.example.org:25")
+    assert refused
+    assert "EMAIL_URL uses smtp:// to mail.example.org" in stderr
+    assert "ALLOW_PLAINTEXT_SERVICES" in stderr
+
+
+def test_production_refuses_http_storage_to_another_host(tmp_path):
+    refused, stderr = _refused(tmp_path, S3_ENDPOINT_URL="http://files.example.org:9000")
+    assert refused
+    assert "S3_ENDPOINT_URL uses http://" in stderr
+
+
+def test_production_refuses_database_without_tls_to_another_host(tmp_path):
+    refused, stderr = _refused(tmp_path, DATABASE_URL="postgres://u:p@db.example.org:5432/x")
+    assert refused
+    assert "DATABASE_URL" in stderr and "sslmode" in stderr
+    ok, _ = _refused(
+        tmp_path, DATABASE_URL="postgres://u:p@db.example.org:5432/x?sslmode=verify-full"
+    )
+    assert not ok
+
+
+@pytest.mark.parametrize("host", ["127.0.0.1", "localhost", "db", "host.docker.internal"])
+def test_plaintext_allowed_for_loopback_and_service_names(tmp_path, host):
+    refused, stderr = _refused(
+        tmp_path,
+        EMAIL_URL=f"smtp://{host}:25",
+        S3_ENDPOINT_URL=f"http://{host}:9000",
+        DATABASE_URL=f"postgres://u:p@{host}:5432/x",
+    )
+    assert not refused, stderr
+
+
+def test_allow_plaintext_services_opts_out(tmp_path):
+    refused, stderr = _refused(
+        tmp_path, EMAIL_URL="smtp://mail.internal.example:25", ALLOW_PLAINTEXT_SERVICES="true"
+    )
+    assert not refused, stderr
+
+
+def test_numeric_validator_removed(tmp_path):
+    values = settings_values(tmp_path, ["AUTH_PASSWORD_VALIDATORS"])
+    names = [item["NAME"] for item in values["AUTH_PASSWORD_VALIDATORS"]]
+    assert "django.contrib.auth.password_validation.NumericPasswordValidator" not in names
