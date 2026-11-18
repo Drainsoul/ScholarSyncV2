@@ -182,3 +182,16 @@ def test_office_post_message(client, terms) -> None:
         f"{new} is now the current term. Withdrew 2 unfinished applications. Graduated 0 scholars."
         in page
     )
+
+
+def test_summer_record_does_not_count_toward_max_terms(terms) -> None:
+    """Summer never renews (M9), so only 1st and 2nd semesters count (M14)."""
+    _, new = terms
+    first = term_of(2025, 1)
+    summer = term_of(2025, 3)
+    program = ProgramFactory.create(max_terms=2)
+    tier = BenefitTierFactory.create(program=program, effective_from=first)
+    award = make_scholar(program, tier, [first, summer])
+    assert start_term(actor=office(), term=new).graduated == 0
+    award.refresh_from_db()
+    assert award.status == Award.Status.ACTIVE

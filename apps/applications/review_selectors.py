@@ -271,13 +271,13 @@ def applications_by_month(programs: Iterable[Program], *, since: date) -> dict[d
 def waiting_over(
     program_ids: list[int], *, days: int, now: datetime
 ) -> dict[int, tuple[int, datetime | None]]:
-    """Per program, waiting applications whose latest submission is `days` or more old, and the
-    oldest of those submissions. Programs with none are left out."""
+    """Per program, waiting applications whose latest submission is more than `days` old, and
+    the oldest of those submissions. Programs with none are left out."""
     rows = (
         Application.objects.filter(
             program_id__in=program_ids,
             status__in=WAITING_STATUSES,
-            submitted_at__lte=now - timedelta(days=days),
+            submitted_at__lt=now - timedelta(days=days),
         )
         .values("program_id")
         .annotate(n=Count("pk"), oldest=Min("submitted_at"))

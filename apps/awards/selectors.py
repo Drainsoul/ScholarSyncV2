@@ -381,10 +381,12 @@ def stale_applications(term: AcademicTerm) -> QuerySet[Application]:
 
 
 def graduating_awards() -> QuerySet[Award]:
-    """Held awards whose program has a term limit and that have reached it."""
+    """Held awards whose program has a term limit and that have reached it. Only 1st and 2nd
+    semester records count: summer never renews (M14)."""
+    regular = Q(terms__term__term__in=[AcademicTerm.Term.FIRST, AcademicTerm.Term.SECOND])
     return (
         Award.objects.filter(status__in=Award.HELD_STATUSES, program__max_terms__isnull=False)
-        .annotate(records=Count("terms"))
+        .annotate(records=Count("terms", filter=regular))
         .filter(records__gte=F("program__max_terms"))
     )
 

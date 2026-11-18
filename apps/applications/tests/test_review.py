@@ -1214,3 +1214,24 @@ def test_approve_refused_while_award_suspended() -> None:
             actor=staff_of(program), program=program, application=application, tier=None
         ),
     )
+
+
+def test_resubmit_refused_when_the_student_now_holds_the_program() -> None:
+    program = ProgramFactory.create()
+    application = under_review(program)
+    document_with_file(application)
+    review.return_application(
+        actor=staff_of(program), program=program, application=application, reason=REASON
+    )
+    AwardFactory.create(
+        source_application=ApplicationFactory.create(
+            profile=application.profile, program=program, status=S.APPROVED
+        )
+    )
+    user = application.profile.user
+    assert user is not None
+    with pytest.raises(ValidationError) as caught:
+        services.submit_application(user=user, application=application, tier=None)
+    assert caught.value.messages == [services.HELD]
+    application.refresh_from_db()
+    assert application.status == S.RETURNED

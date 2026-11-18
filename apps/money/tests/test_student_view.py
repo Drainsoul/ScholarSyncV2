@@ -194,3 +194,11 @@ def test_scholarships_query_count(
     client.force_login(user)
     with django_assert_max_num_queries(25):
         assert client.get(reverse("scholarships:list")).status_code == 200
+
+
+def test_still_to_come_skips_awards_not_active(terms: Any) -> None:
+    _, current = terms
+    row = _first(current, status=Disbursement.Status.APPROVED)
+    Award.objects.filter(pk=row.scholar_term.award_id).update(status=Award.Status.SUSPENDED)
+    found = selectors.payouts_for_student(_user(row), today=TODAY)
+    assert found[row.scholar_term.award_id].to_come == Decimal("0")

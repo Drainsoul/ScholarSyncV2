@@ -283,3 +283,18 @@ def test_decision_form_preselects_same_code_after_reprice() -> None:
     )
     form = DecisionForm(program=application.program, application=application)
     assert form.fields["tier"].initial == repriced.pk
+
+
+def test_older_renewal_approval_keeps_the_newer_tier() -> None:
+    """Approving an older term's renewal after a newer one never moves the tier back (M14)."""
+    application, award, current, standard = renewal_under_review()
+    newer = AcademicTermFactory.create(school_year_start=2026, term=2)
+    high = BenefitTierFactory.create(
+        program=award.program, effective_from=current, code="high", base_amount=Decimal("9000.00")
+    )
+    add_record(award, newer, tier=high)
+    Award.objects.filter(pk=award.pk).update(tier=high)
+    approve(application, standard)
+    award.refresh_from_db()
+    assert award.tier == high
+    assert ScholarTerm.objects.get(award=award, term=current).tier == standard

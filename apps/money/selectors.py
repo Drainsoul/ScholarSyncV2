@@ -280,6 +280,11 @@ def payouts_for_student(user: User, *, today: date) -> dict[int, Payouts]:
     """The student's own payouts per award, from published schedules only, in a fixed number
     of queries whatever the number of awards."""
     awards = dict(Award.objects.filter(profile__user=user).values_list("pk", "program_id"))
+    active = set(
+        Award.objects.filter(profile__user=user, status=Award.Status.ACTIVE).values_list(
+            "pk", flat=True
+        )
+    )
     if not awards:
         return {}
     rows: dict[int, list[Disbursement]] = {pk: [] for pk in awards}
@@ -311,7 +316,8 @@ def payouts_for_student(user: User, *, today: date) -> dict[int, Payouts]:
             (
                 row.amount
                 for row in mine
-                if row.status in (Disbursement.Status.PENDING, Disbursement.Status.APPROVED)
+                if pk in active  # an award on hold or ended has nothing to come
+                and row.status in (Disbursement.Status.PENDING, Disbursement.Status.APPROVED)
                 and row.scholar_term.term.school_year_start == year
             ),
             ZERO,

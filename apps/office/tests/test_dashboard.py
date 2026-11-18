@@ -207,3 +207,19 @@ def test_overview_single_report_sent_today(office: User) -> None:
 def test_overview_has_no_support_figure(office: User) -> None:
     labels = [figure["label"] for figure in office_dashboard(office, now=NOW).figures]
     assert labels == ["Scholars", "Applications", "Waiting over 7 days", "Reports to review"]
+
+
+def test_exactly_seven_days_is_not_waiting_over_seven() -> None:
+    from apps.applications.review_selectors import waiting_over
+    from apps.applications.tests.factories import ApplicationFactory as _Applications
+
+    application = _Applications.create(status="submitted", submitted_at=NOW - timedelta(days=7))
+    assert waiting_over([application.program_id], days=7, now=NOW) == {}
+    older = _Applications.create(
+        program=application.program,
+        status="submitted",
+        submitted_at=NOW - timedelta(days=7, seconds=1),
+    )
+    assert waiting_over([application.program_id], days=7, now=NOW) == {
+        application.program_id: (1, older.submitted_at)
+    }

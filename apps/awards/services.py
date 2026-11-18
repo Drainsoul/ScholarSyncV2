@@ -139,7 +139,12 @@ def term_from_renewal(
         merit=application.match_snapshot.get("merit_likely") is True,
         compliance=ScholarTerm.Compliance.COMPLETE,  # approval needs every document approved
     )
-    if award.tier_id != tier.pk:
+    # Only the newest term moves the award's tier: a renewal for an older term approved late
+    # never takes it back (M14).
+    newer = ScholarTerm.objects.filter(
+        award=award, term__sort_key__gt=application.term.sort_key
+    ).exists()
+    if award.tier_id != tier.pk and not newer:
         award.tier = tier
         award.save(update_fields=["tier", "updated_at"])
     audit.record(
