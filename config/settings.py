@@ -164,6 +164,7 @@ if DEMO_ACTIVE:
     INSTALLED_APPS.append("apps.demo")
 
 MIDDLEWARE = [
+    "apps.core.request_context.RequestContextMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "csp.middleware.CSPMiddleware",
     "apps.core.middleware.PermissionsPolicyMiddleware",

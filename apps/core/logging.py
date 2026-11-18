@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from types import TracebackType
 
 from apps.core.redaction import redact
+from apps.core.request_context import current_ids
 
 type ExcInfo = (
     tuple[type[BaseException], BaseException, TracebackType | None] | tuple[None, None, None]
@@ -23,6 +24,7 @@ class JsonFormatter(logging.Formatter):
             "level": record.levelname,
             "logger": record.name,
             "msg": redact(record.getMessage()),
+            **current_ids(),
         }
         if record.exc_info:
             payload["exc"] = self.formatException(record.exc_info)
