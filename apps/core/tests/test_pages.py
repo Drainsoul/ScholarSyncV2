@@ -151,7 +151,13 @@ def test_privacy_page_describes_m11c_and_m12_processing(client, vite_build):
     privacy = client.get("/privacy/").content.decode()
     for words in ("sign-ins", "deleted after 7 days", "reports", "audit log"):
         assert words in privacy, words
-    assert "Version 2026-11-18" in privacy
+    assert "Version 2026-11-19" in privacy
+
+
+def test_privacy_page_describes_m13_processing(client, vite_build):
+    privacy = client.get("/privacy/").content.decode()
+    assert "Your sessions" in privacy
+    assert "Have I Been Pwned" in privacy
 
 
 def test_help_page_answers_notifications_and_reports(client, vite_build):

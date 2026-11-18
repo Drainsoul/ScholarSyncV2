@@ -48,7 +48,8 @@ here are read from the code on 2026-11-18. If code and this page disagree, the c
 - **Key rotation:** sign-in and reauthentication both issue a new session key (`apps/accounts/reauth.py`).
 - **Seeing and ending sessions:**
   - everyone sees their sessions at `/accounts/sessions/` (account menu) and can sign the others out, behind the
-    password;
+    password; each row keeps the session's start time, IP address and browser string (`allauth.usersessions`), shown
+    only to that account and removed with the session, and the privacy notice says so;
   - the office signs a staff or office account out everywhere from its account page, behind the password (audit
     `user.sessions_ended`);
   - the operator ends any account's sessions with `manage.py end_sessions --email ADDRESS` (audited by account id;

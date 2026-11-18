@@ -421,7 +421,7 @@ def test_operator_settings_default_outside_production(tmp_path):
     )
     assert values["SITE_OPERATOR_NAME"] == "This local copy"
     assert values["PRIVACY_CONTACT_EMAIL"] == ""
-    assert values["PRIVACY_NOTICE_VERSION"] == "2026-11-18"
+    assert values["PRIVACY_NOTICE_VERSION"] == "2026-11-19"
 
 
 @pytest.mark.parametrize(

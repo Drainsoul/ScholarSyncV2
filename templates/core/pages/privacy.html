@@ -22,6 +22,9 @@
     <li>Records of what happens to your application, and basic technical logs.</li>
     <li>A record of sign-ins and sign-outs, with the time and a scrambled form of your network address (never the
       password, and never the email typed into a failed sign-in).</li>
+    <li>For each place you are signed in: when the session started, your network address and your browser's name, so
+      you can recognise your sessions under "Your sessions" and sign out the ones you don't. They are removed once the
+      session has ended.</li>
     <li>A record of each change staff make (the audit log), naming the staff member but never storing names, emails
       or the text of notes.</li>
   </ul>
@@ -42,7 +45,7 @@
   </ul>
 
   <h2>Storage and security</h2>
-  <p>Data is kept in a PostgreSQL database and uploaded documents in private file storage. {% if not local_copy %}Connections use HTTPS. {% endif %}Documents are never served openly: they are downloaded through short-lived links. Staff only reach the programs they are assigned to. No system is perfectly secure, and the operator should tell you promptly if a breach affects you.</p>
+  <p>Data is kept in a PostgreSQL database and uploaded documents in private file storage. {% if not local_copy %}Connections use HTTPS. {% endif %}Documents are never served openly: they are downloaded through short-lived links. Staff only reach the programs they are assigned to. When you choose a password, the first five characters of a scrambled form of it are sent to the Have I Been Pwned service to check it hasn't leaked elsewhere; the password itself never leaves this site. No system is perfectly secure, and the operator should tell you promptly if a breach affects you.</p>
 
   <h2>How long it is kept</h2>
   <p>Records are kept as set by the operator of this copy. Self-hosters: state your retention period here before going live. When a record is no longer needed, it should be deleted or made anonymous.</p>
