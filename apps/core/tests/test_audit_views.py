@@ -213,3 +213,12 @@ def test_head_who_filter_never_names_an_outsider(client: Any) -> None:
     html = client.get(_head_url(tcu) + f"?who={outsider.pk}").content.decode()
     assert "Shannon Briggs" not in html
     assert "Showing one person's actions: this person." in html
+
+
+def test_extreme_dates_fall_back(client: Any) -> None:
+    _office(client)
+    record(actor=_staff_actor(), action="award.created", data={"tag": "x"})
+    for query in ("?end=9999-12-31", "?start=0001-01-01", "?start=9999-12-31&end=9999-12-31"):
+        response = client.get(OFFICE_URL + query)
+        assert response.status_code == 200
+        assert "tag: x<" in response.content.decode()

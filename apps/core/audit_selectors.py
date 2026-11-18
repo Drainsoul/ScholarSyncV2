@@ -24,11 +24,16 @@ class AuditFilters:
     program: str = ""  # "" all, "none", or a program id (the office only)
 
 
+# Dates outside these years fall back to "all": a day past 9999-12-31 would overflow.
+FIRST_YEAR, LAST_YEAR = 1900, 9998
+
+
 def _date(raw: str) -> date | None:
     try:
-        return date.fromisoformat(raw)
+        parsed = date.fromisoformat(raw)
     except ValueError:
         return None
+    return parsed if FIRST_YEAR <= parsed.year <= LAST_YEAR else None
 
 
 def parse_audit_filters(params: QueryDict, *, office: bool) -> AuditFilters:
