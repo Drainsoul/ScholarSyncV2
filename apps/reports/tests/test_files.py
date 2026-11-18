@@ -59,3 +59,45 @@ def test_file_viewed_event_has_report_program(monkeypatch: pytest.MonkeyPatch) -
 def test_report_file_refused_as_application_document() -> None:
     file, uploader = _report_file()
     assert usable_file(uploader, file.pk, StoredFile.Purpose.DOCUMENT) is None
+
+
+def test_import_file_is_never_downloadable() -> None:
+    from apps.files.tests.factories import StoredFileFactory
+
+    program = ProgramFactory.create(slug="lani")
+    staff = MembershipFactory.create(program=program).user
+    imported = StoredFileFactory.create(
+        uploaded_by=staff,
+        status=StoredFile.Status.READY,
+        purpose=StoredFile.Purpose.IMPORT,
+        sniffed_type="text/csv",
+        sha256="0" * 64,
+    )
+    office = UserFactory.create(role=User.Role.SUPER_ADMIN)
+    colleague = MembershipFactory.create(program=program).user
+    for user in (office, staff, colleague):
+        with pytest.raises(Http404):
+            downloadable_file(user, imported.pk)
+
+
+def test_report_uploader_who_left_gets_404() -> None:
+    file, uploader = _report_file()
+    ProgramMembership.objects.filter(user=uploader).delete()
+    MembershipFactory.create(user=uploader, program=ProgramFactory.create(slug="lani"))
+    with pytest.raises(Http404):
+        downloadable_file(uploader, file.pk)
+
+
+def test_document_and_photo_rules_unchanged() -> None:
+    from apps.files.tests.factories import StoredFileFactory
+
+    student = UserFactory.create()
+    for purpose in (StoredFile.Purpose.PHOTO, StoredFile.Purpose.DOCUMENT):
+        own = StoredFileFactory.create(
+            uploaded_by=student,
+            status=StoredFile.Status.READY,
+            purpose=purpose,
+            sniffed_type="image/png",
+            sha256="0" * 64,
+        )
+        assert downloadable_file(student, own.pk) == own

@@ -29,16 +29,24 @@ def usable_file(user: User, file_id: object, purpose: str) -> StoredFile | None:
 
 
 def downloadable_file(user: User, file_id: uuid.UUID) -> StoredFile:
-    """A ready file the user uploaded, any for the office, a submitted or on-behalf document or a
-    report file for its program's staff, or a document on the student's own application."""
+    """A ready file the user may download, by purpose (spec §7, M12):
+
+    - `import`: nobody, the office included (the rows were read once, at import);
+    - `report`: the office and active staff of the report's program, whoever uploaded it;
+    - `document` and `photo`: the uploader, the office, staff of a submitted or on-behalf
+      application's program, or the student whose application it is.
+    """
     file = StoredFile.objects.filter(pk=file_id, status=StoredFile.Status.READY).first()
-    if file is None:
+    if file is None or file.purpose == StoredFile.Purpose.IMPORT:
+        raise Http404("No such file.")
+    if file.purpose == StoredFile.Purpose.REPORT:
+        if user.is_super_admin or staff_can_download_report(user, file):
+            return file
         raise Http404("No such file.")
     if (
         user.is_super_admin
         or file.uploaded_by_id == user.pk
         or staff_can_download(user, file)
-        or staff_can_download_report(user, file)
         or student_can_download(user, file)
     ):
         return file
