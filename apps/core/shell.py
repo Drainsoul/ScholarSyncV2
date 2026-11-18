@@ -139,6 +139,7 @@ def shell_context(
             terms = reverse("office:terms")
             office_reports = reverse("office:reports")
             audit = reverse("office:audit")
+            insights = reverse("office:analytics")
             inbox = reverse("support:office")
             programs = reverse("office:programs")
             accounts = reverse("office:staff")
@@ -188,6 +189,13 @@ def shell_context(
                     "current": path.startswith(office_reports),
                     "count": submitted_count(),
                     "icon": "file-text",
+                },
+                {
+                    "label": "Analytics",
+                    "url": insights,
+                    "current": path.startswith(insights),
+                    "count": 0,
+                    "icon": "chart-column",
                 },
                 {
                     "label": "Audit log",

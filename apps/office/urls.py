@@ -4,7 +4,7 @@ from apps.core import audit_views
 from apps.reports import office_views as report_views
 from apps.workspace import notification_views
 
-from . import program_views, scholar_views, school_views, staff_views, views
+from . import analytics_views, program_views, scholar_views, school_views, staff_views, views
 
 app_name = "office"
 
@@ -67,6 +67,12 @@ urlpatterns = [
         "reports/<int:pk>/decide/",
         report_views.OfficeReportDecideView.as_view(),
         name="report-decide",
+    ),
+    path("analytics/", analytics_views.AnalyticsView.as_view(), name="analytics"),
+    path(
+        "analytics/export/",
+        analytics_views.AnalyticsExportView.as_view(),
+        name="analytics-export",
     ),
     path("audit/", audit_views.OfficeAuditView.as_view(), name="audit"),
     path("terms/", views.TermsView.as_view(), name="terms"),

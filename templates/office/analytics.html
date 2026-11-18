@@ -1,0 +1,60 @@
+{% extends "layouts/office.html" %}{% load ui %}
+{% block title %}Analytics{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Analytics</h1><p class="page-header__meta">New applications only.</p></div>
+  <div class="btn-row"><a class="btn btn--secondary" href="{{ summary_url }}">{% icon "download" %}Download summary</a></div>
+</div>
+<form class="table-toolbar" method="get" role="search" aria-label="Filter analytics">
+  <label for="analytics-year">School year</label>
+  <select class="input" id="analytics-year" name="year">
+    {% for year, label in years %}<option value="{{ year }}"{% if year == filters.year %} selected{% endif %}>{{ label }}</option>{% empty %}<option value="">No school years yet</option>{% endfor %}
+  </select>
+  <label for="analytics-program">Program</label>
+  <select class="input" id="analytics-program" name="program">
+    <option value="">All programs</option>
+    {% for item in programs %}<option value="{{ item.pk }}"{% if filters.program and item.pk == filters.program.pk %} selected{% endif %}>{{ item.name }}</option>{% endfor %}
+  </select>
+  <button class="btn btn--secondary" type="submit">{% icon "filter" %}Apply filters</button>
+</form>
+{% include "components/figures.html" with figures=board.figures %}
+<div class="stack">
+  <section class="card" aria-labelledby="months-title">
+    <div class="card__header"><h2 class="card__title" id="months-title">Applications by month</h2></div>
+    {% include "components/month_chart.html" with months=board.months chart_id="months-title" %}
+  </section>
+  <section class="card" aria-labelledby="programs-title">
+    <div class="card__header"><h2 class="card__title" id="programs-title">By program</h2></div>
+    <div class="table-wrap" role="region" aria-labelledby="programs-title" tabindex="0">
+      <table class="table table--stack">
+        <thead><tr><th scope="col">Program</th><th scope="col" class="num">Applications</th><th scope="col" class="num">Approved</th><th scope="col" class="num">Not approved</th><th scope="col" class="num">Success rate</th><th scope="col" class="num">Median days</th><th scope="col" class="num">Active scholars</th></tr></thead>
+        <tbody>{% for row in board.rows %}<tr>
+          <th scope="row">{{ row.program.name }}</th>
+          <td class="num" data-label="Applications">{{ row.applications }}</td>
+          <td class="num" data-label="Approved">{{ row.approved }}</td>
+          <td class="num" data-label="Not approved">{{ row.rejected }}</td>
+          <td class="num" data-label="Success rate">{% if row.success_percent is None %}—{% else %}{{ row.success_percent }}%{% endif %}</td>
+          <td class="num" data-label="Median days">{{ row.median_days|default_if_none:"—" }}</td>
+          <td class="num" data-label="Active scholars">{{ row.active_scholars }}</td>
+        </tr>{% empty %}<tr><td colspan="7">No programs yet.</td></tr>{% endfor %}</tbody>
+      </table>
+    </div>
+  </section>
+  <section class="card" aria-labelledby="schools-title">
+    <div class="card__header"><h2 class="card__title" id="schools-title">Top schools</h2></div>
+    {% if board.schools %}
+    <div class="table-wrap" role="region" aria-labelledby="schools-title" tabindex="0">
+      <table class="table table--stack">
+        <thead><tr><th scope="col">School</th><th scope="col" class="num">Applications</th><th scope="col" class="num">Approved</th></tr></thead>
+        <tbody>{% for school in board.schools %}<tr>
+          <th scope="row">{{ school.name }}</th>
+          <td class="num" data-label="Applications">{{ school.applications }}</td>
+          <td class="num" data-label="Approved">{{ school.approved }}</td>
+        </tr>{% endfor %}</tbody>
+      </table>
+    </div>
+    {% else %}<p>No applications from listed schools yet.</p>{% endif %}
+    {% if board.unlisted %}<p class="text-sm text-muted">{{ board.unlisted }} application{{ board.unlisted|pluralize }} named a school that isn't on the list.</p>{% endif %}
+  </section>
+</div>
+{% endblock %}

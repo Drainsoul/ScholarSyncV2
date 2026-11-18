@@ -14,6 +14,7 @@ from apps.awards.services import start_term
 from apps.core.permissions import SuperAdminRequiredMixin
 from apps.core.shell import shell_context
 from apps.core.text import counted
+from apps.office.analytics_views import summary_url
 from apps.office.dashboard import office_dashboard
 from apps.programs.models import AcademicTerm
 from apps.programs.selectors import current_term
@@ -47,6 +48,9 @@ class HomeView(SuperAdminRequiredMixin, TemplateView):
             **super().get_context_data(**kwargs),
             **shell_context(self.request, area="office"),
             "board": office_dashboard(_actor(self.request), now=timezone.now()),
+            "summary_url": summary_url(
+                term.school_year_start if (term := current_term()) else None
+            ),
         }
 
 

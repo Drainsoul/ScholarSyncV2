@@ -3,6 +3,7 @@
 {% block content %}
 <div class="page-header">
   <h1>{{ board.greeting }}</h1>
+  <div class="btn-row"><a class="btn btn--secondary" href="{{ summary_url }}">{% icon "download" %}Download report</a></div>
 </div>
 {% include "components/figures.html" with figures=board.figures %}
 <div class="split split--even">

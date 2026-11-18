@@ -59,6 +59,7 @@ VERBS.update(
         "scholar_term.updated": "edited a term record",
         "scholar_term.merit_confirmed": "confirmed merit on a term record",
         "scholars.exported": "downloaded a scholar list",
+        "analytics.exported": "downloaded the program summary",
         "document.uploaded": "uploaded a document",
         "document.approved": "approved a document",
         "document.declined": "declined a document",

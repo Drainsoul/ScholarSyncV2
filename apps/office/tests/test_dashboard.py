@@ -126,7 +126,7 @@ def test_dropped_mockup_parts_absent(client: Any, office: User) -> None:
     client.force_login(office)
     html = client.get(reverse("office:home")).content.decode()
     assert "Good morning, Jessica" in html
-    for text in ("Download report", "New program", "Manage programs"):
+    for text in ("New program", "Manage programs"):
         assert text not in html
     assert 'href="#"' not in html
     for text in ("Applications by month", "Needs attention", "Programs", "Recent activity"):
