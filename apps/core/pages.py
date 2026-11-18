@@ -31,6 +31,7 @@ def _context() -> dict[str, object]:
         # Explore and developer copies are local or personal (a computer or the visitor's own
         # codespace); a hosted copy always runs in production mode.
         "local_copy": not settings.PRODUCTION,
+        "breach_check": settings.PASSWORD_BREACH_CHECK,
         "repo_url": REPO_URL,
     }
 

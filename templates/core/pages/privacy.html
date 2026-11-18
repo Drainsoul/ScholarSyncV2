@@ -45,7 +45,7 @@
   </ul>
 
   <h2>Storage and security</h2>
-  <p>Data is kept in a PostgreSQL database and uploaded documents in private file storage. {% if not local_copy %}Connections use HTTPS. {% endif %}Documents are never served openly: they are downloaded through short-lived links. Staff only reach the programs they are assigned to. When you choose a password, the first five characters of a scrambled form of it are sent to the Have I Been Pwned service to check it hasn't leaked elsewhere; the password itself never leaves this site. No system is perfectly secure, and the operator should tell you promptly if a breach affects you.</p>
+  <p>Data is kept in a PostgreSQL database and uploaded documents in private file storage. {% if not local_copy %}Connections use HTTPS. {% endif %}Documents are never served openly: they are downloaded through short-lived links. Staff only reach the programs they are assigned to.{% if breach_check %} When you choose a password, the first five characters of a scrambled form of it are sent to the Have I Been Pwned service to check it hasn't leaked elsewhere; the password itself never leaves this site.{% endif %} No system is perfectly secure, and the operator should tell you promptly if a breach affects you.</p>
 
   <h2>How long it is kept</h2>
   <p>Records are kept as set by the operator of this copy. Self-hosters: state your retention period here before going live. When a record is no longer needed, it should be deleted or made anonymous.</p>

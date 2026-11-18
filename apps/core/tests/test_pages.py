@@ -154,10 +154,14 @@ def test_privacy_page_describes_m11c_and_m12_processing(client, vite_build):
     assert "Version 2026-11-19" in privacy
 
 
-def test_privacy_page_describes_m13_processing(client, vite_build):
+def test_privacy_page_describes_m13_processing(client, settings, vite_build):
+    settings.PASSWORD_BREACH_CHECK = True
     privacy = client.get("/privacy/").content.decode()
     assert "Your sessions" in privacy
     assert "Have I Been Pwned" in privacy
+    # Developer and explore copies don't run the check, so they don't claim it.
+    settings.PASSWORD_BREACH_CHECK = False
+    assert "Have I Been Pwned" not in client.get("/privacy/").content.decode()
 
 
 def test_help_page_answers_notifications_and_reports(client, vite_build):
