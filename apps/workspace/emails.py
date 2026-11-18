@@ -40,6 +40,10 @@ KINDS: dict[str, frozenset[str]] = {
     "email_changed": _NAME,
     "email_deleted": frozenset({"deleted_email", "full_name"}),
     "password_set": _NAME,
+    # allauth's two-factor security notices (M13).
+    "totp_activated": _NAME,
+    "totp_deactivated": _NAME,
+    "recovery_codes_generated": _NAME,
     "account_connected": frozenset({"provider_name", "full_name"}),
     "account_disconnected": frozenset({"provider_name", "full_name"}),
     # The address is unverified, so no name either.

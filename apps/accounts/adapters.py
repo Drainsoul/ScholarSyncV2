@@ -3,9 +3,11 @@ from typing import Any
 from allauth.account.adapter import DefaultAccountAdapter
 from allauth.account.models import EmailAddress
 from allauth.core.exceptions import ImmediateHttpResponse
+from allauth.mfa.adapter import DefaultMFAAdapter
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from allauth.socialaccount.models import SocialApp
 from allauth.socialaccount.providers.base import AuthProcess
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.forms import BaseForm
@@ -123,3 +125,15 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):  # type: ignore[misc]
             _force_student(user)
             user.save()
         return user
+
+
+class MFAAdapter(DefaultMFAAdapter):  # type: ignore[misc]
+    """While 2FA is required, staff and the office can't remove their own authenticator: the
+    office removes a lost one (M13). Anyone else may switch theirs off."""
+
+    def can_delete_authenticator(self, authenticator: Any) -> bool:
+        user = authenticator.user
+        required = settings.MFA_REQUIRED_FOR_STAFF and (
+            user.is_program_staff or user.is_super_admin
+        )
+        return not required

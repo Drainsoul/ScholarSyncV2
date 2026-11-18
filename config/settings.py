@@ -311,6 +311,7 @@ ACCOUNT_ADAPTER = "apps.accounts.adapters.AccountAdapter"
 # Two-factor sign-in (spec §10, M13): TOTP and recovery codes; required for staff and the office
 # in production, off in developer and explore modes so the demo keeps one-click sign-in.
 MFA_SUPPORTED_TYPES = ["totp", "recovery_codes"]
+MFA_ADAPTER = "apps.accounts.adapters.MFAAdapter"
 # The session list at /accounts/sessions/ (M13); no per-request activity writes.
 USERSESSIONS_TRACK_ACTIVITY = False
 MFA_TOTP_ISSUER = "ScholarSync"

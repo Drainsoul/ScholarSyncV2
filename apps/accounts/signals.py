@@ -2,6 +2,7 @@ import time
 from typing import Any
 
 from allauth.account.signals import email_confirmed, password_changed, password_reset, password_set
+from allauth.mfa.signals import authenticator_added, authenticator_removed, authenticator_reset
 from django.contrib.auth.signals import user_logged_in, user_logged_out, user_login_failed
 from django.dispatch import receiver
 from django.http import HttpRequest
@@ -57,3 +58,48 @@ def on_signed_out(request: HttpRequest | None, user: User | None, **kwargs: Any)
 @receiver(user_login_failed)
 def on_sign_in_failed(request: HttpRequest | None = None, **kwargs: Any) -> None:
     record(actor=None, action="user.sign_in_failed", request=request)
+
+
+# One's own two-factor changes (M13). Only the kind of authenticator is recorded.
+@receiver(authenticator_added)
+def on_authenticator_added(
+    request: HttpRequest | None, user: User, authenticator: Any, **kwargs: Any
+) -> None:
+    record(
+        actor=user,
+        action="mfa.added",
+        target=user,
+        data={"type": authenticator.type},
+        request=request,
+    )
+
+
+@receiver(authenticator_removed)
+def on_authenticator_removed(
+    request: HttpRequest | None, user: User, authenticator: Any, **kwargs: Any
+) -> None:
+    if request is not None and hasattr(request, "session"):
+        # The 2FA requirement cached "has an authenticator" in the session: check again.
+        from .mfa_policy import SESSION_KEY
+
+        request.session.pop(SESSION_KEY, None)
+    record(
+        actor=user,
+        action="mfa.deactivated",
+        target=user,
+        data={"type": authenticator.type},
+        request=request,
+    )
+
+
+@receiver(authenticator_reset)
+def on_authenticator_reset(
+    request: HttpRequest | None, user: User, authenticator: Any, **kwargs: Any
+) -> None:
+    record(
+        actor=user,
+        action="mfa.reset",
+        target=user,
+        data={"type": authenticator.type},
+        request=request,
+    )

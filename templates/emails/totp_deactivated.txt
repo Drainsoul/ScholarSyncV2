@@ -1,0 +1,7 @@
+{% extends "emails/base.txt" %}
+{% block body %}{% if full_name %}Hello {{ full_name }},{% else %}Hello,{% endif %}
+
+Two-factor sign-in was just turned off for your ScholarSync account.
+
+If you did not do this, reset your password straight away and contact the scholarship office.
+{% endblock %}

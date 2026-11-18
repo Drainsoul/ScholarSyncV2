@@ -1,0 +1,6 @@
+{% extends "emails/base.html" %}
+{% block body %}
+    <p>{% if full_name %}Hello {{ full_name }},{% else %}Hello,{% endif %}</p>
+    <p>Two-factor sign-in was just turned off for your ScholarSync account.</p>
+    <p>If you did not do this, reset your password straight away and contact the scholarship office.</p>
+{% endblock %}

@@ -116,3 +116,68 @@ def test_developer_copy_with_example_line_does_not_require(tmp_path: Path) -> No
         tmp_path, ["MFA_REQUIRED_FOR_STAFF"], DJANGO_DEBUG="true", MFA_REQUIRED_FOR_STAFF="true"
     )
     assert values == {"MFA_REQUIRED_FOR_STAFF": False}
+
+
+def test_staff_cannot_switch_off_their_own_authenticator(client: Any, required: None) -> None:
+    from apps.core.tests.auth import reauthenticated
+
+    staff = _staff()
+    TOTP.activate(staff, generate_totp_secret())
+    reauthenticated(client, staff)
+    response = client.post("/accounts/2fa/totp/deactivate/")
+    assert Authenticator.objects.filter(user=staff, type=Authenticator.Type.TOTP).exists()
+    assert response.status_code == 200  # the form, with allauth's refusal
+
+
+def test_student_can_switch_off_and_it_is_audited(client: Any, required: None) -> None:
+    from apps.core.tests.auth import reauthenticated
+
+    student = UserFactory.create(verified=True)
+    TOTP.activate(student, generate_totp_secret())
+    reauthenticated(client, student)
+    response = client.post("/accounts/2fa/totp/deactivate/")
+    assert response.status_code == 302
+    assert not Authenticator.objects.filter(user=student, type=Authenticator.Type.TOTP).exists()
+    event = AuditEvent.objects.get(action="mfa.deactivated")
+    assert event.actor == student
+    assert event.data == {"type": "totp"}
+
+
+def test_removed_authenticator_clears_the_cached_requirement(client: Any, settings: Any) -> None:
+    from apps.accounts.mfa_policy import SESSION_KEY
+    from apps.core.tests.auth import reauthenticated
+
+    settings.MFA_REQUIRED_FOR_STAFF = False  # deletion allowed, then the requirement switches on
+    staff = _staff()
+    TOTP.activate(staff, generate_totp_secret())
+    reauthenticated(client, staff)
+    session = client.session
+    session[SESSION_KEY] = True
+    session.save()
+    assert client.post("/accounts/2fa/totp/deactivate/").status_code == 302
+    assert SESSION_KEY not in client.session
+    settings.MFA_REQUIRED_FOR_STAFF = True
+    response = client.get("/staff/tcu-ceaa/")
+    assert response.status_code == 302 and response["Location"] == ACTIVATE
+
+
+def test_activating_through_the_page_queues_the_notice(
+    client: Any, required: None, django_capture_on_commit_callbacks: Any
+) -> None:
+    """The real page, with commit callbacks run: allauth's security email must have an outbox
+    kind, or activation would fail after the commit."""
+    from apps.core.tests.auth import reauthenticated
+    from apps.workspace.models import EmailOutbox
+
+    staff = _staff()
+    reauthenticated(client, staff)
+    client.get(ACTIVATE)  # stores the pending secret in the session
+    from allauth.mfa.totp.internal.auth import SECRET_SESSION_KEY
+
+    secret = client.session[SECRET_SESSION_KEY]
+    with django_capture_on_commit_callbacks(execute=True):
+        response = client.post(ACTIVATE, {"code": _code(secret)})
+    assert response.status_code == 302
+    assert Authenticator.objects.filter(user=staff, type=Authenticator.Type.TOTP).exists()
+    assert EmailOutbox.objects.filter(kind="totp_activated").exists()
+    assert AuditEvent.objects.filter(action="mfa.added", data={"type": "totp"}).exists()
