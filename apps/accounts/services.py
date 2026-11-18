@@ -47,11 +47,12 @@ def create_staff_user(
     return user
 
 
-def _end_sessions(user: User) -> int:
-    """Delete every session signed in as `user`, or holding a half-finished login for it."""
+def _end_sessions(user: User, *, keep: str | None = None) -> int:
+    """Delete every session signed in as `user`, or holding a half-finished login for it, except
+    the one keyed `keep` (the caller's own)."""
     pending = user_pk_to_url_str(user)
     ended = 0
-    for session in Session.objects.iterator():
+    for session in Session.objects.exclude(session_key=keep or "").iterator():
         data = session.get_decoded()
         login = data.get(LOGIN_SESSION_KEY)
         if data.get(SESSION_KEY) == str(user.pk) or (
@@ -59,7 +60,7 @@ def _end_sessions(user: User) -> int:
         ):
             session.delete()
             ended += 1
-    UserSession.objects.filter(user=user).delete()
+    UserSession.objects.filter(user=user).exclude(session_key=keep or "").delete()
     return ended
 
 
@@ -195,6 +196,20 @@ def create_account(
         raise ValidationError({"email": EMAIL_TAKEN}) from None
     send_welcome(actor=actor, user=user)
     return user
+
+
+@transaction.atomic
+def end_other_sessions(*, user: User, request: HttpRequest) -> int:
+    """Sign the user out everywhere except this browser ("Sign out other sessions")."""
+    ended = _end_sessions(user, keep=request.session.session_key)
+    record(
+        actor=user,
+        action="user.other_sessions_ended",
+        target=user,
+        data={"sessions_ended": ended},
+        request=request,
+    )
+    return ended
 
 
 @transaction.atomic

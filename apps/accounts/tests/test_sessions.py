@@ -68,6 +68,30 @@ def test_user_lists_and_ends_other_sessions(client: Client) -> None:
     assert replay.status_code == 302
     assert _signed_in_as(user) == {client.session.session_key}
     assert other.get(reverse("usersessions_list")).status_code == 302
+    event = AuditEvent.objects.get(action="user.other_sessions_ended")
+    assert event.actor == user
+    assert event.data == {"sessions_ended": 1}
+    assert set(UserSession.objects.filter(user=user).values_list("session_key", flat=True)) == {
+        client.session.session_key
+    }
+
+
+def test_authenticator_reauthentication_cycles_the_session_key(client: Client) -> None:
+    from allauth.mfa.totp.internal.auth import TOTP, generate_totp_secret
+
+    from apps.accounts.tests.test_mfa import _code
+
+    user = UserFactory.create(verified=True)
+    _sign_in(client, user)  # before the authenticator exists, so its code is used only once
+    secret = generate_totp_secret()
+    TOTP.activate(user, secret)
+    before = client.session.session_key
+    response = client.post(reverse("mfa_reauthenticate"), {"code": _code(secret)})
+    assert response.status_code == 302
+    after = client.session.session_key
+    assert after != before
+    assert client.session["_auth_user_id"] == str(user.pk)
+    assert UserSession.objects.filter(user=user, session_key=after).exists()
 
 
 def test_office_signs_staff_out_everywhere_after_password(client: Client) -> None:

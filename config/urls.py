@@ -1,7 +1,7 @@
 from django.http import Http404, HttpRequest, HttpResponse
 from django.urls import include, path
 
-from apps.accounts.reauth import ReauthenticateView, SessionListView
+from apps.accounts.reauth import MfaReauthenticateView, ReauthenticateView, SessionListView
 from apps.accounts.session_policy import keep_alive
 
 
@@ -42,6 +42,11 @@ urlpatterns = [
         name="account_reauthenticate",
     ),
     path("accounts/sessions/", SessionListView.as_view(), name="usersessions_list"),
+    path(
+        "accounts/2fa/reauthenticate/",
+        MfaReauthenticateView.as_view(),
+        name="mfa_reauthenticate",
+    ),
     path("accounts/", include("allauth.urls")),
     path("_kit/", include("apps.kit.urls")),
 ]
