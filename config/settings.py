@@ -345,6 +345,11 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "apps.accounts.validators.SiteWordsValidator"},
 ]
+# Breached-password check (spec §10, M13): Have I Been Pwned's k-anonymity range API, production
+# only (developer and explore copies may be offline); fails open.
+PASSWORD_BREACH_CHECK = PRODUCTION and env.bool("PASSWORD_BREACH_CHECK", True)
+if PASSWORD_BREACH_CHECK:
+    AUTH_PASSWORD_VALIDATORS.append({"NAME": "apps.accounts.breach.BreachedPasswordValidator"})
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Asia/Manila"

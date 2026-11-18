@@ -24,6 +24,8 @@ os.environ.setdefault("EMAIL_URL", "smtp://localhost:25")
 os.environ["CSP_REPORT_ONLY"] = "false"
 # Production requires 2FA for staff; tests turn it on where they test it (M13).
 os.environ["MFA_REQUIRED_FOR_STAFF"] = "false"
+# No test reaches the network: the breach check is faked where it is tested.
+os.environ["PASSWORD_BREACH_CHECK"] = "false"  # noqa: S105 (a switch, not a password)
 
 from config.settings import *  # noqa: E402, F403
 
