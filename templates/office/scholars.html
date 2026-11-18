@@ -1,0 +1,54 @@
+{% extends "layouts/office.html" %}{% load ui %}
+{% block title %}Scholars across programs{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Scholars across programs</h1><p class="page-header__meta">Every program's scholars in one list.</p></div>
+  <div class="btn-row">
+    <a class="btn btn--secondary" href="{{ csv_url }}">{% icon "download" %}Download CSV</a>
+    <a class="btn btn--secondary" href="{{ xlsx_url }}">{% icon "download" %}Download XLSX</a>
+  </div>
+</div>
+<section class="card list-card" aria-labelledby="list-heading">
+  <h2 class="visually-hidden" id="list-heading">Scholar list</h2>
+  {% include "components/tabs.html" with tabs_label="Scholar status" %}
+  <form class="table-toolbar" method="get" role="search" aria-label="Filter scholars">
+    <input type="hidden" name="status" value="{{ filters.status }}">
+    <div class="table-toolbar__search">
+      <label class="visually-hidden" for="scholar-q">Search by name</label>
+      {% icon "search" %}<input class="input" type="search" id="scholar-q" name="q" value="{{ filters.q }}" placeholder="Search by name">
+    </div>
+    <label class="visually-hidden" for="scholar-program">Program</label>
+    <select class="input" id="scholar-program" name="program">
+      <option value="">All programs</option>
+      {% for item in programs %}<option value="{{ item.pk }}"{% if item.pk == filters.program %} selected{% endif %}>{{ item.name }}</option>{% endfor %}
+    </select>
+    <button class="btn btn--secondary" type="submit">{% icon "filter" %}Apply filters</button>
+    <p class="table-toolbar__meta">Sorted by name, A to Z</p>
+  </form>
+  {% if rows %}
+  <div class="table-wrap" role="region" aria-labelledby="list-heading" tabindex="0">
+    <table class="table table--stack" aria-labelledby="list-heading">
+      <thead><tr>
+        <th scope="col">Scholar</th><th scope="col">Program</th><th scope="col">School</th><th scope="col">Tier</th>
+        <th scope="col">Status</th><th scope="col" class="num">Terms</th><th scope="col">Other programs</th>
+      </tr></thead>
+      <tbody>{% for row in rows %}{% with award=row.award %}<tr>
+        <th scope="row">{% if row.url %}<a href="{{ row.url }}">{{ award.profile.full_name }}</a>{% else %}{{ award.profile.full_name }}{% endif %}</th>
+        <td data-label="Program">{{ award.program.name }}{% if not award.program.is_active %}<br><span class="text-sm text-muted">Program closed</span>{% endif %}</td>
+        <td data-label="School">{{ award.latest_school_name|default:"Not given" }}</td>
+        <td data-label="Tier">{{ award.tier.name }}</td>
+        <td data-label="Status">{% status row.tone award.get_status_display %}</td>
+        <td class="num" data-label="Terms">{{ award.term_count }}</td>
+        <td data-label="Other programs">{{ award.other_programs|default:"—" }}</td>
+      </tr>{% endwith %}{% endfor %}</tbody>
+    </table>
+  </div>
+  <div class="list-card__foot">
+    <p class="table-count num">Showing {{ page.start_index }}–{{ page.end_index }} of {{ page.paginator.count }}</p>
+    {% pagination page %}
+  </div>
+  {% else %}
+  {% include "components/empty_state.html" with title="No scholars here." %}
+  {% endif %}
+</section>
+{% endblock %}

@@ -9,7 +9,7 @@ from datetime import date
 from django.db.models import QuerySet
 
 from apps.awards.models import Award
-from apps.awards.selectors import ScholarFilters, scholars
+from apps.awards.selectors import OfficeScholarFilters, ScholarFilters, office_scholars, scholars
 from apps.awards.tabular import write_csv, write_xlsx
 from apps.files.policy import XLSX
 from apps.programs.models import AcademicTerm, Program, School
@@ -45,25 +45,30 @@ def _scale_label(value: str | None) -> str | None:
 def export_rows(rows: QuerySet[Award]) -> Iterator[list[object]]:
     """One row per award; `rows` comes from `scholars()` (annotated with its latest term)."""
     for award in rows.iterator(chunk_size=500):
-        profile = award.profile
-        yield [
-            profile.last_name,
-            profile.first_name,
-            profile.middle_name or None,
-            profile.suffix or None,
-            award.student_number or None,
-            award.tier.code,
-            award.get_status_display(),
-            str(award.started_term),
-            award.latest_school_name or None,  # type: ignore[attr-defined]
-            award.latest_course or None,  # type: ignore[attr-defined]
-            award.latest_year_level,  # type: ignore[attr-defined]
-            award.latest_gwa,  # type: ignore[attr-defined]
-            _scale_label(award.latest_gwa_scale),  # type: ignore[attr-defined]
-            award.latest_units,  # type: ignore[attr-defined]
-            award.term_count,  # type: ignore[attr-defined]
-            "Claimed" if profile.user_id is not None else "Not claimed",
-        ]
+        yield export_row(award)
+
+
+def export_row(award: Award) -> list[object]:
+    """One award under HEADERS; the award is annotated by `with_latest_term`."""
+    profile = award.profile
+    return [
+        profile.last_name,
+        profile.first_name,
+        profile.middle_name or None,
+        profile.suffix or None,
+        award.student_number or None,
+        award.tier.code,
+        award.get_status_display(),
+        str(award.started_term),
+        award.latest_school_name or None,  # type: ignore[attr-defined]
+        award.latest_course or None,  # type: ignore[attr-defined]
+        award.latest_year_level,  # type: ignore[attr-defined]
+        award.latest_gwa,  # type: ignore[attr-defined]
+        _scale_label(award.latest_gwa_scale),  # type: ignore[attr-defined]
+        award.latest_units,  # type: ignore[attr-defined]
+        award.term_count,  # type: ignore[attr-defined]
+        "Claimed" if profile.user_id is not None else "Not claimed",
+    ]
 
 
 def export_file(
@@ -83,4 +88,21 @@ def export_file(
         fmt = "csv"
         body, content_type = write_csv(HEADERS, rows), CSV_TYPE
     filename = f"scholars-{program.slug}-{filters.status}-{today.isoformat()}.{fmt}"
+    return body, content_type, filename, len(rows)
+
+
+def office_export_file(
+    filters: OfficeScholarFilters, fmt: str, *, today: date
+) -> tuple[bytes, str, str, int]:
+    """The office's cross-program list: M9b's columns with "Program" first."""
+    rows = [
+        [award.program.name, *export_row(award)]
+        for award in office_scholars(filters).iterator(chunk_size=500)
+    ]
+    if fmt == "xlsx":
+        body, content_type = write_xlsx(("Program", *HEADERS), rows), XLSX
+    else:
+        fmt = "csv"
+        body, content_type = write_csv(("Program", *HEADERS), rows), CSV_TYPE
+    filename = f"scholars-all-{filters.status}-{today.isoformat()}.{fmt}"
     return body, content_type, filename, len(rows)

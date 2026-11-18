@@ -2,7 +2,17 @@ from dataclasses import dataclass
 from datetime import date
 from enum import StrEnum
 
-from django.db.models import Count, Exists, F, OuterRef, Q, QuerySet, Subquery, Value
+from django.db.models import (
+    Count,
+    Exists,
+    F,
+    OuterRef,
+    Q,
+    QuerySet,
+    Subquery,
+    TextField,
+    Value,
+)
 from django.db.models.functions import Coalesce
 from django.http import Http404, QueryDict
 
@@ -441,3 +451,71 @@ def active_counts(program_ids: list[int]) -> dict[int, int]:
         .order_by()
     )
     return {row["program_id"]: row["n"] for row in rows}
+
+
+# Scholars across programs (the office, M11c). No tier filter (codes are per program)
+# and no at-risk tab (rules are per program).
+OFFICE_SCHOLAR_TABS: dict[str, str] = {
+    "active": "Active",
+    "suspended": "Suspended",
+    "inactive": "Inactive",
+    "graduated": "Graduated",
+    "multi": "In two or more programs",
+    "all": "All",
+}
+
+
+@dataclass(frozen=True)
+class OfficeScholarFilters:
+    status: str = DEFAULT_SCHOLAR_TAB
+    q: str = ""
+    program: int | None = None
+
+
+def parse_office_scholar_filters(params: QueryDict) -> OfficeScholarFilters:
+    """Unknown values fall back to the defaults, never an error."""
+    from apps.core.params import positive_id
+
+    status = params.get("status", "")
+    if status not in OFFICE_SCHOLAR_TABS:
+        status = DEFAULT_SCHOLAR_TAB
+    program = positive_id(params.get("program", ""))
+    if program is not None and not Program.objects.filter(pk=program).exists():
+        program = None
+    return OfficeScholarFilters(
+        status=status, q=params.get("q", "").replace("\x00", "").strip()[:200], program=program
+    )
+
+
+def office_scholars(filters: OfficeScholarFilters) -> QuerySet[Award]:
+    """Awards across programs, annotated with the latest term and `other_programs` (the names of
+    the profile's other active awards' programs, by name)."""
+    from django.contrib.postgres.aggregates import StringAgg
+
+    active = Award.objects.filter(profile_id=OuterRef("profile_id"), status=Award.Status.ACTIVE)
+    others = Subquery(
+        active.exclude(pk=OuterRef("pk"))
+        .order_by()
+        .values("profile_id")
+        .annotate(names=StringAgg("program__name", ", ", order_by="program__name"))
+        .values("names")[:1]
+    )
+    active_count = Subquery(
+        active.order_by().values("profile_id").annotate(n=Count("pk")).values("n")[:1]
+    )
+    rows = with_latest_term(
+        Award.objects.select_related("program", "profile", "profile__user", "tier", "started_term")
+    ).annotate(other_programs=Coalesce(others, Value(""), output_field=TextField()))
+    if filters.status in Award.Status.values:
+        rows = rows.filter(status=filters.status)
+    elif filters.status == "multi":
+        rows = rows.annotate(active_awards=Coalesce(active_count, Value(0))).filter(
+            active_awards__gte=2
+        )
+    if filters.program is not None:
+        rows = rows.filter(program_id=filters.program)
+    for word in filters.q.split():
+        rows = rows.filter(
+            Q(profile__first_name__icontains=word) | Q(profile__last_name__icontains=word)
+        )
+    return rows.order_by("profile__last_name", "profile__first_name", "program__name", "pk")

@@ -213,6 +213,8 @@ URLS: dict[str, str] = {
     "office:report-detail": "office_object",
     "office:report-decide": "office_post_only",
     "office:audit": "office",
+    "office:scholars": "office",
+    "office:scholars-export": "office",
     "audit:program": "head",
     "notifications-staff:list": "staff",
     "notifications-staff:read-all": "staff_post_only",

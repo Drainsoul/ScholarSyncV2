@@ -4,7 +4,7 @@ from apps.core import audit_views
 from apps.reports import office_views as report_views
 from apps.workspace import notification_views
 
-from . import program_views, school_views, staff_views, views
+from . import program_views, scholar_views, school_views, staff_views, views
 
 app_name = "office"
 
@@ -32,6 +32,12 @@ urlpatterns = [
         "memberships/<int:pk>/",
         staff_views.MembershipChangeView.as_view(),
         name="membership-change",
+    ),
+    path("scholars/", scholar_views.OfficeScholarListView.as_view(), name="scholars"),
+    path(
+        "scholars/export/",
+        scholar_views.OfficeScholarExportView.as_view(),
+        name="scholars-export",
     ),
     path("schools/", school_views.SchoolListView.as_view(), name="schools"),
     path("schools/new/", school_views.SchoolNewView.as_view(), name="school-new"),
