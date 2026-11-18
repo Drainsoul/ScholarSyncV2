@@ -37,7 +37,7 @@ Explore mode is for your own computer only. Every port is published on `127.0.0.
 Pages to try: the home page `/`, the design kit and mockups `/_kit/`, and the health check `/healthz`.
 
 ### Test accounts
-The login page offers these as one-click buttons. All four use the password `explore-taguig-2026`; they exist only
+The login page offers these as one-click buttons. All four use the password `explore-demo-2026`; they exist only
 on this copy. They exist in explore and developer copies (`docker compose up`, or `DJANGO_DEBUG=true`), never on
 a hosted copy.
 

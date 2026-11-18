@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from apps.accounts.models import User
 from apps.programs.models import ProgramMembership
 
-PASSWORD = "explore-taguig-2026"  # noqa: S105 (public by design, shown on the login page)
+PASSWORD = "explore-demo-2026"  # noqa: S105 (public by design, shown on the login page)
 
 
 @dataclass(frozen=True)

@@ -5,7 +5,7 @@
 set -eu
 
 app="${1:?app base URL}"
-password="${SMOKE_STUDENT_PASSWORD:-explore-taguig-2026}"
+password="${SMOKE_STUDENT_PASSWORD:-explore-demo-2026}"
 jar="$(mktemp)"
 original="$(mktemp)"
 downloaded="$(mktemp)"

@@ -46,7 +46,7 @@ Public pages: about, privacy, terms, cookies, FAQ and contact are in the running
 `/terms/`, `/cookies/`, `/help/`, `/contact/`); their text lives in [templates/core/pages/](templates/core/pages/). To report a security problem, see [SECURITY.md](SECURITY.md).
 
 ## Test accounts
-Every account uses the password `explore-taguig-2026`.
+Every account uses the password `explore-demo-2026`.
 
 | Role | Account | What it shows |
 |---|---|---|
