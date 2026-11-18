@@ -8,7 +8,7 @@ from django.contrib.auth import SESSION_KEY
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.sessions.models import Session
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.http import HttpRequest
 from django.urls import reverse
 
@@ -127,6 +127,16 @@ def record_consent(*, user: User, request: HttpRequest | None) -> ConsentRecord:
 
 
 EMAIL_TAKEN = "An account with this email already exists."
+
+
+def _email_taken(email: str) -> bool:
+    """Any account's email, or any address a user added in allauth (verified or not)."""
+    return (
+        User.objects.filter(email__iexact=email).exists()
+        or EmailAddress.objects.filter(email__iexact=email).exists()
+    )
+
+
 NOT_YOURSELF = "You can't deactivate your own account."
 KEEP_ONE_OFFICE = "Keep at least one active scholarship office account."
 
@@ -144,10 +154,10 @@ def set_password_url(user: User) -> str:
 
 
 def send_welcome(*, actor: User, user: User) -> None:
-    """Email the set-password link (again). Only staff and office accounts, and only before the
-    first sign-in; a no-op otherwise."""
+    """Email the set-password link (again). Only active staff and office accounts, and only
+    before the first sign-in; a no-op otherwise."""
     require_office(actor)
-    if user.role == User.Role.STUDENT or user.last_login is not None:
+    if user.role == User.Role.STUDENT or user.last_login is not None or not user.is_active:
         return
     enqueue(
         to=user.email,
@@ -172,9 +182,15 @@ def create_account(
     """A staff or office account with no password yet, and the email to set one."""
     require_office(actor)
     email = normalise_email(email)
-    if User.objects.filter(email__iexact=email).exists():
+    if _email_taken(email):
         raise ValidationError({"email": EMAIL_TAKEN})
-    user = create_staff_user(actor=actor, email=email, full_name=full_name.strip(), role=role)
+    try:
+        with transaction.atomic():
+            user = create_staff_user(
+                actor=actor, email=email, full_name=full_name.strip(), role=role
+            )
+    except IntegrityError:  # a second post raced past the check
+        raise ValidationError({"email": EMAIL_TAKEN}) from None
     send_welcome(actor=actor, user=user)
     return user
 
@@ -185,6 +201,14 @@ def set_account_active(
 ) -> User:
     """Deactivate (ending every session) or reactivate a staff or office account."""
     require_office(actor)
+    # Every active office account first, in pk order: two office accounts deactivating each
+    # other at once then decide one after the other, so one always stays active (M12).
+    list(
+        User.objects.select_for_update()
+        .filter(role=User.Role.SUPER_ADMIN, is_active=True)
+        .order_by("pk")
+        .values_list("pk", flat=True)
+    )
     locked = User.objects.select_for_update().get(pk=user.pk)
     if locked.role == User.Role.STUDENT:
         raise ValidationError("Only staff and office accounts are managed here.")

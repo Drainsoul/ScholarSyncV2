@@ -153,9 +153,12 @@ def start_application(
 
 
 def _applies(requirement: RequiredDocument, application: Application) -> bool:
-    return requirement.program_id == application.program_id and requirement.applies_to in (
-        application.kind,
-        RequiredDocument.AppliesTo.BOTH,
+    """The requirement belongs to the application's program and kind, and is still asked for
+    (a switched-off requirement takes no uploads, even by a direct POST; M12)."""
+    return (
+        requirement.is_active
+        and requirement.program_id == application.program_id
+        and requirement.applies_to in (application.kind, RequiredDocument.AppliesTo.BOTH)
     )
 
 

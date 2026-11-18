@@ -2,7 +2,7 @@ from datetime import date
 from decimal import Decimal
 
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import connection, transaction
+from django.db import IntegrityError, connection, transaction
 from django.http import Http404, HttpRequest
 from django.utils import timezone
 
@@ -183,6 +183,10 @@ def set_current_term(*, actor: User, term: AcademicTerm) -> AcademicTerm | None:
 SLUG_TAKEN = "That slug is taken."
 
 
+def _slug_taken(slug: str) -> bool:
+    return Program.objects.filter(slug=slug).exists()
+
+
 @transaction.atomic
 def create_program(
     *, actor: User, slug: str, name: str, description: str, request: HttpRequest | None = None
@@ -190,9 +194,15 @@ def create_program(
     """A new program, closed until the office opens it. The slug never changes afterwards."""
     require_office(actor)
     slug = slug.strip().lower()
-    if Program.objects.filter(slug=slug).exists():
+    if _slug_taken(slug):
         raise ValidationError({"slug": SLUG_TAKEN})
-    program = Program.objects.create(slug=slug, name=name, description=description, is_active=False)
+    try:
+        with transaction.atomic():
+            program = Program.objects.create(
+                slug=slug, name=name, description=description, is_active=False
+            )
+    except IntegrityError:  # a second post raced past the check
+        raise ValidationError({"slug": SLUG_TAKEN}) from None
     record(
         actor=actor,
         action="program.created",
@@ -307,6 +317,7 @@ TIER_CODE_TAKEN = "That tier code is taken."
 TIER_PAST_TERM = "Pick the current term or a later one."
 TIER_NO_CURRENT = "Set a current term first: tier changes start from it."
 TIER_IN_USE = "Records already use the {term} amounts for {tier}. Pick a later term."
+TIER_CHANGED = "This tier changed while you were editing it. Check its amounts and try again."
 
 
 def _tier_term(term: AcademicTerm) -> None:
@@ -399,16 +410,20 @@ def _write_tier_row(
         same.base_amount, same.merit_amount, same.is_active = base_amount, merit_amount, is_active
         same.save(update_fields=["base_amount", "merit_amount", "is_active", "updated_at"])
         return same
-    return BenefitTier.objects.create(
-        program=program,
-        code=code,
-        name=latest.name,
-        base_amount=base_amount,
-        merit_amount=merit_amount,
-        effective_from=term,
-        is_active=is_active,
-        sort_order=latest.sort_order,
-    )
+    try:
+        with transaction.atomic():
+            return BenefitTier.objects.create(
+                program=program,
+                code=code,
+                name=latest.name,
+                base_amount=base_amount,
+                merit_amount=merit_amount,
+                effective_from=term,
+                is_active=is_active,
+                sort_order=latest.sort_order,
+            )
+    except IntegrityError:  # another change wrote this term's row after we read
+        raise ValidationError(TIER_CHANGED) from None
 
 
 @transaction.atomic
@@ -570,6 +585,13 @@ def set_document_active(
 SCHOOL_TAKEN = "A school with this name already exists."
 
 
+def _school_taken(name: str, school: School | None) -> bool:
+    clash = School.objects.filter(name__iexact=name)
+    if school is not None:
+        clash = clash.exclude(pk=school.pk)
+    return clash.exists()
+
+
 @transaction.atomic
 def save_school(
     *,
@@ -583,10 +605,7 @@ def save_school(
 ) -> School:
     """Add a school (`school=None`) or edit one. Names are unique whatever their case."""
     require_office(actor)
-    clash = School.objects.filter(name__iexact=name)
-    if school is not None:
-        clash = clash.exclude(pk=school.pk)
-    if clash.exists():
+    if _school_taken(name, school):
         raise ValidationError({"name": SCHOOL_TAKEN})
     fields = {
         "name": name,
@@ -594,18 +613,22 @@ def save_school(
         "grading_scale": grading_scale,
         "is_in_taguig": is_in_taguig,
     }
-    if school is None:
-        saved = School.objects.create(**fields)
-        action = "school.added"
-    else:
-        saved = School.objects.select_for_update().get(pk=school.pk)
-        changed = [field for field, value in fields.items() if getattr(saved, field) != value]
-        if not changed:
-            return saved
-        for field in changed:
-            setattr(saved, field, fields[field])
-        saved.save(update_fields=[*changed, "updated_at"])
-        action = "school.updated"
+    try:
+        with transaction.atomic():
+            if school is None:
+                saved = School.objects.create(**fields)
+                action = "school.added"
+            else:
+                saved = School.objects.select_for_update().get(pk=school.pk)
+                changed = [f for f, value in fields.items() if getattr(saved, f) != value]
+                if not changed:
+                    return saved
+                for field in changed:
+                    setattr(saved, field, fields[field])
+                saved.save(update_fields=[*changed, "updated_at"])
+                action = "school.updated"
+    except IntegrityError:  # a second post raced past the check
+        raise ValidationError({"name": SCHOOL_TAKEN}) from None
     record(
         actor=actor,
         action=action,

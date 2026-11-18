@@ -24,7 +24,7 @@ from apps.applications.behalf import (
     submit_on_behalf,
     withdraw_on_behalf,
 )
-from apps.applications.models import Application, Document
+from apps.applications.models import Application, Document, DocumentFile
 from apps.applications.review_selectors import behalf_application
 from apps.applications.selectors import open_application
 from apps.applications.tests.factories import (
@@ -660,3 +660,13 @@ def test_submit_without_current_term_is_never_overridden(world: World) -> None:
         is_current=False, starts_on=date(2020, 8, 1), ends_on=date(2020, 12, 1)
     )
     assert_submit_refused(world, application, NO_TERM, reason="Walk-in")
+
+
+def test_upload_to_stopped_requirement_404_staff(world: World) -> None:
+    application = draft(world)
+    req = requirement(world)
+    req.is_active = False
+    req.save(update_fields=["is_active"])
+    with pytest.raises(Http404):
+        attach(world, application, req, staff_file(world.actor))
+    assert not DocumentFile.objects.exists()

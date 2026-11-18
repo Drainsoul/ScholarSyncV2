@@ -1024,3 +1024,17 @@ def test_start_refused_while_award_suspended(world: World) -> None:
         "You already hold this scholarship.",
     )
     assert Application.objects.count() == before
+
+
+def test_upload_to_stopped_requirement_404_student(world: World) -> None:
+    application = draft_for(world)
+    world.requirement.is_active = False
+    world.requirement.save(update_fields=["is_active"])
+    with pytest.raises(Http404):
+        attach_document(
+            user=world.user,
+            application=application,
+            requirement=world.requirement,
+            file_id=ready_file(world.user).pk,
+        )
+    assert not DocumentFile.objects.exists()
