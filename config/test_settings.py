@@ -22,6 +22,8 @@ os.environ.setdefault("DJANGO_ALLOWED_HOSTS", "scholarsync.example")
 os.environ.setdefault("EMAIL_URL", "smtp://localhost:25")
 # The CSP as production enforces it, whatever a local .env says (a debugging host may set true).
 os.environ["CSP_REPORT_ONLY"] = "false"
+# Production requires 2FA for staff; tests turn it on where they test it (M13).
+os.environ["MFA_REQUIRED_FOR_STAFF"] = "false"
 
 from config.settings import *  # noqa: E402, F403
 

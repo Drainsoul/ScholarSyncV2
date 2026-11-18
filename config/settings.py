@@ -136,6 +136,7 @@ INSTALLED_APPS = [
     "allauth",
     "allauth.account",
     "allauth.socialaccount",
+    "allauth.mfa",
     "allauth.socialaccount.providers.google",
     "django_vite",
     "csp",
@@ -175,6 +176,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "apps.core.middleware.NoStoreMiddleware",
     "allauth.account.middleware.AccountMiddleware",
+    "apps.accounts.mfa_policy.RequireStaffMfaMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -292,6 +294,11 @@ ACCOUNT_REAUTHENTICATION_REQUIRED = True
 ACCOUNT_REAUTHENTICATION_TIMEOUT = 300
 ACCOUNT_LOGOUT_ON_GET = False
 ACCOUNT_ADAPTER = "apps.accounts.adapters.AccountAdapter"
+# Two-factor sign-in (spec §10, M13): TOTP and recovery codes; required for staff and the office
+# in production, off in developer and explore modes so the demo keeps one-click sign-in.
+MFA_SUPPORTED_TYPES = ["totp", "recovery_codes"]
+MFA_TOTP_ISSUER = "ScholarSync"
+MFA_REQUIRED_FOR_STAFF = env.bool("MFA_REQUIRED_FOR_STAFF", PRODUCTION)
 ACCOUNT_FORMS = {"signup": "apps.accounts.forms.SignupForm"}
 SOCIALACCOUNT_ADAPTER = "apps.accounts.adapters.SocialAccountAdapter"
 SOCIALACCOUNT_FORMS = {"signup": "apps.accounts.forms.SocialSignupForm"}

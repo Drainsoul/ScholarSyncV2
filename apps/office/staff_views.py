@@ -3,6 +3,7 @@
 from typing import Any
 
 from allauth.account.decorators import reauthentication_required
+from allauth.mfa.models import Authenticator
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
@@ -95,6 +96,7 @@ class StaffDetailView(SuperAdminRequiredMixin, View):
     def extra_context(self, request: HttpRequest, account: User) -> dict[str, Any]:
         return {
             "membership_form": MembershipForm(),
+            "has_mfa": Authenticator.objects.filter(user=account).exists(),
             "levels": ProgramMembership.Level.choices,
         }
 
@@ -114,6 +116,25 @@ class StaffActiveView(SuperAdminRequiredMixin, View):
             messages.error(request, " ".join(error.messages))
         else:
             messages.success(request, "Account reactivated." if active else "Account deactivated.")
+        return redirect("office:staff-detail", pk=account.pk)
+
+
+@method_decorator(reauthentication_required, name="post")
+class StaffMfaView(SuperAdminRequiredMixin, View):
+    """Remove an account's two-factor sign-in (a lost phone); asks for the password again."""
+
+    http_method_names = ["post", "options"]
+
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        account = _account(pk)
+        try:
+            services.remove_mfa(actor=_actor(request), user=account, request=request)
+        except ValidationError as error:
+            messages.error(request, " ".join(error.messages))
+        else:
+            messages.success(
+                request, "Two-factor sign-in removed. They set it up again at their next sign-in."
+            )
         return redirect("office:staff-detail", pk=account.pk)
 
 

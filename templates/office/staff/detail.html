@@ -14,6 +14,7 @@
   </dl>
   <div class="btn-row">
     {% if not account.last_login and account.is_active %}<form method="post" action="{% url 'office:staff-welcome' account.pk %}">{% csrf_token %}<button type="submit" class="btn btn--secondary">{% icon "mail" %}Send the set-password email again</button></form>{% endif %}
+    {% if has_mfa and not is_self %}<form method="post" action="{% url 'office:staff-mfa' account.pk %}">{% csrf_token %}<button type="submit" class="btn btn--ghost">Remove two-factor sign-in</button></form>{% endif %}
     {% if not is_self %}<form method="post" action="{% url 'office:staff-active' account.pk %}">{% csrf_token %}<input type="hidden" name="active" value="{% if account.is_active %}0{% else %}1{% endif %}"><button type="submit" class="btn btn--ghost">{% if account.is_active %}Deactivate account{% else %}Reactivate account{% endif %}</button></form>{% endif %}
   </div>
   {% if is_self %}<p class="text-sm text-muted">This is your account. Another office account can deactivate it.</p>{% endif %}

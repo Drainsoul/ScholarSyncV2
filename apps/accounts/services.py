@@ -196,6 +196,22 @@ def create_account(
 
 
 @transaction.atomic
+def remove_mfa(*, actor: User, user: User, request: HttpRequest | None = None) -> None:
+    """Remove a staff or office account's authenticators (a lost phone) and end its sessions; the
+    person sets up a new one at the next sign-in."""
+    from allauth.mfa.models import Authenticator
+
+    require_office(actor)
+    if user.role == User.Role.STUDENT:
+        raise ValidationError("Only staff and office accounts are managed here.")
+    Authenticator.objects.filter(user=user).delete()
+    _end_sessions(user)
+    record(
+        actor=actor, action="mfa.removed", target=user, data={"account": user.pk}, request=request
+    )
+
+
+@transaction.atomic
 def set_account_active(
     *, actor: User, user: User, active: bool, request: HttpRequest | None = None
 ) -> User:

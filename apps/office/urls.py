@@ -23,6 +23,7 @@ urlpatterns = [
     path("staff/<int:pk>/", staff_views.StaffDetailView.as_view(), name="staff-detail"),
     path("staff/<int:pk>/active/", staff_views.StaffActiveView.as_view(), name="staff-active"),
     path("staff/<int:pk>/welcome/", staff_views.StaffWelcomeView.as_view(), name="staff-welcome"),
+    path("staff/<int:pk>/mfa/", staff_views.StaffMfaView.as_view(), name="staff-mfa"),
     path(
         "staff/<int:pk>/memberships/",
         staff_views.MembershipAddView.as_view(),

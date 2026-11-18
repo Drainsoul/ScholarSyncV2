@@ -123,6 +123,8 @@ RULES: dict[str, dict[str, Any]] = {
     # An office action that only answers POST: the role guard runs, then a GET is 405.
     "office_post_only": {"anonymous": LOGIN, **{p: 403 for p in PERSONAS[1:6]}, "office": 405},
     "kit": {p: 404 for p in PERSONAS},
+    # allauth pages that ask for the password first (a new 2FA secret, recovery codes).
+    "reauth": {"anonymous": LOGIN, **{p: (302, "/accounts/reauthenticate/") for p in SIGNED_IN}},
     # An unknown claim link is a 404 for everyone.
     "claim_unknown": {p: 404 for p in PERSONAS},
     # A signed-out visit has nothing to sign out of and goes home; signed in gets the confirm page.
@@ -291,6 +293,15 @@ URLS: dict[str, str] = {
     "account_change_password": "signed_in",
     "account_set_password": "set_password",
     "account_reauthenticate": "signed_in",
+    "mfa_index": "signed_in",
+    "mfa_activate_totp": "reauth",
+    "mfa_generate_recovery_codes": "reauth",
+    "mfa_reauthenticate": "reauth",
+    "mfa_authenticate": "login_code",
+    "mfa_deactivate_totp": "own_file",
+    "mfa_view_recovery_codes": "own_file",
+    "mfa_download_recovery_codes": "own_file",
+    "office:staff-mfa": "office_post_only",
     "google_login": "google_off",
     "google_callback": "google_off",
     "google_login_by_token": "google_off",
@@ -355,6 +366,7 @@ URL_KWARGS: dict[str, dict[str, str]] = {
     "office:staff-detail": {"pk": "999999"},
     "office:staff-active": {"pk": "999999"},
     "office:staff-welcome": {"pk": "999999"},
+    "office:staff-mfa": {"pk": "999999"},
     "office:membership-add": {"pk": "999999"},
     "office:membership-change": {"pk": "999999"},
     "office:school-edit": {"pk": "999999"},
