@@ -143,10 +143,11 @@ uses a region like `us-east-1`, an endpoint like `https://s3.us-east-1.amazonaws
 
 **SMTP.** Take the host, port and credentials from your email provider and set one URL:
 ```
-EMAIL_URL=smtp+tls://USER:PASSWORD@smtp.example.com:587
+EMAIL_URL=submission://USER:PASSWORD@smtp.example.com:587
 DEFAULT_FROM_EMAIL=ScholarSync <no-reply@your-domain.example>
 ```
-Use `smtps://` for port 465 and `smtp://` for an unencrypted relay. Set up SPF and DKIM for your sending domain with
+`submission://` uses STARTTLS. For port 465 use `smtp://USER:PASSWORD@HOST:465?ssl=true`. Production refuses an
+unencrypted `smtp://` URL to another machine (see `ALLOW_PLAINTEXT_SERVICES`). Set up SPF and DKIM for your sending domain with
 your provider, or mail lands in spam.
 
 **Malware scanning (optional).** Set `CLAMAV_HOST` (and `CLAMAV_PORT`, default 3310) to a clamd that accepts

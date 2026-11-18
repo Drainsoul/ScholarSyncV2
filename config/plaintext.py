@@ -6,6 +6,8 @@ exempts everything for a private network the operator trusts."""
 
 from urllib.parse import parse_qs, urlsplit
 
+import dj_email_url
+
 TLS_SSLMODES = {"require", "verify-ca", "verify-full"}
 FIX = "or set ALLOW_PLAINTEXT_SERVICES=true on a private network you trust (docs/HOSTING.md)"
 
@@ -33,11 +35,16 @@ def plaintext_refusals(
                 f"?sslmode=verify-full (or require), {FIX}."
             )
     email = urlsplit(email_url)
-    if email.scheme == "smtp" and email.hostname and not _local(email.hostname):
-        refusals.append(
-            f"EMAIL_URL uses smtp:// to {email.hostname}, which sends mail unencrypted. Use "
-            f"smtp+tls:// or smtps://, {FIX}."
-        )
+    if email.hostname and not _local(email.hostname):
+        # Judge what the URL turns into (submission:// and ?tls=true / ?ssl=true encrypt), not
+        # its scheme alone.
+        parsed = dj_email_url.parse(email_url)
+        smtp = parsed.get("EMAIL_BACKEND") == "django.core.mail.backends.smtp.EmailBackend"
+        if smtp and not (parsed["EMAIL_USE_TLS"] or parsed["EMAIL_USE_SSL"]):
+            refusals.append(
+                f"EMAIL_URL sends mail to {email.hostname} unencrypted. Use submission:// "
+                f"(STARTTLS, port 587) or add ?ssl=true for port 465, {FIX}."
+            )
     for name, url in storage_urls.items():
         parts = urlsplit(url)
         if parts.scheme == "http" and parts.hostname and not _local(parts.hostname):

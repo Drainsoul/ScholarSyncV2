@@ -208,7 +208,7 @@ DATABASES = {
 }
 DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
 
-# Email: one URL (smtp://user:pass@host:587, smtp+tls://..., console://) -----------------------
+# Email: one URL (submission://user:pass@host:587, smtp://...:465?ssl=true, console://) ---------
 if not os.environ.get("EMAIL_URL"):
     os.environ.pop("EMAIL_URL", None)  # a blank line in .env means "use the console backend"
 if PRODUCTION and not os.environ.get("EMAIL_URL", "").strip():
@@ -217,6 +217,12 @@ if PRODUCTION and not os.environ.get("EMAIL_URL", "").strip():
         "links would be written to the log. See docs/HOSTING.md."
     )
 _email_config = env.dj_email_url("EMAIL_URL", "console://")
+if "EMAIL_BACKEND" not in _email_config:
+    # dj-email-url ignores schemes it doesn't know (smtp+tls://, for one) and returns no backend.
+    raise ImproperlyConfigured(
+        "EMAIL_URL's scheme isn't recognised. Use submission:// (STARTTLS, port 587), "
+        "smtp://...:465?ssl=true (implicit TLS) or smtp:// (unencrypted). See .env.example."
+    )
 globals().update(_email_config)
 # Backends that never deliver: they would print links into the log or drop mail while every
 # outbox row reads "sent".

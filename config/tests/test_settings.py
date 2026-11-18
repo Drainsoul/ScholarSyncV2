@@ -666,8 +666,29 @@ def _refused(tmp_path, **env):
 def test_production_refuses_plaintext_smtp_to_another_host(tmp_path):
     refused, stderr = _refused(tmp_path, EMAIL_URL="smtp://mail.example.org:25")
     assert refused
-    assert "EMAIL_URL uses smtp:// to mail.example.org" in stderr
+    assert "EMAIL_URL sends mail to mail.example.org unencrypted" in stderr
     assert "ALLOW_PLAINTEXT_SERVICES" in stderr
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "submission://u:p@smtp.example.org:587",
+        "smtp://u:p@smtp.example.org:587?tls=true",
+        "smtp://u:p@smtp.example.org:465?ssl=true",
+    ],
+)
+def test_production_accepts_encrypted_smtp_to_another_host(tmp_path, url):
+    refused, stderr = _refused(tmp_path, EMAIL_URL=url)
+    assert not refused, stderr
+
+
+def test_unknown_email_scheme_is_refused_with_a_sentence(tmp_path):
+    # smtp+tls:// was once in the docs; dj-email-url doesn't know it and returned no backend.
+    refused, stderr = _refused(tmp_path, EMAIL_URL="smtp+tls://u:p@smtp.example.org:587")
+    assert refused
+    assert "EMAIL_URL's scheme isn't recognised" in stderr
+    assert "KeyError" not in stderr
 
 
 def test_production_refuses_http_storage_to_another_host(tmp_path):
