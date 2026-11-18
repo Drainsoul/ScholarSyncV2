@@ -32,7 +32,7 @@ def required(settings: Any) -> None:
 
 def _code(secret: str) -> str:
     counter = next(yield_hotp_counters_from_time())
-    return format_hotp_value(hotp_value(secret, counter))
+    return str(format_hotp_value(hotp_value(secret, counter)))
 
 
 def _staff() -> User:
@@ -109,3 +109,10 @@ def test_requirement_off_in_developer_and_explore_modes(tmp_path: Path) -> None:
     assert settings_values(tmp_path, ["MFA_REQUIRED_FOR_STAFF"], _unset=unset) == {
         "MFA_REQUIRED_FOR_STAFF": True
     }
+
+
+def test_developer_copy_with_example_line_does_not_require(tmp_path: Path) -> None:
+    values = settings_values(
+        tmp_path, ["MFA_REQUIRED_FOR_STAFF"], DJANGO_DEBUG="true", MFA_REQUIRED_FOR_STAFF="true"
+    )
+    assert values == {"MFA_REQUIRED_FOR_STAFF": False}

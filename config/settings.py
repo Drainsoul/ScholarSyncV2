@@ -298,7 +298,8 @@ ACCOUNT_ADAPTER = "apps.accounts.adapters.AccountAdapter"
 # in production, off in developer and explore modes so the demo keeps one-click sign-in.
 MFA_SUPPORTED_TYPES = ["totp", "recovery_codes"]
 MFA_TOTP_ISSUER = "ScholarSync"
-MFA_REQUIRED_FOR_STAFF = env.bool("MFA_REQUIRED_FOR_STAFF", PRODUCTION)
+# Production only, so a .env copied from .env.example never forces it on a developer copy.
+MFA_REQUIRED_FOR_STAFF = PRODUCTION and env.bool("MFA_REQUIRED_FOR_STAFF", True)
 ACCOUNT_FORMS = {"signup": "apps.accounts.forms.SignupForm"}
 SOCIALACCOUNT_ADAPTER = "apps.accounts.adapters.SocialAccountAdapter"
 SOCIALACCOUNT_FORMS = {"signup": "apps.accounts.forms.SocialSignupForm"}

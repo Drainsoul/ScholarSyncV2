@@ -49,6 +49,7 @@ At least:
 | `S3_ENDPOINT_URL`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_ADDRESSING_STYLE` | your storage (step 4) |
 | `TRUSTED_PROXY_COUNT` | the number of reverse proxies in front of the app: behind one HTTPS proxy, set `TRUSTED_PROXY_COUNT=1` (default 0). Without it, sign-in rate limits count every visitor as the proxy. `compose.production.yaml` defaults it to `1` for `web` when `.env` leaves it blank; behind two proxies (a CDN in front of yours), set `2` |
 | `CSP_REPORT_ONLY` | leave `false` (enforced); `true` only to debug a blocked resource |
+| `MFA_REQUIRED_FOR_STAFF` | leave `true`: staff and office accounts set up an authenticator app at their first sign-in. The office can remove a lost one from the account page |
 | `ALLOW_PLAINTEXT_SERVICES` | leave `false`. Production refuses `smtp://`, `http://` storage and a database URL without `sslmode=require` or `verify-full` when they point at another machine (loopback, compose service names and `host.docker.internal` are fine). Set `true` only on a private network you trust |
 
 Also delete or replace the development-only values at the top of the file. The app refuses to start in production if
