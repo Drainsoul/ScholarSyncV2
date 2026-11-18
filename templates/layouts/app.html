@@ -58,7 +58,7 @@
     </div>
     {% endif %}
   </nav>
-  <dialog id="session-dialog" class="dialog" aria-labelledby="session-dialog-title" data-session-dialog>
+  <dialog id="session-dialog" class="dialog" aria-labelledby="session-dialog-title" data-session-dialog data-session-status="{% url 'session_status' %}">
     <div class="dialog__body">
       <h2 id="session-dialog-title">Still there?</h2>
       <p data-session-message>You'll be signed out in 2 minutes because you haven't done anything.</p>

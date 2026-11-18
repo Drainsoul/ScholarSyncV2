@@ -77,6 +77,28 @@ def test_keep_alive_resets_idle_and_answers_204(client: Any, time_machine: Any) 
     assert client.get("/staff/tcu-ceaa/").status_code == 200
 
 
+def test_responses_carry_the_idle_seconds_left(client: Any, time_machine: Any) -> None:
+    time_machine.move_to(START, tick=False)
+    _sign_in(client, _staff())
+    client.get("/staff/tcu-ceaa/")
+    time_machine.move_to(START + timedelta(seconds=30), tick=False)
+    assert client.get("/staff/tcu-ceaa/")["X-Session-Idle"] == "1770"
+    assert client.post(KEEP_ALIVE)["X-Session-Idle"] == "1800"
+
+
+def test_status_check_is_not_activity(client: Any, time_machine: Any) -> None:
+    """The warning script's own check can't keep an unattended tab signed in."""
+    time_machine.move_to(START, tick=False)
+    _sign_in(client, _staff())
+    client.get("/staff/tcu-ceaa/")
+    time_machine.move_to(START + timedelta(minutes=29), tick=False)
+    response = client.get("/accounts/session/status/")
+    assert response.json() == {"idle": 60, "absolute": 12 * 3600 - 29 * 60}
+    time_machine.move_to(START + timedelta(minutes=31), tick=False)
+    response = client.get("/accounts/session/status/")
+    assert response.status_code == 302 and response["Location"].startswith("/accounts/login/")
+
+
 def test_keep_alive_needs_post_and_sign_in(client: Any) -> None:
     assert client.post(KEEP_ALIVE)["Location"].startswith("/accounts/login/")
     client.force_login(UserFactory.create(verified=True))

@@ -2,7 +2,7 @@ from django.http import Http404, HttpRequest, HttpResponse
 from django.urls import include, path
 
 from apps.accounts.reauth import MfaReauthenticateView, ReauthenticateView, SessionListView
-from apps.accounts.session_policy import keep_alive
+from apps.accounts.session_policy import keep_alive, status
 
 
 def not_offered(request: HttpRequest) -> HttpResponse:
@@ -36,6 +36,7 @@ urlpatterns = [
     path("accounts/claim/", include("apps.students.claim_urls")),
     path("accounts/google/login/token/", not_offered, name="google_login_by_token"),
     path("accounts/session/keep-alive/", keep_alive, name="session_keep_alive"),
+    path("accounts/session/status/", status, name="session_status"),
     path(
         "accounts/reauthenticate/",
         ReauthenticateView.as_view(),

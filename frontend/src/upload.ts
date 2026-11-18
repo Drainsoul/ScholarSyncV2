@@ -8,6 +8,7 @@
 // any failure shows the error state and clears the hidden input. The live region announces only the
 // start, the end and errors. Text is set with textContent, never innerHTML.
 
+import { reportSessionResponse } from "./session";
 import { NETWORK_ERROR, SERVER_ERROR } from "./toast";
 
 const MB = 1024 * 1024;
@@ -116,6 +117,7 @@ async function post(url: string, body?: unknown): Promise<Record<string, unknown
   } catch {
     throw new UploadError(NETWORK_ERROR);
   }
+  reportSessionResponse(response); // an upload step is activity: keep the idle warning in step
   let data: unknown = null;
   try {
     data = await response.json();
