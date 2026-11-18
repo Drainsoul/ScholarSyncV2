@@ -91,3 +91,21 @@ def test_cleanup_never_deletes_a_referenced_import_row(s3: Any) -> None:
     StoredFile.objects.filter(pk=kept.pk).update(updated_at=timezone.now() - timedelta(days=40))
     call_command("cleanup")  # the 30-day rejected purge must skip it (PROTECT)
     assert StoredFile.objects.filter(pk=kept.pk).exists()
+
+
+def test_cleanup_stops_at_the_first_storage_error(s3: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A storage outage costs one timeout per run, not one per old file (the worker also sends
+    email)."""
+    first, second = _import_file(9), _import_file(10)
+    calls: list[str] = []
+
+    def fail(key: str) -> None:
+        calls.append(key)
+        raise storage.StorageUnavailable("Object storage request failed (test).")
+
+    monkeypatch.setattr(storage, "delete", fail)
+    call_command("cleanup")
+    assert len(calls) == 1
+    for file in (first, second):
+        file.refresh_from_db()
+        assert file.status == StoredFile.Status.READY

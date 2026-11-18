@@ -39,7 +39,7 @@ def purge_imports(now: datetime) -> int:
             for key in {file.key, file.final_key}:
                 storage.delete(key)
         except storage.StorageUnavailable:
-            continue
+            break  # one timeout per run, not one per file: the worker also sends email
         if file.pk in referenced:
             StoredFile.objects.filter(pk=file.pk).update(
                 status=StoredFile.Status.REJECTED, rejected_reason=EXPIRED, updated_at=now
