@@ -1,7 +1,7 @@
 """Deploy checks that must work whether or not optional apps are installed."""
 
 from django.conf import settings
-from django.core.checks import CheckMessage, Error, Tags, register
+from django.core.checks import CheckMessage, Error, Tags, Warning, register
 
 from config.demo import demo_installed
 
@@ -16,5 +16,19 @@ def demo_folder_removed(app_configs: object, **kwargs: object) -> list[CheckMess
             "The demo app is still installed.",
             hint="Delete the apps/demo folder before deploying (docs/HOSTING.md).",
             id="demo.E001",
+        )
+    ]
+
+
+@register(Tags.security, deploy=True)
+def csp_enforced(app_configs: object, **kwargs: object) -> list[CheckMessage]:
+    """Warn when production only reports CSP violations (`--fail-level WARNING` stops a deploy)."""
+    if settings.CONTENT_SECURITY_POLICY is not None:
+        return []
+    return [
+        Warning(
+            "The Content Security Policy only reports violations; it doesn't block them.",
+            hint="Unset CSP_REPORT_ONLY (and VITE_DEV_MODE) in production.",
+            id="security.W_CSP_REPORT_ONLY",
         )
     ]

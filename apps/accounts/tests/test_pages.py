@@ -119,3 +119,12 @@ def test_signed_in_account_pages_render_with_submit_buttons(
         assert "type=" not in tag or 'type="submit"' in tag or 'type="button"' in tag
     action = [t for t in buttons if 'class="btn' in t]
     assert action and all('type="button"' not in t for t in action)
+
+
+def test_logout_page_has_one_sign_out(client: Any, vite_build: Any, db: Any) -> None:
+    from apps.accounts.tests.factories import UserFactory
+
+    client.force_login(UserFactory.create(verified=True))
+    body = _get(client, "/accounts/logout/")
+    assert body.count('action="/accounts/logout/"') == 1
+    assert len(re.findall(r"Sign [Oo]ut\s*</button>", body)) == 1  # not counting the toast template

@@ -11,7 +11,7 @@
   </div>
   <main id="main" tabindex="-1" class="auth__main">
     <div class="auth__form">{% block content %}{% endblock %}</div>
-    {% if user.is_authenticated %}
+    {% if user.is_authenticated and request.resolver_match.url_name != "account_logout" %}
     <form class="auth__signout" method="post" action="{% url 'account_logout' %}">{% csrf_token %}<button type="submit" class="btn btn--ghost">{% icon "log-out" %}Sign out</button></form>
     {% endif %}
   </main>
