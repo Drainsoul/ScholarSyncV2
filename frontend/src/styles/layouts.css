@@ -165,10 +165,20 @@
   margin: 0;
 }
 
-/* Inside the app shell's main column, under the page content. */
+/* Inside the app shell's main column, under the page content; the page body above it grows, so
+   on a short page the footer still sits at the bottom of the window. */
 .footer--in-app {
   margin-top: var(--space-10);
   padding-inline: 0;
+}
+
+.app > .page {
+  display: flex;
+  flex-direction: column;
+}
+
+.page__body {
+  flex: 1 0 auto;
 }
 
 /* Information pages: privacy, terms, cookies, FAQ, about, contact */
@@ -301,6 +311,7 @@
     "topbar"
     "sidebar"
     "main";
+  grid-template-rows: auto auto 1fr;
   grid-template-columns: minmax(0, 1fr);
 }
 

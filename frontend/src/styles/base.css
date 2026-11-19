@@ -22,6 +22,15 @@ body {
   line-height: var(--leading-body);
   color: var(--text);
   background: var(--bg);
+  /* Every page fills the window, so a footer after short content sits at the bottom, not
+     mid-page: the main region (or the auth split, or the app shell) takes the free height. */
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+body > :is(main, .auth, .app) {
+  flex: 1 0 auto;
 }
 
 h1,

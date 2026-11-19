@@ -66,8 +66,10 @@
     </div>
   </dialog>
   <main id="main" tabindex="-1" class="page">
+    <div class="page__body">
     {% block breadcrumbs %}{% if crumbs %}{% include "components/breadcrumbs.html" %}{% endif %}{% endblock %}
     {% block content %}{% endblock %}
+    </div>
     {% include "components/site_footer.html" with footer_class="footer--in-app" %}
   </main>
 </div>
