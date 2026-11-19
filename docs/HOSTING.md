@@ -294,7 +294,10 @@ Short steps for the jobs you will repeat. All commands run in your clone, on the
    `docker tag scholarsync:previous scholarsync:production`, then
    `docker compose -f compose.production.yaml up -d --no-build`.
 2. Migrations are expand-only (they add, never remove or rename), so the previous code runs on the newer database.
-   Restore a backup only if the update itself damaged data.
+   Restore a backup only if the update itself damaged data. One exception: code from before two-factor secrets were
+   encrypted cannot read them. To go back that far, first run
+   `docker compose -f compose.production.yaml exec web python manage.py migrate accounts 0002_consentrecord` on the new
+   image (it decrypts them), then switch images.
 3. Reset your branch to the commit you rolled back to (`git reset --hard COMMIT`) before the next update, or the
    next build brings the bad version back.
 
