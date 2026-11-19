@@ -83,6 +83,39 @@ def test_setup_page_shows_three_steps_and_the_key(client: Client, vite_build: An
     assert "data:image/svg+xml;base64," in content
 
 
+@pytest.mark.parametrize(
+    "url_name",
+    [
+        "mfa_deactivate_totp",
+        "mfa_view_recovery_codes",
+        "mfa_generate_recovery_codes",
+        "account_email",
+        "account_change_password",
+    ],
+)
+def test_other_manage_pages_render_in_the_shell(
+    client: Client, vite_build: Any, url_name: str
+) -> None:
+    user = _student()
+    TOTP.activate(user, generate_totp_secret())
+    RecoveryCodes.activate(user)
+    reauthenticated(client, user)
+    page = client.get(reverse(url_name))
+    assert page.status_code == 200
+    assert SIDEBAR in page.content
+    assert AUTH_PANEL not in page.content
+
+
+def test_recovery_codes_page_lists_the_codes(client: Client, vite_build: Any) -> None:
+    user = _student()
+    TOTP.activate(user, generate_totp_secret())
+    codes = RecoveryCodes.activate(user).get_unused_codes()
+    reauthenticated(client, user)
+    page = client.get(reverse("mfa_view_recovery_codes")).content.decode()
+    assert "10 of 10 left" in page
+    assert all(code in page for code in codes)
+
+
 def test_sign_in_pages_keep_the_sign_in_layout(client: Client, vite_build: Any) -> None:
     page = client.get(reverse("account_login"))
     assert AUTH_PANEL in page.content
