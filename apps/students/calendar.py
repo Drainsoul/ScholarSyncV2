@@ -6,8 +6,10 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Literal
 
+from django.db.models import Exists, OuterRef
+
 from apps.accounts.models import User
-from apps.awards.models import Award
+from apps.awards.models import Award, ScholarTerm
 from apps.matching.eligibility import CheckState
 from apps.matching.selectors import MatchPage
 from apps.money.models import DistributionSchedule
@@ -121,11 +123,15 @@ def student_calendar(user: User, page: MatchPage, *, today: date, month: date) -
     )
     start, end = weeks_raw[0][0], weeks_raw[-1][-1]
     windows = _window_events(_window_programs(page))
-    held = Award.objects.filter(profile__user=user, status__in=HELD_FOR_RELEASES).values(
-        "program_id"
+    # As the award card's "Next release": only terms the student is a scholar in.
+    scholar_in = ScholarTerm.objects.filter(
+        award__profile__user=user,
+        award__status__in=HELD_FOR_RELEASES,
+        award__program_id=OuterRef("program_id"),
+        term_id=OuterRef("term_id"),
     )
     schedules = DistributionSchedule.objects.filter(
-        is_published=True, program_id__in=held
+        Exists(scholar_in), is_published=True
     ).select_related("program")
     in_grid = [
         _release_event(schedule)

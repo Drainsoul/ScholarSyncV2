@@ -10,7 +10,7 @@ from django.utils import timezone
 from apps.accounts.models import User
 from apps.applications.tests.factories import ApplicationFactory
 from apps.awards.models import Award
-from apps.awards.tests.factories import AwardFactory
+from apps.awards.tests.factories import AwardFactory, ScholarTermFactory
 from apps.matching.selectors import match_page
 from apps.money.tests.factories import ScheduleFactory
 from apps.programs.tests.factories import AcademicTermFactory, ProgramFactory
@@ -82,15 +82,27 @@ def test_december_steps_into_the_next_year() -> None:
     assert shown.following == "2027-01" and not shown.is_current_month
 
 
+def _scholar(name: str = "Program") -> tuple[Award, Any]:
+    """An award with a scholar term: schedules in that term are the student's release days."""
+    award = AwardFactory.create(source_application__program=ProgramFactory.create(name=name))
+    record = ScholarTermFactory.create(award=award, term=AcademicTermFactory.create())
+    return award, record.term
+
+
 def test_release_days_of_held_programs_only_when_published() -> None:
-    award = AwardFactory.create(source_application__program=ProgramFactory.create(name="TCU CEAA"))
+    award, term = _scholar("TCU CEAA")
     user = award.profile.user
     ScheduleFactory.create(
-        program=award.program, distribution_date=date(2026, 11, 28), claim_location="TCU Gym"
+        program=award.program,
+        term=term,
+        distribution_date=date(2026, 11, 28),
+        claim_location="TCU Gym",
     )
     ScheduleFactory.create(
-        program=award.program, distribution_date=date(2026, 11, 29), is_published=False
+        program=award.program, term=term, distribution_date=date(2026, 11, 29), is_published=False
     )
+    # A term the student isn't a scholar in, as the award card's "Next release".
+    ScheduleFactory.create(program=award.program, distribution_date=date(2026, 11, 26))
     ScheduleFactory.create(program__name="Other Grant", distribution_date=date(2026, 11, 27))
     shown = _calendar(user)
     assert _titles(shown) == ["TCU CEAA allowance release"]
@@ -100,8 +112,10 @@ def test_release_days_of_held_programs_only_when_published() -> None:
 
 
 def test_no_release_days_after_the_award_ends() -> None:
-    award = AwardFactory.create(status=Award.Status.INACTIVE)
-    ScheduleFactory.create(program=award.program, distribution_date=date(2026, 11, 28))
+    award, term = _scholar()
+    award.status = Award.Status.INACTIVE
+    award.save(update_fields=["status"])
+    ScheduleFactory.create(program=award.program, term=term, distribution_date=date(2026, 11, 28))
     assert _titles(_calendar(award.profile.user)) == []
 
 
@@ -140,10 +154,11 @@ def test_no_window_for_a_program_the_student_does_not_qualify_for(term: Any) -> 
 
 
 def test_upcoming_is_sorted_and_capped_at_five(term: Any) -> None:
-    award = AwardFactory.create()
-    for day in (30, 25, 22, 21, 26, 29, 23):
-        ScheduleFactory.create(program=award.program, distribution_date=date(2026, 11, day))
-    ScheduleFactory.create(program=award.program, distribution_date=date(2026, 11, 19))
+    award, term = _scholar()
+    for day in (30, 25, 22, 21, 26, 29, 23, 19):
+        ScheduleFactory.create(
+            program=award.program, term=term, distribution_date=date(2026, 11, day)
+        )
     upcoming = _calendar(award.profile.user).upcoming
     assert [e.day.day for e in upcoming] == [21, 22, 23, 25, 26]
 
