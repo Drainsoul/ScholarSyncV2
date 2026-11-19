@@ -229,6 +229,19 @@ def end_all_sessions(*, actor: User | None, user: User, request: HttpRequest | N
 
 
 @transaction.atomic
+def reencrypt_mfa_secrets(*, actor: User | None) -> int:
+    """Encrypt every stored 2FA secret under the current secret key, after a rotation and before
+    the old key leaves `SECRET_KEY_FALLBACKS`. `actor=None` is the operator's command line."""
+    from allauth.mfa.models import Authenticator
+
+    from . import mfa_secrets
+
+    changed = mfa_secrets.convert_rows(Authenticator, mfa_secrets.rotate)
+    record(actor=actor, action="mfa.secrets_reencrypted", data={"authenticators": changed})
+    return changed
+
+
+@transaction.atomic
 def remove_mfa(*, actor: User, user: User, request: HttpRequest | None = None) -> None:
     """Remove a staff or office account's authenticators (a lost phone) and end its sessions; the
     person sets up a new one at the next sign-in."""

@@ -17,6 +17,8 @@ env.read_env(os.environ.get("DJANGO_ENV_FILE", str(BASE_DIR / ".env")), recurse=
 # Core ----------------------------------------------------------------------------------------
 DEBUG = env.bool("DJANGO_DEBUG", False)
 SECRET_KEY = env.str("DJANGO_SECRET_KEY")  # required: no fallback, ever
+# Old keys kept while a rotation settles: they still verify sessions and decrypt 2FA secrets.
+SECRET_KEY_FALLBACKS: list[str] = env.list("DJANGO_SECRET_KEY_FALLBACKS", [])
 
 
 # Modes (open-source spec §6): developer = DEBUG, explore = localhost-only HTTP, else production.

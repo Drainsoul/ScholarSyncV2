@@ -17,6 +17,7 @@ from django.shortcuts import redirect
 from apps.core.shell import home_url_for
 from apps.workspace import emails
 
+from . import mfa_secrets
 from .models import User
 
 
@@ -129,7 +130,9 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):  # type: ignore[misc]
 
 class MFAAdapter(DefaultMFAAdapter):  # type: ignore[misc]
     """While 2FA is required, staff and the office can't remove their own authenticator: the
-    office removes a lost one (M13). Anyone else may switch theirs off."""
+    office removes a lost one (M13). Anyone else may switch theirs off.
+
+    TOTP secrets and recovery-code seeds are encrypted at rest (`mfa_secrets`)."""
 
     def can_delete_authenticator(self, authenticator: Any) -> bool:
         user = authenticator.user
@@ -137,3 +140,9 @@ class MFAAdapter(DefaultMFAAdapter):  # type: ignore[misc]
             user.is_program_staff or user.is_super_admin
         )
         return not required
+
+    def encrypt(self, text: str) -> str:
+        return mfa_secrets.encrypt(text)
+
+    def decrypt(self, encrypted_text: str) -> str:
+        return mfa_secrets.decrypt(encrypted_text)

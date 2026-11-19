@@ -272,8 +272,8 @@ Back up the database and the bucket. Test a restore once.
   `pg_restore --clean --if-exists --no-owner --dbname "$DATABASE_URL" FILE`, into the old database or a new empty one
   (`--if-exists` keeps an empty target from reporting hundreds of harmless "does not exist" errors).
 - **Files:** enable versioning on the bucket, or copy it regularly (`aws s3 sync` or `rclone`).
-- **Secrets:** keep `.env` in a password manager or secrets store. Losing `DJANGO_SECRET_KEY` signs everyone out, and
-  nothing else.
+- **Secrets:** keep `.env` in a password manager or secrets store. Losing `DJANGO_SECRET_KEY` signs everyone out and
+  makes every two-factor authenticator unreadable: the office then removes each staff member's, and they add it again.
 - **Test a restore** (`docs/hosting-walkthrough.md` records one): dump; stop the app
   (`docker compose -f compose.production.yaml stop`); restore into the database; start it again (`start`); sign in and
   open a stored file.
@@ -302,8 +302,13 @@ Short steps for the jobs you will repeat. All commands run in your clone, on the
 
 **Rotate a secret.** Change the value in `.env`, then `docker compose -f compose.production.yaml up -d` (it recreates
 both containers). What each one changes:
-- `DJANGO_SECRET_KEY`: everyone is signed out, and open password-reset, set-password and email-confirmation links stop
-  working (people ask for new ones). Claim links for student profiles keep working.
+- `DJANGO_SECRET_KEY`: the key also encrypts two-factor secrets, so keep the old one. Put it in
+  `DJANGO_SECRET_KEY_FALLBACKS`, set the new one, restart, then run
+  `docker compose -f compose.production.yaml exec web python manage.py reencrypt_mfa_secrets`. Remove the old key
+  once that has run and active sessions have moved over (a day is plenty); sessions not used since then end.
+  Open password-reset, set-password and email-confirmation links made under the old key stop working then (people ask
+  for new ones); claim links for student profiles keep working. Remove the old key before the command has run and
+  authenticators can no longer be read: staff then need the office to remove theirs, and they add it again.
 - `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY`: create the new key at your provider first, switch `.env`, then delete
   the old key. Download links already handed out stop working when the old key goes (they last 5 minutes anyway).
 - `EMAIL_URL` password: queued email is retried by the worker with the new value.
