@@ -61,6 +61,8 @@
   (the old GitHub repository is replaced by an empty one with the same name; the local history keeps every commit,
   rewritten so no commit contains private working notes; pushing waits for the maintainer); the specs live in `docs/design/`, and private working notes
   stay local, with `CONTRIBUTING.md` as the contributor guide (§10, §14, §19).
+- **Revision:** 25 (2026-11-19): `/` has no page of its own: it sends signed-out visitors to the sign-in page and
+  signed-in users to their own home, and signing out lands on the sign-in page (§5, §10).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -580,7 +582,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 ## 5. URL map
 | Area | URL | Who |
 |---|---|---|
-| Public | `/`, `/programs/` (M6), `/programs/<slug>/` (M6), `/about/`, `/help/`, `/privacy/`, `/terms/`, `/cookies/`, `/contact/` (the six information pages; footer disclaimer in §11) | anyone |
+| Public | `/` (redirects: the sign-in page, or the user's own home when signed in), `/programs/` (M6), `/programs/<slug>/` (M6), `/about/`, `/help/`, `/privacy/`, `/terms/`, `/cookies/`, `/contact/` (the six information pages; footer disclaimer in §11) | anyone |
 | Health | `/healthz` (database ping, no details) | anyone |
 | Accounts | `/accounts/…` (allauth: signup, login, logout POST, email confirm, password reset, Google), `/accounts/claim/<token>/` | anyone |
 | Student | `/me/` (dashboard), `/me/profile/` (+ `personal/`, `family/`, `family/<id>/` + `…/delete/`, `education/`, `education/<id>/` + `…/delete/`, `photo/`) | student (own records only) |
@@ -882,7 +884,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 - **Sessions:**
   - database-backed; `Secure`, `HttpOnly`, `SameSite=Lax`; 12-hour age;
   - `ACCOUNT_SESSION_REMEMBER = True`, so there is no "remember me" checkbox;
-  - logout is POST only.
+  - logout is POST only and lands on the sign-in page.
 - **CSRF and redirects:**
   - Django CSRF on every form; HTMX sends `X-CSRFToken` through `hx-headers` on `<body>`;
   - redirects are validated with `url_has_allowed_host_and_scheme`.
