@@ -63,6 +63,11 @@
   stay local, with `CONTRIBUTING.md` as the contributor guide (§10, §14, §19).
 - **Revision:** 25 (2026-11-19): `/` has no page of its own: it sends signed-out visitors to the sign-in page and
   signed-in users to their own home, and signing out lands on the sign-in page (§5, §10).
+- **Revision:** 26 (2026-11-20): student screens and account pages reworked: the student home shows profile
+  completion as a small ring beside a month calendar of release days and application windows; the profile overview
+  is read-only with an Edit button per section; the model hint moves to the top of Find scholarships as a compact
+  note; the session list and the two-factor pages render inside the signed-in app shell, and the session list
+  counts live sessions from the session table (§5, §10, §12).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -1082,10 +1087,36 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
   - bulk actions are a form with checkboxes;
   - every form also works as a normal POST without JS.
 - **Dashboards (M11):**
-  - **student** (`/me/`, the approved mockup): returned banners (not on-behalf), one award card per active or
-    suspended award ("To renew:" from the program's renewal rules), profile, the 5 newest applications, the 3 newest
-    payouts with M10's student labels, the 3 newest notifications; the bell shows the unread count on every student
-    page;
+  - **student** (`/me/`, the approved mockup, reworked in rev 26): returned banners (not on-behalf), one award card
+    per active or suspended award ("To renew:" from the program's renewal rules); then a calendar beside a narrow
+    column with the profile ring and the next dates; then the 5 newest applications, the 3 newest payouts with M10's
+    student labels, the 3 newest notifications; the bell shows the unread count on every student page;
+    - **profile ring:** an SVG circle (`pathLength="100"`, the dash set by attributes, never an inline style, for the
+      CSP) with the percent in its middle, "Next: {section}" and the profile link; the percent is also text;
+    - **calendar:** one month (`?month=YYYY-MM`, anything invalid falls back to the current month; Previous/Next
+      swap only the calendar with HTMX and work as plain links), Monday first, today marked, each date with events
+      marked by a dot **and** a visually hidden label, the day's events listed under the grid's day number on wide
+      screens; events are (a) **release days**: published distribution schedules of programs where the student holds
+      an active or suspended award ("{program} allowance release", the claim place) and (b) **application windows**:
+      `applications_open_on` / `applications_close_on` of active programs the student qualifies for on Find
+      scholarships or has an unfinished application in ("{program} applications open/close"); nothing else
+      (no term dates, no deadlines staff haven't entered);
+    - **next dates:** the next 5 events from today, as a list (also the calendar's text alternative on phones);
+  - **student profile** (`/me/profile/`, rev 26): read-only. One card per section (personal details, family,
+    education, photo) shows what is on file as a description list (family members and education records as rows,
+    the photo as a thumbnail), "Not given" for an empty field, and a "Missing" note naming what is still needed;
+    each card's Edit button opens that section's existing form, which returns to the overview on save;
+  - **find scholarships** (`/me/match/`, rev 26): the model hint, when there is one, comes first as a compact note
+    (one line plus the advisory sentence), above the program cards;
+  - **account pages** (rev 26): the session list (`/accounts/sessions/`), the two-factor pages (`/accounts/2fa/…`:
+    overview, set up the authenticator app, turn it off, recovery codes) and the other allauth "manage" pages render
+    in the user's own app shell (student, staff with their first program, or office) with project wording; the
+    sign-in, two-factor-at-sign-in and reauthentication pages keep the sign-in layout. The two-factor overview has
+    one card per method with its state ("On" / "Off"), what it does, and its action; setting up the app is three
+    numbered steps (install an app, scan the code or type the key, enter the 6-digit code). The session list shows
+    every live session of the user from the session table: the ones allauth recorded with their browser and
+    address, and any other as "Another browser (details not recorded)", so the count and "Sign out other sessions"
+    never miss one;
   - **staff** (`/staff/<slug>/`, kit figures and attention rows): "Active scholars", "Applications waiting",
     "Released this year", "At risk"; "Needs attention" (waiting over 7 days from `submitted_at`, own overdue tasks,
     at risk, prepared payouts, approved payouts, the window); "Applications by month" (6 months by
