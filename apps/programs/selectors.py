@@ -61,6 +61,25 @@ def tiers_in_force(program: Program, term: AcademicTerm) -> list[BenefitTier]:
     return sorted(live, key=lambda tier: (tier.sort_order, tier.name))
 
 
+def tiers_in_force_for(programs: list[Program], term: AcademicTerm) -> dict[int, list[BenefitTier]]:
+    """`tiers_in_force` for several programs in one query, keyed by program id."""
+    latest = (
+        BenefitTier.objects.filter(
+            program__in=programs, effective_from__sort_key__lte=term.sort_key
+        )
+        .order_by("program_id", "code", "-effective_from__sort_key")
+        .distinct("program_id", "code")
+    )
+    found: dict[int, list[BenefitTier]] = {program.pk: [] for program in programs}
+    for tier in latest:
+        if tier.is_active:
+            found[tier.program_id].append(tier)
+    return {
+        key: sorted(tiers, key=lambda tier: (tier.sort_order, tier.name))
+        for key, tiers in found.items()
+    }
+
+
 def required_documents_for(
     program: Program, kind: Literal["new", "renewal"]
 ) -> QuerySet[RequiredDocument]:

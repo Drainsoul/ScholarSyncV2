@@ -8,8 +8,8 @@ from apps.applications.models import Application
 from apps.awards.models import Award
 from apps.matching.eligibility import Academic, EligibilityResult, evaluate, evaluate_renewal
 from apps.matching.legacy_model import Hint, hint_for
-from apps.programs.models import AcademicTerm, Program
-from apps.programs.selectors import application_term, tiers_in_force
+from apps.programs.models import AcademicTerm, BenefitTier, Program
+from apps.programs.selectors import application_term, tiers_in_force, tiers_in_force_for
 from apps.students.models import StudentProfile
 from apps.students.selectors import current_education, profile_for
 
@@ -46,8 +46,10 @@ def _evaluate(
     academic: Academic | None,
     term: AcademicTerm | None,
     today: date,
+    tiers: list[BenefitTier] | None = None,
 ) -> EligibilityResult:
-    tiers = tiers_in_force(program, term) if term is not None else []
+    if tiers is None:
+        tiers = tiers_in_force(program, term) if term is not None else []
     return evaluate(
         profile,
         program,
@@ -136,10 +138,11 @@ def match_page(user: User, *, today: date) -> MatchPage:
             open_ids[program_id] = pk
             if on_behalf:
                 behalf_ids.add(program_id)
+    tiers = tiers_in_force_for(programs, term) if term is not None else {}
     matches = [
         ProgramMatch(
             program=program,
-            result=_evaluate(profile, program, academic, term, today),
+            result=_evaluate(profile, program, academic, term, today, tiers.get(program.pk, [])),
             open_application_id=open_ids.get(program.pk),
             open_on_behalf=program.pk in behalf_ids,
             held=bool(getattr(program, "held", False)),
