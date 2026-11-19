@@ -7,9 +7,10 @@ from django.db import models
 from django.http import Http404, HttpRequest, HttpResponse
 from django.http.response import HttpResponseBase
 from django.shortcuts import redirect, render
+from django.template.response import TemplateResponse
 from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
-from django.utils.cache import add_never_cache_headers
+from django.utils.cache import add_never_cache_headers, patch_vary_headers
 from django.views import View
 from django.views.defaults import page_not_found
 from django.views.generic import TemplateView
@@ -17,7 +18,9 @@ from django.views.generic import TemplateView
 from apps.accounts.models import User
 from apps.core.permissions import StudentRequiredMixin
 from apps.core.shell import shell_context
+from apps.matching.selectors import match_page
 from apps.students import services
+from apps.students.calendar import days_until, parse_month, student_calendar
 from apps.students.dashboard import student_dashboard
 from apps.students.forms import ClaimForm, EducationForm, FamilyMemberForm, PersonalForm, PhotoForm
 from apps.students.models import EducationRecord, FamilyMember, ProfileInvite
@@ -49,6 +52,31 @@ def _url_or_none(url_name: str) -> str | None:
         return None
 
 
+CALENDAR_ID = "home-calendar"
+WEEKDAYS = [
+    ("Monday", "Mon"),
+    ("Tuesday", "Tue"),
+    ("Wednesday", "Wed"),
+    ("Thursday", "Thu"),
+    ("Friday", "Fri"),
+    ("Saturday", "Sat"),
+    ("Sunday", "Sun"),
+]
+
+
+def _calendar_context(request: HttpRequest, user: User) -> dict[str, Any]:
+    today = timezone.localdate()
+    month = parse_month(request.GET.get("month"), today=today)
+    shown = student_calendar(user, match_page(user, today=today), today=today, month=month)
+    upcoming = [{"event": event, "when": days_until(event.day, today)} for event in shown.upcoming]
+    return {
+        "calendar": shown,
+        "upcoming": upcoming,
+        "calendar_id": CALENDAR_ID,
+        "weekdays": WEEKDAYS,
+    }
+
+
 class HomeView(StudentRequiredMixin, TemplateView):
     template_name = "students/home.html"
 
@@ -59,10 +87,24 @@ class HomeView(StudentRequiredMixin, TemplateView):
         return {
             **super().get_context_data(**kwargs),
             **shell_context(self.request, area="student"),
+            **_calendar_context(self.request, user),
             "completion": completion,
             "next_section": missing.label if missing is not None else "",
             "board": student_dashboard(user, today=timezone.localdate()),
         }
+
+    def get(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        htmx = getattr(request, "htmx", None)
+        if htmx and htmx.target == CALENDAR_ID:
+            # Previous/Next month: only the calendar, without the rest of the dashboard.
+            context = _calendar_context(request, _student(request))
+            response: HttpResponse = TemplateResponse(
+                request, f"{self.template_name}#calendar", context
+            )
+        else:
+            response = super().get(request, *args, **kwargs)
+        patch_vary_headers(response, ("HX-Request", "HX-Target"))
+        return response
 
 
 class ProfileView(StudentRequiredMixin, TemplateView):

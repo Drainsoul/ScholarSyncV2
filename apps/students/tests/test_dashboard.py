@@ -199,6 +199,10 @@ def test_staff_cannot_open_student_home(client: Any) -> None:
 
 
 def test_home_query_count(client: Any, django_assert_max_num_queries: Any) -> None:
+    # Rev 26's calendar runs the Find scholarships check: a current term and several programs
+    # must not add queries per program (measured 35 with 0 or 8 extra programs).
+    AcademicTermFactory.create(school_year_start=2026, is_current=True)
+    ProgramFactory.create_batch(8)
     profile = ProfileFactory.create()
     assert profile.user is not None
     for _ in range(3):
@@ -211,5 +215,5 @@ def test_home_query_count(client: Any, django_assert_max_num_queries: Any) -> No
     ApplicationFactory.create_batch(10, profile=profile)
     NotificationFactory.create_batch(20, recipient=profile.user)
     client.force_login(profile.user)
-    with django_assert_max_num_queries(30):
+    with django_assert_max_num_queries(40):
         assert client.get(reverse("students:home")).status_code == 200

@@ -1,4 +1,4 @@
-{% extends "layouts/student.html" %}{% load ui %}
+{% extends "layouts/student.html" %}{% load ui partials %}
 {% block title %}Your scholarships{% endblock %}
 {% block content %}
 <div class="page-header">
@@ -7,7 +7,8 @@
 {% for application in board.returned %}
 <div class="banner banner--warning" role="status">{% icon "triangle-alert" %}<div><p class="banner__title">{{ application.program.name }} returned your application</p>{% if application.decision_reason %}<p>{{ application.decision_reason }}</p>{% endif %}</div><a class="btn btn--primary banner__action" href="{% url 'applications:detail' application.pk %}">Fix application</a></div>
 {% endfor %}
-<div class="split">
+{% if board.awards %}
+<div class="award-row">
   {% for card in board.awards %}
   <section class="award-card" aria-labelledby="award-title-{{ forloop.counter }}">
     <div class="award-card__head">
@@ -22,13 +23,66 @@
     {% if card.renew_text %}<p class="award-card__renew"><strong>To renew:</strong> {{ card.renew_text }}</p>{% endif %}
   </section>
   {% endfor %}
-  <section class="card" aria-labelledby="profile-title">
-    <h2 class="card__title" id="profile-title">Your profile</h2>
-    <p class="profile-figure"><span class="profile-figure__value num">{{ completion.percent }}%</span> complete</p>
-    <progress class="progress progress--secondary" max="100" value="{{ completion.percent }}" aria-label="Profile complete">{{ completion.percent }}%</progress>
-    {% if next_section %}<p>Next: {{ next_section }}.</p>{% endif %}
-    <a class="btn btn--soft" href="{% url 'students:profile' %}">{% if completion.percent == 100 %}View your profile{% else %}Complete your profile{% endif %}</a>
+</div>
+{% endif %}
+<div class="home-grid">
+  {% partialdef calendar inline %}
+  <section class="card cal" id="{{ calendar_id }}" aria-labelledby="cal-title">
+    <div class="cal__head">
+      <h2 class="card__title" id="cal-title">{{ calendar.month|date:"F Y" }}</h2>
+      <div class="cal__nav">
+        {% if not calendar.is_current_month %}<a class="btn btn--ghost" href="?" hx-get="?" hx-target="#{{ calendar_id }}" hx-swap="outerHTML" hx-push-url="true">This month</a>{% endif %}
+        <a class="btn btn--secondary cal__step" href="?month={{ calendar.previous }}" hx-get="?month={{ calendar.previous }}" hx-target="#{{ calendar_id }}" hx-swap="outerHTML" hx-push-url="true">{% icon "chevron-left" "Previous month" %}</a>
+        <a class="btn btn--secondary cal__step" href="?month={{ calendar.following }}" hx-get="?month={{ calendar.following }}" hx-target="#{{ calendar_id }}" hx-swap="outerHTML" hx-push-url="true">{% icon "chevron-right" "Next month" %}</a>
+      </div>
+    </div>
+    <table class="cal__grid">
+      <caption class="visually-hidden">Important dates in {{ calendar.month|date:"F Y" }}</caption>
+      <thead><tr>{% for name, short in weekdays %}<th scope="col"><abbr title="{{ name }}">{{ short }}</abbr></th>{% endfor %}</tr></thead>
+      <tbody>{% for week in calendar.weeks %}<tr>{% for cell in week %}
+        <td class="cal__day{% if not cell.in_month %} cal__day--outside{% endif %}{% if cell.is_today %} cal__day--today{% endif %}{% if cell.events %} cal__day--busy{% endif %}"{% if cell.is_today %} aria-current="date"{% endif %}>
+          <time class="cal__num" datetime="{{ cell.day|date:'Y-m-d' }}">{{ cell.day.day }}</time>
+          {% for event in cell.events %}<span class="cal__event cal__event--{{ event.kind }}" title="{{ event.title }}"><span class="cal__event-text">{{ event.title }}</span></span>{% endfor %}
+        </td>{% endfor %}
+      </tr>{% endfor %}</tbody>
+    </table>
+    <ul class="cal__legend" role="list" aria-label="Key">
+      <li><span class="cal__swatch cal__swatch--release" aria-hidden="true"></span>Allowance release</li>
+      <li><span class="cal__swatch cal__swatch--opens" aria-hidden="true"></span>Applications open</li>
+      <li><span class="cal__swatch cal__swatch--closes" aria-hidden="true"></span>Applications close</li>
+    </ul>
   </section>
+  {% endpartialdef %}
+  <div class="home-side">
+    <section class="card ring-card" aria-labelledby="profile-title">
+      <h2 class="card__title" id="profile-title">Your profile</h2>
+      <div class="ring-card__body">
+        <svg class="ring" viewBox="0 0 44 44" role="img" aria-label="Profile {{ completion.percent }}% complete">
+          <circle class="ring__track" cx="22" cy="22" r="18" pathLength="100"></circle>
+          <circle class="ring__value" cx="22" cy="22" r="18" pathLength="100" stroke-dasharray="{{ completion.percent }} 100" transform="rotate(-90 22 22)"></circle>
+          <text class="ring__label" x="22" y="22" text-anchor="middle" dominant-baseline="central">{{ completion.percent }}%</text>
+        </svg>
+        <div>
+          <p class="ring-card__state">{% if completion.percent == 100 %}All done{% else %}{{ completion.percent }}% complete{% endif %}</p>
+          {% if next_section %}<p class="text-sm text-muted">Next: {{ next_section }}.</p>{% endif %}
+        </div>
+      </div>
+      <a class="btn btn--soft ring-card__action" href="{% url 'students:profile' %}">{% if completion.percent == 100 %}View your profile{% else %}Complete your profile{% endif %}</a>
+    </section>
+    <section class="card" aria-labelledby="next-title">
+      <h2 class="card__title" id="next-title">Coming up</h2>
+      {% if upcoming %}
+      <ul class="next-dates" role="list">{% for item in upcoming %}
+        <li class="next-dates__item">
+          <time class="next-dates__date next-dates__date--{{ item.event.kind }}" datetime="{{ item.event.day|date:'Y-m-d' }}"><span class="next-dates__month">{{ item.event.day|date:"M" }}</span><span class="next-dates__day">{{ item.event.day.day }}</span></time>
+          <div><p class="next-dates__title">{{ item.event.title }}</p><p class="text-sm text-muted">{{ item.when }}{% if item.event.detail %}, {{ item.event.detail }}{% endif %}</p></div>
+        </li>{% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-sm text-muted">No dates yet. Release days and application deadlines show here once they're set.</p>
+      {% endif %}
+    </section>
+  </div>
 </div>
 <div class="split split--even">
   <section class="card" aria-labelledby="apps-title">
