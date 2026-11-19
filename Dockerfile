@@ -9,7 +9,7 @@ COPY frontend/ ./
 # vite.config.ts writes to ../static/dist, which is /build/static/dist here.
 RUN npm run build
 
-FROM python:3.13.18-slim AS app
+FROM python:3.15.2-slim AS app
 COPY --from=ghcr.io/astral-sh/uv:0.13.0 /uv /uvx /bin/
 
 ENV PYTHONUNBUFFERED=1 \
