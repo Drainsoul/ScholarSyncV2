@@ -1,6 +1,6 @@
 import logging
 import subprocess
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -22,6 +22,7 @@ from apps.applications.models import Application
 from apps.awards.importing import check_import
 from apps.awards.models import Award
 from apps.awards.selectors import RenewalStatus, at_risk_q, renewal_for, with_latest_term
+from apps.core.models import AuditEvent
 from apps.demo import loader
 from apps.demo.accounts import ACCOUNTS, PASSWORD
 from apps.demo.loader import SAMPLE_IMPORT
@@ -119,6 +120,7 @@ def test_load_completes_a_partial_earlier_run(demo_app, settings, monkeypatch):
     # account with audit events can't be deleted: they are append-only).
     monkeypatch.setattr(loader, "give_workspace_samples", lambda: None)
     monkeypatch.setattr(loader, "give_office_samples", lambda: None)
+    monkeypatch.setattr(loader, "_give_lani_a_window", lambda: None)  # rev 26, also audited
     loader.load()
     User.objects.filter(email="office@scholarsync.test").delete()
     monkeypatch.undo()
@@ -548,9 +550,35 @@ def test_demo_does_not_change_program_config(demo_app, settings, frozen_today):
     fields = [f.name for f in Program._meta.concrete_fields if f.name != "updated_at"]
     before = list(Program.objects.order_by("pk").values(*fields))
     loader.load()
-    # The demo adds its own closed sample program (M11b); the seeded ones stay as they were.
+    # The demo adds its own closed sample program (M11b); the seeded ones stay as they were,
+    # except LANI's empty application window, which the demo fills (spec §11 rev 26).
     seeded = Program.objects.filter(pk__in=[row["id"] for row in before])
-    assert list(seeded.order_by("pk").values(*fields)) == before
+    after = list(seeded.order_by("pk").values(*fields))
+    window = ("applications_open_on", "applications_close_on")
+    for row in [*before, *after]:
+        if row["slug"] == "lani":
+            for name in window:
+                row.pop(name)
+    assert after == before
+
+
+@pytest.mark.django_db
+def test_demo_gives_lani_a_window_around_today_once(demo_app, settings, frozen_today):
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    lani = Program.objects.get(slug="lani")
+    today = timezone.localdate()
+    assert lani.applications_open_on == today - loader.LANI_WINDOW_BEFORE
+    assert lani.applications_close_on == today + loader.LANI_WINDOW_AFTER
+    assert AuditEvent.objects.filter(
+        action="program.rules_changed", actor__email="office@scholarsync.test"
+    ).exists()
+    # A window someone set is left alone on the next load.
+    later = today + timedelta(days=3)
+    Program.objects.filter(pk=lani.pk).update(applications_close_on=later)
+    loader.load()
+    lani.refresh_from_db()
+    assert lani.applications_close_on == later
 
 
 # --- Manual scholar and the sample import file (M9b) ---

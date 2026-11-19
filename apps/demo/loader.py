@@ -52,7 +52,7 @@ from apps.money import services as money
 from apps.money.models import Disbursement, DistributionSchedule
 from apps.programs.models import AcademicTerm, BenefitTier, Program, School
 from apps.programs.selectors import application_term, current_term, required_documents_for
-from apps.programs.services import add_membership
+from apps.programs.services import add_membership, update_rules
 from apps.programs.terms import school_year_terms
 from apps.students import services as students
 from apps.students.models import EducationRecord, FamilyMember, ProfileInvite, StudentProfile
@@ -617,6 +617,31 @@ def _give_staff_money() -> None:
         logger.warning("Demo money samples skipped (%s).", type(error).__name__)
 
 
+LANI_WINDOW_BEFORE = timedelta(days=14)
+LANI_WINDOW_AFTER = timedelta(days=30)
+
+
+def _give_lani_a_window() -> None:
+    """LANI's application window around today, so the student home's calendar has dates to show
+    (spec §11 rev 26: the one program setting the demo may set). Set by the office account, and
+    only while LANI has no window: a window someone set is left alone."""
+    program = Program.objects.filter(slug="lani").first()
+    office = User.objects.filter(email__iexact="office@scholarsync.test").first()
+    if program is None or office is None:
+        return
+    if program.applications_open_on is not None or program.applications_close_on is not None:
+        return
+    today = timezone.localdate()
+    update_rules(
+        actor=office,
+        program=program,
+        data={
+            "applications_open_on": today - LANI_WINDOW_BEFORE,
+            "applications_close_on": today + LANI_WINDOW_AFTER,
+        },
+    )
+
+
 def _sync_passwords() -> None:
     """Give demo accounts that sign in the password the login page shows, even after it changed.
 
@@ -640,6 +665,7 @@ def load() -> int:
             _create(account)
             created += 1
         _sync_passwords()
+        _give_lani_a_window()
         _give_student_a_profile("student@scholarsync.test")
         _give_student_a_draft("student@scholarsync.test", "lani")
         _give_staff_a_queue()
