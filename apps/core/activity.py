@@ -99,6 +99,7 @@ VERBS.update(
         "mfa.added": "set up two-factor sign-in",
         "mfa.deactivated": "switched off their two-factor sign-in",
         "mfa.reset": "made new recovery codes",
+        "mfa.secrets_reencrypted": "re-encrypted the stored 2FA secrets",
         "user.sessions_ended": "signed an account out everywhere",
         "user.other_sessions_ended": "signed out of their other sessions",
         "profile.created": "started a profile",
