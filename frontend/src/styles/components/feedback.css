@@ -256,10 +256,10 @@ html:not(.js) .toast__close {
   color: var(--secondary);
 }
 
-.hint-note p {
+.hint-note > div > p {
   margin: 0;
 }
 
-.hint-note p + p {
+.hint-note > div > p + p {
   margin-top: var(--space-1);
 }
