@@ -617,6 +617,18 @@ def _give_staff_money() -> None:
         logger.warning("Demo money samples skipped (%s).", type(error).__name__)
 
 
+def _sync_passwords() -> None:
+    """Give demo accounts that sign in the password the login page shows, even after it changed.
+
+    Accounts made without a password (applicants, former staff) stay that way.
+    """
+    emails = [account.email for account in ACCOUNTS] + [s.email for s in SAMPLE_SCHOLARS]
+    for user in User.objects.filter(email__in=emails):
+        if user.has_usable_password() and not user.check_password(PASSWORD):
+            user.set_password(PASSWORD)
+            user.save(update_fields=["password"])
+
+
 def load() -> int:
     """Create the demo accounts that are missing and return how many were created."""
     with transaction.atomic():
@@ -627,6 +639,7 @@ def load() -> int:
                 continue
             _create(account)
             created += 1
+        _sync_passwords()
         _give_student_a_profile("student@scholarsync.test")
         _give_student_a_draft("student@scholarsync.test", "lani")
         _give_staff_a_queue()

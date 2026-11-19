@@ -95,6 +95,24 @@ def test_load_creates_four_verified_accounts_once(demo_app, settings):
 
 
 @pytest.mark.django_db
+def test_load_gives_existing_demo_accounts_the_current_password(demo_app, settings, frozen_today):
+    # A database from before the password changed keeps working: the login page shows PASSWORD.
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    emails = [a.email for a in ACCOUNTS] + [s.email for s in SAMPLE_SCHOLARS]
+    for user in User.objects.filter(email__in=emails):
+        user.set_password("explore-taguig-2026")
+        user.save(update_fields=["password"])
+    applicant = User.objects.filter(email__endswith="@scholarsync.test", password__startswith="!")
+    unusable = set(applicant.values_list("pk", flat=True))
+    assert unusable
+    loader.load()
+    for email in emails:
+        assert User.objects.get(email=email).check_password(PASSWORD), email
+    assert not any(u.has_usable_password() for u in User.objects.filter(pk__in=unusable))
+
+
+@pytest.mark.django_db
 def test_load_completes_a_partial_earlier_run(demo_app, settings, monkeypatch):
     settings.DEMO_ACTIVE = True
     # An earlier run from before the M11 samples, which give the office audited actions (an
