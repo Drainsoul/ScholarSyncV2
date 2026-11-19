@@ -234,7 +234,7 @@
 }
 
 .cal__day {
-  height: 5.75rem;
+  height: 4.5rem;
   padding: var(--space-1);
   border: 1px solid var(--border);
   vertical-align: top;
