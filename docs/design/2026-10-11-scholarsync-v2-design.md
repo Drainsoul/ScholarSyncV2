@@ -783,7 +783,8 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - **Inputs:**
     - `grade = round(clamp(1 + (gwa_percent − 70) × 0.1, 1, 4), 2)` (as v1); only shown when a percent GWA exists;
     - `income`, now actually collected: the monthly household income in pesos as typed; v1's units are undocumented,
-      so the page says "Suggested by v1's model; advisory, and the model's income units are unknown.";
+      so the page says it is advisory and that the model's income units are unknown (rev 26: a "Hint:" note above
+      the program cards);
     - the school name, matched exactly (v1's one-hot encoder is case-sensitive);
     - school type public/private, with SUC and LCU mapped to public.
   - **Missing inputs:** the hint appears only with a percent current GWA, a household income, and a known school name
@@ -1110,8 +1111,9 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
   - **find scholarships** (`/me/match/`, rev 26): the model hint, when there is one, comes first as a compact note
     (one line plus the advisory sentence), above the program cards;
   - **account pages** (rev 26): the session list (`/accounts/sessions/`), the two-factor pages (`/accounts/2fa/…`:
-    overview, set up the authenticator app, turn it off, recovery codes) and the other allauth "manage" pages render
-    in the user's own app shell (student, staff with their first program, or office) with project wording; the
+    overview, set up the authenticator app, turn it off, recovery codes) render in the user's own app shell
+    (student, staff with their first program, or office) with project wording; the other allauth "manage" pages
+    (email addresses, password change) use the same shell with allauth's own form markup; the
     sign-in, two-factor-at-sign-in and reauthentication pages keep the sign-in layout. The two-factor overview has
     one card per method with its state ("On" / "Off"), what it does, and its action; setting up the app is three
     numbered steps (install an app, scan the code or type the key, enter the 6-digit code). The session list shows
