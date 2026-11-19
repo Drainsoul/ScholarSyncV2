@@ -58,8 +58,8 @@
   claim" notice stays (§4.6, §4.8, §9).
 - **Revision:** 24 (2026-11-19): the maintainer's decisions after M14: 2FA secrets and recovery-code seeds are encrypted at
   rest (ASVS V6.5.2); V14.2.1 and the M14 decisions confirmed; the repository is published with a fresh history
-  (the old GitHub repository is replaced by an empty one with the same name, and the local history becomes one new
-  commit; pushing waits for the maintainer); the specs live in `docs/design/`, and private working notes
+  (the old GitHub repository is replaced by an empty one with the same name; the local history keeps every commit,
+  rewritten so no commit contains private working notes; pushing waits for the maintainer); the specs live in `docs/design/`, and private working notes
   stay local, with `CONTRIBUTING.md` as the contributor guide (§10, §14, §19).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**

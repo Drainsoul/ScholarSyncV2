@@ -34,8 +34,9 @@ The Vercel spike (`scholarsync-spike`) is unused since spec revision 5. Its toke
 
 ## 3. The repository on GitHub
 
-The repository is published with a fresh history: the local `main` holds a single new commit, and the old GitHub
-repository is replaced by an empty one with the same name. Nothing is pushed until the maintainer decides to.
+The old GitHub repository is replaced by an empty one with the same name, and the local history is pushed to it. That
+history keeps every commit, rewritten on 2026-11-19 so none contains private working notes (the
+original is in a backup bundle outside the repository). Nothing is pushed until the maintainer decides to.
 
 - [ ] **History scan.** Run gitleaks on the local repository right before publishing:
 
