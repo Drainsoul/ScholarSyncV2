@@ -88,12 +88,15 @@ def test_missing_school_shows_fix_link(client, term):
 
 
 def test_hint_shown_for_percent_student_with_income(client, term):
+    ProgramFactory.create(name="Hint Order Grant")
     profile = FullProfileFactory.create(monthly_household_income=Decimal("15000.00"))
     EducationRecordFactory.create(profile=profile, gwa=Decimal("90.00"), gwa_scale="percent")
     body = text(get(client, profile.user))
     assert "v1's model suggests" in body
     assert "%)." in body
-    assert "Advisory only: the program rules above decide." in body
+    assert "Advisory only: the program rules below decide." in body
+    # The hint comes first, above the program cards.
+    assert body.index("v1's model suggests") < body.index("Hint Order Grant")
 
 
 def test_hint_reason_for_one_to_five_student(client, term):

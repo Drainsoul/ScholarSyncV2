@@ -237,3 +237,29 @@ html:not(.js) .toast__close {
 .drawer__body > * {
   margin: 0;
 }
+
+/* Find scholarships: the model's hint, a compact note above the program cards (spec §12 rev 26). */
+.hint-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--info-100);
+  border-left: 4px solid var(--secondary);
+  border-radius: var(--radius-md);
+  background: var(--info-50);
+}
+
+.hint-note > .icon {
+  flex: none;
+  margin-top: 0.1875rem;
+  color: var(--secondary);
+}
+
+.hint-note p {
+  margin: 0;
+}
+
+.hint-note p + p {
+  margin-top: var(--space-1);
+}
