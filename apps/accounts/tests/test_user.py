@@ -27,7 +27,12 @@ def test_superuser_is_technical_only(db):
     assert not admin.is_super_admin
 
 
-def test_passwords_use_argon2(db):
+def test_passwords_use_argon2(db, settings):
+    # Tests hash with MD5 for speed (config/test_settings.py); the app's own list leads with Argon2.
+    from config import settings as app_settings
+
+    assert app_settings.PASSWORD_HASHERS[0].endswith("Argon2PasswordHasher")
+    settings.PASSWORD_HASHERS = app_settings.PASSWORD_HASHERS
     user = User.objects.create_user("c@scholarsync.test", "x-pass-2026-long")
     assert user.password.startswith("argon2")
 

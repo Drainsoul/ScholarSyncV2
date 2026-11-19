@@ -31,3 +31,8 @@ from config.settings import *  # noqa: E402, F403
 
 # Rate limits (allauth) need a cache and tests have no cache table.
 CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+
+# Argon2 is slow on purpose (about 85 ms a hash here, more on CI's 4 cores), and nearly every test
+# creates or signs in a user: CI's pytest ran past its 15-minute limit. Production keeps Argon2
+# (test_passwords_use_argon2 checks the app's own list).
+PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
