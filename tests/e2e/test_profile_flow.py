@@ -24,7 +24,7 @@ def test_a_new_student_fills_in_the_profile(page: Page, live_server, vite_build,
     user = UserFactory.create(verified=True)
     base = live_server.url
     log_in(page, base, user.email)
-    expect(page.locator(".profile-figure")).to_contain_text("0% complete")
+    expect(page.locator(".ring-card__state")).to_have_text("0% complete")
 
     fill_personal_details(page, base)
 
