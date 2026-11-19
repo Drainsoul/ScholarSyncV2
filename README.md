@@ -1,8 +1,9 @@
 # ScholarSync V2
 
-A ground-up rewrite of ScholarSync, a scholarship platform modelled on the City of Taguig's programs. Students build a profile, check which programs they qualify for, apply with their documents
-and track their allowances. Program staff review applications, manage scholars and terms and run disbursements. The
-scholarship office oversees every program, staff account and report.
+A ground-up rewrite of ScholarSync, a scholarship platform modelled on the City of Taguig's programs. Students build
+a profile, check which programs they qualify for, apply with their documents and track their allowances. Program staff
+review applications, manage scholars and terms and run disbursements. The scholarship office oversees every program,
+staff account and report.
 
 > Independent portfolio project. Not affiliated with or endorsed by the City of Taguig. All sample people and data
 > are fictional.
@@ -85,5 +86,5 @@ S3-compatible storage for files · any SMTP server for email · runs in Docker.
 - [Contributing](CONTRIBUTING.md): project structure, commands and conventions for contributors.
 
 ## License
-Copyright © 2026 John Kenneth Planas. Released under the [MIT License](LICENSE). Bundled icons and fonts keep their own licenses: see
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Copyright © 2026 John Kenneth Planas. Released under the [MIT License](LICENSE). Bundled icons and fonts keep their
+own licenses: see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
