@@ -19,7 +19,8 @@ Programs (TCU CEAA, LANI, and future ones) are **data**, not code.
 - **Open-source and self-hosting design:**
   [docs/design/2026-10-30-open-source-self-hosting-design.md](docs/design/2026-10-30-open-source-self-hosting-design.md).
 - **Legacy audit** (v1 features, business rules, problems): [docs/legacy-audit.md](docs/legacy-audit.md).
-- **Legacy repository** (read-only reference): https://github.com/Drainsoul/ScholarSync at commit `fa9974c`.
+- **Legacy repository:** ScholarSync v1, private and not needed to work on v2. The legacy audit above records
+  everything v2 takes from it (audited at commit `fa9974c`).
 
 ## Stack
 - **Backend:** Python 3.13 (uv), Django 5.2 LTS, PostgreSQL 17, django-allauth, S3-compatible storage

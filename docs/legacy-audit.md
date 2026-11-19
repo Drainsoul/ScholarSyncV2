@@ -1,8 +1,8 @@
 # Legacy audit: ScholarSync v1
 
-What v1 does, what it gets wrong, and which rules v2 has to keep. Audited 2026-10-11 from
-https://github.com/Drainsoul/ScholarSync at commit `fa9974c` (266 commits). Every `file:line` reference below is at that
-commit. v2 uses this file as its feature-parity checklist; the design lives in
+What v1 does, what it gets wrong, and which rules v2 has to keep. Audited 2026-10-11 from the v1 repository at commit
+`fa9974c` (266 commits). That repository is private, so the `file:line` references below (all at that commit) are a
+record of where each finding came from, not links you can follow. v2 uses this file as its feature-parity checklist; the design lives in
 `docs/design/2026-10-11-scholarsync-v2-design.md`.
 
 ## 1. Overview
