@@ -62,6 +62,18 @@ def profile_page(user: User) -> tuple[StudentProfile | None, Completion]:
     )
 
 
+def profile_overview(
+    user: User,
+) -> tuple[StudentProfile | None, list[FamilyMember], list[EducationRecord], Completion]:
+    """What the read-only profile page shows, with its completion, in three queries."""
+    profile = profile_for(user)
+    if profile is None:
+        return None, [], [], completion(StudentProfile(), family=[], education=[])
+    family = list(family_for(profile))
+    education = list(education_for(profile))
+    return profile, family, education, completion(profile, family=family, education=education)
+
+
 def own_family_member(user: User, pk: int) -> FamilyMember:
     try:
         return FamilyMember.objects.get(pk=pk, profile__user=user)

@@ -1,0 +1,8 @@
+{% load ui %}<div class="profile-section__head">
+  <div>
+    <h2 class="card__title" id="{{ item.section.key }}-title">{{ item.section.label }}</h2>
+    <p class="profile-section__state">{% if item.section.done %}{% status "success" "Complete" %}{% else %}{% status "warning" "Needs details" %}{% endif %}</p>
+  </div>
+  {% if item.edit_url %}<a class="btn btn--secondary" href="{{ item.edit_url }}">{% icon "pencil" %}Edit<span class="visually-hidden"> {{ item.section.label|lower }}</span></a>{% endif %}
+</div>
+{% if not item.section.done %}<p class="profile-section__missing">{% icon "circle-alert" %}<span>Missing: {{ item.section.missing|join:", " }}</span></p>{% endif %}

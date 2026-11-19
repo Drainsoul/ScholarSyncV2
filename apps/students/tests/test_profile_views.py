@@ -179,7 +179,28 @@ def test_overview_shows_missing_phone(signed_in, student):
 def test_overview_marks_a_finished_section_complete(signed_in, student):
     FullProfileFactory.create(user=student)
     html = signed_in.get(reverse("students:profile")).content.decode()
-    assert "Complete</p>" in html
+    assert ">Complete<" in html
+
+
+def test_overview_shows_what_is_on_file_read_only(signed_in, student):
+    profile = FullProfileFactory.create(
+        user=student, first_name="Lorna", last_name="Bautista", phone="+639171234567"
+    )
+    html = signed_in.get(reverse("students:profile")).content.decode()
+    main = html.split("<main", 1)[1]
+    assert "Lorna" in main and "Bautista" in main
+    assert "+639171234567" in main
+    assert profile.get_barangay_display() in main
+    assert "<input" not in main  # read-only: the forms are on the Edit pages
+    for name in ("personal", "family", "education", "photo"):
+        assert reverse(f"students:profile-{name}") in main
+
+
+def test_overview_says_not_given_for_empty_fields(signed_in, student):
+    FullProfileFactory.create(user=student, phone="")
+    html = signed_in.get(reverse("students:profile")).content.decode()
+    assert "Not given" in html
+    assert "Needs details" in html
 
 
 def test_overview_links_only_to_pages_that_exist(signed_in):

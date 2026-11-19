@@ -1,22 +1,64 @@
-{% extends "layouts/student.html" %}
+{% extends "layouts/student.html" %}{% load ui %}
 {% block title %}Your profile{% endblock %}
 {% block content %}
   <div class="page-header">
     <div><h1>Your profile</h1><p class="page-header__meta num">{{ completion.percent }}% complete</p></div>
   </div>
-  <section class="card" aria-labelledby="sections-title">
-    <h2 class="card__title" id="sections-title">Sections</h2>
-    <progress class="progress progress--secondary" max="100" value="{{ completion.percent }}" aria-label="Profile complete">{{ completion.percent }}%</progress>
-    <ul class="stack" role="list">
-      {% for item in sections %}
-        <li class="card__header">
-          <div>
-            <h3>{{ item.section.label }}</h3>
-            <p class="text-sm text-muted">{% if item.section.done %}Complete{% else %}Missing: {{ item.section.missing|join:", " }}{% endif %}</p>
-          </div>
-          {% if item.edit_url %}<a class="btn btn--secondary" href="{{ item.edit_url }}">Edit<span class="visually-hidden"> {{ item.section.label|lower }}</span></a>{% endif %}
+  <p class="profile-intro">This is what the scholarship staff see when you apply. Use Edit on a section to change it.</p>
+  <div class="split">
+    {% with item=sections.personal %}
+    <section class="card profile-section" aria-labelledby="personal-title">
+      {% include "students/profile/_section_head.html" %}
+      <dl class="facts profile-facts">
+        <div><dt>Name</dt><dd>{% if profile.first_name or profile.last_name %}{{ profile.first_name }}{% if profile.middle_name %} {{ profile.middle_name }}{% endif %} {{ profile.last_name }}{% if profile.suffix %} {{ profile.suffix }}{% endif %}{% else %}<span class="text-muted">Not given</span>{% endif %}</dd></div>
+        <div><dt>Birth date</dt><dd>{% if profile.birth_date %}{{ profile.birth_date|date:"j F Y" }}{% else %}<span class="text-muted">Not given</span>{% endif %}</dd></div>
+        <div><dt>Sex</dt><dd>{% if profile.sex %}{{ profile.get_sex_display }}{% else %}<span class="text-muted">Not given</span>{% endif %}</dd></div>
+        <div><dt>Mobile number</dt><dd>{% if profile.phone %}{{ profile.phone }}{% else %}<span class="text-muted">Not given</span>{% endif %}</dd></div>
+        <div><dt>Address</dt><dd>{% if profile.address_line or profile.barangay %}{{ profile.address_line }}{% if profile.address_line and profile.barangay %}, {% endif %}{% if profile.barangay %}{{ profile.get_barangay_display }}{% endif %}{% else %}<span class="text-muted">Not given</span>{% endif %}</dd></div>
+        <div><dt>Living in Taguig since</dt><dd>{% if profile.residing_since %}{{ profile.residing_since }}{% else %}<span class="text-muted">Not given</span>{% endif %}</dd></div>
+        <div><dt>Registered voter of Taguig</dt><dd>{% if profile.is_registered_voter is None %}<span class="text-muted">Not given</span>{% elif profile.is_registered_voter %}Yes{% else %}No{% endif %}</dd></div>
+        <div><dt>Monthly household income</dt><dd class="num">{% if profile.monthly_household_income is not None %}{{ profile.monthly_household_income|peso }}{% else %}<span class="text-muted">Not given</span>{% endif %}</dd></div>
+      </dl>
+    </section>
+    {% endwith %}
+    {% with item=sections.photo %}
+    <section class="card profile-section" aria-labelledby="photo-title">
+      {% include "students/profile/_section_head.html" %}
+      {% if profile.photo_id %}
+      <img class="profile-photo profile-photo--small" src="{% url 'files:download' profile.photo_id %}" alt="Your profile photo" width="120" height="120">
+      {% else %}
+      <div class="profile-photo-empty">{% icon "user" %}<span>No photo yet</span></div>
+      {% endif %}
+    </section>
+    {% endwith %}
+  </div>
+  <div class="split split--even">
+    {% with item=sections.family %}
+    <section class="card profile-section" aria-labelledby="family-title">
+      {% include "students/profile/_section_head.html" %}
+      {% if family %}
+      <ul class="profile-rows" role="list">{% for member in family %}
+        <li><p class="profile-rows__title">{{ member.name }}</p><p class="text-sm text-muted">{{ member.get_relation_display }}{% if member.occupation %}, {{ member.occupation }}{% endif %}{% if member.monthly_income is not None %}, <span class="num">{{ member.monthly_income|peso }}</span> a month{% endif %}</p></li>
+      {% endfor %}</ul>
+      {% else %}
+      <p class="text-muted">No family members yet.</p>
+      {% endif %}
+    </section>
+    {% endwith %}
+    {% with item=sections.education %}
+    <section class="card profile-section" aria-labelledby="education-title">
+      {% include "students/profile/_section_head.html" %}
+      {% if education %}
+      <ul class="profile-rows" role="list">{% for record in education %}
+        <li>
+          <p class="profile-rows__title">{% if record.school %}{{ record.school.name }}{% else %}{% firstof record.school_name "School not given" %}{% endif %}{% if record.is_current %} {% status "info" "Current" %}{% endif %}</p>
+          <p class="text-sm text-muted">{{ record.get_level_display }}{% if record.course %}, {{ record.course }}{% endif %}{% if record.year_level %}, year {{ record.year_level }}{% endif %}{% if record.gwa is not None %}, GWA <span class="num">{{ record.gwa }}</span>{% endif %}{% if record.year_from %}, {{ record.year_from }}{% if record.year_to %}–{{ record.year_to }}{% endif %}{% endif %}</p>
         </li>
-      {% endfor %}
-    </ul>
-  </section>
+      {% endfor %}</ul>
+      {% else %}
+      <p class="text-muted">No schools yet.</p>
+      {% endif %}
+    </section>
+    {% endwith %}
+  </div>
 {% endblock %}

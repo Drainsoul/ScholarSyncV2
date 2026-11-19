@@ -30,6 +30,7 @@ from apps.students.selectors import (
     own_education_record,
     own_family_member,
     profile_for,
+    profile_overview,
     profile_page,
 )
 
@@ -68,16 +69,19 @@ class ProfileView(StudentRequiredMixin, TemplateView):
     template_name = "students/profile/overview.html"
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
-        _, completion = profile_page(_student(self.request))
-        sections = [
-            {"section": section, "edit_url": _url_or_none(section.url_name)}
+        profile, family, education, completion = profile_overview(_student(self.request))
+        sections = {
+            section.key: {"section": section, "edit_url": _url_or_none(section.url_name)}
             for section in completion.sections
-        ]
+        }
         return {
             **super().get_context_data(**kwargs),
             **shell_context(self.request, area="student"),
             "completion": completion,
             "sections": sections,
+            "profile": profile,
+            "family": family,
+            "education": education,
         }
 
 
