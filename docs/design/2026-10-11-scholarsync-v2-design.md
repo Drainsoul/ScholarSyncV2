@@ -68,7 +68,7 @@
   is read-only with an Edit button per section; the model hint moves to the top of Find scholarships as a compact
   note; the session list and the two-factor pages render inside the signed-in app shell, and the session list
   counts live sessions from the session table; the demo gives LANI an application window when it has none
-  (§5, §10, §12, §14).
+  (§5, §10, §11, §12).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
