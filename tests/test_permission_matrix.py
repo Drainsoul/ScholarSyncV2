@@ -32,6 +32,8 @@ SIGN_IN_PAGE = (302, "/accounts/login/")
 
 RULES: dict[str, dict[str, Any]] = {
     "public": {p: 200 for p in PERSONAS},
+    # `/` has no page: the sign-in page, or the user's own home when signed in.
+    "home": {"anonymous": SIGN_IN_PAGE, **{p: HOME for p in SIGNED_IN}},
     # Sign in and sign up are for guests; anyone signed in is sent to their own home.
     "guest_only": {"anonymous": 200, **{p: HOME for p in SIGNED_IN}},
     "signed_in": {"anonymous": LOGIN, **{p: 200 for p in SIGNED_IN}},
@@ -139,8 +141,9 @@ RULES: dict[str, dict[str, Any]] = {
     "signed_in_post_only": {"anonymous": LOGIN, **{p: 405 for p in SIGNED_IN}},
     # An unknown claim link is a 404 for everyone.
     "claim_unknown": {p: 404 for p in PERSONAS},
-    # A signed-out visit has nothing to sign out of and goes home; signed in gets the confirm page.
-    "logout": {"anonymous": (302, "/"), **{p: 200 for p in SIGNED_IN}},
+    # A signed-out visit has nothing to sign out of and goes to the sign-in page; signed in gets
+    # the confirm page.
+    "logout": {"anonymous": SIGN_IN_PAGE, **{p: 200 for p in SIGNED_IN}},
     # Next step of a sign-in by emailed code; with none in progress, back to the sign-in page.
     "login_code": {"anonymous": SIGN_IN_PAGE, **{p: HOME for p in SIGNED_IN}},
     "no_pending_signup": {p: SIGN_IN_PAGE for p in PERSONAS},
@@ -164,7 +167,7 @@ RULES: dict[str, dict[str, Any]] = {
     },
 }
 URLS: dict[str, str] = {
-    "core:home": "public",
+    "core:home": "home",
     "core:healthz": "public",
     "core:about": "public",
     "core:privacy": "public",

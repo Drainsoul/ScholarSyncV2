@@ -3,7 +3,7 @@ import re
 
 
 def test_htmx_config_is_locked_down(client, vite_build):
-    body = client.get("/").content.decode()
+    body = client.get("/about/").content.decode()
     match = re.search(r"<meta name=\"htmx-config\" content='([^']+)'>", body)
     assert match
     config = json.loads(match.group(1))
@@ -18,7 +18,7 @@ def test_htmx_config_is_locked_down(client, vite_build):
 
 
 def test_body_sends_the_csrf_token_with_htmx_requests(client, vite_build):
-    body = client.get("/").content.decode()
+    body = client.get("/about/").content.decode()
     match = re.search(r"<body hx-headers='([^']+)'>", body)
     assert match
     headers = json.loads(match.group(1))
@@ -26,7 +26,7 @@ def test_body_sends_the_csrf_token_with_htmx_requests(client, vite_build):
 
 
 def test_toast_region_and_template_exist(client, vite_build):
-    body = client.get("/").content.decode()
+    body = client.get("/about/").content.decode()
     assert (
         '<div id="toasts" class="toasts" role="status" aria-live="polite" data-toast-region>'
         in body
@@ -36,7 +36,7 @@ def test_toast_region_and_template_exist(client, vite_build):
 
 def test_the_dialog_has_its_own_toast_region(client, vite_build):
     """A modal dialog makes the rest of the page inert, so toasts shown while it is open go here."""
-    body = client.get("/").content.decode()
+    body = client.get("/about/").content.decode()
     dialog = re.search(r'<dialog id="app-dialog".*?</dialog>', body, re.DOTALL)
     assert dialog
     assert (

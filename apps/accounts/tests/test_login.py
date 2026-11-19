@@ -38,8 +38,9 @@ def test_logout_needs_post(client: Any, db: Any) -> None:
     client.force_login(UserFactory.create(verified=True))
     client.get("/accounts/logout/")
     assert "_auth_user_id" in client.session
-    client.post("/accounts/logout/")
+    response = client.post("/accounts/logout/")
     assert "_auth_user_id" not in client.session
+    assert response.status_code == 302 and response.url == "/accounts/login/"
 
 
 def test_password_reset_for_an_unknown_email_sends_nothing(

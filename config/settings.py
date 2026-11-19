@@ -332,6 +332,7 @@ if not os.environ.get("TRUSTED_PROXY_COUNT", "").strip():
 ALLAUTH_TRUSTED_PROXY_COUNT = env.int("TRUSTED_PROXY_COUNT", 0)
 LOGIN_URL = "account_login"
 LOGIN_REDIRECT_URL = "core:home"  # the adapter sends each role to its own home
+ACCOUNT_LOGOUT_REDIRECT_URL = "account_login"
 # Only students sign up, and the post-verification login follows this URL, not the adapter.
 ACCOUNT_SIGNUP_REDIRECT_URL = "students:home"
 

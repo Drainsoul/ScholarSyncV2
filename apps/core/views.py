@@ -1,12 +1,19 @@
 from django.db import connection
 from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.shortcuts import render
+from django.shortcuts import redirect
 from django.views.decorators.http import require_safe
+
+from apps.accounts.models import User
+from apps.core.shell import home_url_for
 
 
 @require_safe
 def home(request: HttpRequest) -> HttpResponse:
-    return render(request, "core/home.html")
+    """`/` has no page: the sign-in page, or the user's own home when signed in."""
+    user = request.user
+    if not isinstance(user, User):
+        return redirect("account_login")
+    return redirect(home_url_for(user))
 
 
 @require_safe

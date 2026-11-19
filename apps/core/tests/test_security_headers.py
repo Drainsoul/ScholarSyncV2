@@ -95,7 +95,7 @@ def test_secret_route_is_no_store_when_anonymous(client, vite_build):
 
 @pytest.mark.django_db
 def test_public_pages_keep_default_caching(client, vite_build):
-    for path in ("/", "/programs/", "/about/"):
+    for path in ("/programs/", "/about/"):
         response = client.get(path)
         assert response.status_code == 200, path
         assert "no-store" not in response.get("Cache-Control", ""), path
