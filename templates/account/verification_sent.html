@@ -4,4 +4,5 @@
 {% block content %}
   {% element h1 %}Check your email{% endelement %}
   {% element p %}We sent a link to confirm your address. It expires in 3 days.{% endelement %}
+  <ul class="auth-links"><li><a href="{% url 'account_login' %}">Back to log in</a></li></ul>
 {% endblock content %}
