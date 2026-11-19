@@ -14,10 +14,12 @@ __pycache__
 frontend/node_modules
 static/dist
 staticfiles
-# Notes and editor or tool settings: no dotfile and no top-level Markdown file belongs in the image.
+# Notes and editor or tool settings: no dotfile and no Markdown file belongs in the image, except the
+# third-party notices, which ship with the bundled icons and fonts.
 .*
 !.env.example
 *.md
+!THIRD_PARTY_NOTICES.md
 .idea
 .vscode
 tests/e2e

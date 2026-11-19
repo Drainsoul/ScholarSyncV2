@@ -83,4 +83,5 @@ S3-compatible storage for files · any SMTP server for email · runs in Docker.
 - [Contributing](CONTRIBUTING.md): project structure, commands and conventions for contributors.
 
 ## License
-[MIT](LICENSE)
+[MIT](LICENSE). Bundled icons and fonts keep their own licenses: see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
