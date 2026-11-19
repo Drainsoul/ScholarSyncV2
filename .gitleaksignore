@@ -7,3 +7,13 @@ apps/accounts/tests/test_services.py:generic-api-key:13
 # Test fixture passwords (password change form).
 apps/accounts/tests/test_login.py:generic-api-key:95
 apps/accounts/tests/test_login.py:generic-api-key:96
+# Earlier versions of these files, in the history:
+# the compose smoke test's throwaway signup password.
+scripts/smoke_signup.sh:generic-api-key:24
+scripts/smoke_signup.sh:generic-api-key:25
+# The explore demo password, public by design (shown on the login page).
+apps/demo/accounts.py:generic-api-key:8
+# Test fixture passwords.
+apps/accounts/tests/test_login.py:generic-api-key:88
+apps/accounts/tests/test_login.py:generic-api-key:89
+apps/accounts/tests/test_services.py:generic-api-key:10
