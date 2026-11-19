@@ -18,7 +18,7 @@ concurrency:
 jobs:
   python:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30  # the full pytest suite on a 4-core runner
     services:
       postgres:
         image: postgres:17
@@ -65,7 +65,7 @@ jobs:
   hosting-path:
     # The app as a host runs it: production settings and no demo app.
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30  # the full pytest suite on a 4-core runner
     services:
       postgres:
         image: postgres:17
