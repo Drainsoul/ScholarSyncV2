@@ -8,7 +8,7 @@ This review checks ScholarSync against every Level 1 and Level 2 requirement of 
 
 Evidence is a repo-relative path with a line number, a test node id, or both. Where it names a Django or library default, it names the setting or mechanism.
 
-**Summary:** 253 requirements: 184 Met, 67 Not applicable, 1 Gap, 1 Gap accepted (after the M13 follow-ups; M12 left 14 gaps, and the first pass found 42).
+**Summary:** 253 requirements: 185 Met, 67 Not applicable, 1 Gap accepted (after the M13 follow-ups and the V6.5.2 fix; M12 left 14 gaps, and the first pass found 42).
 
 ## V1 Encoding and Sanitization
 
@@ -151,7 +151,7 @@ Evidence is a repo-relative path with a line number, a test node id, or both. Wh
 | V6.4.3 | L2 | Password reset is secure and does not bypass MFA. | Met | allauth emailed reset key (through the outbox); `apps/accounts/tests/test_login.py::test_password_reset_sends_the_key_through_the_outbox`. A reset never signs anyone in (`ACCOUNT_LOGIN_ON_PASSWORD_RESET` unset, allauth's default off), so the next sign-in still asks for the authenticator code. |
 | V6.4.4 | L2 | A lost MFA factor needs identity proofing like enrolment. | Met | A lost factor is an office action, behind the office's own password, audited and ending the account's sessions (`apps/accounts/services.py`, `remove_mfa`; `apps/accounts/tests/test_mfa.py::test_office_removes_a_staff_authenticator_after_password`); staff can't remove their own while 2FA is required (`apps/accounts/tests/test_mfa.py::test_staff_cannot_switch_off_their_own_authenticator`). The new factor is enrolled the way the first was: signed in with the password. The office should confirm who is asking before removing it (`docs/HOSTING.md`, the `MFA_REQUIRED_FOR_STAFF` row). |
 | V6.5.1 | L2 | Lookup secrets, OOB codes and TOTPs are single-use. | Met | TOTP codes are refused a second time within their period (allauth marks each used code in the shared database cache); recovery codes are single-use (allauth's `used_mask`). |
-| V6.5.2 | L2 | Low-entropy lookup secrets are stored hashed. | Gap | Recovery codes are 8 digits derived by HMAC from a per-account seed, and allauth stores that seed (and the TOTP secret) unencrypted by default (`MFA_ADAPTER.encrypt` is a no-op), so the codes can't be stored hashed. |
+| V6.5.2 | L2 | Low-entropy lookup secrets are stored hashed. | Met | Recovery codes are 8 digits derived by HMAC from a per-account seed, so the seed must stay recoverable and can't be hashed; it is encrypted at rest instead, like the TOTP secret (Fernet, keys derived with HKDF from `DJANGO_SECRET_KEY` and its fallbacks; `apps/accounts/mfa_secrets.py`, `apps/accounts/adapters.py`). Existing rows are encrypted by migration `accounts.0003`. `apps/accounts/tests/test_mfa_secrets.py`. The maintainer's decision, 2026-11-19 (spec revision 24). |
 | V6.5.3 | L2 | Lookup secrets, OOB codes and TOTP seeds come from a CSPRNG. | Met | TOTP secrets come from `secrets.token_bytes(20)` and recovery-code seeds from `secrets.token_hex(40)` (allauth). |
 | V6.5.4 | L2 | Lookup secrets and OOB codes have at least 20 bits of entropy. | Met | Recovery codes are 8 digits (about 26.6 bits each); no out-of-band codes. |
 | V6.5.5 | L2 | OOB requests and TOTPs have short defined lifetimes. | Met | TOTP codes last one 30-second period with no tolerance window (allauth defaults `MFA_TOTP_PERIOD`, `MFA_TOTP_TOLERANCE`); no out-of-band authentication. |
@@ -384,7 +384,6 @@ Evidence is a repo-relative path with a line number, a test node id, or both. Wh
 
 ## Open gaps
 
-M13 (2026-11-19) closed 13 of the 14 gaps M12 left; the maintainer's decisions are recorded in the design spec (`docs/design/2026-10-11-scholarsync-v2-design.md`, revisions 21 to 23). M13's two-factor sign-in brought the V6.5 rows into scope; one of them is open, and one gap is accepted:
+M13 (2026-11-19) closed 13 of the 14 gaps M12 left; the maintainer's decisions are recorded in the design spec (`docs/design/2026-10-11-scholarsync-v2-design.md`, revisions 21 to 24). M13's two-factor sign-in brought the V6.5 rows into scope, and V6.5.2 was fixed after M14 (revision 24). One gap stays, accepted:
 
-- **V6.5.2** (small, the maintainer decides): allauth stores the recovery-code seed and the TOTP secret unencrypted, and derives the 8-digit codes from the seed, so they can't be hashed. Fix: an `MFA_ADAPTER` `encrypt`/`decrypt` with a key derived from `DJANGO_SECRET_KEY` (rotating the key then needs every authenticator re-enrolled), or accept: anyone who can read the database or its backups can already read every applicant's data, so keep both private (`docs/HOSTING.md`, Backups).
 - **V14.2.1** (accepted): student names travel in the query string of staff name searches (`?q=`). They stay in the staff member's browser history, but the screens are signed-in staff screens sent `no-store`, and the access log drops the parameter (V16.2.5). Sentry drops query strings too. Searches stay GET for bookmarkable filters and HTMX history.

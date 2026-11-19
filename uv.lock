@@ -1544,7 +1544,7 @@ dev = [
 requires-dist = [
     { name = "argon2-cffi", specifier = "==25.1.0" },
     { name = "boto3", specifier = "==1.43.118" },
-    { name = "cryptography", specifier = ">=50,<51" },
+    { name = "cryptography", specifier = "==50.0.2" },
     { name = "defusedxml", specifier = "==0.7.1" },
     { name = "django", specifier = ">=5.2.18,<5.3" },
     { name = "django-allauth", extras = ["mfa", "socialaccount"], specifier = "==65.20.1" },

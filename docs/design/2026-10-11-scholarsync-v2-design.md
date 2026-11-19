@@ -56,6 +56,11 @@
 - **Revision:** 23 (2026-11-19): M14 decisions: the office doesn't send program reports; summer records don't count
   toward `max_terms`; a renewal approved out of order never moves an award's tier back; a reverted payout's "ready to
   claim" notice stays (§4.6, §4.8, §9).
+- **Revision:** 24 (2026-11-19): the maintainer's decisions after M14: 2FA secrets and recovery-code seeds are encrypted at
+  rest (ASVS V6.5.2); V14.2.1 and the M14 decisions confirmed; the repository is published with a fresh history
+  (the old GitHub repository is replaced by an empty one with the same name, and the local history becomes one new
+  commit; pushing waits for the maintainer); the specs live in `docs/design/`, and private working notes
+  stay local, with `CONTRIBUTING.md` as the contributor guide (§10, §14, §19).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -907,7 +912,15 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - **Two-factor sign-in:** TOTP and recovery codes (`allauth.mfa`), required for program staff and the office when
     `MFA_REQUIRED_FOR_STAFF` (default on in production, off in developer and explore modes); a required account
     without an authenticator reaches only the 2FA, reauthentication and sign-out pages. The office can remove a staff
-    account's authenticator (password asked again; `mfa.removed`).
+    account's authenticator (password asked again; `mfa.removed`). Staff and the office can't remove their own while
+    it is required.
+  - **2FA secrets at rest (rev 24):** TOTP secrets and recovery-code seeds are stored as `fernet:` tokens
+    (`apps/accounts/mfa_secrets.py`): Fernet keys derived with HKDF-SHA256 from `DJANGO_SECRET_KEY` and each key in
+    `DJANGO_SECRET_KEY_FALLBACKS`, so a rotated key keeps working while the old one is a fallback;
+    `manage.py reencrypt_mfa_secrets` (audited `mfa.secrets_reencrypted`) re-encrypts every authenticator under the
+    current key before the old one is dropped. Migration `accounts.0003` encrypts existing rows; rolling back past it
+    first needs `migrate accounts 0002` on the new image (its reverse decrypts) — the one exception to
+    expand/contract, recorded in `docs/HOSTING.md`. A lost key makes authenticators unreadable.
   - **Breached passwords:** Have I Been Pwned's k-anonymity range API (5 hex characters of the SHA-1 leave the
     server), on when `PASSWORD_BREACH_CHECK` (default on in production); 3 s timeout; fails open, logging no password
     data.

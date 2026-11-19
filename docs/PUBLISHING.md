@@ -12,9 +12,8 @@ Nothing here is automated: every step needs a person, an account or a decision.
   (`docs/design/2026-10-11-scholarsync-v2-design.md`), and renumber them if any are removed.
 - [ ] **Barangays.** Check the 38 names in `apps/students/barangays.py` against the PSGC list for Taguig, and fix any
   spelling.
-- [ ] **Security decisions.** `docs/security/asvs-l2.md` lists one open gap (V6.5.2: recovery-code seeds and TOTP
-  secrets are stored unencrypted) and one accepted gap (V14.2.1: names in search URLs). Decide V6.5.2, and confirm
-  the acceptance of V14.2.1.
+- [x] **Security decisions.** Done 2026-11-19: V6.5.2 fixed (2FA secrets encrypted at rest) and V14.2.1 (names in
+  search URLs) accepted; `docs/security/asvs-l2.md` has no open gap.
 
 ## 2. Remove the M1 spike
 

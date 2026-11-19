@@ -15,7 +15,8 @@ here are read from the code on 2026-11-18. If code and this page disagree, the c
 - **Two-factor sign-in:** TOTP with recovery codes (`allauth.mfa`). In production, staff and office accounts must set
   it up before any other page (`apps/accounts/mfa_policy.py`, `MFA_REQUIRED_FOR_STAFF`); students may. The office can
   remove a staff member's authenticators (a lost phone) behind its own password, which also ends that account's
-  sessions.
+  sessions. TOTP secrets and recovery-code seeds are encrypted at rest (Fernet keys derived from `DJANGO_SECRET_KEY`
+  and `DJANGO_SECRET_KEY_FALLBACKS`; `apps/accounts/mfa_secrets.py`); rotating the key is in `docs/HOSTING.md`.
 - **Rate limits** (allauth's defaults, `ACCOUNT_RATE_LIMITS` unset; counted per client IP and per key):
 
   | Action | Limit |
