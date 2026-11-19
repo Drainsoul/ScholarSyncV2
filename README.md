@@ -80,6 +80,7 @@ S3-compatible storage for files · any SMTP server for email · runs in Docker.
 - [Design spec and roadmap](docs/design/2026-10-11-scholarsync-v2-design.md) and the
   [open-source and self-hosting design](docs/design/2026-10-30-open-source-self-hosting-design.md).
 - [Legacy audit](docs/legacy-audit.md): what v1 does, its business rules and its problems.
+- [Contributing](CONTRIBUTING.md): project structure, commands and conventions for contributors.
 
 ## License
 [MIT](LICENSE)

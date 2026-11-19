@@ -35,24 +35,29 @@ The Vercel spike (`scholarsync-spike`) is unused since spec revision 5. Its toke
 
 ## 3. The repository on GitHub
 
-- [ ] **History scan.** Already done: gitleaks v8.24.3 scanned all 444 commits on 2026-11-19. It found 8 matches,
-  all placeholders, test passwords, the public demo password or a false positive, each listed with its reason in
-  `.gitleaksignore`. Rerun it right before publishing:
+The repository is published with a fresh history: the local `main` holds a single new commit, and the old GitHub
+repository is replaced by an empty one with the same name. Nothing is pushed until the maintainer decides to.
+
+- [ ] **History scan.** Run gitleaks on the local repository right before publishing:
 
   ```
   docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.24.3 git /repo --redact --gitleaks-ignore-path /repo/.gitleaksignore
   ```
 
-  It must end with "no leaks found". If it finds a real secret, rotate the secret first. Rewriting history is a
-  separate decision.
+  It must end with "no leaks found". Every accepted match (placeholders, test passwords, the public demo password,
+  false positives) is listed with its reason in `.gitleaksignore`. If it finds a real secret, rotate the secret and
+  remove it before the commit is pushed.
+- [ ] **npm audit.** CI's `npm audit` reports picomatch ≤ 4.0.7, which comes in through Vite's build tooling and is
+  never shipped to browsers. Either wait for a patched release, or audit runtime dependencies only
+  (`npm audit --omit=dev` in `.github/workflows/`).
+- [ ] **Replace the GitHub repository.** Delete `Drainsoul/ScholarSyncV2` (GitHub → the repository → Settings →
+  General → Danger Zone → Delete this repository), then create a new, empty repository with the same name. Add no
+  README, licence or `.gitignore`, so the first push is clean. The local `origin` remote keeps the same URL.
+- [ ] **Push.** `git push -u origin main`. Check that CI is green on GitHub.
 - [ ] **Settings** (GitHub → the repository → Settings):
   - Security → Private vulnerability reporting: enable (`SECURITY.md` points to it);
   - Security → Dependabot alerts: enable (`.github/dependabot.yml` already proposes updates);
   - Branches → add a rule for `main`: require a pull request and the CI checks, and block force pushes.
-- [ ] **npm audit.** CI's `npm audit` reports picomatch ≤ 4.0.7, which comes in through Vite's build tooling and is
-  never shipped to browsers. Either wait for a patched release, or audit runtime dependencies only
-  (`npm audit --omit=dev` in `.github/workflows/`).
-- [ ] **Push.** `git push origin main`. Check that CI is green on GitHub.
 - [ ] **Make it public.** GitHub → Settings → General → Danger Zone → Change visibility → Public.
 - [ ] **Codespaces.** Open the README's Codespaces badge once, and check the explore stack starts and the demo
   accounts sign in.

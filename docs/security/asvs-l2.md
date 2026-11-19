@@ -384,7 +384,7 @@ Evidence is a repo-relative path with a line number, a test node id, or both. Wh
 
 ## Open gaps
 
-M13 (2026-11-19) closed 13 of the 14 gaps M12 left; the maintainer's decisions are recorded in the design spec. M13's two-factor sign-in brought the V6.5 rows into scope; one of them is open, and one gap is accepted:
+M13 (2026-11-19) closed 13 of the 14 gaps M12 left; the maintainer's decisions are recorded in the design spec (`docs/design/2026-10-11-scholarsync-v2-design.md`, revisions 21 to 23). M13's two-factor sign-in brought the V6.5 rows into scope; one of them is open, and one gap is accepted:
 
 - **V6.5.2** (small, the maintainer decides): allauth stores the recovery-code seed and the TOTP secret unencrypted, and derives the 8-digit codes from the seed, so they can't be hashed. Fix: an `MFA_ADAPTER` `encrypt`/`decrypt` with a key derived from `DJANGO_SECRET_KEY` (rotating the key then needs every authenticator re-enrolled), or accept: anyone who can read the database or its backups can already read every applicant's data, so keep both private (`docs/HOSTING.md`, Backups).
 - **V14.2.1** (accepted): student names travel in the query string of staff name searches (`?q=`). They stay in the staff member's browser history, but the screens are signed-in staff screens sent `no-store`, and the access log drops the parameter (V16.2.5). Sentry drops query strings too. Searches stay GET for bookmarkable filters and HTMX history.

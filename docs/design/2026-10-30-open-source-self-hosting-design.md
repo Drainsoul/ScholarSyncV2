@@ -229,7 +229,7 @@ is rewritten to match.
   web and worker only, with database, storage and email external, reading `.env`), which the guide uses and CI at
   least validates (`docker compose config`).
 
-The contributor guide (stack, host, file structure, commands) is updated to match.
+The contributor guide (now `CONTRIBUTING.md`: stack, host, file structure, commands) is updated to match.
 
 ## 11. CI
 

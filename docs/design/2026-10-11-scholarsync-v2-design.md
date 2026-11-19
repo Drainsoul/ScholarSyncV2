@@ -1189,7 +1189,7 @@ Each milestone is broken into small steps (TDD, one commit per step) before work
 starts, and ends with every acceptance item checked.
 
 **M0: Planning docs**
-- [ ] The contributor guide, `docs/legacy-audit.md`, this spec and `README.md` committed.
+- [ ] The contributor guide (now `CONTRIBUTING.md`), `docs/legacy-audit.md`, this spec and `README.md` committed.
 - [ ] Spec approved by the maintainer.
 
 **M1: Vercel go/no-go spike** (historical, superseded by revision 5; throwaway branch `spike/vercel`, kept local)
@@ -1230,7 +1230,7 @@ starts, and ends with every acceptance item checked.
 - [ ] Runtime commands (`send_outbox`, `cleanup`, worker loop, entrypoint).
 - [ ] Provider-neutral settings, `.env.example`, `Dockerfile`, `compose.yaml`, `compose.production.yaml`.
 - [ ] CI jobs (hosting-path, compose smoke).
-- [ ] README, `docs/SETUP.md`, `docs/HOSTING.md`; the contributor guide updated.
+- [ ] README, `docs/SETUP.md`, `docs/HOSTING.md`; the contributor guide (now `CONTRIBUTING.md`) updated.
 - [ ] `/about/`, `/privacy/`, `/terms/`, `/cookies/`, `/help/`, `/contact/`, the footer disclaimer, the two
   operator settings, `SECURITY.md`.
 - [ ] GitHub Codespaces (optional).
@@ -1322,7 +1322,7 @@ starts, and ends with every acceptance item checked.
 - [ ] Extend the demo loader for this milestone's screens.
 
 **M13: Security follow-ups**
-- Scope: the ASVS gaps and WCAG 2.2.1 left by M12
+- The ASVS gaps and WCAG 2.2.1 left by M12
   (§10 M13 additions).
 
 **M12: Hardening + hosting guide**
@@ -1395,7 +1395,7 @@ starts, and ends with every acceptance item checked.
 | S3-compatible storage for files (R2 was the first choice) | Private, presigned, swappable; any provider works since revision 5 |
 | Outbox + a small worker loop instead of Celery (was daily cron on Vercel) | Retries without a broker or new infrastructure |
 | Region `sin1` + Neon Singapore (historical, M1 spike only) | Users are in Taguig; no longer a target |
-| A short contributor guide is tracked; personal notes stay local | The maintainer's request (2026-10-12) |
+| A short contributor guide (`CONTRIBUTING.md`) is tracked; personal notes and tool settings stay local | The maintainer's request (2026-10-12, revised 2026-11-19) |
 | Redesign rev 4: red primary, blue secondary, yellow accent; Cark-style white sidebar shell (2026-10-30) | The maintainer's choice after reviewing and editing the design canvas |
 | Open source, one-command run, provider-neutral self-hosting; Vercel dropped (2026-10-30, revision 5) | The maintainer's portfolio project: nobody hosts an official copy, visitors run it on localhost with test accounts, self-hosters bring their own providers. Design: `docs/design/2026-10-30-open-source-self-hosting-design.md` |
 | Public information pages and a not-affiliated footer disclaimer (2026-10-30) | The repo is public and anyone can host it; the pages say it isn't an official City service, what happens to data, and who is responsible |
