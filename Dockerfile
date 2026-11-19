@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # ScholarSync: the Vite bundle is built in the first stage, so the host needs no Node.
 
-FROM node:22.23.4-slim AS frontend
+FROM node:26.13.1-slim AS frontend
 WORKDIR /build/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
