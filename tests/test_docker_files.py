@@ -19,6 +19,9 @@ def test_dockerignore_keeps_secrets_and_local_state_out():
         "frontend/node_modules",
         "static/dist",
         "staticfiles",
+        ".*",
+        "!.env.example",
+        "*.md",
         ".git",
     }
     assert required <= lines, sorted(required - lines)
