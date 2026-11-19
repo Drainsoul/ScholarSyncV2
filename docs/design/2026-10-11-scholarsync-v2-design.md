@@ -67,7 +67,8 @@
   completion as a small ring beside a month calendar of release days and application windows; the profile overview
   is read-only with an Edit button per section; the model hint moves to the top of Find scholarships as a compact
   note; the session list and the two-factor pages render inside the signed-in app shell, and the session list
-  counts live sessions from the session table (§5, §10, §12).
+  counts live sessions from the session table; the demo gives LANI an application window when it has none
+  (§5, §10, §12, §14).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -991,7 +992,9 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
 - **Demo:** everything demo-only (test accounts, sample data, login-page notice) lives in `apps/demo/`. Deleting that
   folder removes it with no other edit; the app reaches it only through an optional hook, never by import. It is
   inactive in production mode even if present, and `check --deploy` fails while the folder exists. Programs
-  (`seed_programs`) are not demo material.
+  (`seed_programs`) are not demo material, and the demo leaves their settings alone with one exception (rev 26):
+  when LANI has no application window, the demo gives it one through the office account (from 14 days before the
+  load to 30 days after), so the student home's calendar has dates to show.
 - **Providers:** any PostgreSQL 17 (`DATABASE_URL`), any S3-compatible storage, any SMTP server, Google sign-in when
   keys are set, Sentry when a DSN is set.
 - **Proxy settings:** `SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")`; hosts and CSRF origins come from
