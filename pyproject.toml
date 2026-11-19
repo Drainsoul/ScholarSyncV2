@@ -1,7 +1,10 @@
 [project]
 name = "scholarsync"
 version = "0.1.0"
-description = "ScholarSync V2: City of Taguig scholarship platform"
+description = "Scholarship management platform modelled on the City of Taguig's programs (unofficial)"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "John Kenneth Planas" }]
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "django>=5.2.18,<5.3",
