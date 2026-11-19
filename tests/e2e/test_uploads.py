@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import pytest
@@ -17,6 +18,9 @@ def sign_in_to_the_upload_page(page: Page, live_server) -> None:
     user = UserFactory.create(verified=True)
     log_in(page, live_server.url, user.email, KIT_UPLOAD)
     expect(page.get_by_role("heading", level=1)).to_have_text("Try uploads")
+    # The heading arrives with the HTML, before the deferred bundle runs; a file chosen before
+    # upload.ts listens is lost (CI's slower runners did). main.ts adds "js" as it sets up.
+    expect(page.locator("html")).to_have_class(re.compile(r"\bjs\b"))
 
 
 def record_upload_requests(page: Page) -> list[str]:
