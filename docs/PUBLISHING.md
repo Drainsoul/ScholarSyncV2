@@ -52,8 +52,16 @@ original is in a backup bundle outside the repository). Nothing is pushed until 
   (`npm audit --omit=dev` in `.github/workflows/`).
 - [ ] **Replace the GitHub repository.** Delete `Drainsoul/ScholarSyncV2` (GitHub → the repository → Settings →
   General → Danger Zone → Delete this repository), then create a new, empty repository with the same name. Add no
-  README, licence or `.gitignore`, so the first push is clean. The local `origin` remote keeps the same URL.
-- [ ] **Push.** `git push -u origin main`. Check that CI is green on GitHub.
+  README, licence or `.gitignore`, so the first push is clean.
+- [ ] **Push.** The local repository has no remote until then, so an automatic fetch can't bring the old
+  history back. Add it and push:
+
+  ```
+  git remote add origin https://github.com/Drainsoul/ScholarSyncV2.git
+  git push -u origin main
+  ```
+
+  Check that CI is green on GitHub.
 - [ ] **Settings** (GitHub → the repository → Settings):
   - Security → Private vulnerability reporting: enable (`SECURITY.md` points to it);
   - Security → Dependabot alerts: enable (`.github/dependabot.yml` already proposes updates);
