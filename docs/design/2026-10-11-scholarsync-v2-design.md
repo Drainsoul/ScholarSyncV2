@@ -1097,7 +1097,8 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
       swap only the calendar with HTMX and work as plain links), Monday first, today marked, each date with events
       marked by a dot **and** a visually hidden label, the day's events listed under the grid's day number on wide
       screens; events are (a) **release days**: published distribution schedules of programs where the student holds
-      an active or suspended award ("{program} allowance release", the claim place) and (b) **application windows**:
+      an active or suspended award, in terms the student is a scholar in (as the award card's "Next release";
+      "{program} allowance release", the claim place) and (b) **application windows**:
       `applications_open_on` / `applications_close_on` of active programs the student qualifies for on Find
       scholarships or has an unfinished application in ("{program} applications open/close"); nothing else
       (no term dates, no deadlines staff haven't entered);
