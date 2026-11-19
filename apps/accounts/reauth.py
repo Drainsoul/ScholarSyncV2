@@ -12,6 +12,7 @@ from django.contrib import messages
 from django.http import HttpRequest, HttpResponse
 from django.utils.decorators import method_decorator
 
+from .selectors import live_sessions
 from .services import end_other_sessions
 
 
@@ -56,3 +57,10 @@ class SessionListView(ListUserSessionsView):  # type: ignore[misc]
         # FormView's redirect, skipping allauth's own save (it would end the sessions unaudited).
         response: HttpResponse = super(ListUserSessionsView, self).form_valid(form)
         return response
+
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        context: dict[str, Any] = super().get_context_data(**kwargs)
+        sessions = live_sessions(self.request.user, self.request)
+        context["sessions"] = sessions
+        context["session_count"] = len(sessions)
+        return context

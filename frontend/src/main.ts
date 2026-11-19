@@ -6,6 +6,7 @@ import "./styles/components/forms.css";
 import "./styles/components/feedback.css";
 import "./styles/components/data.css";
 import "./styles/components/notice.css";
+import "./styles/components/account.css";
 import "./styles/layouts.css";
 import "htmx.org";
 import { initBulk } from "./bulk";

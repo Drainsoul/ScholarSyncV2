@@ -158,3 +158,25 @@ def test_cleanup_drops_session_list_rows_whose_session_ended() -> None:
     call_command("cleanup")
     assert UserSession.objects.filter(user=kept).count() == 1
     assert not UserSession.objects.filter(user=gone).exists()
+
+
+def test_session_list_shows_live_sessions_the_list_lost_track_of(client: Client) -> None:
+    user = UserFactory.create(verified=True)
+    _sign_in(HttpsClient(), user)
+    _sign_in(client, user)
+    UserSession.objects.filter(user=user).delete()  # rows gone, sessions still signed in
+    page = client.get(reverse("usersessions_list"))
+    assert page.status_code == 200
+    assert page.context["session_count"] == 2
+    assert b"This browser" in page.content
+    assert b"Another browser (details not recorded)" in page.content
+    assert b"Sign out other sessions" in page.content
+
+
+def test_session_list_never_shows_other_accounts_sessions(client: Client) -> None:
+    user = UserFactory.create(verified=True)
+    _sign_in(HttpsClient(), UserFactory.create(verified=True))
+    _sign_in(client, user)
+    page = client.get(reverse("usersessions_list"))
+    assert page.context["session_count"] == 1
+    assert b"Sign out other sessions" not in page.content

@@ -1,0 +1,63 @@
+/* Account pages inside the app shell (spec §12 rev 26): the session list and two-factor sign-in. */
+.account-card {
+  max-width: 48rem;
+}
+
+.account-card + .account-card {
+  margin-top: var(--space-4);
+}
+
+.account-card__lead {
+  max-width: var(--measure);
+  margin: 0 0 var(--space-4);
+  color: var(--text-secondary);
+}
+
+.account-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.session-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border);
+}
+
+.session-list__item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.session-list__icon {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-sm);
+  background: var(--secondary-50);
+  color: var(--secondary);
+}
+
+.session-list__body p {
+  margin: 0;
+}
+
+.session-list__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+}
+
+.session-list__agent {
+  overflow-wrap: anywhere;
+}

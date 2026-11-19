@@ -1,17 +1,26 @@
-{% extends "usersessions/base_manage.html" %}
+{% extends "usersessions/base_manage.html" %}{% load ui %}
 {% block head_title %}Your sessions{% endblock %}
 {% block content %}
-  <h1>Your sessions</h1>
-  <p>Places where your account is signed in. If you don't recognise one, sign the others out and change your password.</p>
-  <ul class="list list--wrap">{% for session in sessions %}
-    <li>
-      <p><strong>Signed in {{ session.created_at|date:"j M Y, g:i A" }}</strong>{% if session.is_current %} <span class="text-sm">(this browser)</span>{% endif %}</p>
-      <p class="text-sm">{{ session.ip }} · {{ session.user_agent|default:"Unknown browser"|truncatechars:120 }}</p>
+<div class="page-header">
+  <div><h1>Your sessions</h1><p class="page-header__meta">Signed in on {{ session_count }} browser{{ session_count|pluralize }}</p></div>
+</div>
+<section class="card account-card" aria-labelledby="sessions-title">
+  <div class="card__header"><h2 class="card__title" id="sessions-title">Where you're signed in</h2></div>
+  <p class="account-card__lead">If you don't recognise a browser, sign the others out, then change your password.</p>
+  <ul class="session-list" role="list">{% for session in sessions %}
+    <li class="session-list__item">
+      <span class="session-list__icon">{% icon "monitor" %}</span>
+      <div class="session-list__body">
+        <p class="session-list__title">{% if session.is_current %}This browser{% elif session.recorded %}Another browser{% else %}Another browser (details not recorded){% endif %}{% if session.is_current %} {% status "success" "Current" %}{% endif %}</p>
+        <p class="text-sm text-muted">{% if session.signed_in_at %}Signed in {{ session.signed_in_at|date:"j M Y, g:i A" }}{% else %}Sign-in time not recorded{% endif %}{% if session.ip %} from {{ session.ip }}{% endif %}</p>
+        {% if session.user_agent %}<p class="text-sm text-muted session-list__agent">{{ session.user_agent|truncatechars:120 }}</p>{% endif %}
+      </div>
     </li>{% endfor %}
   </ul>
   {% if session_count > 1 %}
-  <form method="post" action="{% url 'usersessions_list' %}">{% csrf_token %}
-    <div class="btn-row"><button type="submit" class="btn btn--primary">Sign out other sessions</button></div>
+  <form method="post" action="{% url 'usersessions_list' %}" class="account-card__actions">{% csrf_token %}
+    <button type="submit" class="btn btn--primary">{% icon "log-out" %}Sign out other sessions</button>
   </form>
   {% endif %}
+</section>
 {% endblock %}
