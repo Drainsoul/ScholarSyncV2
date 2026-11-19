@@ -1,0 +1,20 @@
+{% extends "mfa/totp/base.html" %}
+{% block head_title %}Turn off two-factor sign-in{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Turn off two-factor sign-in</h1><p class="page-header__meta"><a href="{% url 'mfa_index' %}">Back to two-factor sign-in</a></p></div>
+</div>
+<section class="card account-card" aria-labelledby="off-title">
+  <h2 class="card__title" id="off-title">Sign in with your password only?</h2>
+  <p class="account-card__lead">Your authenticator app and recovery codes stop working. Anyone with your password could then sign in as you.</p>
+  <form method="post" action="{% url 'mfa_deactivate_totp' %}">
+    {% csrf_token %}
+    {% include "components/form_errors.html" %}
+    {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+    <div class="btn-row">
+      <button type="submit" class="btn btn--danger">Turn off</button>
+      <a class="btn btn--secondary" href="{% url 'mfa_index' %}">Keep it on</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

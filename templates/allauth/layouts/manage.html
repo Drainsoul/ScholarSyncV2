@@ -1,1 +1,4 @@
-{% extends "allauth/layouts/base.html" %}
+{% extends account_layout|default:"allauth/layouts/base.html" %}
+{% block title %}{% block head_title %}{% endblock %}{% endblock %}
+{% block head %}{% block extra_head %}{% endblock %}{% endblock %}
+{% block scripts %}{% block extra_body %}{% endblock %}{% endblock %}

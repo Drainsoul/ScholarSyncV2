@@ -1,0 +1,20 @@
+{% extends "mfa/recovery_codes/base.html" %}
+{% block head_title %}Make new recovery codes{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Make new recovery codes</h1><p class="page-header__meta"><a href="{% url 'mfa_index' %}">Back to two-factor sign-in</a></p></div>
+</div>
+<section class="card account-card" aria-labelledby="generate-title">
+  <h2 class="card__title" id="generate-title">Replace your recovery codes?</h2>
+  <p class="account-card__lead">You get a fresh set of codes.{% if unused_code_count %} The ones you have now stop working.{% endif %}</p>
+  <form method="post" action="{% url 'mfa_generate_recovery_codes' %}">
+    {% csrf_token %}
+    {% include "components/form_errors.html" %}
+    {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+    <div class="btn-row">
+      <button type="submit" class="btn {% if unused_code_count %}btn--danger{% else %}btn--primary{% endif %}">Make new codes</button>
+      <a class="btn btn--secondary" href="{% url 'mfa_index' %}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

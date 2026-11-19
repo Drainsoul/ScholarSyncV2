@@ -1,0 +1,38 @@
+{% extends "mfa/totp/base.html" %}{% load ui %}
+{% block head_title %}Set up the authenticator app{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Set up the authenticator app</h1><p class="page-header__meta"><a href="{% url 'mfa_index' %}">Back to two-factor sign-in</a></p></div>
+</div>
+<section class="card account-card" aria-labelledby="setup-title">
+  <h2 class="card__title" id="setup-title">Three steps</h2>
+  <ol class="setup-steps">
+    <li class="setup-steps__item">
+      <h3 class="setup-steps__title">Get an authenticator app</h3>
+      <p class="text-sm text-muted">Install one on your phone if you don't have one yet, such as Google Authenticator or Microsoft Authenticator.</p>
+    </li>
+    <li class="setup-steps__item">
+      <h3 class="setup-steps__title">Scan this code with the app</h3>
+      <div class="setup-qr">
+        <img class="setup-qr__image" src="{{ totp_svg_data_uri }}" alt="QR code for adding ScholarSync to your authenticator app" width="176" height="176">
+        <div>
+          <p class="text-sm text-muted">Can't scan it? Choose to enter a setup key in the app and type this key:</p>
+          <p class="setup-qr__key" id="authenticator_secret">{{ form.secret }}</p>
+        </div>
+      </div>
+    </li>
+    <li class="setup-steps__item">
+      <h3 class="setup-steps__title">Enter the 6-digit code the app shows</h3>
+      <form method="post" action="{% url 'mfa_activate_totp' %}" novalidate>
+        {% csrf_token %}
+        {% include "components/form_errors.html" %}
+        {% for bound_field in form %}{% field bound_field %}{% endfor %}
+        <div class="btn-row">
+          <button type="submit" class="btn btn--primary">Turn on two-factor sign-in</button>
+          <a class="btn btn--secondary" href="{% url 'mfa_index' %}">Cancel</a>
+        </div>
+      </form>
+    </li>
+  </ol>
+</section>
+{% endblock %}

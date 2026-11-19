@@ -1,0 +1,18 @@
+{% extends "mfa/recovery_codes/base.html" %}{% load ui %}
+{% block head_title %}Recovery codes{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Recovery codes</h1><p class="page-header__meta"><a href="{% url 'mfa_index' %}">Back to two-factor sign-in</a></p></div>
+</div>
+<section class="card account-card" aria-labelledby="codes-title">
+  <div class="card__header"><h2 class="card__title" id="codes-title">Your codes</h2><p class="text-sm text-muted">{{ unused_codes|length }} of {{ total_count }} left</p></div>
+  <p class="account-card__lead">Use one of these instead of the app's code when you don't have your phone. Each works once.</p>
+  {% if can_view_codes %}
+  <ul class="code-grid" role="list" aria-label="Unused recovery codes">{% for code in unused_codes %}<li class="code-grid__code">{{ code }}</li>{% endfor %}</ul>
+  {% endif %}
+  <div class="account-card__actions">
+    {% if can_download_codes %}<a class="btn btn--primary" href="{% url 'mfa_download_recovery_codes' %}">{% icon "download" %}Download codes</a>{% endif %}
+    {% if can_generate_codes %}<a class="btn btn--secondary" href="{% url 'mfa_generate_recovery_codes' %}">Make new codes</a>{% endif %}
+  </div>
+</section>
+{% endblock %}

@@ -61,3 +61,130 @@
 .session-list__agent {
   overflow-wrap: anywhere;
 }
+
+/* Two-factor overview: one card per method, its icon beside the text. */
+.method {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+.method__icon {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--radius-md);
+  background: var(--primary-50);
+  color: var(--primary);
+}
+
+.method__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.method__body > :last-child,
+.method__body .account-card__actions {
+  margin-bottom: 0;
+}
+
+/* Setting up the app: three numbered steps joined by a rule. */
+.setup-steps {
+  display: grid;
+  gap: var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.setup-steps__item {
+  position: relative;
+  padding-left: var(--space-12);
+  counter-increment: step;
+}
+
+.setup-steps__item::before {
+  content: counter(step);
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-pill);
+  background: var(--secondary);
+  color: var(--white);
+  font-family: var(--font-heading);
+  font-weight: 600;
+}
+
+.setup-steps__item:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 2.5rem;
+  bottom: calc(-1 * var(--space-4));
+  left: calc(1rem - 1px);
+  width: 2px;
+  background: var(--border);
+}
+
+.setup-steps__title {
+  margin: var(--space-1) 0 var(--space-2);
+  font-family: var(--font-heading);
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.setup-steps__item p {
+  margin: 0;
+}
+
+.setup-qr {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.setup-qr__image {
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--white);
+}
+
+.setup-qr__key {
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-header);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: var(--text-md);
+  letter-spacing: 0.08em;
+  overflow-wrap: anywhere;
+}
+
+/* Recovery codes: two columns of monospaced codes. */
+.code-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px dashed var(--border-control);
+  border-radius: var(--radius-md);
+  background: var(--surface-header);
+  list-style: none;
+}
+
+.code-grid__code {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: var(--text-md);
+  letter-spacing: 0.06em;
+}

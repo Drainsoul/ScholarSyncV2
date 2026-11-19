@@ -1,0 +1,44 @@
+{% extends "mfa/base_manage.html" %}{% load ui %}
+{% block head_title %}Two-factor sign-in{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Two-factor sign-in</h1><p class="page-header__meta">{% if authenticators.totp %}On: you sign in with your password and a code from your phone{% else %}Off: you sign in with your password only{% endif %}</p></div>
+</div>
+<section class="card account-card" aria-labelledby="totp-title">
+  <div class="method">
+    <span class="method__icon">{% icon "shield-check" %}</span>
+    <div class="method__body">
+      <div class="method__head"><h2 class="card__title" id="totp-title">Authenticator app</h2>{% if authenticators.totp %}{% status "success" "On" %}{% else %}{% status "neutral" "Off" %}{% endif %}</div>
+      <p class="account-card__lead">An app on your phone, such as Google Authenticator or Microsoft Authenticator, shows a new 6-digit code every 30 seconds. After your password, we ask for that code, so a stolen password alone can't get into your account.</p>
+      {% if mfa_required %}<p class="text-sm text-muted">Staff and office accounts must keep it on.</p>{% endif %}
+      <div class="account-card__actions">
+        {% if authenticators.totp %}
+          {% if not mfa_required %}<a class="btn btn--secondary" href="{% url 'mfa_deactivate_totp' %}">Turn off</a>{% endif %}
+        {% else %}
+          <a class="btn btn--primary" href="{% url 'mfa_activate_totp' %}">Set up the app</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+<section class="card account-card" aria-labelledby="codes-title">
+  <div class="method">
+    <span class="method__icon">{% icon "key-round" %}</span>
+    <div class="method__body">
+      <div class="method__head"><h2 class="card__title" id="codes-title">Recovery codes</h2>{% if codes_total %}{% status "info" codes_left_label %}{% endif %}</div>
+      <p class="account-card__lead">One-time codes for when you don't have your phone. Each code works once. Keep them somewhere safe, away from your phone.</p>
+      {% if is_mfa_enabled %}
+      <div class="account-card__actions">
+        {% if codes_left %}
+          <a class="btn btn--secondary" href="{% url 'mfa_view_recovery_codes' %}">{% icon "eye" %}See codes</a>
+          <a class="btn btn--secondary" href="{% url 'mfa_download_recovery_codes' %}">{% icon "download" %}Download codes</a>
+        {% endif %}
+        <a class="btn btn--ghost" href="{% url 'mfa_generate_recovery_codes' %}">Make new codes</a>
+      </div>
+      {% else %}
+      <p class="text-sm text-muted">You get recovery codes when you set up the authenticator app.</p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}
