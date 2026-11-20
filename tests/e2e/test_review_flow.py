@@ -180,6 +180,13 @@ def test_picture_document_opens_in_a_preview_dialog(
     )
     dialog.get_by_role("link", name="Close").click()
     expect(dialog).to_be_hidden()
+    # Read-only, so a click on the backdrop closes it too, and focus returns to the opener.
+    opener = page.get_by_role("link", name="Preview Document 1")
+    opener.click()
+    expect(picture).to_be_visible()
+    page.mouse.click(5, 5)
+    expect(dialog).to_be_hidden()
+    expect(opener).to_be_focused()
     assert console_errors == []
 
 

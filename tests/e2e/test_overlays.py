@@ -18,6 +18,18 @@ def test_dialog_opens_and_returns_focus_on_escape(
     assert console_errors == []
 
 
+def test_a_click_outside_a_form_dialog_keeps_it_open(
+    page: Page, live_server, vite_build, console_errors
+):
+    page.goto(f"{live_server.url}/_kit/#overlays")
+    page.get_by_role("link", name="Release allowances").click()
+    dialog = page.get_by_role("dialog", name="Release allowances")
+    expect(dialog).to_be_visible()
+    page.mouse.click(5, 5)
+    expect(dialog).to_be_visible()
+    assert console_errors == []
+
+
 def test_confirming_closes_the_dialog_and_toasts(
     page: Page, live_server, vite_build, console_errors
 ):

@@ -1,4 +1,4 @@
-{% load ui %}<div class="dialog__header">
+{% load ui %}<div class="dialog__header"{% block dialog_header_attrs %}{% endblock %}>
   <h2 class="dialog__title" id="app-dialog-title">{% block dialog_title %}{% endblock %}</h2>
   <button type="button" class="icon-btn" data-dialog-close aria-label="Close">{% icon "x" %}</button>
 </div>

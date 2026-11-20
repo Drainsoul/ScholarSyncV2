@@ -1,6 +1,8 @@
 // Modal dialogs (spec §12). An opener is a link to the full page (no-JS) with hx-get to a fragment and
 // hx-target="#app-dialog-body"; after the swap the dialog opens. [data-dialog-close] closes the dialog it
 // sits in, and the server can close it with HX-Trigger "closeDialog". Focus returns to the opener.
+// A read-only fragment marked [data-light-dismiss] (the file previews) also closes on a click outside
+// it: closedby="any", with a click fallback where that isn't supported. Form dialogs never do.
 
 // Safari does not focus a clicked link, so the opener is remembered when the request starts, and
 // forgotten when it ends (the swap, which opens the dialog, has run by then), so a request that fails
@@ -11,6 +13,11 @@ function openDialog(dialog: HTMLDialogElement): void {
   if (dialog.open) return;
   const previous = opener ?? document.activeElement;
   opener = null;
+  // Set on every open: the shared dialog shows forms as well as previews.
+  dialog.setAttribute(
+    "closedby",
+    dialog.querySelector("[data-light-dismiss]") ? "any" : "closerequest",
+  );
   dialog.addEventListener(
     "close",
     () => {
@@ -29,6 +36,22 @@ export function initDialogs(): void {
     if (dialog) {
       event.preventDefault();
       dialog.close();
+      return;
+    }
+    // A click on the backdrop targets the dialog itself, outside its box.
+    if (
+      target instanceof HTMLDialogElement &&
+      !("closedBy" in HTMLDialogElement.prototype) &&
+      target.getAttribute("closedby") === "any" &&
+      target.matches(":modal")
+    ) {
+      const box = target.getBoundingClientRect();
+      const inside =
+        event.clientX >= box.left &&
+        event.clientX <= box.right &&
+        event.clientY >= box.top &&
+        event.clientY <= box.bottom;
+      if (!inside) target.close();
     }
   });
   document.addEventListener("htmx:beforeRequest", (event) => {

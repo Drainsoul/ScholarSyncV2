@@ -1,3 +1,5 @@
 {% extends "components/dialog.html" %}
+{# Read-only, so a click outside closes it too (spec §12 rev 28). #}
+{% block dialog_header_attrs %} data-light-dismiss{% endblock %}
 {% block dialog_title %}{{ preview_label }}{% endblock %}
 {% block dialog_body %}{% include "components/file_preview.html" %}{% endblock %}
