@@ -1098,7 +1098,10 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
   - filters use `hx-get` + `hx-push-url` and swap a `{% partialdef table %}`;
   - forms use `hx-post`: re-render the form partial on error, `HX-Redirect` or `HX-Trigger` on success;
   - dialogs load content into `<dialog>`, and `dialog.ts` opens them;
-  - toasts come from `HX-Trigger: {"toast": …}`, read by `toast.ts` into an `aria-live` region;
+  - toasts come from `HX-Trigger: {"toast": …}`, read by `toast.ts` into an `aria-live` region; (rev 27) they sit
+    at the top right under the top bar, compact; success and info hide after 3 s (paused while hovered or
+    focused), warnings and errors stay until dismissed; a small action such as copy gets no toast, only a brief
+    "Copied" bubble at the pointer;
   - bulk actions are a form with checkboxes;
   - every form also works as a normal POST without JS.
 - **Dashboards (M11):**
