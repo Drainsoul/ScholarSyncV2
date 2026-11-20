@@ -8,7 +8,7 @@ from django.http import Http404, HttpRequest, HttpResponse, HttpResponseRedirect
 from django.shortcuts import redirect, render
 from django.template.response import TemplateResponse
 from django.urls import reverse
-from django.utils.cache import patch_vary_headers
+from django.utils.cache import add_never_cache_headers, patch_vary_headers
 from django.views.generic import TemplateView, View
 
 from apps.accounts.models import User
@@ -41,7 +41,9 @@ from apps.awards.selectors import other_active_awards
 from apps.core.htmx import HtmxHttpRequest, close_dialog, toast
 from apps.core.permissions import ProgramStaffRequiredMixin
 from apps.core.shell import shell_context
-from apps.files.policy import JPEG, PNG
+from apps.files import services as file_services
+from apps.files import storage
+from apps.files.policy import JPEG, PDF, PNG
 from apps.matching.checklist import CHECK_LABELS, snapshot_items
 from apps.programs.models import AcademicTerm, Program
 
@@ -435,13 +437,15 @@ class BulkView(ProgramStaffRequiredMixin, View):
         return self._back(request)
 
 
-PREVIEW_TYPES = (PNG, JPEG)
+PREVIEW_TYPES = (PNG, JPEG, PDF)
 
 
 class DocumentPreviewView(ProgramStaffRequiredMixin, View):
-    """A picture document's current file in the app dialog (a page without JavaScript). The `<img>`
-    loads through files:download, so access, the file.viewed audit and the presigned GET are the
-    download's own; nothing loads until the reviewer opens the preview (spec §12 rev 27)."""
+    """A document's current file in the app dialog (a page without JavaScript), spec §12 rev 27.
+
+    A picture's `<img>` loads through files:download, so access, the file.viewed audit and the
+    presigned GET are the download's own. A PDF is drawn by pdf-preview.ts from a presigned GET
+    made here (audited the same way). Nothing loads until the reviewer opens the preview."""
 
     request: HtmxHttpRequest
     http_method_names = ["get", "options"]
@@ -454,7 +458,16 @@ class DocumentPreviewView(ProgramStaffRequiredMixin, View):
             .first()
         )
         if current is None or current.file.sniffed_type not in PREVIEW_TYPES:
-            raise Http404("No picture to preview.")
+            raise Http404("Nothing to preview.")
+        is_pdf = current.file.sniffed_type == PDF
+        pdf_url = ""
+        if is_pdf:
+            try:
+                pdf_url = file_services.download_url(
+                    user=_actor(request), file=current.file, request=request
+                )
+            except (storage.StorageNotConfigured, storage.StorageUnavailable):
+                pdf_url = ""  # the page says the preview can't load; Download still shows
         dialog = bool(request.htmx)
         response = render(
             request,
@@ -465,8 +478,11 @@ class DocumentPreviewView(ProgramStaffRequiredMixin, View):
                 "application": application,
                 "requirement": current.document.requirement,
                 "file": current.file,
+                "is_pdf": is_pdf,
+                "pdf_url": pdf_url,
                 "dialog": dialog,
             },
         )
         patch_vary_headers(response, ("HX-Request",))
+        add_never_cache_headers(response)  # the PDF's presigned URL expires in 5 minutes
         return response

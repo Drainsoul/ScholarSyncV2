@@ -826,18 +826,54 @@ def test_picture_preview_dialog_and_page(client: Any) -> None:
     assert not AuditEvent.objects.filter(action="file.viewed").exists()
 
 
-def test_preview_only_for_pictures(client: Any) -> None:
+def test_preview_for_pictures_and_pdfs_only(client: Any) -> None:
     membership = _staff()
     application = _row(membership.program, S.UNDER_REVIEW)
     pdf = _with_document(application)
     jpeg = _picture_document(application, "image/jpeg")
+    other = _picture_document(application, "text/csv")
     client.force_login(membership.user)
     detail = client.get(_detail_url(application.pk)).content.decode()
-    assert detail.count(">Preview<") == 1
-    pdf_url = reverse("review:document-preview", args=["tcu-ceaa", application.pk, pdf.pk])
-    jpeg_url = reverse("review:document-preview", args=["tcu-ceaa", application.pk, jpeg.pk])
-    assert client.get(pdf_url).status_code == 404
-    assert client.get(jpeg_url).status_code == 200
+    assert detail.count(">Preview<") == 2
+    for document, status in ((pdf, 200), (jpeg, 200), (other, 404)):
+        url = reverse("review:document-preview", args=["tcu-ceaa", application.pk, document.pk])
+        assert client.get(url).status_code == status
+
+
+def test_pdf_preview_hands_pdf_js_a_presigned_url_and_audits(client: Any, settings: Any) -> None:
+    settings.S3_STORAGE = {  # presigning is local: no server needed
+        "endpoint_url": "http://127.0.0.1:9",
+        "public_endpoint_url": "http://127.0.0.1:9",
+        "region": "us-east-1",
+        "bucket": "preview",
+        "access_key_id": "test",
+        "secret_access_key": "test",
+        "addressing_style": "path",
+    }
+    membership = _staff()
+    application = _row(membership.program, S.UNDER_REVIEW)
+    document = _with_document(application)
+    url = reverse("review:document-preview", args=["tcu-ceaa", application.pk, document.pk])
+    client.force_login(membership.user)
+    response = client.get(url, HTTP_HX_REQUEST="true")
+    html = response.content.decode()
+    assert "data-pdf-preview" in html and "<img" not in html
+    src = re.search(r'data-src="([^"]+)"', html)
+    assert src is not None and "X-Amz-Signature" in src.group(1)
+    assert "no-store" in response["Cache-Control"]
+    event = AuditEvent.objects.get(action="file.viewed")
+    assert event.program == membership.program
+
+
+def test_pdf_preview_without_storage_says_so(client: Any, settings: Any) -> None:
+    settings.S3_STORAGE = {}
+    membership = _staff()
+    application = _row(membership.program, S.UNDER_REVIEW)
+    document = _with_document(application)
+    url = reverse("review:document-preview", args=["tcu-ceaa", application.pk, document.pk])
+    client.force_login(membership.user)
+    html = client.get(url).content.decode()
+    assert "The preview can't load right now." in html
 
 
 def test_preview_of_another_programs_document_is_404(client: Any) -> None:

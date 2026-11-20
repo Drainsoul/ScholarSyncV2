@@ -16,6 +16,14 @@ export default defineConfig({
         main: resolve(root, "src/main.ts"),
         kit: resolve(root, "src/kit.ts"),
       },
+      output: {
+        // pdf.js's worker ships as .mjs; .js is served as JavaScript by every static server
+        // (Windows and some proxies serve .mjs as text/plain, which a module worker refuses).
+        assetFileNames: (asset) =>
+          asset.names.some((name) => name.endsWith(".mjs"))
+            ? "assets/[name]-[hash].js"
+            : "assets/[name]-[hash][extname]",
+      },
     },
   },
   server: { origin: "http://localhost:5173" },

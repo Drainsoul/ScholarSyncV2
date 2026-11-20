@@ -373,6 +373,27 @@ progress::-moz-progress-bar {
   margin: 0 0 var(--space-4);
 }
 
+.pdf-preview {
+  justify-items: stretch;
+  width: 100%;
+}
+
+.pdf-preview__pages {
+  display: grid;
+  gap: var(--space-3);
+  max-height: 65vh;
+  overflow: auto;
+}
+
+.pdf-preview__page {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
 .doc-preview__image {
   max-width: 100%;
   max-height: 65vh;

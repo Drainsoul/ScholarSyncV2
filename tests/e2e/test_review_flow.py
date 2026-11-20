@@ -7,7 +7,7 @@ from apps.applications.models import Application
 from apps.awards.models import Award, ScholarTerm
 from apps.programs.models import BenefitTier
 from apps.programs.tests.factories import MembershipFactory, ProgramFactory
-from tests.e2e.flows import log_in, one_kb_pdf, payload, submitted_application
+from tests.e2e.flows import log_in, one_kb_pdf, one_page_pdf, payload, submitted_application
 
 pytestmark = pytest.mark.e2e
 
@@ -180,4 +180,33 @@ def test_picture_document_opens_in_a_preview_dialog(
     )
     dialog.get_by_role("link", name="Close").click()
     expect(dialog).to_be_hidden()
+    assert console_errors == []
+
+
+def test_pdf_document_is_drawn_in_the_preview_dialog(
+    page: Page, live_server, vite_build, e2e_storage, console_errors
+):
+    from apps.files import storage
+
+    program, staff = _staff_program()
+    application = submitted_application(program, documents=1)
+    stored = application.documents.get().files.get().file
+    storage.put(key=stored.final_key, body=one_page_pdf(), content_type="application/pdf")
+    log_in(page, live_server.url, staff.email, f"/staff/tcu-ceaa/applications/{application.pk}/")
+
+    page.get_by_role("link", name="Preview Document 1").click()
+    dialog = page.get_by_role("dialog", name="Document 1")
+    expect(dialog.get_by_role("img", name="Page 1 of 1")).to_be_visible()
+    expect(dialog.locator("[data-pdf-status]")).to_have_text("1 page")
+    # pdf.js painted something: the canvas is not blank white.
+    painted = page.evaluate(
+        """() => {
+            const canvas = document.querySelector(".pdf-preview__page");
+            const { width, height } = canvas;
+            const { data } = canvas.getContext("2d").getImageData(0, 0, width, height);
+            for (let i = 0; i < data.length; i += 4) if (data[i] < 200) return true;
+            return false;
+        }"""
+    )
+    assert painted
     assert console_errors == []
