@@ -159,3 +159,15 @@ def test_staff_calendar_on_a_phone(page: Page, live_server, vite_build, axe_sour
         assert box is not None and box["width"] >= 24 and box["height"] >= 24, box
     assert axe_violations(page, axe_source) == []
     assert console_errors == []
+
+
+def test_office_copies_a_support_email(page: Page, live_server, vite_build, console_errors):
+    from apps.workspace.tests.factories import SupportRequestFactory
+
+    page.context.grant_permissions(["clipboard-read", "clipboard-write"])
+    request = SupportRequestFactory.create()
+    log_in(page, live_server.url, _office().email, "/office/support/")
+    page.get_by_role("button", name=f"Copy {request.sender.email}").click()
+    expect(page.get_by_text("Email address copied.")).to_be_visible()
+    assert page.evaluate("navigator.clipboard.readText()") == request.sender.email
+    assert console_errors == []

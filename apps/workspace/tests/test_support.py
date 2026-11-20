@@ -156,3 +156,11 @@ def test_inbox_query_count(client: Any, office: User, django_assert_max_num_quer
     SupportRequestFactory.create_batch(50)
     with django_assert_max_num_queries(12):
         assert client.get(INBOX).status_code == 200
+
+
+def test_office_inbox_has_a_copy_button_for_the_email(client: Any, office: User) -> None:
+    request = SupportRequestFactory.create()
+    email = request.sender.email
+    html = client.get(reverse("support:office")).content.decode()
+    assert f'data-copy="{email}"' in html
+    assert f'aria-label="Copy {email}"' in html

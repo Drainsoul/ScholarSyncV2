@@ -106,6 +106,18 @@
   color: var(--text);
 }
 
+/* A small icon button inside a line of text (copy an email address). 32 px target (WCAG 2.5.8). */
+.icon-btn--sm {
+  width: 2rem;
+  height: 2rem;
+  vertical-align: middle;
+}
+
+/* Copy needs JavaScript (the clipboard API); without it the text can still be selected. */
+html:not(.js) .copy-btn {
+  display: none;
+}
+
 /* htmx adds .htmx-request to the element making a request (includeIndicatorStyles is off, spec §10). */
 .htmx-indicator {
   display: none;
