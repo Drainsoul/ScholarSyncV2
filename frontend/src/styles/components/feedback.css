@@ -156,8 +156,51 @@ html:not(.js) .toast__close {
   color: var(--text);
 }
 
+/* Entry only (spec §12 rev 28): the shared dialog empties its body on close, so an exit fade would show
+   it collapsing. Scale only without a reduced-motion preference; base.css drops transitions under it. */
+.dialog[open] {
+  opacity: 1;
+  transition: opacity var(--duration) var(--ease);
+}
+
+@starting-style {
+  .dialog[open] {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dialog[open] {
+    transform: scale(1);
+    transition-property: opacity, transform;
+  }
+
+  @starting-style {
+    .dialog[open] {
+      transform: scale(0.96);
+    }
+  }
+}
+
+/* Scrolling inside the dialog or over its backdrop must not move the page beneath (inert, not fixed). */
+.dialog:modal {
+  overscroll-behavior: contain;
+}
+
 .dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
   background: rgb(17 24 39 / 0.5);
+}
+
+.dialog[open]::backdrop {
+  transition: background-color var(--duration) var(--ease);
+}
+
+@starting-style {
+  .dialog[open]::backdrop {
+    background-color: rgb(17 24 39 / 0);
+  }
 }
 
 .dialog__header {
