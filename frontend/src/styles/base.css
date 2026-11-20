@@ -75,6 +75,12 @@ p {
   max-width: var(--measure);
 }
 
+/* No one-word last lines in body copy (spec §12 rev 28); headings keep balance. */
+p,
+li {
+  text-wrap: pretty;
+}
+
 a {
   color: var(--link);
   text-decoration-thickness: 1px;

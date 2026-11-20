@@ -68,6 +68,17 @@ fieldset.field {
   resize: vertical;
 }
 
+/* Grow with the text from 3 lines up to about 12, then scroll (spec §12 rev 28); where unsupported the
+   rows attribute sizes it. field-sizing ignores rows, so the minimum is set here, and [name] matches the
+   specificity of the control rule above, whose min-height would otherwise win. */
+@supports (field-sizing: content) {
+  .field textarea[name] {
+    field-sizing: content;
+    min-height: calc(3lh + 2 * var(--space-2) + 2px);
+    max-height: 12lh;
+  }
+}
+
 select.input,
 .field select {
   appearance: none;
