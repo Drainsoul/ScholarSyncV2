@@ -189,6 +189,37 @@ def test_account_menu_closes_on_escape_and_outside_click(
     assert console_errors == []
 
 
+def test_menus_are_placed_by_script_where_anchor_positioning_is_missing(
+    browser: Browser, live_server, vite_build
+):
+    """menus.ts: in a browser without position-area the account menu would open centred; the script
+    puts it above its card instead (simulated: CSS.supports says no, and position-area is off;
+    bypass_csp lets the test inject that style under the enforced CSP)."""
+    context = browser.new_context(bypass_csp=True, viewport=DESKTOP)
+    page = context.new_page()
+    page.add_init_script(
+        """
+        const supports = CSS.supports.bind(CSS);
+        CSS.supports = (...args) => (args[0] === "position-area" ? false : supports(...args));
+        document.addEventListener("DOMContentLoaded", () => {
+            const style = document.createElement("style");
+            style.textContent = ".menu-panel { position-area: none !important; }";
+            document.head.append(style);
+        });
+        """
+    )
+    page.goto(f"{live_server.url}/_kit/layouts/staff/")
+    button = page.get_by_role("button", name="Account menu")
+    button.click()
+    panel = page.locator("#account-menu")
+    expect(panel).to_be_visible()
+    menu, card = panel.bounding_box(), button.bounding_box()
+    assert menu and card
+    assert abs(menu["x"] - card["x"]) <= 1 and abs(menu["width"] - card["width"]) <= 1
+    assert menu["y"] + menu["height"] <= card["y"]
+    context.close()
+
+
 def test_long_program_name_switcher_fits_at_375(page: Page, live_server, vite_build):
     from apps.programs.tests.factories import MembershipFactory, ProgramFactory
     from tests.e2e.flows import log_in

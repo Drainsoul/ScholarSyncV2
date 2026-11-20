@@ -2,7 +2,7 @@
 
 The manual half of the audit is `docs/accessibility/wcag-22-aa.md`."""
 
-from typing import Any
+from typing import Any, Literal
 
 import pytest
 from playwright.sync_api import Browser, ViewportSize
@@ -79,9 +79,11 @@ def people() -> dict[str, Any]:
     }
 
 
+@pytest.mark.parametrize("scheme", ["light", "dark"])  # spec §12 rev 29: both themes
 @pytest.mark.parametrize("persona", list(SCREENS))
 def test_key_screens_have_no_axe_violations(
     persona: str,
+    scheme: Literal["light", "dark"],
     people: dict[str, Any],
     browser: Browser,
     live_server: Any,
@@ -94,7 +96,7 @@ def test_key_screens_have_no_axe_violations(
     base = live_server.url
     found: list[str] = []
     for viewport in WIDTHS:
-        context = browser.new_context(bypass_csp=True, viewport=viewport)
+        context = browser.new_context(bypass_csp=True, viewport=viewport, color_scheme=scheme)
         page = context.new_page()
         user = people[persona]
         if user is not None:
@@ -105,8 +107,8 @@ def test_key_screens_have_no_axe_violations(
             assert response is not None and response.status == 200, (path, persona)
             for violation in axe_violations(page, axe_source):
                 found.append(
-                    f"{viewport['width']}px {path}: {violation['id']} ({violation['impact']}) "
-                    f"at {violation['target']}: {violation['help']}"
+                    f"{scheme} {viewport['width']}px {path}: {violation['id']} "
+                    f"({violation['impact']}) at {violation['target']}: {violation['help']}"
                 )
         context.close()
     assert found == [], "\n".join(found)
