@@ -9,6 +9,8 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_safe
 
+from apps.accounts import theme
+
 REPO_URL = "https://github.com/Drainsoul/ScholarSyncV2"
 
 
@@ -66,6 +68,14 @@ def cookies(request: HttpRequest) -> HttpResponse:
                 "name": settings.CSRF_COOKIE_NAME,
                 "purpose": "Protects forms from being submitted by other sites.",
                 "lifetime": f"Up to {_duration(settings.CSRF_COOKIE_AGE)}.",
+            },
+            {
+                "name": settings.THEME_COOKIE_NAME,
+                "purpose": (
+                    "Remembers whether you chose the light or dark theme. Set only when you pick "
+                    "one; choosing System removes it."
+                ),
+                "lifetime": f"{_duration(theme.ONE_YEAR)}.",
             },
         ]
     }

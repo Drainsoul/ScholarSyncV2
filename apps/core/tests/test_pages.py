@@ -64,8 +64,9 @@ def test_explore_notice_only_in_explore_mode(client, settings, vite_build):
 def test_cookie_notice_lists_every_cookie_the_app_sets(client, settings, vite_build):
     settings.KIT_ENABLED = True
     response = client.get("/_kit/layouts/student/")  # renders a CSRF token, so sets the cookie
-    names = {*response.cookies.keys(), settings.SESSION_COOKIE_NAME}
-    assert settings.CSRF_COOKIE_NAME in names
+    theme = client.post("/accounts/theme/", {"theme": "dark", "next": "/"})
+    names = {*response.cookies.keys(), *theme.cookies.keys(), settings.SESSION_COOKIE_NAME}
+    assert {settings.CSRF_COOKIE_NAME, settings.THEME_COOKIE_NAME} <= names
     body = client.get("/cookies/").content.decode()
     for name in names:
         assert name in body

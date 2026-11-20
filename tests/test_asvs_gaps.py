@@ -38,18 +38,20 @@ def test_csrf_cookie_is_httponly(settings: Any) -> None:
 def test_production_cookies_use_the_host_prefix(tmp_path: Path) -> None:
     """V3.3.1, V3.3.3: `__Host-` cookies (HTTPS only, this host only); messages live in the
     session, so there is no separate messages cookie."""
-    values = settings_values(
-        tmp_path, ["SESSION_COOKIE_NAME", "CSRF_COOKIE_NAME", "MESSAGE_STORAGE"]
-    )
+    names = ["SESSION_COOKIE_NAME", "CSRF_COOKIE_NAME", "THEME_COOKIE_NAME"]
+    values = settings_values(tmp_path, [*names, "MESSAGE_STORAGE"])
     assert values == {
         "SESSION_COOKIE_NAME": "__Host-sessionid",
         "CSRF_COOKIE_NAME": "__Host-csrftoken",
+        "THEME_COOKIE_NAME": "__Host-theme",  # spec §12 rev 29: the light/dark choice
         "MESSAGE_STORAGE": "django.contrib.messages.storage.session.SessionStorage",
     }
-    developer = settings_values(
-        tmp_path, ["SESSION_COOKIE_NAME", "CSRF_COOKIE_NAME"], DJANGO_DEBUG="true"
-    )
-    assert developer == {"SESSION_COOKIE_NAME": "sessionid", "CSRF_COOKIE_NAME": "csrftoken"}
+    developer = settings_values(tmp_path, names, DJANGO_DEBUG="true")
+    assert developer == {
+        "SESSION_COOKIE_NAME": "sessionid",
+        "CSRF_COOKIE_NAME": "csrftoken",
+        "THEME_COOKIE_NAME": "theme",
+    }
 
 
 @pytest.mark.django_db
