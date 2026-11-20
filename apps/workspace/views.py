@@ -5,19 +5,44 @@ from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.cache import patch_vary_headers
 from django.views import View
 from django.views.generic import TemplateView
 
 from apps.accounts.models import User
+from apps.core.calendar import WEEKDAYS, parse_month
 from apps.core.permissions import ProgramStaffRequiredMixin
 from apps.core.shell import home_url_for, shell_context
+from apps.programs.models import Program
 from apps.students import services
 from apps.students.selectors import unclaimed_profiles_for
+from apps.workspace.calendar import staff_calendar
 from apps.workspace.dashboard import staff_dashboard
 from apps.workspace.forms import StaffProfileForm
 from apps.workspace.tasks import task_status
+
+CALENDAR_ID = "staff-calendar"
+CALENDAR_LEGEND = [
+    ("task", "Your task due"),
+    ("release", "Allowance release"),
+    ("opens", "Applications open"),
+    ("closes", "Applications close"),
+]
+
+
+def _calendar_context(request: HttpRequest, program: Program, user: User) -> dict[str, Any]:
+    today = timezone.localdate()
+    month = parse_month(request.GET.get("month"), today=today)
+    return {
+        "calendar": staff_calendar(program, user, today=today, month=month),
+        "calendar_id": CALENDAR_ID,
+        "weekdays": WEEKDAYS,
+        "legend": CALENDAR_LEGEND,
+        "add_task_url": reverse("workspace:task-new", kwargs={"program": program.slug}),
+    }
 
 
 class DashboardView(ProgramStaffRequiredMixin, TemplateView):
@@ -45,9 +70,26 @@ class DashboardView(ProgramStaffRequiredMixin, TemplateView):
         return {
             **super().get_context_data(**kwargs),
             **shell_context(self.request, area="staff", program=self.program),
+            **_calendar_context(self.request, self.program, user),
             "board": board,
             "task_rows": task_rows,
         }
+
+    def get(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        htmx = getattr(request, "htmx", None)
+        if htmx and htmx.target == CALENDAR_ID:
+            # Previous/Next month: only the calendar, without the rest of the dashboard.
+            user = request.user
+            assert isinstance(user, User)
+            response: HttpResponse = TemplateResponse(
+                request,
+                f"{self.template_name}#calendar",
+                {"program": self.program, **_calendar_context(request, self.program, user)},
+            )
+        else:
+            response = super().get(request, *args, **kwargs)
+        patch_vary_headers(response, ("HX-Request", "HX-Target"))
+        return response
 
 
 class NoProgramsView(TemplateView):

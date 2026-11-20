@@ -9,9 +9,11 @@ from django.utils import timezone
 from apps.accounts.models import User
 from apps.accounts.tests.factories import UserFactory
 from apps.applications.models import Application
+from apps.applications.review_selectors import applications_by_month
 from apps.applications.tests.factories import ApplicationFactory
 from apps.awards.models import Award
 from apps.awards.tests.factories import AwardFactory, ScholarTermFactory
+from apps.core.charts import first_month, month_bars
 from apps.money.models import Disbursement
 from apps.money.tests.builders import payout
 from apps.money.tests.factories import ScheduleFactory
@@ -56,7 +58,8 @@ def test_applications_by_month_buckets_in_manila() -> None:
             program=program, status=S.APPROVED, submitted_at=sent, first_submitted_at=sent
         )
     ApplicationFactory.create(program=program)  # a draft: never submitted
-    months = staff_dashboard(program, _staff(program), now=NOW).months
+    # The staff dashboard dropped the chart (rev 27); the office's charts still use the selector.
+    months = month_bars(applications_by_month([program], since=first_month(TODAY)), today=TODAY)
     assert [(bar.short, bar.count) for bar in months] == [
         ("Jun", 0),
         ("Jul", 0),
@@ -207,10 +210,9 @@ def test_dashboard_page_renders_for_office_and_head(client: Any, who: str) -> No
     response = client.get(reverse("workspace:dashboard", kwargs={"program": program.slug}))
     html = response.content.decode()
     assert response.status_code == 200
-    for text in ("Active scholars", "Needs attention", "Applications by month", "Your tasks"):
+    for text in ("Active scholars", "Needs attention", "Your tasks", 'id="staff-calendar"'):
         assert text in html
-    assert "View as table" in html
-    assert 'data-percent="100"' in html
+    assert "Applications by month" not in html and "View as table" not in html
     assert 'href="#"' not in html
 
 

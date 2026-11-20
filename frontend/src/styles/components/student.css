@@ -1,4 +1,5 @@
-/* Student screens (spec §12 rev 26): the read-only profile, the profile ring and the calendar. */
+/* Student screens (spec §12 rev 26): the read-only profile, the profile ring and the calendar (the
+   staff dashboard shares the calendar, rev 27). */
 
 /* Profile overview: one card per section, what is on file, an Edit button. */
 .profile-intro {
@@ -293,6 +294,35 @@
 .next-dates__date--closes {
   --event-edge: var(--warning);
   --event-bg: var(--warning-50);
+}
+
+.cal__event--task,
+.cal__swatch--task {
+  --event-edge: var(--primary);
+  --event-bg: var(--primary-50);
+}
+
+/* Staff dashboard (rev 27): a task or a release day links to its page; a day number opens Add task. */
+.cal__event--link {
+  text-decoration: none;
+}
+
+.cal__event--link:hover .cal__event-text {
+  text-decoration: underline;
+}
+
+.cal__num--link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.cal__num--link:hover {
+  background: var(--surface-header);
+  text-decoration: underline;
+}
+
+.cal__day--today .cal__num--link:hover {
+  background: var(--primary-hover);
 }
 
 @media (max-width: 48rem) {

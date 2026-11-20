@@ -1,4 +1,4 @@
-"""The staff dashboard: figures, what needs attention, applications by month and own tasks."""
+"""The staff dashboard: figures, what needs attention and own tasks (the calendar: calendar.py)."""
 
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -8,14 +8,9 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.applications.models import Application
-from apps.applications.review_selectors import (
-    WAITING_STATUSES,
-    applications_by_month,
-    waiting_over,
-)
+from apps.applications.review_selectors import WAITING_STATUSES, waiting_over
 from apps.awards.models import Award
 from apps.awards.selectors import at_risk_q, with_latest_term
-from apps.core.charts import MonthBar, first_month, month_bars
 from apps.core.templatetags.ui import peso
 from apps.core.text import counted
 from apps.money.selectors import payout_counts, released_in_year
@@ -34,7 +29,6 @@ TASKS_SHOWN = 5
 class StaffDashboard:
     figures: list[dict[str, str]]
     attention: list[dict[str, str]]
-    months: list[MonthBar]
     tasks: list[Task]
     term_label: str
 
@@ -155,11 +149,9 @@ def staff_dashboard(program: Program, user: User, *, now: datetime) -> StaffDash
     if window is not None:
         attention.append(window)
 
-    start = first_month(today)
     return StaffDashboard(
         figures=figures,
         attention=attention,
-        months=month_bars(applications_by_month([program], since=start), today=today),
         tasks=list(tasks[:TASKS_SHOWN]),
         term_label=str(term) if term is not None else "",
     )
