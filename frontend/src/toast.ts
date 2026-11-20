@@ -15,6 +15,13 @@ export interface ToastDetail {
 }
 
 const TONES: ReadonlySet<string> = new Set(["info", "success", "warning", "danger"]);
+// The icon that leads each tone (spec §12 rev 30), so the tone is never colour alone.
+const ICONS: Record<Tone, string> = {
+  info: "info",
+  success: "check",
+  warning: "triangle-alert",
+  danger: "circle-alert",
+};
 const AUTO_HIDE_MS = 3000;
 const ANNOUNCE_DELAY_MS = 250;
 export const SERVER_ERROR = "Something went wrong on our side. Try again.";
@@ -55,9 +62,12 @@ export function showToast(detail: ToastDetail): HTMLElement | null {
   if (!(region && template instanceof HTMLTemplateElement)) return null;
   const toast = template.content.firstElementChild?.cloneNode(true);
   if (!(toast instanceof HTMLElement)) return null;
-  const tone = detail.tone && TONES.has(detail.tone) ? detail.tone : "info";
+  const tone: Tone = detail.tone && TONES.has(detail.tone) ? detail.tone : "info";
   toast.className = `toast toast--${tone}`;
   toast.dataset.tone = tone;
+  const use = toast.querySelector(".toast__icon use");
+  const href = use?.getAttribute("href");
+  if (use && href) use.setAttribute("href", href.replace(/#[^#]*$/, `#${ICONS[tone]}`));
   const text = toast.querySelector(".toast__text");
   if (text) text.textContent = detail.message;
   region.append(toast);

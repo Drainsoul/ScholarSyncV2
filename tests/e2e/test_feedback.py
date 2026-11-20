@@ -59,3 +59,27 @@ def test_filtering_swaps_only_the_table_and_keeps_history_out_of_storage(
     expect(page.locator("#scholars-table")).to_have_count(1)
     assert page.evaluate("window.localStorage.length") == 0
     assert console_errors == []
+
+
+@pytest.mark.parametrize(
+    ("tone", "icon"),
+    [
+        ("success", "check"),
+        ("info", "info"),
+        ("warning", "triangle-alert"),
+        ("danger", "circle-alert"),
+    ],
+)
+def test_each_toast_tone_leads_with_its_icon(
+    page: Page, live_server, vite_build, console_errors, tone: str, icon: str
+):
+    """Spec §12 rev 30: a solid chip whose icon carries the tone, not colour alone."""
+    page.goto(f"{live_server.url}/_kit/layouts/staff/")
+    page.evaluate(
+        "(t) => document.dispatchEvent("
+        "new CustomEvent('toast', {detail: {message: 'Hi', tone: t}}))",
+        tone,
+    )
+    use = page.locator(f"#toasts .toast--{tone} .toast__icon use")
+    expect(use).to_have_attribute("href", re.compile(rf"#{icon}$"))
+    assert console_errors == []
