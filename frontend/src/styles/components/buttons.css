@@ -18,8 +18,8 @@
 }
 
 .btn--primary {
-  border-color: var(--primary);
-  background: var(--primary);
+  border-color: var(--primary-fill);
+  background: var(--primary-fill);
   color: var(--on-primary);
 }
 
@@ -126,7 +126,7 @@ html:not(.js) .copy-btn {
   border-radius: var(--radius-xs);
   background: var(--text);
   box-shadow: var(--shadow-float);
-  color: var(--white);
+  color: var(--surface); /* white on ink in light, ink on near-white in dark */
   font-size: var(--text-xs);
   font-weight: 600;
   line-height: 1.4;

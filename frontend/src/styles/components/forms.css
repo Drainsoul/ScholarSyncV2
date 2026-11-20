@@ -128,8 +128,8 @@ input[type="radio"] {
 }
 
 input:is([type="checkbox"], [type="radio"]):checked {
-  border-color: var(--primary);
-  background-color: var(--primary);
+  border-color: var(--primary-fill);
+  background-color: var(--primary-fill);
 }
 
 input[type="checkbox"]:checked {
@@ -137,8 +137,8 @@ input[type="checkbox"]:checked {
 }
 
 input[type="checkbox"]:indeterminate {
-  border-color: var(--primary);
-  background-color: var(--primary);
+  border-color: var(--primary-fill);
+  background-color: var(--primary-fill);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round'%3E%3Cpath d='M5 12h14'/%3E%3C/svg%3E");
 }
 

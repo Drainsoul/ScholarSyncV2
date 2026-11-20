@@ -118,8 +118,8 @@
   width: 2rem;
   height: 2rem;
   border-radius: var(--radius-pill);
-  background: var(--secondary);
-  color: var(--white);
+  background: var(--secondary-fill);
+  color: var(--on-primary);
   font-family: var(--font-heading);
   font-weight: 600;
 }
@@ -156,7 +156,7 @@
   padding: var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  background: var(--white);
+  background: var(--white); /* a QR code needs its light quiet zone in either theme */
 }
 
 .setup-qr__key {

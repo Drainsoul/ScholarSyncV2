@@ -1,5 +1,7 @@
 /* Design tokens (spec §12 rev 4). tests/test_tokens.py checks every pair the components use. */
 :root {
+  color-scheme: light dark;
+
   /* Palette */
   --red-700: #b8132a;
   --red-800: #9b1022;
@@ -28,54 +30,95 @@
   --slate-25: #fafafb;
   --white: #ffffff;
 
-  /* Roles */
-  --text: var(--ink-900);
-  --text-secondary: var(--slate-700);
-  --text-muted: var(--slate-500);
-  --bg: var(--slate-50);
-  --surface: var(--white);
-  --surface-hover: var(--slate-100);
-  --surface-header: var(--slate-25);
-  --surface-selected: var(--blue-25);
-  --track: var(--slate-150);
-  --border: var(--slate-200);
-  --border-control: var(--slate-300); /* secondary-button outlines: their text identifies them */
-  --border-input: var(--slate-400); /* inputs, selects, textareas, checkboxes and radios */
-  --primary: var(--red-700);
-  --primary-hover: var(--red-800);
-  --primary-50: var(--red-50);
+  /* Dark palette (spec §12 rev 29): a navy-grey ground, cards a step lighter; red, blue, green and gold
+     lighten so they stay 4.5:1 as text on it. */
+  --night-950: #0f1520;
+  --night-900: #182030;
+  --night-850: #1c2535;
+  --night-800: #222c3c;
+  --night-750: #2a3444;
+  --night-700: #2c3646;
+  --night-600: #465264;
+  --night-500: #717d8e; /* control edges: 3:1 on the dark cards */
+  --night-400: #9aa4b2;
+  --night-300: #c3cad4;
+  --night-100: #e8ecf2;
+  --night-red-400: #f27a88;
+  --night-red-600: #c81f36; /* the primary fill's hover: white stays 4.5:1 on it */
+  --night-red-tint: #3b1a23;
+  --night-blue-400: #8db2f0;
+  --night-blue-300: #b3cbf5;
+  --night-blue-tint: #1a2b47;
+  --night-blue-tint-strong: #2b4472;
+  --night-blue-selected: #1b2a42;
+  --night-yellow-tint: #2d2610;
+  --night-yellow-tint-strong: #3a3115;
+  --night-gold-400: #e8bb4c;
+  --night-gold-tint-strong: #4a3c15;
+  --night-green-400: #6fd09a;
+  --night-green-tint: #13301f;
+  --night-green-tint-strong: #22543a;
+  --night-danger-400: #f5909b;
+  --night-danger-tint: #3a1a20;
+  --night-danger-tint-strong: #6b2a36;
+
+  /* Roles: light-dark(light, dark). The scheme comes from color-scheme below: the device's by default,
+     or the one the account menu pinned (data-theme on <html>, written by the server). */
+  --text: light-dark(var(--ink-900), var(--night-100));
+  --text-secondary: light-dark(var(--slate-700), var(--night-300));
+  --text-muted: light-dark(var(--slate-500), var(--night-400));
+  --bg: light-dark(var(--slate-50), var(--night-950));
+  --surface: light-dark(var(--white), var(--night-900));
+  --surface-hover: light-dark(var(--slate-100), var(--night-800));
+  --surface-header: light-dark(var(--slate-25), var(--night-850));
+  --surface-selected: light-dark(var(--blue-25), var(--night-blue-selected));
+  --track: light-dark(var(--slate-150), var(--night-750));
+  --border: light-dark(var(--slate-200), var(--night-700));
+  /* Secondary-button outlines (their text identifies them), then the edges of inputs, selects,
+     textareas, checkboxes and radios. */
+  --border-control: light-dark(var(--slate-300), var(--night-600));
+  --border-input: light-dark(var(--slate-400), var(--night-500));
+  /* --primary is red as text, edges and marks; --primary-fill is the solid red behind white text
+     (buttons, the award card, the auth panel), the same in both themes. */
+  --primary: light-dark(var(--red-700), var(--night-red-400));
+  --primary-fill: var(--red-700);
+  --primary-hover: light-dark(var(--red-800), var(--night-red-600));
+  --primary-50: light-dark(var(--red-50), var(--night-red-tint));
   --on-primary: var(--white);
-  --secondary: var(--blue-700);
-  --secondary-hover: var(--blue-800);
-  --secondary-50: var(--blue-50);
-  --link: var(--blue-700);
-  --link-hover: var(--blue-800);
+  --secondary: light-dark(var(--blue-700), var(--night-blue-400));
+  --secondary-fill: var(--blue-700);
+  --secondary-hover: light-dark(var(--blue-800), var(--night-blue-300));
+  --secondary-50: light-dark(var(--blue-50), var(--night-blue-tint));
+  --link: light-dark(var(--blue-700), var(--night-blue-400));
+  --link-hover: light-dark(var(--blue-800), var(--night-blue-300));
   --accent: var(--yellow-500);
-  --accent-50: var(--yellow-50);
-  --accent-100: var(--yellow-100);
+  --accent-50: light-dark(var(--yellow-50), var(--night-yellow-tint));
+  --accent-100: light-dark(var(--yellow-100), var(--night-yellow-tint-strong));
   --on-accent: var(--ink-900);
   --brand: var(--red-700);
-  --danger: var(--red-800);
-  --danger-50: #fdecee;
-  --danger-100: var(--red-100);
-  --success: var(--green-800);
-  --success-50: #e7f3ec;
-  --success-100: var(--green-100);
-  --warning: var(--gold-700);
-  --warning-50: var(--yellow-50);
-  --warning-100: var(--yellow-100);
-  --info: var(--blue-700);
-  --info-50: var(--blue-50);
-  --info-100: var(--blue-100);
-  --focus: var(--ink-900);
+  --danger: light-dark(var(--red-800), var(--night-danger-400));
+  --danger-50: light-dark(#fdecee, var(--night-danger-tint));
+  --danger-100: light-dark(var(--red-100), var(--night-danger-tint-strong));
+  --success: light-dark(var(--green-800), var(--night-green-400));
+  --success-50: light-dark(#e7f3ec, var(--night-green-tint));
+  --success-100: light-dark(var(--green-100), var(--night-green-tint-strong));
+  --warning: light-dark(var(--gold-700), var(--night-gold-400));
+  --warning-50: light-dark(var(--yellow-50), var(--night-yellow-tint));
+  --warning-100: light-dark(var(--yellow-100), var(--night-gold-tint-strong));
+  --info: light-dark(var(--blue-700), var(--night-blue-400));
+  --info-50: light-dark(var(--blue-50), var(--night-blue-tint));
+  --info-100: light-dark(var(--blue-100), var(--night-blue-tint-strong));
+  --focus: light-dark(var(--ink-900), var(--night-100));
   --focus-halo: var(--yellow-500);
   /* The yellow halo outside the 3 px ink outline; components that draw their own inset marker add it. */
   --focus-ring: 0 0 0 6px var(--focus-halo);
-  --nav-bg: var(--white);
-  --nav-text: var(--slate-700);
+  --nav-bg: light-dark(var(--white), var(--night-900));
+  --nav-text: light-dark(var(--slate-700), var(--night-300));
   --nav-current: var(--primary);
   --nav-current-bg: var(--primary-50);
   --nav-count-bg: var(--accent);
+  --backdrop: light-dark(rgb(17 24 39 / 0.5), rgb(0 0 0 / 0.6));
+  --shadow-colour: light-dark(rgb(14 27 44 / 0.3), rgb(0 0 0 / 0.55));
 
   /* Type: 14 px body, 12 px captions */
   --font-heading: "Lexend", system-ui, sans-serif;
@@ -111,7 +154,7 @@
   --radius-md: 10px;
   --radius-lg: 12px;
   --radius-pill: 999px;
-  --shadow-float: 0 12px 32px -8px rgb(14 27 44 / 0.3);
+  --shadow-float: 0 12px 32px -8px var(--shadow-colour);
 
   /* Sizes and motion */
   --control-height: 2.25rem;
@@ -121,4 +164,13 @@
   --content-max: 72rem;
   --duration: 150ms;
   --ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* The account menu's choice (spec §12 rev 29): the server writes data-theme from the theme cookie. */
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }

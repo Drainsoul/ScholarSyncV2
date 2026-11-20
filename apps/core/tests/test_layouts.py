@@ -257,5 +257,6 @@ def test_auth_panel_uses_on_primary_text():
     assert "var(--on-primary)" in rules
     assert "var(--text-muted)" not in rules
     assert "var(--nav-" not in rules
-    assert re.search(r"\.auth__panel \{[^}]*background: var\(--primary\)", rules)
+    # The solid red fill, the same in both themes (spec §12 rev 29).
+    assert re.search(r"\.auth__panel \{[^}]*background: var\(--primary-fill\)", rules)
     assert "var(--on-primary)" in _css_rules(".auth__panel .brand__mark")

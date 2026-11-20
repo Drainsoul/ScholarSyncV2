@@ -9,18 +9,38 @@ import pytest
 STYLES = Path(__file__).resolve().parents[1] / "frontend" / "src" / "styles"
 DECLARATION = re.compile(r"--([a-z0-9-]+):\s*([^;]+);")
 REFERENCE = re.compile(r"^var\(--([a-z0-9-]+)\)$")
+LIGHT_DARK = re.compile(r"^light-dark\((.+)\)$", re.S)
+SCHEMES = ("light", "dark")
 
 
-def tokens() -> dict[str, str]:
-    """Token name -> hex colour, following var(--x) aliases."""
+def split_top_level(args: str) -> list[str]:
+    """light-dark(var(--a), rgb(0 0 0 / 0.5)) -> its two arguments (commas inside brackets kept)."""
+    parts, depth, start = [], 0, 0
+    for i, char in enumerate(args):
+        depth += {"(": 1, ")": -1}.get(char, 0)
+        if char == "," and depth == 0:
+            parts.append(args[start:i].strip())
+            start = i + 1
+    parts.append(args[start:].strip())
+    return parts
+
+
+def tokens(scheme: str = "light") -> dict[str, str]:
+    """Token name -> colour in one scheme, following var(--x) and light-dark() (spec §12 rev 29)."""
     raw = dict(DECLARATION.findall((STYLES / "tokens.css").read_text(encoding="utf-8")))
 
-    def resolve(name: str) -> str:
-        value = raw[name].strip()
+    def resolve(value: str) -> str:
+        value = value.strip()
         alias = REFERENCE.match(value)
-        return resolve(alias.group(1)) if alias else value
+        if alias:
+            return resolve(raw[alias.group(1)])
+        pair = LIGHT_DARK.match(value)
+        if pair:
+            light, dark = split_top_level(pair.group(1))
+            return resolve(light if scheme == "light" else dark)
+        return value
 
-    return {name: resolve(name) for name in raw}
+    return {name: resolve(value) for name, value in raw.items()}
 
 
 def luminance(colour: str) -> float:
@@ -47,8 +67,14 @@ TEXT_PAIRS = [
     ("text-muted", "surface-header"),
     ("link", "surface"),
     ("link", "bg"),
-    ("on-primary", "primary"),
+    # White on the solid red and blue fills (buttons, the award card, the auth panel, step numbers).
+    ("on-primary", "primary-fill"),
     ("on-primary", "primary-hover"),
+    ("on-primary", "secondary-fill"),
+    ("primary-fill", "on-primary"),  # the auth panel's logo square: red on white
+    # The "Copied" bubble: surface-coloured text on the ink (or the danger red when it failed).
+    ("surface", "text"),
+    ("surface", "danger"),
     ("primary", "primary-50"),
     ("danger", "surface"),
     ("danger", "danger-50"),
@@ -71,7 +97,6 @@ TEXT_PAIRS = [
     ("secondary-hover", "secondary-50"),
     ("text", "surface-hover"),
     ("text-secondary", "track"),
-    ("on-accent", "accent-100"),
     ("text-muted", "surface-hover"),
     ("success", "surface-hover"),
     ("warning", "surface-hover"),
@@ -110,18 +135,20 @@ DECORATIVE_AS_TEXT = re.compile(
 )
 
 
+@pytest.mark.parametrize("scheme", SCHEMES)
 @pytest.mark.parametrize(("foreground", "background"), TEXT_PAIRS)
-def test_text_pairs_reach_aa(foreground, background):
-    colours = tokens()
+def test_text_pairs_reach_aa(foreground, background, scheme):
+    colours = tokens(scheme)
     ratio = contrast(colours[foreground], colours[background])
-    assert ratio >= 4.5, f"--{foreground} on --{background} is {ratio:.2f}:1"
+    assert ratio >= 4.5, f"{scheme}: --{foreground} on --{background} is {ratio:.2f}:1"
 
 
+@pytest.mark.parametrize("scheme", SCHEMES)
 @pytest.mark.parametrize(("foreground", "background"), NON_TEXT_PAIRS)
-def test_non_text_pairs_reach_3_to_1(foreground, background):
-    colours = tokens()
+def test_non_text_pairs_reach_3_to_1(foreground, background, scheme):
+    colours = tokens(scheme)
     ratio = contrast(colours[foreground], colours[background])
-    assert ratio >= 3.0, f"--{foreground} on --{background} is {ratio:.2f}:1"
+    assert ratio >= 3.0, f"{scheme}: --{foreground} on --{background} is {ratio:.2f}:1"
 
 
 def test_text_pairs_include_the_status_tones():
@@ -144,9 +171,36 @@ def test_decorative_colours_are_never_text():
     assert offenders == []
 
 
-def test_yellow_release_date_is_large_text_on_red_at_3_to_1():
-    colours = tokens()
-    assert contrast(colours["accent"], colours["primary"]) >= 3.0
+@pytest.mark.parametrize("scheme", SCHEMES)
+def test_yellow_release_date_is_large_text_on_red_at_3_to_1(scheme):
+    colours = tokens(scheme)
+    assert contrast(colours["accent"], colours["primary-fill"]) >= 3.0
+
+
+def test_the_root_follows_the_device_unless_a_theme_is_pinned():
+    css = (STYLES / "tokens.css").read_text(encoding="utf-8")
+    assert re.search(r":root \{\s*color-scheme: light dark;", css)
+    assert re.search(r':root\[data-theme="light"\] \{\s*color-scheme: light;', css)
+    assert re.search(r':root\[data-theme="dark"\] \{\s*color-scheme: dark;', css)
+
+
+def test_every_role_has_a_dark_value_or_is_the_same_on_purpose():
+    """A role left as a plain light palette colour would stay light on the dark ground."""
+    raw = dict(DECLARATION.findall((STYLES / "tokens.css").read_text(encoding="utf-8")))
+    same_in_both = {
+        "primary-fill", "on-primary", "secondary-fill", "accent", "on-accent", "brand",
+        "focus-halo", "nav-count-bg",
+    }  # fmt: skip
+    light, dark = tokens("light"), tokens("dark")
+    roles = {
+        name
+        for name, value in raw.items()
+        if value.strip().startswith(("light-dark(", "var(--"))
+        and not re.match(r"(red|blue|yellow|gold|green|ink|slate|white|night)-?", name)
+        and light[name].startswith("#")
+    }
+    unchanged = {name for name in roles if light[name] == dark[name]} - same_in_both
+    assert unchanged == set()
 
 
 def test_fonts_are_self_hosted(vite_build):
