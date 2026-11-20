@@ -49,6 +49,15 @@
         <div class="menu-panel account-menu__panel" id="account-menu" popover>
           <a class="btn btn--ghost" href="{% url 'usersessions_list' %}">Your sessions</a>
           <a class="btn btn--ghost" href="{% url 'mfa_index' %}">Two-factor sign-in</a>
+          <form class="theme-choice" method="post" action="{% url 'theme_set' %}">{% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <p class="theme-choice__label" id="theme-choice-label">Theme</p>
+            <div class="theme-choice__options" role="group" aria-labelledby="theme-choice-label">
+              <button type="submit" name="theme" value="light" aria-pressed="{% if theme == 'light' %}true{% else %}false{% endif %}">Light</button>
+              <button type="submit" name="theme" value="dark" aria-pressed="{% if theme == 'dark' %}true{% else %}false{% endif %}">Dark</button>
+              <button type="submit" name="theme" value="system" aria-pressed="{% if not theme %}true{% else %}false{% endif %}">System</button>
+            </div>
+          </form>
           <form method="post" action="{{ logout_url }}">{% csrf_token %}<button type="submit" class="btn btn--ghost">{% icon "log-out" %}Sign out</button></form>
         </div>
       </div>

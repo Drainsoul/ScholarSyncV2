@@ -321,6 +321,7 @@ URLS: dict[str, str] = {
     "usersessions_list": "signed_in",
     "session_keep_alive": "signed_in_post_only",
     "session_status": "signed_in",
+    "theme_set": "post_only",
     "mfa_activate_totp": "reauth",
     "mfa_generate_recovery_codes": "reauth",
     "mfa_reauthenticate": "reauth",

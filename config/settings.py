@@ -200,6 +200,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "apps.accounts.context_processors.account_shell",
+                "apps.accounts.theme.theme",
             ],
         },
     },
@@ -430,6 +431,8 @@ CSRF_COOKIE_HTTPONLY = True
 # them over plain HTTP, so only production uses the prefix.
 SESSION_COOKIE_NAME = "__Host-sessionid" if PRODUCTION else "sessionid"
 CSRF_COOKIE_NAME = "__Host-csrftoken" if PRODUCTION else "csrftoken"
+# The light/dark choice from the account menu (spec §12 rev 29; apps/accounts/theme.py).
+THEME_COOKIE_NAME = "__Host-theme" if PRODUCTION else "theme"
 # Flash messages live in the session: no separate messages cookie.
 MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
 

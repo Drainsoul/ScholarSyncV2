@@ -656,6 +656,54 @@
   width: 100%;
 }
 
+/* Light, Dark or System (spec §12 rev 29): a plain form, so it works without script. The chosen one
+   is raised on the surface with an edge, not marked by colour alone. */
+.theme-choice {
+  margin: var(--space-1) 0;
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  border-block: 1px solid var(--border);
+}
+
+.theme-choice__label {
+  margin: 0 0 var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.theme-choice__options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  background: var(--surface-header);
+}
+
+.theme-choice__options button {
+  min-height: var(--control-height-sm);
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.theme-choice__options button:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.theme-choice__options button[aria-pressed="true"] {
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--border-input);
+  color: var(--text);
+}
+
 /* The page on the grey ground, centred in the space beside the sidebar on wide screens */
 .app > .page {
   width: 100%;

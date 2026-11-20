@@ -3,6 +3,7 @@ from django.urls import include, path
 
 from apps.accounts.reauth import MfaReauthenticateView, ReauthenticateView, SessionListView
 from apps.accounts.session_policy import keep_alive, status
+from apps.accounts.theme import set_theme
 
 
 def not_offered(request: HttpRequest) -> HttpResponse:
@@ -37,6 +38,7 @@ urlpatterns = [
     path("accounts/google/login/token/", not_offered, name="google_login_by_token"),
     path("accounts/session/keep-alive/", keep_alive, name="session_keep_alive"),
     path("accounts/session/status/", status, name="session_status"),
+    path("accounts/theme/", set_theme, name="theme_set"),
     path(
         "accounts/reauthenticate/",
         ReauthenticateView.as_view(),
