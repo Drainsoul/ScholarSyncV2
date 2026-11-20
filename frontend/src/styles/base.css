@@ -179,7 +179,29 @@ main:is(:focus, :focus-visible) {
   vertical-align: -0.25em;
 }
 
+/* Pages cross-fade on same-origin navigation (spec §12 rev 29); browsers without it navigate as before.
+   The sidebar and top bar are captured on their own, so they hold still while the page fades. */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-group(*) {
+  animation-duration: 200ms;
+}
+
+.app > .sidebar {
+  view-transition-name: sidebar;
+}
+
+:is(.app, body) > .topbar {
+  view-transition-name: topbar;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+
   * {
     /* biome-ignore lint/complexity/noImportantStyles: reduced motion must override every component rule */
     animation: none !important;

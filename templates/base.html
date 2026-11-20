@@ -9,6 +9,8 @@
   <meta name="theme-color" content="#b8132a">
   {% vite_hmr_client %}
   {% vite_asset 'src/main.ts' %}
+  {# A cross-fade waits for the main content to be parsed, so it never lands on a half-built page (rev 29). #}
+  <link rel="expect" href="#main" blocking="render">
   {% if request.session_policy %}<meta name="session-idle-seconds" content="{{ request.session_policy.idle }}">
   <meta name="session-absolute-seconds" content="{{ request.session_policy.absolute }}">{% endif %}
   {% block head %}{% endblock %}
