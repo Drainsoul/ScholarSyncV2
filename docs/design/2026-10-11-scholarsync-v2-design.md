@@ -69,6 +69,11 @@
   note; the session list and the two-factor pages render inside the signed-in app shell, and the session list
   counts live sessions from the session table; the demo gives LANI an application window when it has none
   (§5, §10, §11, §12).
+- **Revision:** 27 (2026-11-20): staff screens reworked: the staff dashboard drops "Applications by month" for a month
+  calendar of the user's task due dates, the program's distribution days and its application window, with "Needs
+  attention" beside it; the Tasks page lists tasks only and "Add task" opens the form in the app dialog; image
+  documents on the review screen open in a preview dialog instead of downloading; the demo's sample PDF is a valid
+  one-page document (§4.9, §5, §11, §12).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -568,6 +573,9 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
     Deleting is allowed (a to-do is not a record). Every change is audited with the id and program, never the title.
   - `tasks/` has Open (overdue first, then by due date, undated last) and Done (newest first) tabs, 25 a page; the
     staff nav item "Tasks" counts open tasks due on or before today.
+  - (rev 27) `tasks/` lists tasks only; "Add task" opens `tasks/new/` in the app dialog (a page of its own without
+    JavaScript). `?due=YYYY-MM-DD` pre-fills the due date (the dashboard calendar's day links) and `?from=dashboard`
+    sends Cancel and a no-JavaScript save back to the dashboard.
 - **`Notification`** (M11): `recipient` (CASCADE), `kind`, `title`, `body`, `url` (site-relative), `read_at`,
   `created_at`.
   - Title, body and url come from the app, never from free text: a reason is never stored on a notification.
@@ -596,11 +604,11 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 | Student | `/me/scholarships/` (awards, terms, renewals, payouts and the next distribution), `/me/scholarships/<award>/renew/` (POST), `/me/notifications/` (+ `<id>/`, which marks it read and redirects; `read/` POST), `/me/support/` (M11) | student |
 | Staff | `/staff/<slug>/` (dashboard) | program staff/head |
 | Staff | `students/` (unclaimed profiles created for this program), `students/new/`, `students/<id>/invite/` | program staff/head |
-| Staff | `applications/` (queue), `applications/<id>/` (review), `applications/<id>/start/`, `applications/<id>/documents/<document>/approve/`, `applications/<id>/documents/<document>/decline/`, `applications/<id>/decide/` (approve, return or reject), `applications/bulk/` (start review, approve; POST) | program staff/head |
+| Staff | `applications/` (queue), `applications/<id>/` (review), `applications/<id>/start/`, `applications/<id>/documents/<document>/approve/`, `applications/<id>/documents/<document>/decline/`, `applications/<id>/documents/<document>/preview/` (rev 27, PNG/JPEG only), `applications/<id>/decide/` (approve, return or reject), `applications/bulk/` (start review, approve; POST) | program staff/head |
 | Staff | `applications/new/` (in progress + profile picker; POST starts), `applications/behalf/<id>/` (filing page), `…/academics/`, `…/documents/<requirement>/`, `…/submit/`, `…/withdraw/` (POST) | program staff/head |
 | Staff | `scholars/`, `scholars/<award>/`, `…/edit/`, `…/status/`, `…/terms/new/`, `…/terms/<term>/`, `…/terms/<term>/merit/` (POST); `scholars/new/`, `scholars/import/`, `scholars/import/template/`, `scholars/export/` (M9b) | program staff/head |
 | Staff | `schedules/`, `schedules/new/`, `schedules/<id>/`, `schedules/<id>/publish/` (POST); `disbursements/`, `disbursements/<schedule>/`, `…/generate/` (POST), `…/bulk/` (POST), `…/<id>/reject/`, `…/<id>/revert/` (POST); `budget/`, `budget/edit/` | program staff/head (see §6) |
-| Staff | `tasks/` (+ `<id>/`, `<id>/done/` POST, `<id>/delete/` POST; owner only, M11), `reports/` (M11c: + `new/`, `<id>/`, `<id>/resubmit/` POST), `notifications/` (M11c: + `<id>/`, `read/` POST), `audit/` (M11c), `settings/` (rules and window; `tiers/`, `tiers/new/`, `tiers/<code>/`; `documents/`, `documents/<id>/`, `documents/<id>/active/` POST; M11b) | staff; `settings/` and `audit/` are head (and office) only |
+| Staff | `tasks/` (+ `new/` rev 27, `<id>/`, `<id>/done/` POST, `<id>/delete/` POST; owner only, M11), `reports/` (M11c: + `new/`, `<id>/`, `<id>/resubmit/` POST), `notifications/` (M11c: + `<id>/`, `read/` POST), `audit/` (M11c), `settings/` (rules and window; `tiers/`, `tiers/new/`, `tiers/<code>/`; `documents/`, `documents/<id>/`, `documents/<id>/active/` POST; M11b) | staff; `settings/` and `audit/` are head (and office) only |
 | Office | `/office/` (dashboard); M11b: `programs/` (+ `new/`, `<id>/`, `<id>/active/` POST), `staff/` (+ `new/`, `<id>/`, `<id>/active/`, `<id>/welcome/`, `<id>/memberships/` POST), `memberships/<id>/` POST, `schools/` (+ `new/`, `<id>/`); `terms/` (M9: list, `add/` POST, `<term>/current/`), `support/` (+ `<id>/answer/` POST; M11); M11c: `scholars/` (+ `export/`), `reports/` (+ `<id>/`, `<id>/decide/` POST), `analytics/` (+ `export/`), `audit/`, `notifications/` (+ `<id>/`, `read/` POST) | super admin |
 | Files | `POST /files/uploads/` (intent), `POST /files/uploads/<id>/confirm/`, `GET /files/<id>/` (authorize → 302) | owner or authorized staff |
 
@@ -1125,8 +1133,12 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
     never miss one;
   - **staff** (`/staff/<slug>/`, kit figures and attention rows): "Active scholars", "Applications waiting",
     "Released this year", "At risk"; "Needs attention" (waiting over 7 days from `submitted_at`, own overdue tasks,
-    at risk, prepared payouts, approved payouts, the window); "Applications by month" (6 months by
-    `first_submitted_at` in Manila, zero-filled, CSS bars in 5 % steps + "View as table"); "Your tasks";
+    at risk, prepared payouts, approved payouts, the window); "Your tasks" (the 5 next open tasks and "Add task").
+    Rev 27: "Applications by month" is gone; a month calendar (the student calendar's grid, navigation and
+    accessibility rules) fills the wide column and "Needs attention" sits beside it. Its events are the user's own
+    open tasks with a due date (links to the task), the program's distribution days (published or not; "Allowance
+    release", the claim place) and its `applications_open_on` / `applications_close_on`; each day number is a link
+    that opens "Add task" with that due date;
   - **office** (`/office/`, the approved mockup): figures Scholars, Applications, Waiting over 7 days and Reports
     to review (M11c; support stays in "Needs attention" and the nav count); needs attention: "{n} program report(s)
     is/are waiting for your review" ("Oldest sent {n} days ago" or "Sent today"), per program waiting over 7 days and
@@ -1156,6 +1168,11 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
     - **decision card**, by status: submitted shows "Start review"; under review shows the decision form; otherwise
       a decision summary. On a resubmission (submitted or under review with an earlier reason) a warning banner
       above it reads "Returned earlier: {decision_reason}", autoescaped, so the reviewer sees what was asked.
+    - **image preview** (rev 27): a document file whose sniffed type is PNG or JPEG has a "Preview" link beside its
+      download link. It opens the picture in the app dialog (a page of its own without JavaScript); the `<img>`
+      loads through `files:download`, so access checks, the `file.viewed` audit and the presigned attachment GET
+      are unchanged (browsers ignore `Content-Disposition` for images). Nothing loads until Preview is opened, so
+      a page view writes no audit rows.
 - **TypeScript modules:**
   - `main.ts`: imports and configures htmx;
   - `dialog.ts`, `toast.ts`, `upload.ts` (presigned PUT + confirm), `bulk.ts` (select-all, count);
