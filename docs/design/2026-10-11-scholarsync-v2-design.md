@@ -76,6 +76,9 @@
   documents on the review screen open in a preview dialog instead of downloading; the demo's sample PDF is a valid
   one-page document; PDF documents and report files open in the same preview dialog, drawn by pdf.js (§4.9, §5,
   §11, §12).
+- **Revision:** 28 (2026-11-20): platform polish from a modern-web-guidance scan: modal dialogs fade and scale in
+  (entry only), keep scrolling from reaching the page beneath, and read-only preview dialogs also close on a click
+  outside them; textareas grow with their text; paragraphs and list items wrap without orphans (§12).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -1097,7 +1100,13 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
 - **HTMX patterns:**
   - filters use `hx-get` + `hx-push-url` and swap a `{% partialdef table %}`;
   - forms use `hx-post`: re-render the form partial on error, `HX-Redirect` or `HX-Trigger` on success;
-  - dialogs load content into `<dialog>`, and `dialog.ts` opens them;
+  - dialogs load content into `<dialog>`, and `dialog.ts` opens them; (rev 28) a modal dialog fades and scales in
+    (no exit animation: the shared dialog empties on close), contains scrolling so the page beneath stays put, and
+    only a read-only fragment (`data-light-dismiss`, the file previews) also closes on a click outside it
+    (`closedby="any"`, with a click fallback where unsupported); form dialogs never do, so a stray click can't
+    discard typing;
+  - (rev 28) textareas grow with their text (`field-sizing: content`, 3 to 12 lines) where supported; paragraphs
+    and list items use `text-wrap: pretty`, headings keep `balance`;
   - toasts come from `HX-Trigger: {"toast": …}`, read by `toast.ts` into an `aria-live` region; (rev 27) they sit
     at the top right under the top bar, compact; success and info hide after 3 s (paused while hovered or
     focused), warnings and errors stay until dismissed; a small action such as copy gets no toast, only a brief
