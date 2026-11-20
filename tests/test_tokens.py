@@ -177,6 +177,17 @@ def test_yellow_release_date_is_large_text_on_red_at_3_to_1(scheme):
     assert contrast(colours["accent"], colours["primary-fill"]) >= 3.0
 
 
+def test_checked_controls_mark_their_state_at_3_to_1_in_both_themes():
+    """A checked radio shows only by its dot, a checkbox by its edge: both use --primary (the pair
+    above), never --primary-fill, which is 2.5:1 on the dark card (WCAG 1.4.11)."""
+    css = (STYLES / "components" / "forms.css").read_text(encoding="utf-8")
+    checked = re.search(r":checked \{([^}]*)\}", css)
+    assert checked and "border-color: var(--primary);" in checked.group(1)
+    radio = re.search(r'input\[type="radio"\]:checked \{([^}]*)\}', css)
+    assert radio and "background-color: var(--primary);" in radio.group(1)
+    assert "border-color: var(--primary-fill)" not in css
+
+
 def test_the_root_follows_the_device_unless_a_theme_is_pinned():
     css = (STYLES / "tokens.css").read_text(encoding="utf-8")
     assert re.search(r":root \{\s*color-scheme: light dark;", css)
