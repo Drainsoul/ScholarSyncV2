@@ -19,6 +19,7 @@ from apps.accounts.models import User
 from apps.core.permissions import StudentRequiredMixin
 from apps.core.shell import shell_context
 from apps.matching.selectors import match_page
+from apps.office.dashboard import greeting
 from apps.students import services
 from apps.students.calendar import days_until, parse_month, student_calendar
 from apps.students.dashboard import student_dashboard
@@ -91,6 +92,7 @@ class HomeView(StudentRequiredMixin, TemplateView):
             "completion": completion,
             "next_section": missing.label if missing is not None else "",
             "board": student_dashboard(user, today=timezone.localdate()),
+            "greeting": greeting(user, timezone.now()),
         }
 
     def get(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:

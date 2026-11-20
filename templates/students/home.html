@@ -1,8 +1,8 @@
 {% extends "layouts/student.html" %}{% load ui partials %}
-{% block title %}Your scholarships{% endblock %}
+{% block title %}Home{% endblock %}
 {% block content %}
 <div class="page-header">
-  <div><h1>Your scholarships</h1><p class="page-header__meta">{{ viewer.name }}{% if board.term_label %}, {{ board.term_label }}{% endif %}</p></div>
+  <div><h1>{{ greeting }}</h1>{% if board.term_label %}<p class="page-header__meta">{{ board.term_label }}</p>{% endif %}</div>
 </div>
 {% for application in board.returned %}
 <div class="banner banner--warning" role="status">{% icon "triangle-alert" %}<div><p class="banner__title">{{ application.program.name }} returned your application</p>{% if application.decision_reason %}<p>{{ application.decision_reason }}</p>{% endif %}</div><a class="btn btn--primary banner__action" href="{% url 'applications:detail' application.pk %}">Fix application</a></div>

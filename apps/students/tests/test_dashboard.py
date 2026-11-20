@@ -187,6 +187,15 @@ def test_empty_student_sees_empty_states(client: Any) -> None:
     assert 'href="#"' not in html
 
 
+def test_home_greets_the_student_instead_of_naming_another_page(client: Any) -> None:
+    profile = ProfileFactory.create(user__full_name="Carolyn Hawkins")
+    assert profile.user is not None
+    html = _home(client, profile.user)
+    assert "<title>Home" in html
+    assert "<h1>Good afternoon, Carolyn</h1>" in html
+    assert "Your scholarships" not in html
+
+
 def test_next_section_line_for_an_incomplete_profile(client: Any) -> None:
     profile = ProfileFactory.create()
     assert profile.user is not None
