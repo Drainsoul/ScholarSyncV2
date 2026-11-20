@@ -118,6 +118,54 @@ html:not(.js) .copy-btn {
   display: none;
 }
 
+/* The brief "Copied" bubble copy.ts places above the pointer (left/top set from script). */
+.copy-tip {
+  position: fixed;
+  z-index: 1000;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-xs);
+  background: var(--text);
+  box-shadow: var(--shadow-float);
+  color: var(--white);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  animation: copy-tip-in 120ms ease-out;
+  transition: opacity 300ms ease;
+}
+
+.copy-tip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  border: 5px solid transparent;
+  border-top-color: var(--text);
+  transform: translateX(-50%);
+}
+
+.copy-tip--failed {
+  background: var(--danger);
+}
+
+.copy-tip--failed::after {
+  border-top-color: var(--danger);
+}
+
+.copy-tip--leaving {
+  opacity: 0;
+}
+
+@keyframes copy-tip-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-100% + 4px));
+  }
+}
+
 /* htmx adds .htmx-request to the element making a request (includeIndicatorStyles is off, spec §10). */
 .htmx-indicator {
   display: none;

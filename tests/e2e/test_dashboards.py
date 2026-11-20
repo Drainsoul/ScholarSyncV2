@@ -168,6 +168,10 @@ def test_office_copies_a_support_email(page: Page, live_server, vite_build, cons
     request = SupportRequestFactory.create()
     log_in(page, live_server.url, _office().email, "/office/support/")
     page.get_by_role("button", name=f"Copy {request.sender.email}").click()
-    expect(page.get_by_text("Email address copied.")).to_be_visible()
+    tip = page.locator(".copy-tip")
+    expect(tip).to_have_text("Copied")
+    expect(page.locator("[aria-live='polite']").filter(has_text="Copied")).to_have_count(1)
+    expect(page.locator(".toast")).to_have_count(0)  # a small action gets no toast
     assert page.evaluate("navigator.clipboard.readText()") == request.sender.email
+    expect(tip).to_have_count(0)  # gone after a moment
     assert console_errors == []
