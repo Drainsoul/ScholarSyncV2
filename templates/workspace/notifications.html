@@ -8,10 +8,13 @@
   {% if rows %}
   <section class="card" aria-label="Notifications">
     <ul class="list">{% for item, open_url in rows %}
-      <li>
-        <p>{% if item.read_at %}<a href="{{ open_url }}">{{ item.title }}</a>{% else %}<strong><a href="{{ open_url }}">{{ item.title }}</a></strong> {% status "info" "New" %}{% endif %}</p>
-        {% if item.body %}<p>{{ item.body }}</p>{% endif %}
-        <p class="text-sm text-muted"><time datetime="{{ item.created_at|date:'c' }}">{{ item.created_at|date:"j M Y, g:i A" }}</time></p>
+      <li class="notice-row">
+        <div class="notice-row__text">
+          <p>{% if item.read_at %}<a href="{{ open_url }}">{{ item.title }}</a>{% else %}<strong><a href="{{ open_url }}">{{ item.title }}</a></strong>{% endif %}</p>
+          {% if item.body %}<p>{{ item.body }}</p>{% endif %}
+          <p class="text-sm text-muted"><time datetime="{{ item.created_at|date:'c' }}">{{ item.created_at|date:"j M Y, g:i A" }}</time></p>
+        </div>
+        {% if not item.read_at %}<div class="notice-row__status">{% status "info" "New" %}</div>{% endif %}
       </li>{% endfor %}
     </ul>
   </section>

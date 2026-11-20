@@ -1575,3 +1575,19 @@ html:not(.js) .bulk-bar__all {
     background: Highlight;
   }
 }
+
+/* Notification centre rows: the text on the left, the "New" status at the far right. */
+.notice-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.notice-row__text {
+  min-width: 0;
+}
+
+.notice-row__status {
+  flex: none;
+}
