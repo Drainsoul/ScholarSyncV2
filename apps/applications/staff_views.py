@@ -41,6 +41,7 @@ from apps.awards.selectors import other_active_awards
 from apps.core.htmx import HtmxHttpRequest, close_dialog, toast
 from apps.core.permissions import ProgramStaffRequiredMixin
 from apps.core.shell import shell_context
+from apps.files.policy import JPEG, PNG
 from apps.matching.checklist import CHECK_LABELS, snapshot_items
 from apps.programs.models import AcademicTerm, Program
 
@@ -432,3 +433,40 @@ class BulkView(ProgramStaffRequiredMixin, View):
             response["HX-Refresh"] = "true"
             return response
         return self._back(request)
+
+
+PREVIEW_TYPES = (PNG, JPEG)
+
+
+class DocumentPreviewView(ProgramStaffRequiredMixin, View):
+    """A picture document's current file in the app dialog (a page without JavaScript). The `<img>`
+    loads through files:download, so access, the file.viewed audit and the presigned GET are the
+    download's own; nothing loads until the reviewer opens the preview (spec §12 rev 27)."""
+
+    request: HtmxHttpRequest
+    http_method_names = ["get", "options"]
+
+    def get(self, request: HtmxHttpRequest, program: str, pk: int, document: int) -> HttpResponse:
+        application = staff_application(self.program, pk)
+        current = (
+            DocumentFile.objects.select_related("file", "document__requirement")
+            .filter(document_id=document, document__application=application, is_current=True)
+            .first()
+        )
+        if current is None or current.file.sniffed_type not in PREVIEW_TYPES:
+            raise Http404("No picture to preview.")
+        dialog = bool(request.htmx)
+        response = render(
+            request,
+            "review/preview_dialog.html" if dialog else "review/preview_document.html",
+            {
+                **shell_context(request, area="staff", program=self.program),
+                "program": self.program,
+                "application": application,
+                "requirement": current.document.requirement,
+                "file": current.file,
+                "dialog": dialog,
+            },
+        )
+        patch_vary_headers(response, ("HX-Request",))
+        return response

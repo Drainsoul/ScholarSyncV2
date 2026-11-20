@@ -33,5 +33,10 @@ urlpatterns = [
         staff_views.DeclineDocumentView.as_view(),
         name="document-decline",
     ),
+    path(
+        "<int:pk>/documents/<int:document>/preview/",
+        staff_views.DocumentPreviewView.as_view(),
+        name="document-preview",
+    ),
     path("<int:pk>/decide/", staff_views.DecideView.as_view(), name="decide"),
 ]

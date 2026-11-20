@@ -799,3 +799,51 @@ def test_student_application_review_unchanged(client: Any) -> None:
     assert "Filed by" not in body
     assert "Overridden by staff" not in body
     assert "Fix and resubmit" not in body
+
+
+def _picture_document(application: Application, sniffed: str = "image/png") -> Any:
+    document = DocumentFactory.create(application=application, status="pending")
+    DocumentFileFactory.create(document=document, file__sniffed_type=sniffed)
+    return document
+
+
+def test_picture_preview_dialog_and_page(client: Any) -> None:
+    membership = _staff()
+    application = _row(membership.program, S.UNDER_REVIEW)
+    document = _picture_document(application)
+    file_id = document.files.get().file_id
+    url = reverse("review:document-preview", args=["tcu-ceaa", application.pk, document.pk])
+    client.force_login(membership.user)
+    detail = client.get(_detail_url(application.pk)).content.decode()
+    assert f'href="{url}" hx-get="{url}" hx-target="#app-dialog-body"' in detail
+    fragment = client.get(url, HTTP_HX_REQUEST="true")
+    html = fragment.content.decode()
+    assert fragment.status_code == 200 and "<html" not in html
+    assert f'src="{reverse("files:download", args=[file_id])}"' in html
+    assert "HX-Request" in fragment["Vary"]
+    assert "<html" in client.get(url).content.decode()
+    # Opening the preview writes no audit row; the picture's own request (files:download) does.
+    assert not AuditEvent.objects.filter(action="file.viewed").exists()
+
+
+def test_preview_only_for_pictures(client: Any) -> None:
+    membership = _staff()
+    application = _row(membership.program, S.UNDER_REVIEW)
+    pdf = _with_document(application)
+    jpeg = _picture_document(application, "image/jpeg")
+    client.force_login(membership.user)
+    detail = client.get(_detail_url(application.pk)).content.decode()
+    assert detail.count(">Preview<") == 1
+    pdf_url = reverse("review:document-preview", args=["tcu-ceaa", application.pk, pdf.pk])
+    jpeg_url = reverse("review:document-preview", args=["tcu-ceaa", application.pk, jpeg.pk])
+    assert client.get(pdf_url).status_code == 404
+    assert client.get(jpeg_url).status_code == 200
+
+
+def test_preview_of_another_programs_document_is_404(client: Any) -> None:
+    membership = _staff()
+    foreign = _row(ProgramFactory.create(slug="lani"), S.UNDER_REVIEW)
+    document = _picture_document(foreign)
+    client.force_login(membership.user)
+    url = reverse("review:document-preview", args=["tcu-ceaa", foreign.pk, document.pk])
+    assert client.get(url).status_code == 404

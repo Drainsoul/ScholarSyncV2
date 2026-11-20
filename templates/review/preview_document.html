@@ -1,0 +1,17 @@
+{% extends "layouts/staff.html" %}{% load ui partials %}
+{% block title %}{{ requirement.label }}{% endblock %}
+{% block content %}
+<div class="page-header"><div><p class="text-sm"><a href="{% url 'review:detail' program=program.slug pk=application.pk %}">Back to the application</a></p><h1>{{ requirement.label }}</h1></div></div>
+<div class="card">
+{% partialdef preview inline %}
+<figure class="doc-preview">
+  <img class="doc-preview__image" src="{% url 'files:download' file.id %}" alt="{{ requirement.label }} uploaded by the applicant">
+  <figcaption class="text-sm text-muted">{{ file.original_name }}</figcaption>
+</figure>
+<div class="btn-row">
+  <a class="btn btn--secondary" href="{% url 'files:download' file.id %}">{% icon "download" %}Download</a>
+  <a class="btn btn--ghost" href="{% url 'review:detail' program=program.slug pk=application.pk %}" data-dialog-close>Close</a>
+</div>
+{% endpartialdef %}
+</div>
+{% endblock %}

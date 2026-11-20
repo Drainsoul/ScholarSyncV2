@@ -1,3 +1,5 @@
+import base64
+
 import pytest
 from playwright.sync_api import Page, expect
 
@@ -10,6 +12,10 @@ from tests.e2e.flows import log_in, one_kb_pdf, payload, submitted_application
 pytestmark = pytest.mark.e2e
 
 QUEUE = "/staff/tcu-ceaa/applications/"
+# A 20x20 solid PNG.
+TINY_PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAIAAAAC64paAAAAGklEQVR4nGMQaDhANmIY1TyqeVTzqOaB1QwANQINH6BXGBYAAAAASUVORK5CYII="
+)
 
 
 def _staff_program():
@@ -147,4 +153,31 @@ def test_review_page_at_375px_has_no_horizontal_scroll(
 
     expect(page.get_by_role("heading", level=1)).to_contain_text("Marisol")
     assert page.evaluate("document.documentElement.scrollWidth") <= 375
+    assert console_errors == []
+
+
+def test_picture_document_opens_in_a_preview_dialog(
+    page: Page, live_server, vite_build, e2e_storage, console_errors
+):
+    from apps.files import storage
+
+    program, staff = _staff_program()
+    application = submitted_application(program, documents=1)
+    stored = application.documents.get().files.get().file
+    stored.sniffed_type = stored.declared_type = "image/png"
+    stored.original_name = "id-picture.png"
+    stored.save()
+    storage.put(key=stored.final_key, body=TINY_PNG, content_type="image/png")
+    log_in(page, live_server.url, staff.email, f"/staff/tcu-ceaa/applications/{application.pk}/")
+
+    page.get_by_role("link", name="Preview Document 1").click()
+    dialog = page.get_by_role("dialog", name="Document 1")
+    picture = dialog.get_by_role("img", name="Document 1 uploaded by the applicant")
+    expect(picture).to_be_visible()
+    # It rendered through the attachment-disposition presigned GET, under the enforced CSP.
+    page.wait_for_function(
+        "(img) => img.complete && img.naturalWidth === 20", arg=picture.element_handle()
+    )
+    dialog.get_by_role("link", name="Close").click()
+    expect(dialog).to_be_hidden()
     assert console_errors == []
