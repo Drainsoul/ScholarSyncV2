@@ -71,7 +71,8 @@
   (§5, §10, §11, §12).
 - **Revision:** 27 (2026-11-20): staff screens reworked: the staff dashboard drops "Applications by month" for a month
   calendar of the user's task due dates, the program's distribution days and its application window, with "Needs
-  attention" beside it; the Tasks page lists tasks only and "Add task" opens the form in the app dialog; image
+  attention" beside it; the Tasks page lists tasks only and "Add task" opens the form in the app dialog; the office
+  gets its own tasks and the same calendar on its overview; image
   documents on the review screen open in a preview dialog instead of downloading; the demo's sample PDF is a valid
   one-page document; PDF documents and report files open in the same preview dialog, drawn by pdf.js (§4.9, §5,
   §11, §12).
@@ -568,8 +569,9 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   submission carries one PDF of the `report` purpose; a resubmission may add a new version, and every version stays
   downloadable, newest first. A file already attached to a report can't be attached again ("Upload the file again.").
 - **`Task`** (M11): `owner`, `program` (nullable), `title`, `notes` (≤ 2,000), `due_on`, `done_at`.
-  - A personal to-do of one staff member in one program. M11's screens always set `program`; a program-less (office)
-    task is not planned (M11c: the approved office nav has no Tasks item).
+  - A personal to-do of one staff member in one program. M11's screens always set `program`. Rev 27: the office has
+    tasks too, with no `program` (`/office/tasks/`, the same screens and rules: owner only, audited without the
+    title, Add task in the dialog); the office nav gains "Tasks" with the same due count.
   - Only the owner sees, edits, completes or deletes it; anyone else, heads and the office included, gets a 404.
     Deleting is allowed (a to-do is not a record). Every change is audited with the id and program, never the title.
   - `tasks/` has Open (overdue first, then by due date, undated last) and Done (newest first) tabs, 25 a page; the
@@ -610,7 +612,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 | Staff | `scholars/`, `scholars/<award>/`, `…/edit/`, `…/status/`, `…/terms/new/`, `…/terms/<term>/`, `…/terms/<term>/merit/` (POST); `scholars/new/`, `scholars/import/`, `scholars/import/template/`, `scholars/export/` (M9b) | program staff/head |
 | Staff | `schedules/`, `schedules/new/`, `schedules/<id>/`, `schedules/<id>/publish/` (POST); `disbursements/`, `disbursements/<schedule>/`, `…/generate/` (POST), `…/bulk/` (POST), `…/<id>/reject/`, `…/<id>/revert/` (POST); `budget/`, `budget/edit/` | program staff/head (see §6) |
 | Staff | `tasks/` (+ `new/` rev 27, `<id>/`, `<id>/done/` POST, `<id>/delete/` POST; owner only, M11), `reports/` (M11c: + `new/`, `<id>/`, `<id>/resubmit/` POST; rev 27: `<id>/files/<file>/preview/`), `notifications/` (M11c: + `<id>/`, `read/` POST), `audit/` (M11c), `settings/` (rules and window; `tiers/`, `tiers/new/`, `tiers/<code>/`; `documents/`, `documents/<id>/`, `documents/<id>/active/` POST; M11b) | staff; `settings/` and `audit/` are head (and office) only |
-| Office | `/office/` (dashboard); M11b: `programs/` (+ `new/`, `<id>/`, `<id>/active/` POST), `staff/` (+ `new/`, `<id>/`, `<id>/active/`, `<id>/welcome/`, `<id>/memberships/` POST), `memberships/<id>/` POST, `schools/` (+ `new/`, `<id>/`); `terms/` (M9: list, `add/` POST, `<term>/current/`), `support/` (+ `<id>/answer/` POST; M11); M11c: `scholars/` (+ `export/`), `reports/` (+ `<id>/`, `<id>/decide/` POST), `analytics/` (+ `export/`), `audit/`, `notifications/` (+ `<id>/`, `read/` POST) | super admin |
+| Office | `/office/` (dashboard); M11b: `programs/` (+ `new/`, `<id>/`, `<id>/active/` POST), `staff/` (+ `new/`, `<id>/`, `<id>/active/`, `<id>/welcome/`, `<id>/memberships/` POST), `memberships/<id>/` POST, `schools/` (+ `new/`, `<id>/`); `terms/` (M9: list, `add/` POST, `<term>/current/`), `support/` (+ `<id>/answer/` POST; M11); M11c: `scholars/` (+ `export/`), `reports/` (+ `<id>/`, `<id>/decide/` POST), `analytics/` (+ `export/`), `audit/`, `notifications/` (+ `<id>/`, `read/` POST); rev 27: `tasks/` (+ `new/`, `<id>/`, `<id>/done/` POST, `<id>/delete/` POST; owner only), `reports/<id>/files/<file>/preview/` | super admin |
 | Files | `POST /files/uploads/` (intent), `POST /files/uploads/<id>/confirm/`, `GET /files/<id>/` (authorize → 302) | owner or authorized staff |
 
 - **The staff queue** (`applications/`, M8):
@@ -1140,7 +1142,10 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
     open tasks with a due date (links to the task), the program's distribution days (published or not; "Allowance
     release", the claim place) and its `applications_open_on` / `applications_close_on`; each day number is a link
     that opens "Add task" with that due date;
-  - **office** (`/office/`, the approved mockup): figures Scholars, Applications, Waiting over 7 days and Reports
+  - **office** (`/office/`, the approved mockup; rev 27: "Applications by month" gives way to a month calendar
+    with "Needs attention" beside it, as on the staff dashboard. Its events are the user's own open office tasks
+    with a due date, every active program's distribution days ("{program} allowance release", drafts marked) and
+    application windows; day numbers open Add task; the 12-month chart stays on Analytics): figures Scholars, Applications, Waiting over 7 days and Reports
     to review (M11c; support stays in "Needs attention" and the nav count); needs attention: "{n} program report(s)
     is/are waiting for your review" ("Oldest sent {n} days ago" or "Sent today"), per program waiting over 7 days and
     budget used ≥ 75 %, and open support requests; recent activity from audit events in `FEED_ACTIONS` with a
