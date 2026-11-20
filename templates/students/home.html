@@ -26,33 +26,7 @@
 </div>
 {% endif %}
 <div class="home-grid">
-  {% partialdef calendar inline %}
-  <section class="card cal" id="{{ calendar_id }}" aria-labelledby="cal-title">
-    <div class="cal__head">
-      <h2 class="card__title" id="cal-title">{{ calendar.month|date:"F Y" }}</h2>
-      <div class="cal__nav">
-        {% if not calendar.is_current_month %}<a class="btn btn--ghost" href="?" hx-get="?" hx-target="#{{ calendar_id }}" hx-swap="outerHTML" hx-push-url="true">This month</a>{% endif %}
-        <a class="btn btn--secondary cal__step" href="?month={{ calendar.previous }}" hx-get="?month={{ calendar.previous }}" hx-target="#{{ calendar_id }}" hx-swap="outerHTML" hx-push-url="true">{% icon "chevron-left" "Previous month" %}</a>
-        <a class="btn btn--secondary cal__step" href="?month={{ calendar.following }}" hx-get="?month={{ calendar.following }}" hx-target="#{{ calendar_id }}" hx-swap="outerHTML" hx-push-url="true">{% icon "chevron-right" "Next month" %}</a>
-      </div>
-    </div>
-    <table class="cal__grid">
-      <caption class="visually-hidden">Important dates in {{ calendar.month|date:"F Y" }}</caption>
-      <thead><tr>{% for name, short in weekdays %}<th scope="col"><abbr title="{{ name }}">{{ short }}</abbr></th>{% endfor %}</tr></thead>
-      <tbody>{% for week in calendar.weeks %}<tr>{% for cell in week %}
-        <td class="cal__day{% if not cell.in_month %} cal__day--outside{% endif %}{% if cell.is_today %} cal__day--today{% endif %}{% if cell.events %} cal__day--busy{% endif %}"{% if cell.is_today %} aria-current="date"{% endif %}>
-          <time class="cal__num" datetime="{{ cell.day|date:'Y-m-d' }}">{{ cell.day.day }}</time>
-          {% for event in cell.events %}<span class="cal__event cal__event--{{ event.kind }}" title="{{ event.title }}"><span class="cal__event-text">{{ event.title }}</span></span>{% endfor %}
-        </td>{% endfor %}
-      </tr>{% endfor %}</tbody>
-    </table>
-    <ul class="cal__legend" role="list" aria-label="Key">
-      <li><span class="cal__swatch cal__swatch--release" aria-hidden="true"></span>Allowance release</li>
-      <li><span class="cal__swatch cal__swatch--opens" aria-hidden="true"></span>Applications open</li>
-      <li><span class="cal__swatch cal__swatch--closes" aria-hidden="true"></span>Applications close</li>
-    </ul>
-  </section>
-  {% endpartialdef %}
+  {% partialdef calendar inline %}{% include "components/calendar.html" %}{% endpartialdef %}
   <div class="home-side">
     <section class="card ring-card" aria-labelledby="profile-title">
       <h2 class="card__title" id="profile-title">Your profile</h2>

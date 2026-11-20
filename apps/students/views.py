@@ -16,6 +16,7 @@ from django.views.defaults import page_not_found
 from django.views.generic import TemplateView
 
 from apps.accounts.models import User
+from apps.core.calendar import WEEKDAYS
 from apps.core.permissions import StudentRequiredMixin
 from apps.core.shell import shell_context
 from apps.matching.selectors import match_page
@@ -54,14 +55,10 @@ def _url_or_none(url_name: str) -> str | None:
 
 
 CALENDAR_ID = "home-calendar"
-WEEKDAYS = [
-    ("Monday", "Mon"),
-    ("Tuesday", "Tue"),
-    ("Wednesday", "Wed"),
-    ("Thursday", "Thu"),
-    ("Friday", "Fri"),
-    ("Saturday", "Sat"),
-    ("Sunday", "Sun"),
+LEGEND = [
+    ("release", "Allowance release"),
+    ("opens", "Applications open"),
+    ("closes", "Applications close"),
 ]
 
 
@@ -75,6 +72,7 @@ def _calendar_context(request: HttpRequest, user: User) -> dict[str, Any]:
         "upcoming": upcoming,
         "calendar_id": CALENDAR_ID,
         "weekdays": WEEKDAYS,
+        "legend": LEGEND,
     }
 
 

@@ -1,0 +1,26 @@
+{% load ui %}{% comment %}A month calendar (spec §12 rev 26/27). Context: calendar (core.calendar.MonthCalendar),
+calendar_id, weekdays, legend [(kind, label)], and optional add_task_url: each day number then opens
+"Add task" with that due date in the app dialog.{% endcomment %}
+<section class="card cal" id="{{ calendar_id }}" aria-labelledby="{{ calendar_id }}-title">
+  <div class="cal__head">
+    <h2 class="card__title" id="{{ calendar_id }}-title">{{ calendar.month|date:"F Y" }}</h2>
+    <div class="cal__nav">
+      {% if not calendar.is_current_month %}<a class="btn btn--ghost" href="?" hx-get="?" hx-target="#{{ calendar_id }}" hx-swap="outerHTML" hx-push-url="true">This month</a>{% endif %}
+      <a class="btn btn--secondary cal__step" href="?month={{ calendar.previous }}" hx-get="?month={{ calendar.previous }}" hx-target="#{{ calendar_id }}" hx-swap="outerHTML" hx-push-url="true">{% icon "chevron-left" "Previous month" %}</a>
+      <a class="btn btn--secondary cal__step" href="?month={{ calendar.following }}" hx-get="?month={{ calendar.following }}" hx-target="#{{ calendar_id }}" hx-swap="outerHTML" hx-push-url="true">{% icon "chevron-right" "Next month" %}</a>
+    </div>
+  </div>
+  <table class="cal__grid">
+    <caption class="visually-hidden">Important dates in {{ calendar.month|date:"F Y" }}</caption>
+    <thead><tr>{% for name, short in weekdays %}<th scope="col"><abbr title="{{ name }}">{{ short }}</abbr></th>{% endfor %}</tr></thead>
+    <tbody>{% for week in calendar.weeks %}<tr>{% for cell in week %}
+      <td class="cal__day{% if not cell.in_month %} cal__day--outside{% endif %}{% if cell.is_today %} cal__day--today{% endif %}{% if cell.events %} cal__day--busy{% endif %}"{% if cell.is_today %} aria-current="date"{% endif %}>
+        {% if add_task_url %}{% with due=cell.day|date:"Y-m-d" %}<a class="cal__num cal__num--link" href="{{ add_task_url }}?due={{ due }}&amp;from=dashboard" hx-get="{{ add_task_url }}?due={{ due }}&amp;from=dashboard" hx-target="#app-dialog-body" hx-swap="innerHTML" aria-label="Add a task due {{ cell.day|date:'j F Y' }}"><time datetime="{{ due }}">{{ cell.day.day }}</time></a>{% endwith %}{% else %}<time class="cal__num" datetime="{{ cell.day|date:'Y-m-d' }}">{{ cell.day.day }}</time>{% endif %}
+        {% for event in cell.events %}{% if event.url %}<a class="cal__event cal__event--{{ event.kind }} cal__event--link" href="{{ event.url }}" title="{{ event.title }}"><span class="cal__event-text">{{ event.title }}</span></a>{% else %}<span class="cal__event cal__event--{{ event.kind }}" title="{{ event.title }}"><span class="cal__event-text">{{ event.title }}</span></span>{% endif %}{% endfor %}
+      </td>{% endfor %}
+    </tr>{% endfor %}</tbody>
+  </table>
+  <ul class="cal__legend" role="list" aria-label="Key">
+    {% for kind, label in legend %}<li><span class="cal__swatch cal__swatch--{{ kind }}" aria-hidden="true"></span>{{ label }}</li>{% endfor %}
+  </ul>
+</section>
