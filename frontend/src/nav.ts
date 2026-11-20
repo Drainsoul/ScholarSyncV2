@@ -16,7 +16,8 @@ export function initNav(): void {
     document.addEventListener("keydown", (event) => {
       if (event.key !== "Escape" || toggle.hidden) return;
       // An open popover menu takes this Escape (the browser closes it); the navigation stays open.
-      if (CSS.supports("selector(:popover-open)") && document.querySelector(":popover-open")) return;
+      if (CSS.supports("selector(:popover-open)") && document.querySelector(":popover-open"))
+        return;
       if (toggle.getAttribute("aria-expanded") !== "true") return;
       toggle.setAttribute("aria-expanded", "false");
       nav.classList.remove("is-open");
