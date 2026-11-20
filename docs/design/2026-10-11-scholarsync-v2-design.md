@@ -73,7 +73,7 @@
   calendar of the user's task due dates, the program's distribution days and its application window, with "Needs
   attention" beside it; the Tasks page lists tasks only and "Add task" opens the form in the app dialog; image
   documents on the review screen open in a preview dialog instead of downloading; the demo's sample PDF is a valid
-  one-page document (§4.9, §5, §11, §12).
+  one-page document; PDF documents open in the same preview dialog, drawn by pdf.js (§4.9, §5, §11, §12).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -604,7 +604,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 | Student | `/me/scholarships/` (awards, terms, renewals, payouts and the next distribution), `/me/scholarships/<award>/renew/` (POST), `/me/notifications/` (+ `<id>/`, which marks it read and redirects; `read/` POST), `/me/support/` (M11) | student |
 | Staff | `/staff/<slug>/` (dashboard) | program staff/head |
 | Staff | `students/` (unclaimed profiles created for this program), `students/new/`, `students/<id>/invite/` | program staff/head |
-| Staff | `applications/` (queue), `applications/<id>/` (review), `applications/<id>/start/`, `applications/<id>/documents/<document>/approve/`, `applications/<id>/documents/<document>/decline/`, `applications/<id>/documents/<document>/preview/` (rev 27, PNG/JPEG only), `applications/<id>/decide/` (approve, return or reject), `applications/bulk/` (start review, approve; POST) | program staff/head |
+| Staff | `applications/` (queue), `applications/<id>/` (review), `applications/<id>/start/`, `applications/<id>/documents/<document>/approve/`, `applications/<id>/documents/<document>/decline/`, `applications/<id>/documents/<document>/preview/` (rev 27, PNG/JPEG/PDF), `applications/<id>/decide/` (approve, return or reject), `applications/bulk/` (start review, approve; POST) | program staff/head |
 | Staff | `applications/new/` (in progress + profile picker; POST starts), `applications/behalf/<id>/` (filing page), `…/academics/`, `…/documents/<requirement>/`, `…/submit/`, `…/withdraw/` (POST) | program staff/head |
 | Staff | `scholars/`, `scholars/<award>/`, `…/edit/`, `…/status/`, `…/terms/new/`, `…/terms/<term>/`, `…/terms/<term>/merit/` (POST); `scholars/new/`, `scholars/import/`, `scholars/import/template/`, `scholars/export/` (M9b) | program staff/head |
 | Staff | `schedules/`, `schedules/new/`, `schedules/<id>/`, `schedules/<id>/publish/` (POST); `disbursements/`, `disbursements/<schedule>/`, `…/generate/` (POST), `…/bulk/` (POST), `…/<id>/reject/`, `…/<id>/revert/` (POST); `budget/`, `budget/edit/` | program staff/head (see §6) |
@@ -1172,11 +1172,15 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
       download link. It opens the picture in the app dialog (a page of its own without JavaScript); the `<img>`
       loads through `files:download`, so access checks, the `file.viewed` audit and the presigned attachment GET
       are unchanged (browsers ignore `Content-Disposition` for images). Nothing loads until Preview is opened, so
-      a page view writes no audit rows.
+      a page view writes no audit rows. A PDF document also has "Preview": the view audits `file.viewed` and hands
+      the page a presigned GET (still `attachment`), and `pdf-preview.ts` (a lazy chunk with `pdfjs-dist` and its
+      worker, both from `'self'`, so the CSP is unchanged; the bucket's CORS already allows `GET`) fetches the bytes
+      and draws the first 20 pages on canvases (`role="img"`, "Page n of m"). Without JavaScript the dialog page
+      says to download the file. The PDF is never served inline.
 - **TypeScript modules:**
   - `main.ts`: imports and configures htmx;
   - `dialog.ts`, `toast.ts`, `upload.ts` (presigned PUT + confirm), `bulk.ts` (select-all, count);
-- **Budget:** JS + CSS ≤ 100 KB gzipped, excluding the lazy chart chunk and fonts. CI checks it.
+- **Budget:** JS + CSS ≤ 100 KB gzipped, excluding lazy chunks (the chart chunk, the pdf.js preview) and fonts. CI checks it.
 - **Accessibility:**
   - target WCAG 2.2 AA;
   - landmarks, one `h1`, a skip link, visible focus;
