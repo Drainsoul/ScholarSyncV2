@@ -312,6 +312,8 @@
 }
 
 .cal__num--link {
+  min-width: 1.5rem; /* a 24 px target (WCAG 2.5.8) */
+  height: 1.5rem;
   color: inherit;
   text-decoration: none;
 }
@@ -331,7 +333,14 @@
     text-align: center;
   }
 
-  .cal__event {
+  /* A linked event (staff) stays a short text chip, a 24 px target; the rest become dots. */
+  .cal__event--link {
+    min-height: 1.5rem;
+    padding: 0 2px;
+    line-height: 1.5rem;
+  }
+
+  .cal__event:not(.cal__event--link) {
     display: inline-block;
     width: 0.5rem;
     height: 0.5rem;
@@ -342,7 +351,7 @@
     background: var(--event-edge);
   }
 
-  .cal__event-text {
+  .cal__event:not(.cal__event--link) .cal__event-text {
     position: absolute;
     width: 1px;
     height: 1px;

@@ -9,10 +9,13 @@ from apps.accounts.models import User
 from apps.accounts.tests.factories import UserFactory
 from apps.applications.models import Application
 from apps.applications.tests.factories import ApplicationFactory
+from apps.money.tests.factories import ScheduleFactory
 from apps.programs.tests.factories import MembershipFactory, ProgramFactory
 from apps.students.tests.factories import ProfileFactory
 from apps.workspace.models import SupportRequest
 from apps.workspace.services import notify
+from apps.workspace.tests.factories import TaskFactory
+from tests.e2e.conftest import axe_violations
 from tests.e2e.flows import log_in
 
 pytestmark = pytest.mark.e2e
@@ -135,3 +138,23 @@ def test_dashboards_have_landmarks_and_one_h1(page: Page, live_server, vite_buil
     expect(page.get_by_role("navigation", name="Main")).to_have_count(1)
     width = page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
     assert width is True
+
+
+def test_staff_calendar_on_a_phone(page: Page, live_server, vite_build, axe_source, console_errors):
+    program = ProgramFactory.create(slug="tcu-ceaa", name="TCU CEAA")
+    staff = MembershipFactory.create(program=program, user__verified=True).user
+    today = timezone.localdate()
+    TaskFactory.create(owner=staff, program=program, title="Call the registrar", due_on=today)
+    ScheduleFactory.create(program=program, distribution_date=today, is_published=True)
+    page.set_viewport_size({"width": 375, "height": 812})
+    log_in(page, live_server.url, staff.email, "/staff/tcu-ceaa/")
+    calendar = page.locator("#staff-calendar")
+    for link in (
+        calendar.get_by_role("link", name="Call the registrar"),
+        calendar.get_by_role("link", name="Allowance release"),
+        calendar.get_by_role("link", name=f"Add a task due {today.day} {today:%B %Y}"),
+    ):
+        box = link.bounding_box()
+        assert box is not None and box["width"] >= 24 and box["height"] >= 24, box
+    assert axe_violations(page, axe_source) == []
+    assert console_errors == []
