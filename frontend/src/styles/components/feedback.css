@@ -170,8 +170,10 @@ html:not(.js) .toast__close {
 }
 
 @media (prefers-reduced-motion: no-preference) {
+  /* none, not scale(1): any transform makes the open dialog the containing block for its fixed
+     children (the toast region, the copy bubble), pinning them to the dialog instead of the viewport. */
   .dialog[open] {
-    transform: scale(1);
+    transform: none;
     transition-property: opacity, transform;
   }
 
