@@ -15,6 +15,7 @@ urlpatterns = [
         name="students-invite",
     ),
     path("<slug:program>/tasks/", task_views.TaskListView.as_view(), name="tasks"),
+    path("<slug:program>/tasks/new/", task_views.TaskCreateView.as_view(), name="task-new"),
     path("<slug:program>/tasks/<int:pk>/", task_views.TaskEditView.as_view(), name="task-edit"),
     path(
         "<slug:program>/tasks/<int:pk>/done/", task_views.TaskDoneView.as_view(), name="task-done"

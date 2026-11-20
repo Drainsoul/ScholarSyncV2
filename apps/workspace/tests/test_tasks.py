@@ -70,12 +70,22 @@ def test_done_tab_newest_first(client: Any, now: datetime) -> None:
     assert "Still open" not in html
 
 
-def test_add_task_from_the_list_page(client: Any, now: datetime) -> None:
+def test_list_page_has_no_form_only_an_add_button(client: Any, now: datetime) -> None:
+    program = ProgramFactory.create()
+    client.force_login(_staff(program))
+    html = client.get(_url("tasks", program)).content.decode()
+    assert 'name="title"' not in html
+    new_url = _url("task-new", program)
+    assert f'href="{new_url}" hx-get="{new_url}" hx-target="#app-dialog-body"' in html
+    assert client.post(_url("tasks", program), {"title": "x"}).status_code == 405
+
+
+def test_add_task(client: Any, now: datetime) -> None:
     program = ProgramFactory.create()
     user = _staff(program)
     client.force_login(user)
     response = client.post(
-        _url("tasks", program),
+        _url("task-new", program),
         {"title": "Call TCU registrar", "due_on": "2026-11-20", "notes": "About the slip"},
     )
     assert response.status_code == 302 and response["Location"] == _url("tasks", program)
@@ -89,12 +99,48 @@ def test_add_task_from_the_list_page(client: Any, now: datetime) -> None:
 def test_blank_title_and_long_notes_rejected(client: Any, now: datetime) -> None:
     program = ProgramFactory.create()
     client.force_login(_staff(program))
-    response = client.post(_url("tasks", program), {"title": "  ", "notes": "x"})
+    response = client.post(_url("task-new", program), {"title": "  ", "notes": "x"})
     assert response.status_code == 200
-    response = client.post(_url("tasks", program), {"title": "Ok", "notes": "x" * 2001})
+    response = client.post(_url("task-new", program), {"title": "Ok", "notes": "x" * 2001})
     assert response.status_code == 200
     assert not Task.objects.exists()
     assert not AuditEvent.objects.exclude(action="user.signed_in").exists()
+
+
+def test_add_task_in_the_dialog(client: Any, now: datetime) -> None:
+    program = ProgramFactory.create()
+    client.force_login(_staff(program))
+    url = _url("task-new", program)
+    form = client.get(url, headers={"HX-Request": "true"}).content.decode()
+    assert 'id="app-dialog-title"' in form and "<html" not in form
+    assert f'hx-post="{url}"' in form
+    invalid = client.post(url, {"title": ""}, headers={"HX-Request": "true"})
+    assert invalid.status_code == 200 and 'id="app-dialog-title"' in invalid.content.decode()
+    saved = client.post(url, {"title": "Print the claim list"}, headers={"HX-Request": "true"})
+    assert saved.status_code == 204 and saved["HX-Refresh"] == "true"
+    assert "closeDialog" in saved["HX-Trigger"]
+    assert Task.objects.get().title == "Print the claim list"
+
+
+def test_add_task_due_date_from_the_query(client: Any, now: datetime) -> None:
+    program = ProgramFactory.create()
+    client.force_login(_staff(program))
+    url = _url("task-new", program)
+    assert 'value="2026-12-01"' in client.get(url + "?due=2026-12-01").content.decode()
+    assert (
+        'value="'
+        not in client.get(url + "?due=2026-13-45")
+        .content.decode()
+        .split('name="due_on"')[1]
+        .split(">")[0]
+    )
+
+
+def test_add_task_from_the_dashboard_goes_back_there(client: Any, now: datetime) -> None:
+    program = ProgramFactory.create()
+    client.force_login(_staff(program))
+    response = client.post(_url("task-new", program) + "?from=dashboard", {"title": "Call"})
+    assert response["Location"] == _url("dashboard", program)
 
 
 def test_edit_done_reopen_delete_round_trip(client: Any, now: datetime) -> None:
@@ -204,7 +250,7 @@ def test_task_and_support_events_have_ip_hash(client) -> None:
     program = _Programs.create(slug="tcu-ceaa")
     staff = _Members.create(program=program).user
     client.force_login(staff)
-    client.post("/staff/tcu-ceaa/tasks/", {"title": "Call the school", "notes": "", "due_on": ""})
+    client.post("/staff/tcu-ceaa/tasks/new/", {"title": "Call the school"})
     task_event = _Events.objects.get(action="task.created")
     assert task_event.ip_hash
     student = _Users.create(verified=True)

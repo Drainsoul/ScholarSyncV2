@@ -1,0 +1,20 @@
+{% extends "layouts/staff.html" %}{% load ui partials %}
+{% block title %}Add a task{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div><h1>Add a task</h1><p class="page-header__meta"><a href="{{ back_url }}">Back</a></p></div>
+  </div>
+  <section class="card" aria-label="New task">
+{% partialdef form inline %}
+    <form method="post" action="{{ request.get_full_path }}" {% if dialog %}hx-post="{{ request.get_full_path }}" hx-target="#app-dialog-body" hx-swap="innerHTML" hx-disabled-elt="find button[type='submit']" {% endif %}class="stack" novalidate>
+      {% csrf_token %}
+      {% include "components/form_errors.html" %}
+      {% for bound_field in form %}{% field bound_field %}{% endfor %}
+      <div class="btn-row">
+        <button type="submit" class="btn btn--primary">{% icon "plus" %}Add task</button>
+        <a class="btn btn--ghost" href="{{ back_url }}" data-dialog-close>Cancel</a>
+      </div>
+    </form>
+{% endpartialdef %}
+  </section>
+{% endblock %}

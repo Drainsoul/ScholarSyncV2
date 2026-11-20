@@ -1,18 +1,11 @@
 {% extends "layouts/staff.html" %}{% load ui %}
 {% block title %}Tasks{% endblock %}
 {% block content %}
+  {% url 'workspace:task-new' program=program.slug as new_url %}
   <div class="page-header">
     <div><h1>Tasks</h1><p class="page-header__meta">Your own to-dos for {{ program.name }}. Nobody else sees them.</p></div>
+    <div class="btn-row"><a class="btn btn--primary" href="{{ new_url }}" hx-get="{{ new_url }}" hx-target="#app-dialog-body" hx-swap="innerHTML">{% icon "plus" %}Add task</a></div>
   </div>
-  <section class="card" aria-labelledby="add-title">
-    <h2 class="card__title" id="add-title">Add a task</h2>
-    <form method="post" novalidate>
-      {% csrf_token %}
-      {% include "components/form_errors.html" %}
-      {% for bound_field in form %}{% field bound_field %}{% endfor %}
-      <div class="btn-row"><button type="submit" class="btn btn--primary">{% icon "plus" %}Add task</button></div>
-    </form>
-  </section>
   {% include "components/tabs.html" with tabs_label="Task lists" %}
   {% if rows %}
   <div class="table-wrap" role="region" aria-label="{% if tab == 'done' %}Done tasks{% else %}Open tasks{% endif %}" tabindex="0">
