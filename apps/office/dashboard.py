@@ -1,5 +1,5 @@
-"""The office overview: figures across programs, applications by month, what needs attention,
-the programs table and recent activity (the approved mockup, minus what M11b and M11c bring)."""
+"""The office overview: figures across programs, what needs attention, the programs table and recent
+activity (the calendar beside "Needs attention": workspace/calendar.py, spec §12 rev 27)."""
 
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -8,14 +8,9 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.accounts.models import User
-from apps.applications.review_selectors import (
-    applications_by_month,
-    submitted_counts,
-    waiting_over,
-)
+from apps.applications.review_selectors import submitted_counts, waiting_over
 from apps.awards.selectors import active_counts
 from apps.core.activity import recent_activity, when
-from apps.core.charts import MonthBar, first_month, month_bars
 from apps.core.text import counted
 from apps.money.selectors import budget_summaries
 from apps.programs.models import Program
@@ -23,6 +18,7 @@ from apps.programs.selectors import current_term, window_state
 from apps.reports.selectors import oldest_submitted, submitted_count
 from apps.workspace.dashboard import WAIT_DAYS, day_month, waited_row
 from apps.workspace.support import open_count
+from apps.workspace.tasks import open_tasks
 
 BUDGET_WARNING_PERCENT = 75
 
@@ -31,7 +27,6 @@ BUDGET_WARNING_PERCENT = 75
 class OfficeDashboard:
     greeting: str
     figures: list[dict[str, str]]
-    months: list[MonthBar]
     attention: list[dict[str, str]]
     programs: list[dict[str, object]]
     activity: list[dict[str, str]]
@@ -126,6 +121,16 @@ def office_dashboard(
                 }
             )
 
+    overdue = open_tasks(user, None, today=today).filter(due_on__lt=today).count()
+    if overdue:
+        attention.append(
+            {
+                "title": f"{overdue} of your tasks {'is' if overdue == 1 else 'are'} overdue",
+                "detail": "Open your task list",
+                "tone": "danger",
+                "url": reverse("office:tasks"),
+            }
+        )
     if support_open:
         attention.append(
             {
@@ -155,7 +160,6 @@ def office_dashboard(
     return OfficeDashboard(
         greeting=greeting(user, now),
         figures=figures,
-        months=month_bars(applications_by_month(programs, since=first_month(today)), today=today),
         attention=attention,
         programs=rows,
         activity=activity,

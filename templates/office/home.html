@@ -1,16 +1,16 @@
-{% extends "layouts/office.html" %}{% load ui %}
+{% extends "layouts/office.html" %}{% load ui partials %}
 {% block title %}Overview{% endblock %}
 {% block content %}
 <div class="page-header">
   <h1>{{ board.greeting }}</h1>
-  <div class="btn-row"><a class="btn btn--secondary" href="{{ summary_url }}">{% icon "download" %}Download report</a></div>
+  <div class="btn-row">
+    <a class="btn btn--secondary" href="{{ new_task_url }}?from=dashboard" hx-get="{{ new_task_url }}?from=dashboard" hx-target="#app-dialog-body" hx-swap="innerHTML">{% icon "plus" %}Add task</a>
+    <a class="btn btn--secondary" href="{{ summary_url }}">{% icon "download" %}Download report</a>
+  </div>
 </div>
 {% include "components/figures.html" with figures=board.figures %}
-<div class="split split--even">
-  <section class="card" aria-labelledby="months-title">
-    <div class="card__header"><h2 class="card__title" id="months-title">Applications by month</h2></div>
-    {% include "components/month_chart.html" with months=board.months chart_id="months-title" %}
-  </section>
+<div class="home-grid">
+  {% partialdef calendar inline %}{% include "components/calendar.html" %}{% endpartialdef %}
   <section class="card" aria-labelledby="attention-title">
     <div class="card__header"><h2 class="card__title" id="attention-title">Needs attention</h2></div>
     {% if board.attention %}{% include "components/row_links.html" with items=board.attention %}{% else %}{% include "components/empty_state.html" with title="Nothing needs attention right now." %}{% endif %}

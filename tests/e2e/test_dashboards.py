@@ -1,5 +1,6 @@
 import re
 from datetime import timedelta
+from urllib.parse import urljoin
 
 import pytest
 from django.utils import timezone
@@ -115,7 +116,7 @@ def test_office_overview_has_no_dead_links(page: Page, live_server, vite_build):
     assert hrefs
     for href in hrefs:
         assert href != "#"
-        response = page.request.get(f"{live_server.url}{href}" if href.startswith("/") else href)
+        response = page.request.get(urljoin(page.url, href))  # "?month=…" is relative
         assert response.status < 400, href
 
 

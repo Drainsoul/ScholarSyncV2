@@ -4,13 +4,17 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.response import TemplateResponse
+from django.urls import reverse
 from django.utils import timezone
+from django.utils.cache import patch_vary_headers
 from django.views import View
 from django.views.generic import TemplateView
 
 from apps.accounts.models import User
 from apps.awards.selectors import rollover_preview
 from apps.awards.services import start_term
+from apps.core.calendar import WEEKDAYS, parse_month
 from apps.core.permissions import SuperAdminRequiredMixin
 from apps.core.shell import shell_context
 from apps.core.text import counted
@@ -19,6 +23,7 @@ from apps.office.dashboard import office_dashboard
 from apps.programs.models import AcademicTerm
 from apps.programs.selectors import current_term
 from apps.programs.services import add_school_year
+from apps.workspace.calendar import office_calendar
 
 
 def _actor(request: HttpRequest) -> User:
@@ -40,8 +45,41 @@ def next_school_year() -> int:
     return today.year if today.month >= 8 else today.year - 1
 
 
+CALENDAR_ID = "office-calendar"
+CALENDAR_LEGEND = [
+    ("task", "Your task due"),
+    ("release", "Allowance release"),
+    ("opens", "Applications open"),
+    ("closes", "Applications close"),
+]
+
+
+def _calendar_context(request: HttpRequest) -> dict[str, Any]:
+    today = timezone.localdate()
+    month = parse_month(request.GET.get("month"), today=today)
+    return {
+        "calendar": office_calendar(_actor(request), today=today, month=month),
+        "calendar_id": CALENDAR_ID,
+        "weekdays": WEEKDAYS,
+        "legend": CALENDAR_LEGEND,
+        "add_task_url": reverse("office:task-new"),
+    }
+
+
 class HomeView(SuperAdminRequiredMixin, TemplateView):
     template_name = "office/home.html"
+
+    def get(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        htmx = getattr(request, "htmx", None)
+        if htmx and htmx.target == CALENDAR_ID:
+            # Previous/Next month: only the calendar, without the rest of the overview.
+            response: HttpResponse = TemplateResponse(
+                request, f"{self.template_name}#calendar", _calendar_context(request)
+            )
+        else:
+            response = super().get(request, *args, **kwargs)
+        patch_vary_headers(response, ("HX-Request", "HX-Target"))
+        return response
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         shell = shell_context(self.request, area="office")
@@ -53,6 +91,8 @@ class HomeView(SuperAdminRequiredMixin, TemplateView):
             "board": office_dashboard(
                 _actor(self.request), now=timezone.now(), support_open=support_open
             ),
+            **_calendar_context(self.request),
+            "new_task_url": reverse("office:task-new"),
             "summary_url": summary_url(
                 term.school_year_start if (term := current_term()) else None
             ),

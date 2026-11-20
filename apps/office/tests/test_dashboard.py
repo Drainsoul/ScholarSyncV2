@@ -129,8 +129,9 @@ def test_dropped_mockup_parts_absent(client: Any, office: User) -> None:
     for text in ("New program", "Manage programs"):
         assert text not in html
     assert 'href="#"' not in html
-    for text in ("Applications by month", "Needs attention", "Programs", "Recent activity"):
+    for text in ("Needs attention", "Programs", "Recent activity", 'id="office-calendar"'):
         assert text in html
+    assert "Applications by month" not in html  # on Analytics only (rev 27)
 
 
 def test_recent_activity_latest_eight(client: Any, office: User) -> None:
