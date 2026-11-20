@@ -15,7 +15,7 @@ def test_layout_fits_a_phone_and_nav_toggles(
     page.set_viewport_size(PHONE)
     page.goto(f"{live_server.url}/_kit/layouts/{name}/")
     assert page.evaluate("document.documentElement.scrollWidth") <= PHONE["width"]
-    toggle = page.get_by_role("button", name="Menu")
+    toggle = page.get_by_role("button", name="Menu", exact=True)
     if name == "auth":
         expect(toggle).to_have_count(0)
     else:
@@ -39,7 +39,7 @@ def test_layout_fits_a_phone_and_nav_toggles(
 def test_sidebar_is_open_on_desktop(page: Page, live_server, vite_build, name):
     page.set_viewport_size(DESKTOP)
     page.goto(f"{live_server.url}/_kit/layouts/{name}/")
-    expect(page.get_by_role("button", name="Menu")).to_be_hidden()
+    expect(page.get_by_role("button", name="Menu", exact=True)).to_be_hidden()
     expect(page.locator(".sidebar")).to_be_visible()
     expect(page.get_by_role("navigation", name="Main")).to_be_visible()
 
@@ -50,7 +50,7 @@ def test_nav_is_visible_without_javascript_on_a_phone(browser: Browser, live_ser
     page.goto(f"{live_server.url}/_kit/layouts/staff/")
     expect(page.locator(".sidebar")).to_be_visible()
     expect(page.get_by_role("navigation", name="Main")).to_be_visible()
-    expect(page.get_by_role("button", name="Menu")).to_be_hidden()
+    expect(page.get_by_role("button", name="Menu", exact=True)).to_be_hidden()
     context.close()
 
 
@@ -98,10 +98,10 @@ def test_account_menu_opens_to_sign_out(page: Page, live_server, vite_build, vie
     page.set_viewport_size(viewport)
     page.goto(f"{live_server.url}/_kit/layouts/staff/")
     if viewport == PHONE:
-        page.get_by_role("button", name="Menu").click()
+        page.get_by_role("button", name="Menu", exact=True).click()
     sign_out = page.get_by_role("button", name="Sign out")
     expect(sign_out).to_be_hidden()
-    page.locator(".account-menu > summary").click()
+    page.get_by_role("button", name="Account menu").click()
     expect(sign_out).to_be_visible()
     box = sign_out.bounding_box()
     assert (
@@ -115,7 +115,7 @@ def test_phone_menu_opens_under_its_toggle_and_tab_enters_it(
 ):
     page.set_viewport_size(PHONE)
     page.goto(f"{live_server.url}/_kit/layouts/{name}/")
-    toggle = page.get_by_role("button", name="Menu")
+    toggle = page.get_by_role("button", name="Menu", exact=True)
     before = toggle.bounding_box()
     toggle.click()
     after = toggle.bounding_box()
@@ -130,7 +130,7 @@ def test_phone_menu_opens_under_its_toggle_and_tab_enters_it(
 def test_nav_closes_on_escape(page: Page, live_server, vite_build, console_errors):
     page.set_viewport_size(PHONE)
     page.goto(f"{live_server.url}/_kit/layouts/staff/")
-    toggle = page.get_by_role("button", name="Menu")
+    toggle = page.get_by_role("button", name="Menu", exact=True)
     toggle.click()
     expect(toggle).to_have_attribute("aria-expanded", "true")
     page.keyboard.press("Escape")
@@ -167,6 +167,28 @@ def test_page_load_toast_is_announced(page: Page, live_server, vite_build):
     expect(page.locator("#toasts [data-toast]").first).to_be_visible()
 
 
+def test_account_menu_closes_on_escape_and_outside_click(
+    page: Page, live_server, vite_build, console_errors
+):
+    page.set_viewport_size(DESKTOP)
+    page.goto(f"{live_server.url}/_kit/layouts/staff/")
+    button = page.get_by_role("button", name="Account menu")
+    sign_out = page.get_by_role("button", name="Sign out")
+    button.click()
+    expect(sign_out).to_be_visible()
+    # Above its card, not centred in the viewport (anchor positioning or menus.ts).
+    menu, card = sign_out.bounding_box(), button.bounding_box()
+    assert menu and card and menu["y"] < card["y"]
+    page.keyboard.press("Escape")
+    expect(sign_out).to_be_hidden()
+    expect(button).to_be_focused()
+    button.click()
+    expect(sign_out).to_be_visible()
+    page.mouse.click(DESKTOP["width"] - 5, DESKTOP["height"] - 5)
+    expect(sign_out).to_be_hidden()
+    assert console_errors == []
+
+
 def test_long_program_name_switcher_fits_at_375(page: Page, live_server, vite_build):
     from apps.programs.tests.factories import MembershipFactory, ProgramFactory
     from tests.e2e.flows import log_in
@@ -182,7 +204,7 @@ def test_long_program_name_switcher_fits_at_375(page: Page, live_server, vite_bu
     )
     page.set_viewport_size(PHONE)
     log_in(page, live_server.url, staff.email, "/staff/long/")
-    page.get_by_role("button", name="Menu").click()
-    page.locator(".switcher summary").first.click()
-    expect(page.locator(".switcher ul").first).to_be_visible()
+    page.get_by_role("button", name="Menu", exact=True).click()
+    page.locator(".switcher__button").first.click()
+    expect(page.locator(".switcher .menu-panel").first).to_be_visible()
     assert page.evaluate("document.documentElement.scrollWidth") <= PHONE["width"]

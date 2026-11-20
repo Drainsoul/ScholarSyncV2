@@ -238,5 +238,5 @@ def test_forced_colors_keep_the_current_nav_tab_and_chart(page: Page, live_serve
 def test_account_menu_is_above_the_fold_at_1440_by_900(page: Page, live_server, vite_build):
     page.set_viewport_size(VIEWPORTS["desktop"])
     page.goto(f"{live_server.url}/_kit/mockups/scholars/")
-    box = page.locator(".account-menu > summary").bounding_box()
+    box = page.locator(".account-menu__button").bounding_box()
     assert box and box["y"] >= 0 and box["y"] + box["height"] <= 900

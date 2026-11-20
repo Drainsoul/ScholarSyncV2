@@ -15,10 +15,10 @@
       <div class="topbar__end">
         {% block topbar_extra %}{% endblock %}
         {% if terms %}
-        <details class="switcher switcher--end">
-          <summary>{% icon "calendar" %}<span class="visually-hidden">Term</span>{% for term in terms %}{% if term.current %}<span><span class="visually-hidden">: </span>{{ term.name }}</span>{% endif %}{% endfor %}{% icon "chevron-down" %}</summary>
-          <ul role="list">{% for term in terms %}<li><a href="{{ term.url }}"{% if term.current %} aria-current="true"{% endif %}>{{ term.name }}</a></li>{% endfor %}</ul>
-        </details>
+        <div class="switcher switcher--end">
+          <button type="button" class="switcher__button" popovertarget="term-switcher">{% icon "calendar" %}<span class="visually-hidden">Term</span>{% for term in terms %}{% if term.current %}<span><span class="visually-hidden">: </span>{{ term.name }}</span>{% endif %}{% endfor %}{% icon "chevron-down" %}</button>
+          <ul class="menu-panel" id="term-switcher" popover role="list">{% for term in terms %}<li><a href="{{ term.url }}"{% if term.current %} aria-current="true"{% endif %}>{{ term.name }}</a></li>{% endfor %}</ul>
+        </div>
         {% endif %}
         {% if notifications_url %}<a class="icon-btn topbar__bell" href="{{ notifications_url }}" aria-label="Notifications{% if notifications_count %}, {{ notifications_count }} unread{% endif %}">{% icon "bell" %}{% if notifications_count %}<span class="topbar__dot" aria-hidden="true"></span>{% endif %}</a>{% endif %}
         <button type="button" class="icon-btn nav-toggle" data-nav-toggle aria-controls="app-nav" aria-expanded="false" aria-label="Menu" hidden>{% icon "menu" %}</button>
@@ -44,14 +44,14 @@
     {% if viewer or logout_url %}
     <div class="sidebar__user">
       {% if logout_url %}
-      <details class="account-menu">
-        <summary>{% if viewer %}{% avatar viewer.name 1 %}<span class="sidebar__viewer"><span class="sidebar__name">{{ viewer.name }}</span><span class="sidebar__role">{{ viewer.role }}</span></span>{% else %}<span class="sidebar__viewer"><span class="sidebar__name">Account</span></span>{% endif %}{% icon "ellipsis-vertical" %}<span class="visually-hidden">Account menu</span></summary>
-        <div class="account-menu__panel">
+      <div class="account-menu">
+        <button type="button" class="account-menu__button" popovertarget="account-menu">{% if viewer %}{% avatar viewer.name 1 %}<span class="sidebar__viewer"><span class="sidebar__name">{{ viewer.name }}</span><span class="sidebar__role">{{ viewer.role }}</span></span>{% else %}<span class="sidebar__viewer"><span class="sidebar__name">Account</span></span>{% endif %}{% icon "ellipsis-vertical" %}<span class="visually-hidden">Account menu</span></button>
+        <div class="menu-panel account-menu__panel" id="account-menu" popover>
           <a class="btn btn--ghost" href="{% url 'usersessions_list' %}">Your sessions</a>
           <a class="btn btn--ghost" href="{% url 'mfa_index' %}">Two-factor sign-in</a>
           <form method="post" action="{{ logout_url }}">{% csrf_token %}<button type="submit" class="btn btn--ghost">{% icon "log-out" %}Sign out</button></form>
         </div>
-      </details>
+      </div>
       {% else %}
       <p class="sidebar__account">{% avatar viewer.name 1 %}<span class="sidebar__viewer"><span class="sidebar__name">{{ viewer.name }}</span><span class="sidebar__role">{{ viewer.role }}</span></span></p>
       {% endif %}

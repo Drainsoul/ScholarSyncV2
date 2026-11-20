@@ -1,8 +1,8 @@
 {% extends "layouts/app.html" %}{% load ui %}
 {% block sidebar_context %}
-<details class="switcher">
-  <summary>{% avatar program.name 1 %}<span class="switcher__text"><span class="switcher__label">Program</span><span class="switcher__value">{{ program.name }}</span></span>{% icon "chevrons-up-down" %}</summary>
-  <ul role="list">{% for item in programs %}<li><a href="{{ item.url }}"{% if item.current %} aria-current="true"{% endif %}>{{ item.name }}</a></li>{% endfor %}</ul>
-</details>
+<div class="switcher">
+  <button type="button" class="switcher__button" popovertarget="program-switcher">{% avatar program.name 1 %}<span class="switcher__text"><span class="switcher__label">Program</span><span class="switcher__value">{{ program.name }}</span></span>{% icon "chevrons-up-down" %}</button>
+  <ul class="menu-panel" id="program-switcher" popover role="list">{% for item in programs %}<li><a href="{{ item.url }}"{% if item.current %} aria-current="true"{% endif %}>{{ item.name }}</a></li>{% endfor %}</ul>
+</div>
 {% endblock %}
 {% block search_placeholder %}Search scholars, applications, schools{% endblock %}

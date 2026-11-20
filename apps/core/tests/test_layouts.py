@@ -79,7 +79,16 @@ def test_program_switcher_lists_programs(vite_build):
     html = render("layouts/staff.html")
     assert '<a href="/staff/lani/">LANI</a>' in html
     assert '<a href="/staff/tcu-ceaa/" aria-current="true">TCU CEAA</a>' in html
-    assert '<details class="switcher">' in sidebar(html)
+    nav = sidebar(html)
+    assert '<div class="switcher">' in nav
+    # A popover list right after its button: the browser opens and dismisses it (spec §12 rev 29).
+    assert re.search(
+        r'<button type="button" class="switcher__button" popovertarget="program-switcher">'
+        r".*?</button>\s*"
+        r'<ul class="menu-panel" id="program-switcher" popover role="list">',
+        nav,
+        re.S,
+    )
 
 
 def test_layouts_without_nav_have_no_menu_button(vite_build):
@@ -165,7 +174,9 @@ def test_topbar_term_chooser_and_notifications(vite_build):
         "layouts/staff.html", terms=terms, notifications_url="/inbox/", notifications_count=3
     )
     bar = topbar(html)
-    assert '<details class="switcher switcher--end">' in bar
+    assert '<div class="switcher switcher--end">' in bar
+    assert 'popovertarget="term-switcher"' in bar
+    assert 'id="term-switcher" popover' in bar
     assert '<a href="/t/1/" aria-current="true">1st sem 2026–2027</a>' in bar
     assert (
         '<a class="icon-btn topbar__bell" href="/inbox/" aria-label="Notifications, 3 unread">'
@@ -195,10 +206,16 @@ def test_student_sidebar_has_no_context_block(vite_build):
 def test_account_menu_holds_sign_out(vite_build):
     html = render("layouts/staff.html", logout_url="/accounts/logout/")
     nav = sidebar(html)
-    menu = re.search(r'<details class="account-menu">(.*?)</details>', nav, re.S)
+    menu = re.search(r'<div class="account-menu">(.*?</form>)\s*</div>\s*</div>', nav, re.S)
     assert menu, "the user card is an account menu"
-    summary = re.search(r"<summary>(.*?)</summary>", menu.group(1), re.S)
+    summary = re.search(
+        r'<button type="button" class="account-menu__button" popovertarget="account-menu">'
+        r"(.*?)</button>",
+        menu.group(1),
+        re.S,
+    )
     assert summary
+    assert 'id="account-menu" popover' in menu.group(1)
     assert "Carolyn Hawkins" in summary.group(1)
     assert "Student" in summary.group(1)
     assert 'class="avatar' in summary.group(1)

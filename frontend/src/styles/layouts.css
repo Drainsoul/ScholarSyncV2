@@ -565,7 +565,7 @@
 }
 
 .sidebar__account,
-.account-menu summary {
+.account-menu__button {
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -574,21 +574,22 @@
   padding: var(--space-1);
 }
 
-.account-menu summary {
+.account-menu__button {
+  width: 100%;
+  border: 0;
   border-radius: var(--radius-sm);
-  list-style: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
   cursor: pointer;
 }
 
-.account-menu summary::-webkit-details-marker {
-  display: none;
-}
-
-.account-menu summary:hover {
+.account-menu__button:hover {
   background: var(--surface-hover);
 }
 
-.account-menu summary > .icon {
+.account-menu__button > .icon {
   margin-left: auto;
   color: var(--text-muted);
 }
@@ -611,18 +612,39 @@
   font-size: var(--text-xs);
 }
 
-/* The menu floats above the card, so opening it never pushes the card out of the sidebar. */
-.account-menu__panel {
-  position: absolute;
-  z-index: 10;
-  right: 0;
-  bottom: calc(100% + var(--space-1));
-  left: 0;
+/* Popover menus (spec §12 rev 29): the account menu and the switchers. A popover sits in the top layer,
+   so it is placed against its button with anchor positioning; menus.ts places it where that is missing,
+   and without script it opens centred (the browser default). */
+.menu-panel {
+  max-width: min(24rem, calc(100vw - 2 * var(--space-4)));
+  margin: auto;
   padding: var(--space-1);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--surface);
   box-shadow: var(--shadow-float);
+  color: var(--text);
+  list-style: none;
+}
+
+@supports (position-area: block-end) {
+  .menu-panel {
+    inset: auto;
+    min-width: anchor-size(width);
+    margin: var(--space-1) 0;
+    position-area: block-end span-inline-end;
+    position-try-fallbacks: flip-block, flip-inline;
+  }
+
+  .switcher--end .menu-panel {
+    position-area: block-end span-inline-start;
+  }
+
+  /* The account card is at the foot of the sidebar: its menu opens upward, as wide as the card. */
+  .account-menu__panel {
+    width: anchor-size(width);
+    position-area: block-start span-inline-end;
+  }
 }
 
 .account-menu__panel form {
@@ -685,7 +707,7 @@
   position: relative;
 }
 
-.switcher summary {
+.switcher__button {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -695,20 +717,17 @@
   border-radius: var(--radius-md);
   background: var(--surface);
   color: var(--text);
+  font: inherit;
   font-weight: 600;
-  list-style: none;
+  text-align: start;
   cursor: pointer;
 }
 
-.switcher summary:hover {
+.switcher__button:hover {
   background: var(--surface-hover);
 }
 
-.switcher summary::-webkit-details-marker {
-  display: none;
-}
-
-.switcher summary > .icon {
+.switcher__button > .icon {
   color: var(--text-muted);
 }
 
@@ -737,28 +756,7 @@
   font-weight: 400;
 }
 
-.switcher ul {
-  position: absolute;
-  z-index: 10;
-  top: calc(100% + var(--space-1));
-  left: 0;
-  min-width: 100%;
-  max-width: min(24rem, calc(100vw - 2 * var(--space-4)));
-  margin: 0;
-  padding: var(--space-1);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  box-shadow: var(--shadow-float);
-  list-style: none;
-}
-
-.switcher--end ul {
-  right: 0;
-  left: auto;
-}
-
-.switcher ul a {
+.switcher .menu-panel a {
   display: flex;
   align-items: center;
   min-height: var(--control-height);
@@ -770,11 +768,11 @@
   text-decoration: none;
 }
 
-.switcher ul a:hover {
+.switcher .menu-panel a:hover {
   background: var(--surface-hover);
 }
 
-.switcher ul a[aria-current="true"] {
+.switcher .menu-panel a[aria-current="true"] {
   color: var(--primary);
   font-weight: 600;
 }
