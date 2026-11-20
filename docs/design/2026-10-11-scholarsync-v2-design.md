@@ -79,6 +79,9 @@
 - **Revision:** 28 (2026-11-20): platform polish from a modern-web-guidance scan: modal dialogs fade and scale in
   (entry only), keep scrolling from reaching the page beneath, and read-only preview dialogs also close on a click
   outside them; textareas grow with their text; paragraphs and list items wrap without orphans (§12).
+- **Revision:** 29 (2026-11-20): a dark theme that follows the device, with Light / Dark / System in the account
+  menu; the account menu and the program and term switchers become popovers that close on an outside click or Esc;
+  pages cross-fade on navigation where the browser supports it (§5, §12).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -604,7 +607,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 |---|---|---|
 | Public | `/` (redirects: the sign-in page, or the user's own home when signed in), `/programs/` (M6), `/programs/<slug>/` (M6), `/about/`, `/help/`, `/privacy/`, `/terms/`, `/cookies/`, `/contact/` (the six information pages; footer disclaimer in §11) | anyone |
 | Health | `/healthz` (database ping, no details) | anyone |
-| Accounts | `/accounts/…` (allauth: signup, login, logout POST, email confirm, password reset, Google), `/accounts/claim/<token>/` | anyone |
+| Accounts | `/accounts/…` (allauth: signup, login, logout POST, email confirm, password reset, Google), `/accounts/claim/<token>/`, `/accounts/theme/` (POST, rev 29: sets the theme cookie) | anyone |
 | Student | `/me/` (dashboard), `/me/profile/` (+ `personal/`, `family/`, `family/<id>/` + `…/delete/`, `education/`, `education/<id>/` + `…/delete/`, `photo/`) | student (own records only) |
 | Student | `/me/match/`, `/me/applications/`, `/me/applications/new/<slug>/` (GET: confirm page; POST: creates the draft), `/me/applications/<id>/`, `/me/applications/<id>/documents/<requirement>/` (POST), `…/submit/` (POST), `…/withdraw/` | student (own records only) |
 | Student | `/me/scholarships/` (awards, terms, renewals, payouts and the next distribution), `/me/scholarships/<award>/renew/` (POST), `/me/notifications/` (+ `<id>/`, which marks it read and redirects; `read/` POST), `/me/support/` (M11) | student |
@@ -1062,7 +1065,15 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
     h2 21, h3 19, h4 17 px (rev 6, 2026-11-03: the maintainer found rev 4 too big and asked twice for a denser design);
   - **shape:** radius 8 px (controls, buttons, nav items), 10 px (small blocks), 12 px (cards, drawer
     edges); pills (999 px) only for counts; shadows only on floating layers (drawer, dialog, toast, menus).
-  - Light theme in v2.0; tokens are role-named so a dark theme can be added later.
+  - (rev 29) **Light and dark themes.** Role tokens hold both values with `light-dark()`; the palette tokens stay
+    hex. `:root` is `color-scheme: light dark`, so by default the app follows the device. The account menu offers
+    Light, Dark and System (the current one marked): a plain POST to `accounts/theme/` sets a `theme` cookie (one
+    year, `HttpOnly`, `SameSite=Lax`; "System" deletes it) and redirects back to a safe `next`. The server writes
+    `data-theme` on `<html>` and `<meta name="color-scheme">` from the cookie, so the page paints in the chosen
+    theme with no script and no flash (the CSP rules out the usual inline script). Signed-out pages follow the
+    cookie too but offer no control. The dark ground is a deep navy-grey, cards a step lighter; red, blue and gold
+    lighten to keep 4.5:1 as text, while solid red buttons keep white text; the auth panel stays red.
+    `tests/test_tokens.py` checks every pair in both themes.
 - **Components** (`templates/components/` + CSS):
   - **buttons:** 36 px tall (32 px inside tables), radius 8. Primary = solid red; secondary = white with a `#d0d5dd` border; soft = blue
     tint with a blue border; ghost = no border, hover tint; danger = white, outlined in `#9b1022`. Icons only where
@@ -1088,6 +1099,10 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
     an icon per item and counts, an optional callout, a user card with the account menu and sign out at the bottom)
     beside a column with a white top bar (search for staff and office, term chooser, notifications) and the page on
     the grey ground, at most 72rem wide and centred in that column (rev 6). The context block is the program switcher for staff and "Scholarship office" for the office.
+    (rev 29) The account menu, program switcher and term chooser are a `<button popovertarget>` followed by a
+    `popover="auto"` list of links (navigation, not an ARIA menu): the browser closes them on an outside click or
+    Esc and returns focus, with no script. They sit against their button with CSS anchor positioning; where that
+    is missing, `menus.ts` places them on open (without script they open centred).
     The current nav item has a red tint and red text;
   - **public:** a white top bar with the brand and text navigation, the stripe on top, content max 72rem;
   - **auth:** the split panel, now flat red with white text (a design choice; not on the canvas), the stripe on top;
@@ -1105,6 +1120,9 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
     only a read-only fragment (`data-light-dismiss`, the file previews) also closes on a click outside it
     (`closedby="any"`, with a click fallback where unsupported); form dialogs never do, so a stray click can't
     discard typing;
+  - (rev 29) pages cross-fade on same-origin navigation (`@view-transition`, off for reduced motion;
+    `<link rel="expect" href="#main" blocking="render">` so the fade never lands on a half-parsed page); the
+    sidebar and top bar hold still (their own `view-transition-name`); browsers without it navigate as before;
   - (rev 28) textareas grow with their text (`field-sizing: content`, 3 to about 12 lines) where supported; paragraphs
     and list items use `text-wrap: pretty`, headings keep `balance`;
   - toasts come from `HX-Trigger: {"toast": …}`, read by `toast.ts` into an `aria-live` region; (rev 27) they sit
