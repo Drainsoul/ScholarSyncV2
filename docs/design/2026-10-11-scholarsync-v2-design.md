@@ -82,6 +82,8 @@
 - **Revision:** 29 (2026-11-20): a dark theme that follows the device, with Light / Dark / System in the account
   menu; the account menu and the program and term switchers become popovers that close on an outside click or Esc;
   pages cross-fade on navigation where the browser supports it (§5, §12).
+- **Revision:** 30 (2026-11-21): toasts drop the white card with a coloured left stripe for a flat, solid chip in the
+  "Copied" bubble's family: ink for success and info, yellow for warnings, red for errors, each with its icon (§12).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -1064,7 +1066,7 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
     phones don't zoom), line height 1.5, tabular figures for money; captions and table headers 12 px; headings h1 23,
     h2 21, h3 19, h4 17 px (rev 6, 2026-11-03: the maintainer found rev 4 too big and asked twice for a denser design);
   - **shape:** radius 8 px (controls, buttons, nav items), 10 px (small blocks), 12 px (cards, drawer
-    edges); pills (999 px) only for counts; shadows only on floating layers (drawer, dialog, toast, menus).
+    edges); pills (999 px) only for counts; shadows only on floating layers (drawer, dialog, menus; toasts are flat, rev 30).
   - (rev 29) **Light and dark themes.** Role tokens hold both values with `light-dark()`; the palette tokens stay
     hex. `:root` is `color-scheme: light dark`, so by default the app follows the device. The account menu offers
     Light, Dark and System (the current one marked): a plain POST to `accounts/theme/` sets a `theme` cookie (one
@@ -1128,7 +1130,10 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
   - toasts come from `HX-Trigger: {"toast": …}`, read by `toast.ts` into an `aria-live` region; (rev 27) they sit
     at the top right under the top bar, compact; success and info hide after 3 s (paused while hovered or
     focused), warnings and errors stay until dismissed; a small action such as copy gets no toast, only a brief
-    "Copied" bubble at the pointer;
+    "Copied" bubble at the pointer; (rev 30) a toast is a flat solid chip with no shadow or stripe, like that
+    bubble: success and info are ink with light text (inverted in dark), a warning is the civic yellow with ink
+    text, an error is the solid danger red; an icon leads each (check, info, triangle, circle alert), so the tone
+    is never colour alone;
   - bulk actions are a form with checkboxes;
   - every form also works as a normal POST without JS.
 - **Dashboards (M11):**
