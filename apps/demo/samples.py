@@ -8,13 +8,39 @@ from decimal import Decimal
 PDF_TYPE = "application/pdf"
 PNG_TYPE = "image/png"
 
-_PDF = b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF\n"
+
+def _sample_pdf() -> bytes:
+    """A valid one-page PDF (catalog, page tree, a page of text, a cross-reference table) that
+    PDF viewers open. The text says it is a sample."""
+    text = b"BT /F1 18 Tf 72 720 Td (ScholarSync sample document) Tj 0 -28 Td /F1 12 Tf "
+    text += b"(Fictional demo file. No real person or data.) Tj ET"
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+        b"/Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+        b"<< /Length " + str(len(text)).encode() + b" >>\nstream\n" + text + b"\nendstream",
+    ]
+    out = bytearray(b"%PDF-1.4\n")
+    offsets = []
+    for number, body in enumerate(objects, start=1):
+        offsets.append(len(out))
+        out += f"{number} 0 obj\n".encode() + body + b"\nendobj\n"
+    xref_at = len(out)
+    out += f"xref\n0 {len(objects) + 1}\n0000000000 65535 f \n".encode()
+    for offset in offsets:
+        out += f"{offset:010d} 00000 n \n".encode()
+    out += f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\n".encode()
+    out += f"startxref\n{xref_at}\n%%EOF\n".encode()
+    return bytes(out)
+
+
 # A 20x20 solid PNG, for the requirements that only accept pictures (the 2x2 ID picture).
 SAMPLE_PNG = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAIAAAAC64paAAAAGklEQVR4nGMQaDhANmIY1TyqeVTzqOaB1QwANQINH6BXGBYAAAAASUVORK5CYII="
 )
-# Exactly one kilobyte, as in the end-to-end tests.
-SAMPLE_PDF = _PDF + b"%" + b"0" * (1024 - len(_PDF) - 2) + b"\n"
+SAMPLE_PDF = _sample_pdf()
 
 DECLINE_REASON = "The scan is too dark to read."
 RETURN_REASON = "Upload a clearer copy of your certificate of registration."
