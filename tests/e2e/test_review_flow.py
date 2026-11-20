@@ -172,7 +172,7 @@ def test_picture_document_opens_in_a_preview_dialog(
 
     page.get_by_role("link", name="Preview Document 1").click()
     dialog = page.get_by_role("dialog", name="Document 1")
-    picture = dialog.get_by_role("img", name="Document 1 uploaded by the applicant")
+    picture = dialog.get_by_role("img", name="Document 1", exact=True)
     expect(picture).to_be_visible()
     # It rendered through the attachment-disposition presigned GET, under the enforced CSP.
     page.wait_for_function(

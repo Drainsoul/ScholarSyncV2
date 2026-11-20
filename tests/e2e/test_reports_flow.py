@@ -6,7 +6,7 @@ from playwright.sync_api import Page, expect
 from apps.accounts.models import User
 from apps.accounts.tests.factories import UserFactory
 from apps.programs.tests.factories import MembershipFactory, ProgramFactory
-from tests.e2e.flows import log_in, one_kb_pdf, payload
+from tests.e2e.flows import log_in, one_kb_pdf, one_page_pdf, payload
 
 pytestmark = pytest.mark.e2e
 
@@ -40,7 +40,7 @@ def test_staff_sends_report_office_returns_staff_resends_office_accepts(
     expect(page.locator(".file-input__status")).to_have_text("q3-report.pdf uploaded")
     page.get_by_role("button", name="Send report").click()
     expect(page.get_by_text("Report sent to the scholarship office.")).to_be_visible()
-    expect(page.get_by_role("link", name="q3-report.pdf")).to_be_visible()
+    expect(page.get_by_role("link", name="q3-report.pdf", exact=True)).to_be_visible()
 
     _switch(page, base, office.email, "/office/")
     _bell(page, 1)
@@ -70,4 +70,21 @@ def test_staff_sends_report_office_returns_staff_resends_office_accepts(
     _switch(page, base, staff.email, "/staff/tcu-ceaa/reports/")
     expect(page.get_by_role("link", name="Quarterly update")).to_be_visible()
     expect(page.locator("tbody")).to_contain_text("Accepted")
+    assert console_errors == []
+
+
+def test_office_previews_a_report_pdf(
+    page: Page, live_server, vite_build, e2e_storage, console_errors
+):
+    from apps.files import storage
+    from apps.reports.tests.factories import ReportFileFactory
+
+    office = UserFactory.create(role=User.Role.SUPER_ADMIN, verified=True)
+    row = ReportFileFactory.create(report__title="Quarterly scholar update")
+    storage.put(key=row.file.final_key, body=one_page_pdf(), content_type="application/pdf")
+    log_in(page, live_server.url, office.email, f"/office/reports/{row.report.pk}/")
+    page.get_by_role("link", name="Preview report.pdf").click()
+    dialog = page.get_by_role("dialog", name="Quarterly scholar update")
+    expect(dialog.get_by_role("img", name="Page 1 of 1")).to_be_visible()
+    expect(dialog.locator("[data-pdf-status]")).to_have_text("1 page")
     assert console_errors == []

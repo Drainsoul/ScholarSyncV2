@@ -87,6 +87,14 @@ def report_files(report: Report) -> QuerySet[ReportFile]:
     return report.files.select_related("file").order_by("-created_at", "-pk")
 
 
+def report_file(report: Report, pk: int) -> ReportFile:
+    """One file of the report (any version), or 404."""
+    found = report.files.select_related("file").filter(pk=pk).first()
+    if found is None:
+        raise Http404("No such file.")
+    return found
+
+
 def submitted_count() -> int:
     return Report.objects.filter(status=Report.Status.SUBMITTED).count()
 

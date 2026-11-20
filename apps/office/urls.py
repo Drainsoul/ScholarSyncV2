@@ -70,6 +70,11 @@ urlpatterns = [
         name="report-detail",
     ),
     path(
+        "reports/<int:pk>/files/<int:file>/preview/",
+        report_views.OfficeReportFilePreviewView.as_view(),
+        name="report-file-preview",
+    ),
+    path(
         "reports/<int:pk>/decide/",
         report_views.OfficeReportDecideView.as_view(),
         name="report-decide",

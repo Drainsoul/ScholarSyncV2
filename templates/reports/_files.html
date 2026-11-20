@@ -1,8 +1,8 @@
-<section class="card" aria-labelledby="files-title">
+{% load ui %}<section class="card" aria-labelledby="files-title">
   <h2 class="card__title" id="files-title">Files</h2>
   {% if files %}
   <ul class="list">{% for row in files %}
-    <li><p><a href="{% url 'files:download' row.file_id %}">{{ row.file.original_name }}</a>{% if forloop.first %} <span class="text-sm text-muted">(latest)</span>{% endif %}</p>
+    <li><p><a class="file-link" href="{% url 'files:download' row.file_id %}">{% icon "download" %}{{ row.file.original_name }}</a>{% if row.file.sniffed_type == "application/pdf" or row.file.sniffed_type == "image/png" or row.file.sniffed_type == "image/jpeg" %}{% if office %}{% url 'office:report-file-preview' pk=report.pk file=row.pk as preview_url %}{% else %}{% url 'reports:file-preview' program=report.program.slug pk=report.pk file=row.pk as preview_url %}{% endif %} <a class="file-link" href="{{ preview_url }}" hx-get="{{ preview_url }}" hx-target="#app-dialog-body" hx-swap="innerHTML">{% icon "eye" %}Preview<span class="visually-hidden"> {{ row.file.original_name }}</span></a>{% endif %}{% if forloop.first %} <span class="text-sm text-muted">(latest)</span>{% endif %}</p>
       <p class="text-sm text-muted">Uploaded <time datetime="{{ row.created_at|date:'c' }}">{{ row.created_at|date:"j M Y, g:i A" }}</time></p></li>{% endfor %}
   </ul>
   {% else %}<p>No files.</p>{% endif %}

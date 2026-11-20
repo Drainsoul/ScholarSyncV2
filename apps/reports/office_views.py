@@ -5,7 +5,7 @@ from typing import Any
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.http import HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views import View
@@ -15,6 +15,7 @@ from apps.accounts.models import User
 from apps.core.params import positive_id
 from apps.core.permissions import SuperAdminRequiredMixin
 from apps.core.shell import shell_context
+from apps.files.preview import can_preview, render_preview
 from apps.programs.models import Program
 
 from . import selectors, services
@@ -118,3 +119,24 @@ class OfficeReportDecideView(SuperAdminRequiredMixin, View):
                     messages.success(request, f"Report returned to {report.program.name}.")
                 return redirect("office:report-detail", pk=report.pk)
         return _detail(request, report, form)
+
+
+class OfficeReportFilePreviewView(SuperAdminRequiredMixin, View):
+    """A report file (PDF) in the app dialog (apps/files/preview.py, spec §12 rev 27)."""
+
+    http_method_names = ["get", "options"]
+
+    def get(self, request: HttpRequest, pk: int, file: int) -> HttpResponse:
+        report = selectors.office_report(pk)
+        row = selectors.report_file(report, file)
+        if not can_preview(row.file):
+            raise Http404("Nothing to preview.")
+        return render_preview(
+            request,
+            user=_actor(request),
+            file=row.file,
+            label=report.title,
+            back_url=reverse("office:report-detail", kwargs={"pk": pk}),
+            layout="layouts/office.html",
+            shell=shell_context(request, area="office"),
+        )

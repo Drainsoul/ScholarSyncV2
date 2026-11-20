@@ -1,0 +1,18 @@
+{% load ui %}{% comment %}A picture or PDF preview (apps/files/preview.py). Context: file, preview_label,
+back_url, is_pdf, pdf_url.{% endcomment %}
+{% if is_pdf %}
+<div class="doc-preview pdf-preview" data-pdf-preview data-src="{{ pdf_url }}">
+  <p class="text-sm text-muted" role="status" data-pdf-status>{% if pdf_url %}Previewing a PDF needs JavaScript. Download it instead.{% else %}The preview can't load right now. Download the file instead.{% endif %}</p>
+  <div class="pdf-preview__pages" data-pdf-pages role="region" aria-label="Pages of {{ preview_label }}" tabindex="0"></div>
+  <p class="text-sm text-muted">{{ file.original_name }}</p>
+</div>
+{% else %}
+<figure class="doc-preview">
+  <img class="doc-preview__image" src="{% url 'files:download' file.id %}" alt="{{ preview_label }}">
+  <figcaption class="text-sm text-muted">{{ file.original_name }}</figcaption>
+</figure>
+{% endif %}
+<div class="btn-row">
+  <a class="btn btn--secondary" href="{% url 'files:download' file.id %}">{% icon "download" %}Download</a>
+  <a class="btn btn--ghost" href="{{ back_url }}" data-dialog-close>Close</a>
+</div>

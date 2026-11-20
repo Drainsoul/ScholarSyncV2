@@ -5,7 +5,7 @@ from typing import Any
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.http import HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views import View
@@ -14,6 +14,7 @@ from django.views.generic import TemplateView
 from apps.accounts.models import User
 from apps.core.permissions import ProgramStaffRequiredMixin
 from apps.core.shell import shell_context
+from apps.files.preview import can_preview, render_preview
 
 from . import selectors, services
 from .forms import ReportForm
@@ -151,3 +152,24 @@ class ReportResubmitView(ProgramStaffRequiredMixin, View):
             **_detail_context(request, report, form),
         }
         return render(request, "reports/staff_detail.html", context)
+
+
+class ReportFilePreviewView(ProgramStaffRequiredMixin, View):
+    """A report file (PDF) in the app dialog (apps/files/preview.py, spec §12 rev 27)."""
+
+    http_method_names = ["get", "options"]
+
+    def get(self, request: HttpRequest, program: str, pk: int, file: int) -> HttpResponse:
+        report = selectors.staff_report(self.program, pk)
+        row = selectors.report_file(report, file)
+        if not can_preview(row.file):
+            raise Http404("Nothing to preview.")
+        return render_preview(
+            request,
+            user=_actor(request),
+            file=row.file,
+            label=report.title,
+            back_url=reverse("reports:detail", kwargs={"program": self.program.slug, "pk": pk}),
+            layout="layouts/staff.html",
+            shell=shell_context(request, area="staff", program=self.program),
+        )

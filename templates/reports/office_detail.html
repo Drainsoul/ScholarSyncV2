@@ -27,7 +27,7 @@
       {% if report.review_note %}<p>{{ report.review_note|linebreaksbr }}</p>{% endif %}
     </section>
     {% endif %}
-    {% include "reports/_files.html" %}
+    {% include "reports/_files.html" with office=True %}
     {% if form %}
     <section class="card" aria-labelledby="decide-title">
       <h2 class="card__title" id="decide-title">Decide</h2>
