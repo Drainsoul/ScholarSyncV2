@@ -1105,7 +1105,7 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
     only a read-only fragment (`data-light-dismiss`, the file previews) also closes on a click outside it
     (`closedby="any"`, with a click fallback where unsupported); form dialogs never do, so a stray click can't
     discard typing;
-  - (rev 28) textareas grow with their text (`field-sizing: content`, 3 to 12 lines) where supported; paragraphs
+  - (rev 28) textareas grow with their text (`field-sizing: content`, 3 to about 12 lines) where supported; paragraphs
     and list items use `text-wrap: pretty`, headings keep `balance`;
   - toasts come from `HX-Trigger: {"toast": …}`, read by `toast.ts` into an `aria-live` region; (rev 27) they sit
     at the top right under the top bar, compact; success and info hide after 3 s (paused while hovered or
