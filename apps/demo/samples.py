@@ -1,6 +1,7 @@
 """Sample applicants and sample files for the staff review queue. Fixed values, no real people."""
 
-import base64
+import struct
+import zlib
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
@@ -36,10 +37,37 @@ def _sample_pdf() -> bytes:
     return bytes(out)
 
 
-# A 20x20 solid PNG, for the requirements that only accept pictures (the 2x2 ID picture).
-SAMPLE_PNG = base64.b64decode(
-    "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAIAAAAC64paAAAAGklEQVR4nGMQaDhANmIY1TyqeVTzqOaB1QwANQINH6BXGBYAAAAASUVORK5CYII="
-)
+def _sample_png() -> bytes:
+    """A 240x300 placeholder ID picture (a grey silhouette on light blue), drawn here so the demo
+    has no image file and the review screen's preview shows something recognisable."""
+    width, height = 240, 300
+    background, figure = bytes((0xDB, 0xEA, 0xFE)), bytes((0x9C, 0xA3, 0xAF))
+    rows = []
+    for y in range(height):
+        row = bytearray(1)  # filter byte 0: none
+        for x in range(width):
+            head = (x - 120) ** 2 + (y - 115) ** 2 <= 55**2
+            shoulders = y >= 190 and (x - 120) ** 2 / 110**2 + (y - 300) ** 2 / 105**2 <= 1
+            row += figure if head or shoulders else background
+        rows.append(bytes(row))
+
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        body = kind + data
+        return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body))
+
+    header = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)  # 8-bit RGB
+    return (
+        bytes((0x89,))
+        + b"PNG"
+        + bytes((13, 10, 26, 10))
+        + chunk(b"IHDR", header)
+        + chunk(b"IDAT", zlib.compress(b"".join(rows), 9))
+        + chunk(b"IEND", b"")
+    )
+
+
+# For the requirements that only accept pictures (the 2x2 ID picture).
+SAMPLE_PNG = _sample_png()
 SAMPLE_PDF = _sample_pdf()
 
 DECLINE_REASON = "The scan is too dark to read."
