@@ -73,7 +73,8 @@
   calendar of the user's task due dates, the program's distribution days and its application window, with "Needs
   attention" beside it; the Tasks page lists tasks only and "Add task" opens the form in the app dialog; image
   documents on the review screen open in a preview dialog instead of downloading; the demo's sample PDF is a valid
-  one-page document; PDF documents open in the same preview dialog, drawn by pdf.js (§4.9, §5, §11, §12).
+  one-page document; PDF documents and report files open in the same preview dialog, drawn by pdf.js (§4.9, §5,
+  §11, §12).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -608,7 +609,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 | Staff | `applications/new/` (in progress + profile picker; POST starts), `applications/behalf/<id>/` (filing page), `…/academics/`, `…/documents/<requirement>/`, `…/submit/`, `…/withdraw/` (POST) | program staff/head |
 | Staff | `scholars/`, `scholars/<award>/`, `…/edit/`, `…/status/`, `…/terms/new/`, `…/terms/<term>/`, `…/terms/<term>/merit/` (POST); `scholars/new/`, `scholars/import/`, `scholars/import/template/`, `scholars/export/` (M9b) | program staff/head |
 | Staff | `schedules/`, `schedules/new/`, `schedules/<id>/`, `schedules/<id>/publish/` (POST); `disbursements/`, `disbursements/<schedule>/`, `…/generate/` (POST), `…/bulk/` (POST), `…/<id>/reject/`, `…/<id>/revert/` (POST); `budget/`, `budget/edit/` | program staff/head (see §6) |
-| Staff | `tasks/` (+ `new/` rev 27, `<id>/`, `<id>/done/` POST, `<id>/delete/` POST; owner only, M11), `reports/` (M11c: + `new/`, `<id>/`, `<id>/resubmit/` POST), `notifications/` (M11c: + `<id>/`, `read/` POST), `audit/` (M11c), `settings/` (rules and window; `tiers/`, `tiers/new/`, `tiers/<code>/`; `documents/`, `documents/<id>/`, `documents/<id>/active/` POST; M11b) | staff; `settings/` and `audit/` are head (and office) only |
+| Staff | `tasks/` (+ `new/` rev 27, `<id>/`, `<id>/done/` POST, `<id>/delete/` POST; owner only, M11), `reports/` (M11c: + `new/`, `<id>/`, `<id>/resubmit/` POST; rev 27: `<id>/files/<file>/preview/`), `notifications/` (M11c: + `<id>/`, `read/` POST), `audit/` (M11c), `settings/` (rules and window; `tiers/`, `tiers/new/`, `tiers/<code>/`; `documents/`, `documents/<id>/`, `documents/<id>/active/` POST; M11b) | staff; `settings/` and `audit/` are head (and office) only |
 | Office | `/office/` (dashboard); M11b: `programs/` (+ `new/`, `<id>/`, `<id>/active/` POST), `staff/` (+ `new/`, `<id>/`, `<id>/active/`, `<id>/welcome/`, `<id>/memberships/` POST), `memberships/<id>/` POST, `schools/` (+ `new/`, `<id>/`); `terms/` (M9: list, `add/` POST, `<term>/current/`), `support/` (+ `<id>/answer/` POST; M11); M11c: `scholars/` (+ `export/`), `reports/` (+ `<id>/`, `<id>/decide/` POST), `analytics/` (+ `export/`), `audit/`, `notifications/` (+ `<id>/`, `read/` POST) | super admin |
 | Files | `POST /files/uploads/` (intent), `POST /files/uploads/<id>/confirm/`, `GET /files/<id>/` (authorize → 302) | owner or authorized staff |
 
@@ -1177,6 +1178,9 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
       worker, both from `'self'`, so the CSP is unchanged; the bucket's CORS already allows `GET`) fetches the bytes
       and draws the first 20 pages on canvases (`role="img"`, "Page n of m"). Without JavaScript the dialog page
       says to download the file. The PDF is never served inline.
+    - **report files** (rev 27): each file version on a report page (staff `reports/<id>/files/<file>/preview/`,
+      office `/office/reports/<id>/files/<file>/preview/`) has the same "Preview"; one helper
+      (`apps/files/preview.py`) and one template (`components/file_preview.html`) serve every preview.
 - **TypeScript modules:**
   - `main.ts`: imports and configures htmx;
   - `dialog.ts`, `toast.ts`, `upload.ts` (presigned PUT + confirm), `bulk.ts` (select-all, count);
