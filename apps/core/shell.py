@@ -149,6 +149,7 @@ def shell_context(
             accounts = reverse("office:staff")
             office_scholars = reverse("office:scholars")
             schools = reverse("office:schools")
+            office_tasks = reverse("office:tasks")
             path = request.path
             nav = [
                 {"label": label, "url": home, "current": path == home, "count": 0, "icon": icon},
@@ -193,6 +194,13 @@ def shell_context(
                     "current": path.startswith(office_reports),
                     "count": submitted_count(),
                     "icon": "file-text",
+                },
+                {
+                    "label": "Tasks",
+                    "url": office_tasks,
+                    "current": path.startswith(office_tasks),
+                    "count": due_count(user, None, today=timezone.localdate()),
+                    "icon": "list-checks",
                 },
                 {
                     "label": "Analytics",

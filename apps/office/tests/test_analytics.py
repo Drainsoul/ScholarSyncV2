@@ -258,6 +258,7 @@ def test_analytics_nav_item(client: Any, office: User) -> None:
         "Schools",
         "Terms",
         "Reports",
+        "Tasks",
         "Analytics",
         "Audit log",
         "Support",

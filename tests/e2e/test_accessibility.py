@@ -57,6 +57,7 @@ SCREENS: dict[str, list[str]] = {
         "/office/audit/",
         "/office/reports/",
         "/office/support/",
+        "/office/tasks/",
     ],
 }
 

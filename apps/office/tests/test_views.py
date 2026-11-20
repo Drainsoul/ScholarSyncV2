@@ -39,7 +39,7 @@ def test_terms_page_lists_and_marks_current(client, office) -> None:
 def test_terms_page_query_budget(client, office, django_assert_max_num_queries) -> None:
     for year in range(2020, 2027):
         AcademicTermFactory.create(school_year_start=year, term=1)
-    with django_assert_max_num_queries(8):
+    with django_assert_max_num_queries(9):  # + the Tasks nav count (rev 27)
         assert client.get(reverse("office:terms")).status_code == 200
 
 

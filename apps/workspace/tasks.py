@@ -1,4 +1,5 @@
-"""Personal to-dos of program staff: reads and writes. Only the owner ever reaches a task."""
+"""Personal to-dos of program staff (a program) and of the office (no program): reads and writes.
+Only the owner ever reaches a task."""
 
 from datetime import date
 
@@ -15,11 +16,11 @@ from apps.programs.models import Program
 from .models import Task
 
 
-def _own(user: User, program: Program) -> QuerySet[Task]:
+def _own(user: User, program: Program | None) -> QuerySet[Task]:
     return Task.objects.filter(owner=user, program=program)
 
 
-def open_tasks(user: User, program: Program, *, today: date) -> QuerySet[Task]:
+def open_tasks(user: User, program: Program | None, *, today: date) -> QuerySet[Task]:
     """Open tasks: overdue first, then by due date, undated last."""
     return (
         _own(user, program)
@@ -35,15 +36,15 @@ def open_tasks(user: User, program: Program, *, today: date) -> QuerySet[Task]:
     )
 
 
-def done_tasks(user: User, program: Program) -> QuerySet[Task]:
+def done_tasks(user: User, program: Program | None) -> QuerySet[Task]:
     return _own(user, program).exclude(done_at=None).order_by("-done_at", "-pk")
 
 
-def own_task(user: User, program: Program, pk: int) -> Task:
+def own_task(user: User, program: Program | None, pk: int) -> Task:
     return get_object_or_404(_own(user, program), pk=pk)
 
 
-def due_count(user: User, program: Program, *, today: date) -> int:
+def due_count(user: User, program: Program | None, *, today: date) -> int:
     return _own(user, program).filter(Q(done_at=None) & Q(due_on__lte=today)).count()
 
 
@@ -67,7 +68,7 @@ def _audit(actor: User, task: Task, action: str, request: HttpRequest | None) ->
 def create_task(
     *,
     actor: User,
-    program: Program,
+    program: Program | None,
     title: str,
     notes: str,
     due_on: date | None,

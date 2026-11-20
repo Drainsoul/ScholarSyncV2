@@ -1,9 +1,8 @@
-{% extends "layouts/staff.html" %}{% load ui %}
+{% extends layout %}{% load ui %}
 {% block title %}Tasks{% endblock %}
 {% block content %}
-  {% url 'workspace:task-new' program=program.slug as new_url %}
   <div class="page-header">
-    <div><h1>Tasks</h1><p class="page-header__meta">Your own to-dos for {{ program.name }}. Nobody else sees them.</p></div>
+    <div><h1>Tasks</h1><p class="page-header__meta">Your own to-dos for {{ scope_label }}. Nobody else sees them.</p></div>
     <div class="btn-row"><a class="btn btn--primary" href="{{ new_url }}" hx-get="{{ new_url }}" hx-target="#app-dialog-body" hx-swap="innerHTML">{% icon "plus" %}Add task</a></div>
   </div>
   {% include "components/tabs.html" with tabs_label="Task lists" %}
@@ -11,12 +10,12 @@
   <div class="table-wrap" role="region" aria-label="{% if tab == 'done' %}Done tasks{% else %}Open tasks{% endif %}" tabindex="0">
     <table class="table">
       <thead><tr><th scope="col">Task</th><th scope="col">Due</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
-      <tbody>{% for task, status in rows %}<tr>
-        <th scope="row"><a href="{% url 'workspace:task-edit' program=program.slug pk=task.pk %}">{{ task.title }}</a></th>
+      <tbody>{% for row in rows %}{% with task=row.task status=row.status %}<tr>
+        <th scope="row"><a href="{{ row.edit_url }}">{{ task.title }}</a></th>
         <td>{% if task.due_on %}<time datetime="{{ task.due_on|date:'Y-m-d' }}">{{ task.due_on|date:"j M Y" }}</time>{% else %}—{% endif %}</td>
         <td>{% if status %}{% status status.0 status.1 %}{% endif %}</td>
-        <td><form method="post" action="{% url 'workspace:task-done' program=program.slug pk=task.pk %}">{% csrf_token %}<input type="hidden" name="done" value="{% if task.done_at %}0{% else %}1{% endif %}"><button type="submit" class="btn btn--secondary">{% if task.done_at %}Reopen{% else %}Done{% endif %}<span class="visually-hidden">: {{ task.title }}</span></button></form></td>
-      </tr>{% endfor %}</tbody>
+        <td><form method="post" action="{{ row.done_url }}">{% csrf_token %}<input type="hidden" name="done" value="{% if task.done_at %}0{% else %}1{% endif %}"><button type="submit" class="btn btn--secondary">{% if task.done_at %}Reopen{% else %}Done{% endif %}<span class="visually-hidden">: {{ task.title }}</span></button></form></td>
+      </tr>{% endwith %}{% endfor %}</tbody>
     </table>
   </div>
   {% pagination page %}

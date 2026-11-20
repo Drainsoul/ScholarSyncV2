@@ -2,7 +2,7 @@ from django.urls import path
 
 from apps.core import audit_views
 from apps.reports import office_views as report_views
-from apps.workspace import notification_views
+from apps.workspace import notification_views, task_views
 
 from . import analytics_views, program_views, scholar_views, school_views, staff_views, views
 
@@ -86,6 +86,11 @@ urlpatterns = [
         name="analytics-export",
     ),
     path("audit/", audit_views.OfficeAuditView.as_view(), name="audit"),
+    path("tasks/", task_views.OfficeTaskListView.as_view(), name="tasks"),
+    path("tasks/new/", task_views.OfficeTaskCreateView.as_view(), name="task-new"),
+    path("tasks/<int:pk>/", task_views.OfficeTaskEditView.as_view(), name="task-edit"),
+    path("tasks/<int:pk>/done/", task_views.OfficeTaskDoneView.as_view(), name="task-done"),
+    path("tasks/<int:pk>/delete/", task_views.OfficeTaskDeleteView.as_view(), name="task-delete"),
     path("terms/", views.TermsView.as_view(), name="terms"),
     path("terms/add/", views.AddYearView.as_view(), name="terms-add"),
     path("terms/<int:pk>/current/", views.MakeCurrentView.as_view(), name="terms-current"),
