@@ -73,32 +73,48 @@
   color: var(--danger);
 }
 
+/* Toasts sit at the top right, compact: on phones just under the top bar (3.75rem); on wider
+   screens in the top bar's empty space, left of the bell, so they cover no page content. */
 .toasts {
   position: fixed;
   z-index: 50;
   inset-inline-end: var(--space-4);
-  inset-block-end: var(--space-4);
+  inset-block-start: 4.25rem;
   display: grid;
+  justify-items: end;
   gap: var(--space-2);
-  width: min(24rem, calc(100vw - 2 * var(--space-4)));
+  width: min(20rem, calc(100vw - 2 * var(--space-4)));
+}
+
+@media (min-width: 48rem) {
+  .toasts {
+    inset-inline-end: 4.5rem;
+    inset-block-start: var(--space-3);
+  }
 }
 
 .toast {
   display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4);
-  border-left: 5px solid var(--info);
-  border-radius: var(--radius-lg);
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-1) 0 var(--space-3);
+  border-left: 4px solid var(--info);
+  border-radius: var(--radius-sm);
   background: var(--surface);
   box-shadow: var(--shadow-float);
   color: var(--text);
+  font-size: var(--text-sm);
 }
 
 .toast__text {
   flex: 1;
   margin: 0;
-  padding-block: var(--space-3);
+  padding-block: var(--space-2);
+}
+
+.toast__close {
+  width: 2rem;
+  height: 2rem;
 }
 
 .toast--success {
@@ -126,7 +142,7 @@ html:not(.js) .toast__close {
 @keyframes toast-in {
   from {
     opacity: 0;
-    transform: translateY(0.5rem);
+    transform: translateY(-0.5rem);
   }
 }
 

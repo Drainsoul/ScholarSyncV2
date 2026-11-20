@@ -1,7 +1,7 @@
 // Toasts (spec §12): the server sends HX-Trigger {"toast": {message, tone}} after an HTMX request,
 // or a Django message after a normal POST (rendered into #toasts by base.html). A failed htmx request
 // (4xx/5xx or no connection) shows a danger toast here, since htmx swaps nothing and the click would
-// look ignored. Messages are set with textContent, never innerHTML. Success and info hide after 8 s
+// look ignored. Messages are set with textContent, never innerHTML. Success and info hide after 3 s
 // unless hovered or focused; warnings and errors stay until dismissed.
 //
 // An open modal dialog makes the rest of the page inert, so while one is open toasts go into the
@@ -15,7 +15,7 @@ export interface ToastDetail {
 }
 
 const TONES: ReadonlySet<string> = new Set(["info", "success", "warning", "danger"]);
-const AUTO_HIDE_MS = 8000;
+const AUTO_HIDE_MS = 3000;
 const ANNOUNCE_DELAY_MS = 250;
 export const SERVER_ERROR = "Something went wrong on our side. Try again.";
 export const NETWORK_ERROR = "We couldn't reach the server. Check your connection and try again.";
