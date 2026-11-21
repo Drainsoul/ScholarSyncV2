@@ -1,0 +1,18 @@
+{% extends "layouts/office.html" %}{% load ui %}
+{% block title %}{% if template %}Edit reply template{% else %}Add a reply template{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>{% if template %}Edit reply template{% else %}Add a reply template{% endif %}</h1><p class="page-header__meta"><a href="{% url 'support:templates' %}">Back to reply templates</a></p></div>
+</div>
+<section class="card" aria-label="Reply template">
+  <form method="post" class="stack" novalidate>
+    {% csrf_token %}
+    {% include "components/form_errors.html" %}
+    {% for bound_field in form %}{% field bound_field %}{% endfor %}
+    <div class="btn-row">
+      <button type="submit" class="btn btn--primary">{% if template %}Save template{% else %}Add template{% endif %}</button>
+      <a class="btn btn--ghost" href="{% url 'support:templates' %}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

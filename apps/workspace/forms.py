@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from apps.core.text import normalize_newlines
 from apps.programs.models import Program
-from apps.workspace.models import SupportRequest
+from apps.workspace.models import ReplyTemplate, SupportRequest
 
 MIN_BIRTH_DATE = date(1900, 1, 1)
 
@@ -99,3 +99,43 @@ class EmailReplyForm(ReplyForm):
         if "\r" in subject or "\n" in subject:
             raise forms.ValidationError("Enter the subject on one line.")
         return subject
+
+
+class ReplyTemplateForm(forms.Form):
+    """A reply template: where it applies, then the text it starts from."""
+
+    title = forms.CharField(label="Title", max_length=80)
+    topic = forms.ChoiceField(
+        label="Topic", required=False, choices=[("", "Any topic"), *SupportRequest.Topic.choices]
+    )
+    program = forms.ModelChoiceField(
+        label="Program",
+        queryset=Program.objects.filter(is_active=True).order_by("name"),
+        required=False,
+        empty_label="Every program",
+    )
+    subject = forms.CharField(
+        label="Email subject",
+        max_length=150,
+        required=False,
+        help_text="Leave blank to use “Re: your message about …”.",
+    )
+    body = forms.CharField(
+        label="Message",
+        max_length=4000,
+        help_text="{first_name} and {program} are filled in when the template is picked.",
+        widget=forms.Textarea(attrs={"rows": 8, "maxlength": 4000}),
+    )
+
+    @classmethod
+    def initial_for(cls, template: ReplyTemplate) -> dict[str, object]:
+        return {
+            "title": template.title,
+            "topic": template.topic,
+            "program": template.program_id,
+            "subject": template.subject,
+            "body": template.body,
+        }
+
+    def clean_body(self) -> str:
+        return normalize_newlines(self.cleaned_data["body"])

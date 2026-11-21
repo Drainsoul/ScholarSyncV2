@@ -3,6 +3,7 @@
 {% block content %}
   <div class="page-header">
     <div><h1>Support requests</h1><p class="page-header__meta">{% if office %}Answer students' messages in the app or by email.{% else %}Messages about {{ program.name }}. Answer them in the app or by email.{% endif %}</p></div>
+    {% if office %}<a class="btn btn--secondary" href="{% url 'support:templates' %}">{% icon "file-text" %}Reply templates</a>{% endif %}
   </div>
   {% include "components/tabs.html" with tabs_label="Support requests" %}
   {% if cards %}

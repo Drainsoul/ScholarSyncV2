@@ -1,0 +1,28 @@
+{% extends "layouts/office.html" %}{% load ui %}
+{% block title %}Reply templates{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Reply templates</h1><p class="page-header__meta">Starting texts for support replies and emails. <a href="{% url 'support:office' %}">Back to support requests</a></p></div>
+  <a class="btn btn--primary" href="{% url 'support:template-new' %}">{% icon "plus" %}Add a template</a>
+</div>
+{% if page.object_list %}
+<div class="table-wrap" role="region" aria-label="Reply templates" tabindex="0">
+  <table class="table table--stack">
+    <thead><tr><th scope="col">Template</th><th scope="col">Topic</th><th scope="col">Program</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+    <tbody>{% for template in page.object_list %}<tr>
+      <th scope="row">{{ template.title }}</th>
+      <td data-label="Topic">{% if template.topic %}{{ template.get_topic_display }}{% else %}Any topic{% endif %}</td>
+      <td data-label="Program">{% if template.program %}{{ template.program.name }}{% else %}Every program{% endif %}</td>
+      <td data-label="Status">{% if template.is_active %}{% status "success" "On" %}{% else %}{% status "neutral" "Off" %}{% endif %}</td>
+      <td><div class="btn-row">
+        <a class="btn btn--secondary" href="{% url 'support:template-edit' template.pk %}">Edit<span class="visually-hidden"> {{ template.title }}</span></a>
+        <form method="post" action="{% url 'support:template-active' template.pk %}">{% csrf_token %}<input type="hidden" name="active" value="{% if template.is_active %}0{% else %}1{% endif %}"><button type="submit" class="btn btn--ghost">{% if template.is_active %}Turn off{% else %}Turn on{% endif %}<span class="visually-hidden"> {{ template.title }}</span></button></form>
+      </div></td>
+    </tr>{% endfor %}</tbody>
+  </table>
+</div>
+{% pagination page %}
+{% else %}
+{% include "components/empty_state.html" with title="No reply templates yet." %}
+{% endif %}
+{% endblock %}

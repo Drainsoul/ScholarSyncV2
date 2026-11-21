@@ -10,7 +10,7 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import patch_vary_headers
@@ -27,7 +27,7 @@ from apps.core.shell import shell_context
 from apps.programs.models import Program
 
 from . import reply_templates, support
-from .forms import EmailReplyForm, ReplyForm, SupportForm
+from .forms import EmailReplyForm, ReplyForm, ReplyTemplateForm, SupportForm
 from .models import ReplyTemplate, SupportRequest
 
 PAGE_SIZE = 25
@@ -373,3 +373,77 @@ class StaffEmailView(StaffSupportScope, _Email):
 
 class StaffAnswerView(StaffSupportScope, _Answer):
     pass
+
+
+class TemplateListView(SuperAdminRequiredMixin, View):
+    """The office's reply templates: active first, then by title."""
+
+    http_method_names = ["get", "head", "options"]
+
+    def get(self, request: HttpRequest) -> HttpResponse:
+        rows = ReplyTemplate.objects.select_related("program").order_by("-is_active", "title", "pk")
+        page = Paginator(rows, PAGE_SIZE).get_page(request.GET.get("page"))
+        context = {**shell_context(request, area="office"), "page": page}
+        return render(request, "workspace/support/templates_list.html", context)
+
+
+class _TemplateFormView(SuperAdminRequiredMixin, View):
+    def _render(
+        self, request: HttpRequest, form: ReplyTemplateForm, template: ReplyTemplate | None
+    ) -> HttpResponse:
+        context = {**shell_context(request, area="office"), "form": form, "template": template}
+        return render(request, "workspace/support/template_form.html", context)
+
+    def _save(self, request: HttpRequest, template: ReplyTemplate | None) -> HttpResponse:
+        form = ReplyTemplateForm(request.POST)
+        if not form.is_valid():
+            return self._render(request, form, template)
+        try:
+            if template is None:
+                reply_templates.create_template(
+                    actor=_user(request), request=request, **form.cleaned_data
+                )
+            else:
+                reply_templates.update_template(
+                    actor=_user(request), template=template, request=request, **form.cleaned_data
+                )
+        except ValidationError as error:
+            form.add_error("title", error)
+            return self._render(request, form, template)
+        messages.success(request, "Template saved." if template else "Template added.")
+        return redirect("support:templates")
+
+
+class TemplateNewView(_TemplateFormView):
+    def get(self, request: HttpRequest) -> HttpResponse:
+        return self._render(request, ReplyTemplateForm(), None)
+
+    def post(self, request: HttpRequest) -> HttpResponse:
+        return self._save(request, None)
+
+
+class TemplateEditView(_TemplateFormView):
+    def get(self, request: HttpRequest, pk: int) -> HttpResponse:
+        template = get_object_or_404(ReplyTemplate, pk=pk)
+        form = ReplyTemplateForm(initial=ReplyTemplateForm.initial_for(template))
+        return self._render(request, form, template)
+
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        return self._save(request, get_object_or_404(ReplyTemplate, pk=pk))
+
+
+class TemplateActiveView(SuperAdminRequiredMixin, View):
+    http_method_names = ["post"]
+
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        template = get_object_or_404(ReplyTemplate, pk=pk)
+        active = request.POST.get("active") == "1"
+        try:
+            reply_templates.set_active(
+                actor=_user(request), template=template, active=active, request=request
+            )
+        except ValidationError as error:
+            messages.error(request, error.messages[0])
+        else:
+            messages.success(request, "Template turned on." if active else "Template turned off.")
+        return redirect("support:templates")
