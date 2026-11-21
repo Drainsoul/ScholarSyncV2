@@ -186,17 +186,17 @@ def scholar_rows(body: str) -> list[str]:
 
 
 def test_scholars_mockup_filters_by_status_tab(client, kit_on, vite_build):
-    body = client.get(f"{SCHOLARS}?status=at_risk").content.decode()
+    body = client.get(f"{SCHOLARS}?status=on_hold").content.decode()
     rows = scholar_rows(body)
     assert rows
-    assert all('<span class="status status--warning">At risk</span>' in row for row in rows)
+    assert all('<span class="status status--neutral">On hold</span>' in row for row in rows)
     tabs = body.split('<nav class="tabs"')[1].split("</nav>")[0]
     current = re.findall(r'<a href="([^"]*)" aria-current="page">', tabs)
-    assert current == ["?status=at_risk"]
+    assert current == ["?status=on_hold"]
+    assert "At risk" not in body and "at_risk" not in body  # gone (spec rev 33)
     for key, count in (
-        ("all", 968),
+        ("all", 931),
         ("active", 900),
-        ("at_risk", 37),
         ("on_hold", 12),
         ("ended", 19),
     ):
@@ -204,7 +204,10 @@ def test_scholars_mockup_filters_by_status_tab(client, kit_on, vite_build):
             rf'href="\?status={key}"[^>]*>[^<]+<span class="count[^"]*">{count}<', tabs
         )
     # Each name opens the drawer and keeps the tab.
-    assert 'href="?status=at_risk&amp;scholar=3#scholar-drawer"' in body
+    assert (
+        'href="?status=active&amp;scholar=3#scholar-drawer"'
+        in client.get(f"{SCHOLARS}?status=active").content.decode()
+    )
     assert 'class="drawer"' not in body
 
 
@@ -213,7 +216,7 @@ def test_scholars_drawer_opens_from_the_query(client, kit_on, vite_build):
     drawer = body.split('<aside class="drawer" id="scholar-drawer"')[1].split("</aside>")[0]
     assert "Curtis Walker" in drawer
     assert 'class="avatar avatar--' in drawer and "avatar--lg" in drawer
-    assert '<span class="status status--warning">At risk</span>' in drawer
+    assert '<span class="status status--success">Active</span>' in drawer
     assert "Honors tier" in drawer
     assert 'href="?status=active' in drawer  # the close link goes back to the same tab
     assert 'aria-label="Close details"' in drawer
@@ -254,7 +257,7 @@ def test_scholars_page_has_the_canvas_figures_and_callout(client, kit_on, vite_b
     figures = body.split('<div class="figures">')[1].split("</section>")[0]
     for label, value in (
         ("Active scholars", "900"),
-        ("At risk", "37"),
+        ("Not renewed", "212"),
         ("On hold", "12"),
         ("Budget used", "64%"),
     ):
@@ -264,17 +267,18 @@ def test_scholars_page_has_the_canvas_figures_and_callout(client, kit_on, vite_b
         )
     callout = body.split('class="callout"')[1].split("</div>")[0]
     assert "#clock" in callout and "Renewals close 15&nbsp;Nov" in callout
-    assert "37 scholars are below the 80% GWA mark this term" in callout
-    assert 'href="?status=at_risk">Review at-risk scholars</a>' in callout
+    assert "212 scholars haven't renewed for this term yet." in callout
+    assert 'href="?status=active">Review active scholars</a>' in callout
+    assert "at risk" not in body.lower() and "at-risk" not in body
     assert "Sorted by name, A to Z" in body and "More filters" in body
     assert 'class="pagination"' in body and 'aria-current="page" aria-label="Page 1"' in body
 
 
 def test_scholars_low_gwa_is_danger_text_with_words(client, kit_on, vite_build):
-    body = client.get(f"{SCHOLARS}?status=at_risk").content.decode()
+    body = client.get(SCHOLARS).content.decode()
     cells = re.findall(r'<td class="num gwa([^"]*)" data-label="GWA">(.*?)</td>', body, re.S)
-    assert cells and all(cls == " gwa--low" for cls, _ in cells)
-    assert all("below the 80% mark" in text for _, text in cells)
+    low = [text for cls, text in cells if cls == " gwa--low"]
+    assert low and all("below the 80% mark" in text for text in low)
 
 
 def test_scholars_sample_has_a_long_name(client, kit_on, vite_build):

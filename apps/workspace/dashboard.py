@@ -10,7 +10,6 @@ from apps.accounts.models import User
 from apps.applications.models import Application
 from apps.applications.review_selectors import WAITING_STATUSES, waiting_over
 from apps.awards.models import Award
-from apps.awards.selectors import at_risk_q, with_latest_term
 from apps.core.templatetags.ui import peso
 from apps.core.text import counted
 from apps.money.selectors import payout_counts, released_in_year
@@ -80,13 +79,11 @@ def staff_dashboard(program: Program, user: User, *, now: datetime) -> StaffDash
     slug = {"program": program.slug}
     awards = Award.objects.filter(program=program)
     active = awards.filter(status=Award.Status.ACTIVE).count()
-    at_risk = with_latest_term(awards).filter(at_risk_q(program, term, today)).count()
     waiting = Application.objects.filter(program=program, status__in=WAITING_STATUSES).count()
     figures = [
         {"label": "Active scholars", "value": f"{active:,}"},
         {"label": "Applications waiting", "value": f"{waiting:,}"},
         {"label": "Released this year", "value": peso(released_in_year(program, today.year))},
-        {"label": "At risk", "value": f"{at_risk:,}"},
     ]
 
     attention: list[dict[str, str]] = []
@@ -111,15 +108,6 @@ def staff_dashboard(program: Program, user: User, *, now: datetime) -> StaffDash
                 "detail": "Open your task list",
                 "tone": "danger",
                 "url": reverse("workspace:tasks", kwargs=slug),
-            }
-        )
-    if at_risk:
-        attention.append(
-            {
-                "title": f"{counted(at_risk, 'scholar is', 'scholars are')} at risk",
-                "detail": "Check their grades and renewals",
-                "tone": "warning",
-                "url": reverse("scholars:list", kwargs=slug) + "?status=at_risk",
             }
         )
     payouts = payout_counts(program)

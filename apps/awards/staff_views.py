@@ -23,7 +23,6 @@ from apps.awards.selectors import (
     RenewalStatus,
     ScholarFilters,
     addable_profiles,
-    at_risk_reasons,
     next_year_level,
     parse_scholar_filters,
     program_profiles,
@@ -100,7 +99,6 @@ def drawer_for(
         "award": award,
         "tone": AWARD_TONES[award.status],
         "renewal": staff_renewal_text(renewal_for(award, term), program, today),
-        "at_risk": at_risk_reasons(award, program, term, today),
     }
 
 
@@ -112,7 +110,7 @@ class ScholarListView(ProgramStaffRequiredMixin, TemplateView):
         today = timezone.localdate()
         term = application_term(today)
         filters = parse_scholar_filters(self.request.GET, self.program)
-        rows = scholars(self.program, filters, term=term, today=today)
+        rows = scholars(self.program, filters, term=term)
         page = Paginator(rows, PAGE_SIZE).get_page(self.request.GET.get("page"))
         base = reverse("scholars:list", kwargs={"program": self.program.slug})
         export_base = reverse("scholars:export", kwargs={"program": self.program.slug})
@@ -168,7 +166,7 @@ class ScholarDetailView(ProgramStaffRequiredMixin, TemplateView):
         award = staff_award(self.program, kwargs["pk"])
         today = timezone.localdate()
         term = application_term(today)
-        record = scholar_record(award, term=term, today=today)
+        record = scholar_record(award, term=term)
         status_url = reverse(
             "scholars:status", kwargs={"program": self.program.slug, "pk": award.pk}
         )

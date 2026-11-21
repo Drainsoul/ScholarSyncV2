@@ -47,13 +47,12 @@ TIERS = [
 ]
 STATUSES: dict[str, Status] = {
     "active": {"label": "Active", "tone": "success"},
-    "at_risk": {"label": "At risk", "tone": "warning"},
     "on_hold": {"label": "On hold", "tone": ""},
     "ended": {"label": "Ended", "tone": "danger"},
 }
 _SCHOLAR_STATUSES = [
-    "active", "active", "at_risk", "active", "on_hold", "active",
-    "ended", "active", "at_risk", "active", "active", "on_hold",
+    "active", "active", "active", "active", "on_hold", "active",
+    "ended", "active", "active", "active", "active", "on_hold",
 ]  # fmt: skip
 
 
@@ -453,9 +452,8 @@ _SCHOLAR_DETAILS: dict[int, tuple[str, str, str, int]] = {
 # A long Faker name (first, first, last, last-last), so layouts are checked against one.
 LONG_NAME = "Kimberly Catherine Pena Gilbert-Middleton"
 SCHOLAR_TABS = [
-    ("all", "All", 968),
+    ("all", "All", 931),
     ("active", "Active", 900),
-    ("at_risk", "At risk", 37),
     ("on_hold", "On hold", 12),
     ("ended", "Ended", 19),
 ]
@@ -500,7 +498,7 @@ def _scholar_rows() -> list[dict[str, object]]:
 def _drawer(row: dict[str, object]) -> dict[str, object]:
     amount = row["amount"]
     note = (
-        f"Below the {RENEWAL_MARK}% renewal mark. Staff are asked to check in before 15 Nov."
+        f"Below the {RENEWAL_MARK}% renewal mark."
         if row["gwa_low"]
         else f"Meets the {RENEWAL_MARK}% renewal mark with at least 15 units."
     )
@@ -550,7 +548,7 @@ def scholars_page(status: str, scholar: int | None, page: str | None = None) -> 
         "status": status,
         "figures": [
             {"label": "Active scholars", "value": "900"},
-            {"label": "At risk", "value": "37"},
+            {"label": "Not renewed", "value": "212"},
             {"label": "On hold", "value": "12"},
             {"label": "Budget used", "value": "64%"},
         ],

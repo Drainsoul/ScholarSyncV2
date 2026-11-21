@@ -1,5 +1,5 @@
 import html
-from datetime import date, datetime
+from datetime import datetime
 from decimal import Decimal
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -95,24 +95,23 @@ def test_default_tab_active(client, world: World) -> None:
 @pytest.mark.parametrize(
     ("tab", "expected"),
     [
-        ("active", {"Ana Active", "Rex Risk", "Dan Due"}),
+        ("active", {"Ana Active", "Rex Low", "Dan Due"}),
         ("suspended", {"Sol Held"}),
         ("inactive", {"Ivy Ended"}),
         ("graduated", {"Gil Grad"}),
-        ("at_risk", {"Rex Risk"}),
-        ("not_renewed", {"Rex Risk", "Dan Due"}),
-        ("all", {"Ana Active", "Rex Risk", "Dan Due", "Sol Held", "Ivy Ended", "Gil Grad"}),
+        ("not_renewed", {"Rex Low", "Dan Due"}),
+        ("all", {"Ana Active", "Rex Low", "Dan Due", "Sol Held", "Ivy Ended", "Gil Grad"}),
     ],
 )
 def test_each_tab_filters(client, world: World, tab: str, expected: set[str]) -> None:
     world.scholar("Ana", "Active", terms=[world.previous, world.current])
-    world.scholar("Rex", "Risk", gwa=Decimal("70"))
+    world.scholar("Rex", "Low", gwa=Decimal("70"))
     world.scholar("Dan", "Due")
     world.scholar("Sol", "Held", status=Award.Status.SUSPENDED)
     world.scholar("Ivy", "Ended", status=Award.Status.INACTIVE)
     world.scholar("Gil", "Grad", status=Award.Status.GRADUATED)
     page = body(client, world.staff, world.url(status=tab))
-    everyone = {"Ana Active", "Rex Risk", "Dan Due", "Sol Held", "Ivy Ended", "Gil Grad"}
+    everyone = {"Ana Active", "Rex Low", "Dan Due", "Sol Held", "Ivy Ended", "Gil Grad"}
     assert {name for name in everyone if name in page} == expected
 
 
@@ -150,15 +149,16 @@ def test_pagination_25(client, world: World) -> None:
     assert "Person25" in second
 
 
-def test_drawer_shows_facts_and_reasons(client, world: World) -> None:
-    world_closed = world
-    award = world_closed.scholar("Rex", "Risk", gwa=Decimal("70"))
+def test_drawer_shows_facts_without_risk_reasons(client, world: World) -> None:
+    award = world.scholar("Rex", "Low", gwa=Decimal("70"))
     page = body(client, world.staff, world.url(scholar=str(award.pk)))
     assert "Scholar details" in page
     assert "Factory College" in page
     assert "Standard" in page
     assert str(world.previous) in page
-    assert "Last term's GWA of 70.00 misses the renewal mark." in page
+    assert "GWA 70.00" in page
+    assert "renewal__gwa--low" not in page
+    assert "misses the renewal mark" not in page
     assert f"Due to renew for {world.current}." in page
 
 
@@ -200,11 +200,16 @@ def test_nav_has_scholars(client, world: World) -> None:
     assert ">Scholars<" in page or "Scholars</" in page
 
 
-def test_window_closed_marks_not_renewed_at_risk(client) -> None:
-    closed = World(applications_close_on=date(2026, 10, 1))
-    closed.scholar("Dan", "Due")
-    page = body(client, closed.staff, closed.url(status="at_risk"))
-    assert "Dan Due" in page
+def test_at_risk_tab_is_gone(client, world: World) -> None:
+    """At-risk is gone (spec rev 33): ?status=at_risk is an unknown tab, so Active shows."""
+    world.scholar("Ana", "Active")
+    world.scholar("Rex", "Low", gwa=Decimal("70"))
+    world.scholar("Sol", "Held", status=Award.Status.SUSPENDED)
+    page = body(client, world.staff, world.url(status="at_risk"))
+    assert "Ana Active" in page and "Rex Low" in page
+    assert "Sol Held" not in page
+    assert "At risk" not in page
+    assert 'aria-current="page">Active' in page
 
 
 # --- The scholar record ---

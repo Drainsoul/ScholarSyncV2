@@ -139,18 +139,18 @@ def test_no_transition_runs_on_load(page: Page, live_server, vite_build, slug):
 def test_drawer_works_without_javascript(browser: Browser, live_server, vite_build):
     context = browser.new_context(java_script_enabled=False, viewport=VIEWPORTS["desktop"])
     page = context.new_page()
-    page.goto(f"{live_server.url}/_kit/mockups/scholars/?status=at_risk")
+    page.goto(f"{live_server.url}/_kit/mockups/scholars/?status=active")
     expect(page.locator(".drawer")).to_have_count(0)
     page.get_by_role("link", name="Curtis Walker").click()
     drawer = page.locator("#scholar-drawer")
     expect(drawer).to_be_visible()
     expect(drawer.get_by_role("heading", name="Curtis Walker")).to_be_visible()
-    assert "status=at_risk" in page.url
+    assert "status=active" in page.url
     box = drawer.bounding_box()
     assert box and round(box["width"]) == 400 and round(box["x"] + box["width"]) == 1440
     drawer.get_by_role("link", name="Close details").click()
     expect(page.locator(".drawer")).to_have_count(0)
-    assert "status=at_risk" in page.url and "scholar=" not in page.url
+    assert "status=active" in page.url and "scholar=" not in page.url
     context.close()
 
 

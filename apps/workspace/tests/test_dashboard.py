@@ -74,8 +74,8 @@ def test_figures() -> None:
     program = ProgramFactory.create(renewal_min_gwa_percent=Decimal("80"))
     AwardFactory.create_batch(2, source_application__program=program)
     AwardFactory.create(source_application__program=program, status=Award.Status.SUSPENDED)
-    risky = AwardFactory.create(source_application__program=program)
-    ScholarTermFactory.create(award=risky, gwa=Decimal("75"), gwa_scale="percent")
+    low = AwardFactory.create(source_application__program=program)
+    ScholarTermFactory.create(award=low, gwa=Decimal("75"), gwa_scale="percent")
     _waiting(program, 1)
     _waiting(program, 2, S.UNDER_REVIEW)
     _waiting(program, 3, S.RETURNED)
@@ -89,7 +89,6 @@ def test_figures() -> None:
         {"label": "Active scholars", "value": "6"},  # 3 here + 3 payout scholars
         {"label": "Applications waiting", "value": "2"},
         {"label": "Released this year", "value": "₱5,000.00"},
-        {"label": "At risk", "value": "1"},
     ]
 
 
@@ -99,8 +98,8 @@ def test_attention_rows_in_order_with_plurals() -> None:
     _waiting(program, 9)
     _waiting(program, 3)
     TaskFactory.create(owner=user, program=program, due_on=TODAY - timedelta(1))
-    risky = AwardFactory.create(source_application__program=program)
-    ScholarTermFactory.create(award=risky, gwa=Decimal("75"), gwa_scale="percent")
+    low = AwardFactory.create(source_application__program=program)
+    ScholarTermFactory.create(award=low, gwa=Decimal("75"), gwa_scale="percent")
     schedule = ScheduleFactory.create(program=program)
     payout(schedule)
     payout(schedule)
@@ -123,12 +122,6 @@ def test_attention_rows_in_order_with_plurals() -> None:
             "url": reverse("workspace:tasks", kwargs={"program": slug}),
         },
         {
-            "title": "1 scholar is at risk",
-            "detail": "Check their grades and renewals",
-            "tone": "warning",
-            "url": reverse("scholars:list", kwargs={"program": slug}) + "?status=at_risk",
-        },
-        {
             "title": "2 payouts are prepared and waiting for a head",
             "detail": "A head approves them in Disbursements",
             "tone": "warning",
@@ -141,6 +134,20 @@ def test_attention_rows_in_order_with_plurals() -> None:
             "url": reverse("money:overview", kwargs={"program": slug}),
         },
     ]
+
+
+def test_low_grades_are_not_flagged(client: Any) -> None:
+    """At-risk is gone (spec rev 33): a low GWA adds no figure and no attention row."""
+    program = ProgramFactory.create(renewal_min_gwa_percent=Decimal("80"))
+    user = _staff(program)
+    low = AwardFactory.create(source_application__program=program)
+    ScholarTermFactory.create(award=low, gwa=Decimal("70"), gwa_scale="percent")
+    board = staff_dashboard(program, user, now=NOW)
+    assert "At risk" not in [figure["label"] for figure in board.figures]
+    assert board.attention == []
+    client.force_login(user)
+    html = client.get(reverse("workspace:dashboard", kwargs={"program": program.slug})).content
+    assert "at risk" not in html.decode().lower()
 
 
 def test_resubmission_restarts_the_wait() -> None:
@@ -224,6 +231,6 @@ def test_dashboard_query_count(client: Any, django_assert_max_num_queries: Any) 
         _waiting(program, n % 20)
     TaskFactory.create_batch(10, owner=user, program=program)
     client.force_login(user)
-    with django_assert_max_num_queries(25):
+    with django_assert_max_num_queries(24):
         response = client.get(reverse("workspace:dashboard", kwargs={"program": program.slug}))
     assert response.status_code == 200

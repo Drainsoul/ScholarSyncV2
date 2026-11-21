@@ -125,18 +125,18 @@ class SampleScholar:
     last_name: str
     birth_date: date
     gwa: Decimal  # last term's GWA, on TCU's percent scale
-    state: str  # due | at_risk | on_hold
+    state: str  # due | low_gwa | on_hold
 
 
-# TCU CEAA scholars from the previous semester. Carmela is due to renew; Daniel's 78 is under
-# CEAA's 80% renewal mark, so he is at risk; Elena's award is on hold. They share the demo
+# TCU CEAA scholars from the previous semester. Carmela is due to renew; Daniel is due too, with
+# a 78 under CEAA's 80% renewal mark; Elena's award is on hold. They share the demo
 # password, so a visitor can sign in as Carmela and renew.
 SAMPLE_SCHOLARS: tuple[SampleScholar, ...] = (
     SampleScholar(
         "scholar@scholarsync.test", "Carmela", "Villanueva", date(2005, 4, 18), Decimal("88"), "due"
     ),
     SampleScholar(
-        "scholar2@scholarsync.test", "Daniel", "Ramos", date(2005, 9, 2), Decimal("78"), "at_risk"
+        "scholar2@scholarsync.test", "Daniel", "Ramos", date(2005, 9, 2), Decimal("78"), "low_gwa"
     ),
     SampleScholar(
         "scholar3@scholarsync.test", "Elena", "Garcia", date(2006, 1, 7), Decimal("85"), "on_hold"

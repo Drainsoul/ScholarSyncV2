@@ -83,7 +83,7 @@ def _samples(program: Program, staff: User, head: User, office: User) -> None:
         title="Quarterly scholar update",
         period_start=term.starts_on,
         period_end=term.ends_on,
-        description="Scholar counts, renewals and at-risk scholars this quarter.",
+        description="Scholar counts and renewals this quarter.",
         file=_report_file(staff, "quarterly-scholar-update.pdf"),
     )
     now = timezone.now()

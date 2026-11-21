@@ -23,7 +23,7 @@ from apps.awards.models import Award, ScholarTerm
 from apps.core.params import positive_id
 from apps.matching.eligibility import window_reason
 from apps.programs.models import AcademicTerm, BenefitTier, Program
-from apps.programs.selectors import application_term, tiers_in_force, window_state
+from apps.programs.selectors import application_term, tiers_in_force
 from apps.students.models import StudentProfile
 
 # A renewal in one of these states settles the term: nothing more is due.
@@ -206,63 +206,11 @@ def with_latest_term(rows: QuerySet[Award]) -> QuerySet[Award]:
     )
 
 
-def _renewal_closed(program: Program, term: AcademicTerm | None, today: date) -> bool:
-    return term is not None and window_state(program, today) == "closed"
-
-
-def at_risk_q(program: Program, term: AcademicTerm | None, today: date) -> Q:
-    """Active awards at risk (a proposal pending §18 Q5), on a `with_latest_term` queryset."""
-    risks = Q(pk__in=[])
-    if program.renewal_min_gwa_percent is not None:
-        risks |= Q(latest_gwa_scale="percent", latest_gwa__lt=program.renewal_min_gwa_percent)
-    if program.renewal_max_gwa_one_to_five is not None:
-        risks |= Q(
-            latest_gwa_scale="one_to_five", latest_gwa__gt=program.renewal_max_gwa_one_to_five
-        )
-    if program.renewal_min_units is not None:
-        risks |= Q(latest_units__lt=program.renewal_min_units)
-    if _renewal_closed(program, term, today):
-        assert term is not None
-        risks |= renewal_due_q(term)
-    return Q(status=Award.Status.ACTIVE) & risks
-
-
-def at_risk_reasons(
-    award: Award, program: Program, term: AcademicTerm | None, today: date
-) -> list[str]:
-    """Why an annotated active award is at risk, as sentences for staff; empty when it isn't."""
-    if award.status != Award.Status.ACTIVE:
-        return []
-    reasons = []
-    gwa, scale = award.latest_gwa, award.latest_gwa_scale  # type: ignore[attr-defined]
-    if gwa is not None:
-        low = (
-            scale == "percent"
-            and program.renewal_min_gwa_percent is not None
-            and gwa < program.renewal_min_gwa_percent
-        ) or (
-            scale == "one_to_five"
-            and program.renewal_max_gwa_one_to_five is not None
-            and gwa > program.renewal_max_gwa_one_to_five
-        )
-        if low:
-            reasons.append(f"Last term's GWA of {gwa} misses the renewal mark.")
-    units = award.latest_units  # type: ignore[attr-defined]
-    if units is not None and program.renewal_min_units is not None:
-        if units < program.renewal_min_units:
-            reasons.append(f"Last term's {units} units are under the renewal minimum.")
-    if _renewal_closed(program, term, today):
-        if renewal_for(award, term).status == RenewalStatus.DUE:
-            reasons.append("Not renewed, and renewals have closed.")
-    return reasons
-
-
 SCHOLAR_TABS: dict[str, str] = {
     "active": "Active",
     "suspended": "Suspended",
     "inactive": "Inactive",
     "graduated": "Graduated",
-    "at_risk": "At risk",
     "not_renewed": "Not renewed",
     "all": "All",
 }
@@ -298,13 +246,11 @@ def _program_awards(program: Program) -> QuerySet[Award]:
 
 
 def scholars(
-    program: Program, filters: ScholarFilters, *, term: AcademicTerm | None, today: date
+    program: Program, filters: ScholarFilters, *, term: AcademicTerm | None
 ) -> QuerySet[Award]:
     rows = _program_awards(program)
     if filters.status in Award.Status.values:
         rows = rows.filter(status=filters.status)
-    elif filters.status == "at_risk":
-        rows = rows.filter(at_risk_q(program, term, today))
     elif filters.status == "not_renewed":
         rows = rows.filter(renewal_due_q(term)) if term is not None else rows.none()
     if filters.tier:
@@ -329,10 +275,9 @@ class ScholarRecord:
     terms: list[ScholarTerm]  # newest first
     applications: list[Application]  # the source application, then renewals, newest first
     renewal: Renewal
-    at_risk: list[str]
 
 
-def scholar_record(award: Award, *, term: AcademicTerm | None, today: date) -> ScholarRecord:
+def scholar_record(award: Award, *, term: AcademicTerm | None) -> ScholarRecord:
     """Everything the scholar's record page shows; `award` comes from `staff_award`."""
     terms = list(
         ScholarTerm.objects.filter(award=award)
@@ -348,7 +293,6 @@ def scholar_record(award: Award, *, term: AcademicTerm | None, today: date) -> S
         terms=terms,
         applications=applications,
         renewal=renewal_for(award, term),
-        at_risk=at_risk_reasons(award, award.program, term, today),
     )
 
 
@@ -457,8 +401,7 @@ def active_counts(program_ids: list[int]) -> dict[int, int]:
     return {row["program_id"]: row["n"] for row in rows}
 
 
-# Scholars across programs (the office, M11c). No tier filter (codes are per program)
-# and no at-risk tab (rules are per program).
+# Scholars across programs (the office, M11c). No tier filter (codes are per program).
 OFFICE_SCHOLAR_TABS: dict[str, str] = {
     "active": "Active",
     "suspended": "Suspended",

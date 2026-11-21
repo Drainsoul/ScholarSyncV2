@@ -81,7 +81,7 @@ def export_file(
 ) -> tuple[bytes, str, str, int]:
     """(body, content type, filename, row count) for the filtered list in `fmt` (csv or xlsx;
     anything else is csv)."""
-    rows = list(export_rows(scholars(program, filters, term=term, today=today)))
+    rows = list(export_rows(scholars(program, filters, term=term)))
     if fmt == "xlsx":
         body, content_type = write_xlsx(HEADERS, rows), XLSX
     else:

@@ -479,7 +479,7 @@ def _sample_scholar(scholar: SampleScholar, program: Program, previous: Academic
 
 
 def _give_staff_scholars() -> None:
-    """Three TCU CEAA scholars from last semester (idempotent): due, at risk and on hold."""
+    """Three TCU CEAA scholars from last semester (idempotent): two due, one on hold."""
     if User.objects.filter(email__iexact=SAMPLE_SCHOLARS[0].email).exists():
         return
     previous = _ensure_previous_term()
@@ -597,7 +597,7 @@ def _give_staff_money() -> None:
                     "scholar_term__award__profile"
                 )
             }
-            for state in ("due", "at_risk"):
+            for state in ("due", "low_gwa"):
                 money.approve(
                     actor=head,
                     program=program,

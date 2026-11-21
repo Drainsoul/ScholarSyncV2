@@ -123,7 +123,7 @@ def index_context(request: HttpRequest) -> dict[str, object]:
             {"label": "Active scholars", "value": "1,284"},
             {"label": "Applications waiting", "value": "96"},
             {"label": "Released this year", "value": "₱18,240,000.00"},
-            {"label": "At risk", "value": "23"},
+            {"label": "Reports to review", "value": "3"},
         ],
         "attention": [
             {

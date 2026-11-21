@@ -1,7 +1,9 @@
 import logging
 import subprocess
 from datetime import datetime, timedelta
+from decimal import Decimal
 from pathlib import Path
+from typing import Any
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -21,7 +23,7 @@ from apps.accounts.models import User
 from apps.applications.models import Application
 from apps.awards.importing import check_import
 from apps.awards.models import Award
-from apps.awards.selectors import RenewalStatus, at_risk_q, renewal_for, with_latest_term
+from apps.awards.selectors import RenewalStatus, renewal_for, with_latest_term
 from apps.core.models import AuditEvent
 from apps.demo import loader
 from apps.demo.accounts import ACCOUNTS, PASSWORD
@@ -503,16 +505,15 @@ def test_carmela_is_due(demo_app, settings, frozen_today):
 
 
 @pytest.mark.django_db
-def test_daniel_is_at_risk(demo_app, settings, frozen_today):
+def test_daniel_is_due_with_a_low_gwa(demo_app, settings, frozen_today):
     settings.DEMO_ACTIVE = True
     loader.load()
     award = _scholar_award("scholar2@scholarsync.test")
-    today = timezone.localdate()
-    term = application_term(today)
-    flagged = with_latest_term(Award.objects.filter(program=award.program)).filter(
-        at_risk_q(award.program, term, today)
-    )
-    assert list(flagged.values_list("pk", flat=True)) == [award.pk]
+    term = application_term(timezone.localdate())
+    assert renewal_for(award, term).status == RenewalStatus.DUE
+    annotated: Any = with_latest_term(Award.objects.filter(pk=award.pk)).get()
+    assert annotated.latest_gwa == Decimal("78")
+    assert award.program.renewal_min_gwa_percent == Decimal("80")  # under the mark, no flag
 
 
 @pytest.mark.django_db
@@ -653,7 +654,7 @@ def test_demo_money_samples(demo_app, settings, frozen_today):
         )
     }
     by_email = {s.state: s.first_name for s in SAMPLE_SCHOLARS}
-    assert statuses == {by_email["due"]: "released", by_email["at_risk"]: "approved"}
+    assert statuses == {by_email["due"]: "released", by_email["low_gwa"]: "approved"}
     felipe = Disbursement.objects.get(schedule=upcoming)
     assert felipe.status == "pending"
     assert felipe.scholar_term.award.profile.first_name == MANUAL_SCHOLAR.first_name

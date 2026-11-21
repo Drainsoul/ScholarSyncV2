@@ -21,9 +21,8 @@
 <div class="renewal">
   <div class="renewal__head">
     <p class="renewal__title">Renewal</p>
-    {% if award.latest_gwa is not None %}<p class="renewal__gwa num{% if scholar.at_risk %} renewal__gwa--low{% endif %}">GWA {{ award.latest_gwa }}</p>{% endif %}
+    {% if award.latest_gwa is not None %}<p class="renewal__gwa num">GWA {{ award.latest_gwa }}</p>{% endif %}
   </div>
   <p class="renewal__note">{{ scholar.renewal }}</p>
-  {% for reason in scholar.at_risk %}<p class="renewal__note">{{ reason }}</p>{% endfor %}
 </div>
 {% endwith %}
