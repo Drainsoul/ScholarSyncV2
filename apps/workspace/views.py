@@ -18,7 +18,7 @@ from apps.core.calendar import WEEKDAYS, parse_month
 from apps.core.calendar_views import day_response
 from apps.core.permissions import ProgramStaffRequiredMixin
 from apps.core.shell import home_url_for, shell_context
-from apps.programs.models import Program
+from apps.programs.models import Program, ProgramMembership
 from apps.students import services
 from apps.students.selectors import unclaimed_profiles_for
 from apps.workspace.calendar import staff_calendar, staff_events
@@ -52,7 +52,8 @@ class DashboardView(ProgramStaffRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         user = self.request.user
         assert isinstance(user, User)
-        board = staff_dashboard(self.program, user, now=timezone.now())
+        head = self.membership is not None and self.membership.level == ProgramMembership.Level.HEAD
+        board = staff_dashboard(self.program, user, now=timezone.now(), head=head)
         today = timezone.localdate()
         task_rows = []
         for task in board.tasks:

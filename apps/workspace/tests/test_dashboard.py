@@ -234,3 +234,61 @@ def test_dashboard_query_count(client: Any, django_assert_max_num_queries: Any) 
     with django_assert_max_num_queries(24):
         response = client.get(reverse("workspace:dashboard", kwargs={"program": program.slug}))
     assert response.status_code == 200
+
+
+def test_head_sees_report_rows_and_staff_do_not() -> None:
+    from apps.reports.tests.factories import ReportFactory
+
+    program = ProgramFactory.create(slug="tcu-ceaa")
+    ReportFactory.create_batch(2, program=program, status="with_head")
+    ReportFactory.create(program=program, status="approved")
+    ReportFactory.create(program=program)  # with the office: not the head's to do
+    ReportFactory.create(status="with_head")  # another program
+    head = MembershipFactory.create(program=program, level=ProgramMembership.Level.HEAD).user
+    rows = staff_dashboard(program, head, now=NOW, head=True).attention
+    assert rows == [
+        {
+            "title": "2 reports waiting for your review",
+            "detail": "Approve or return them in Reports",
+            "tone": "warning",
+            "url": "/staff/tcu-ceaa/reports/?tab=with_head",
+        },
+        {
+            "title": "1 approved report not sent to the office yet",
+            "detail": "Send them in Reports",
+            "tone": "info",
+            "url": "/staff/tcu-ceaa/reports/?tab=approved",
+        },
+    ]
+    assert staff_dashboard(program, _staff(program), now=NOW).attention == []
+
+
+def test_head_dashboard_page_shows_report_rows(client: Any) -> None:
+    from apps.reports.tests.factories import ReportFactory
+
+    program = ProgramFactory.create()
+    ReportFactory.create(program=program, status="with_head")
+    staff = _staff(program)
+    head = MembershipFactory.create(program=program, level=ProgramMembership.Level.HEAD).user
+    url = reverse("workspace:dashboard", kwargs={"program": program.slug})
+    client.force_login(head)
+    assert "1 report waiting for your review" in client.get(url).content.decode()
+    client.force_login(staff)
+    assert "waiting for your review" not in client.get(url).content.decode()
+
+
+def test_head_dashboard_query_count(client: Any, django_assert_max_num_queries: Any) -> None:
+    from apps.reports.tests.factories import ReportFactory
+
+    program = ProgramFactory.create(renewal_min_gwa_percent=Decimal("80"))
+    user = MembershipFactory.create(program=program, level=ProgramMembership.Level.HEAD).user
+    AwardFactory.create_batch(20, source_application__program=program)
+    for n in range(20):
+        _waiting(program, n % 20)
+    ReportFactory.create_batch(5, program=program, status="with_head")
+    ReportFactory.create_batch(5, program=program, status="approved")
+    TaskFactory.create_batch(10, owner=user, program=program)
+    client.force_login(user)
+    with django_assert_max_num_queries(25):  # the staff page's 24, plus the heads' report counts
+        response = client.get(reverse("workspace:dashboard", kwargs={"program": program.slug}))
+    assert response.status_code == 200

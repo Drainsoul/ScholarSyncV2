@@ -22,7 +22,7 @@
         <th scope="row" data-label="Report"><a href="{% url 'office:report-detail' report.pk %}">{{ report.title }}</a></th>
         <td data-label="Program">{{ report.program.name }}</td>
         <td data-label="Period">{{ report.period_start|date:"j M Y" }} to {{ report.period_end|date:"j M Y" }}</td>
-        <td data-label="Sent"><time datetime="{{ report.submitted_at|date:'c' }}">{{ report.submitted_at|date:"j M Y" }}</time></td>
+        <td data-label="Sent"><time datetime="{{ report.sent_at|date:'c' }}">{{ report.sent_at|date:"j M Y" }}</time></td>
         <td data-label="Status">{% status report.status|report_tone report|office_report_label %}</td>
       </tr>{% endfor %}</tbody>
     </table>

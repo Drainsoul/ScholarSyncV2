@@ -8,19 +8,20 @@
       <p class="page-header__meta">{% status report.status|report_tone report|office_report_label %} {{ report.program.name }}</p>
     </div>
   </div>
-  {% if report.status == "submitted" and report.review_note %}<div class="banner banner--warning" role="note"><div><p>Returned earlier: {{ report.review_note }}</p></div></div>{% endif %}
+  {% if report.status == "submitted" and report.review_note %}{% if report.reviewed_by.is_super_admin %}<div class="banner banner--warning" role="note"><div><p>Returned earlier: {{ report.review_note }}</p></div></div>{% else %}<div class="banner banner--info" role="note"><div><p>Note from the head: {{ report.review_note }}</p></div></div>{% endif %}{% endif %}
   <div class="stack">
     <section class="card" aria-labelledby="facts-title">
       <h2 class="card__title" id="facts-title">Report</h2>
       <dl class="details details--grid">
         <div><dt>Program</dt><dd>{{ report.program.name }}</dd></div>
         <div><dt>Period</dt><dd>{{ report.period_start|date:"j F Y" }} to {{ report.period_end|date:"j F Y" }}</dd></div>
-        <div><dt>Sent by</dt><dd>{{ report.submitted_by.full_name|default:"A staff member" }}</dd></div>
-        <div><dt>Sent on</dt><dd><time datetime="{{ report.submitted_at|date:'c' }}">{{ report.submitted_at|date:"j M Y, g:i A" }}</time></dd></div>
+        {% if report.sent_by_id != report.submitted_by_id %}<div><dt>Written by</dt><dd>{{ report.submitted_by.full_name|default:"A staff member" }}</dd></div>{% endif %}
+        <div><dt>Sent by</dt><dd>{{ report.sent_by.full_name|default:"A staff member" }}</dd></div>
+        <div><dt>Sent on</dt><dd><time datetime="{{ report.sent_at|date:'c' }}">{{ report.sent_at|date:"j M Y, g:i A" }}</time></dd></div>
       </dl>
       {% if report.description %}<p>{{ report.description|linebreaksbr }}</p>{% endif %}
     </section>
-    {% if report.status != "submitted" %}
+    {% if report.status == "accepted" or report.status == "returned" %}
     <section class="card" aria-labelledby="decision-title">
       <h2 class="card__title" id="decision-title">Decision</h2>
       <p>{{ report|office_report_label }}{% if report.reviewed_at %} on <time datetime="{{ report.reviewed_at|date:'c' }}">{{ report.reviewed_at|date:"j M Y" }}</time>{% endif %}{% if report.reviewed_by %} by {{ report.reviewed_by.full_name|default:"the office" }}{% endif %}.</p>

@@ -67,13 +67,19 @@ def test_report_actions_read_as_sentences() -> None:
         for action in (
             "report.submitted",
             "report.resubmitted",
+            "report.head_approved",
+            "report.head_returned",
+            "report.sent",
             "report.accepted",
             "report.returned",
         )
     ]
     assert sentences == [
+        "Krista Kelley sent a report (LANI)",
+        "Krista Kelley sent a returned report back (LANI)",
+        "Krista Kelley approved a report (LANI)",
+        "Krista Kelley returned a report to its writer (LANI)",
         "Krista Kelley sent the office a report (LANI)",
-        "Krista Kelley sent a report back to the office (LANI)",
         "Krista Kelley accepted a report (LANI)",
         "Krista Kelley returned a report (LANI)",
     ]

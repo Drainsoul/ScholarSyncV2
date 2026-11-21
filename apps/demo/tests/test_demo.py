@@ -750,7 +750,14 @@ def test_demo_has_report_samples(demo_app, settings, frozen_today, stored):
         "Semester disbursement summary": "accepted",
         "Monthly applications report": "returned",
         "Quarterly scholar update": "submitted",
+        "Scholar attendance summary": "with_head",
     }
+    # Everything but the report with the head was sent to the office (rev 33).
+    assert {title for title, report in reports.items() if report.sent_at is None} == {
+        "Scholar attendance summary"
+    }
+    sender = reports["Quarterly scholar update"].sent_by
+    assert sender is not None and sender.email == "head@scholarsync.test"
     assert reports["Monthly applications report"].review_note
     accepted = reports["Semester disbursement summary"]
     assert accepted.period_end < reports["Quarterly scholar update"].period_start
@@ -758,12 +765,31 @@ def test_demo_has_report_samples(demo_app, settings, frozen_today, stored):
         (version,) = report.files.all()
         assert version.file.purpose == "report"
         assert version.file.key == f"files/report/{version.file.pk}"
-    assert len([key for key, _body, _type in stored if key.startswith("files/report/")]) == 3
+    assert len([key for key, _body, _type in stored if key.startswith("files/report/")]) == 4
     unread = Notification.objects.filter(read_at=None)
     office = unread.filter(recipient__email="office@scholarsync.test", kind="report_submitted")
     assert office.count() == 1
-    head = unread.filter(recipient__email="head@scholarsync.test", kind="report_returned")
-    assert head.count() == 1
+    head = unread.filter(recipient__email="head@scholarsync.test")
+    assert sorted(head.filter(kind__startswith="report").values_list("kind", flat=True)) == [
+        "report_for_head",
+        "report_returned",
+    ]
+    staff = unread.filter(recipient__email="staff@scholarsync.test", kind__startswith="report")
+    assert not staff.exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.django_db
+def test_demo_adds_the_head_report_to_an_older_demo(demo_app, settings, frozen_today, stored):
+    """A demo loaded before rev 33 has the other samples; the next run adds only the new one."""
+    from apps.reports.models import Report
+
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    Report.objects.filter(title="Scholar attendance summary").delete()
+    loader.load()
+    titles = list(Report.objects.values_list("title", flat=True))
+    assert len(titles) == 4 and titles.count("Scholar attendance summary") == 1
 
 
 @pytest.mark.django_db

@@ -8,24 +8,51 @@
       <p class="page-header__meta">{% status report.status|report_tone report.get_status_display %}</p>
     </div>
   </div>
+  {% if no_head %}<div class="banner banner--warning" role="note"><div><p>{{ no_head }}</p></div></div>{% endif %}
   <div class="stack">
     <section class="card" aria-labelledby="facts-title">
       <h2 class="card__title" id="facts-title">Report</h2>
       <dl class="details details--grid">
         <div><dt>Period</dt><dd>{{ report.period_start|date:"j F Y" }} to {{ report.period_end|date:"j F Y" }}</dd></div>
-        <div><dt>Sent by</dt><dd>{{ report.submitted_by.full_name|default:"A staff member" }}</dd></div>
-        <div><dt>Sent on</dt><dd><time datetime="{{ report.submitted_at|date:'c' }}">{{ report.submitted_at|date:"j M Y, g:i A" }}</time></dd></div>
+        <div><dt>Written by</dt><dd>{{ report.submitted_by.full_name|default:"A staff member" }}</dd></div>
+        <div><dt>Written on</dt><dd><time datetime="{{ report.submitted_at|date:'c' }}">{{ report.submitted_at|date:"j M Y, g:i A" }}</time></dd></div>
+        {% if report.sent_at %}<div><dt>Sent to the office</dt><dd><time datetime="{{ report.sent_at|date:'c' }}">{{ report.sent_at|date:"j M Y, g:i A" }}</time>{% if report.sent_by %} by {{ report.sent_by.full_name|default:"a head" }}{% endif %}</dd></div>{% endif %}
         <div><dt>Status</dt><dd>{{ report.get_status_display }}</dd></div>
       </dl>
       {% if report.description %}<p>{{ report.description|linebreaksbr }}</p>{% endif %}
     </section>
-    {% if report.review_note and report.status != "submitted" %}
+    {% if show_note %}
     <section class="card" aria-labelledby="note-title">
-      <h2 class="card__title" id="note-title">Office note</h2>
+      <h2 class="card__title" id="note-title">{{ note_title }}</h2>
       <p>{{ report.review_note|linebreaksbr }}</p>
     </section>
     {% endif %}
     {% include "reports/_files.html" %}
+    {% if review_form %}
+    <section class="card" aria-labelledby="review-title">
+      <h2 class="card__title" id="review-title">Your review</h2>
+      <p>Approve it to send it to the scholarship office next, or return it with a note.</p>
+      <form method="post" action="{% url 'reports:approve' program=program.slug pk=report.pk %}" novalidate>
+        {% csrf_token %}
+        {% include "components/form_errors.html" with form=review_form %}
+        {% field review_form.note %}
+        <div class="btn-row">
+          <button type="submit" class="btn btn--primary">Approve</button>
+          <button type="submit" class="btn btn--secondary" formaction="{% url 'reports:return' program=program.slug pk=report.pk %}">Return</button>
+        </div>
+      </form>
+    </section>
+    {% endif %}
+    {% if can_send %}
+    <section class="card" aria-labelledby="send-title">
+      <h2 class="card__title" id="send-title">Approved</h2>
+      <p>You approved this report. Send it when it's ready for the scholarship office.</p>
+      <form method="post" action="{% url 'reports:send' program=program.slug pk=report.pk %}">
+        {% csrf_token %}
+        <div class="btn-row"><button type="submit" class="btn btn--primary">Send to the scholarship office</button></div>
+      </form>
+    </section>
+    {% endif %}
     {% if form and report.status == "returned" %}
     <section class="card" aria-labelledby="resend-title">
       <h2 class="card__title" id="resend-title">Fix and send again</h2>

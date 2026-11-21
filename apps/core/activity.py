@@ -39,8 +39,9 @@ VERBS: dict[str, str] = {
     "profile.created_by_staff": "added a student profile",
     "support.sent": "sent the office a message",
     "support.answered": "answered a support request",
-    "report.submitted": "sent the office a report",
-    "report.resubmitted": "sent a report back to the office",
+    "report.submitted": "sent a report",
+    "report.resubmitted": "sent a returned report back",
+    "report.sent": "sent the office a report",
     "report.accepted": "accepted a report",
     "report.returned": "returned a report",
 }
@@ -50,6 +51,8 @@ FEED_ACTIONS: frozenset[str] = frozenset(VERBS)
 
 VERBS.update(
     {
+        "report.head_approved": "approved a report",
+        "report.head_returned": "returned a report to its writer",
         "application.started": "started an application",
         "application.renewal_started": "started a renewal",
         "application.review_started": "started reviewing an application",

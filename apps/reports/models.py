@@ -9,9 +9,12 @@ from apps.programs.models import Program
 
 
 class Report(models.Model):
-    """A program's periodic report to the scholarship office (spec §4.8, M11c)."""
+    """A program's periodic report to the scholarship office (spec §4.8, M11c; the head reviews a
+    staff member's report first, rev 33)."""
 
     class Status(models.TextChoices):
+        WITH_HEAD = "with_head", "Waiting for the head"
+        APPROVED = "approved", "Approved, not sent yet"
         SUBMITTED = "submitted", "Waiting for the office"
         ACCEPTED = "accepted", "Accepted"
         RETURNED = "returned", "Returned"
@@ -26,6 +29,24 @@ class Report(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
     )
     submitted_at = models.DateTimeField()
+    # The head reviews a staff member's report first (rev 33).
+    head_reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="+",
+    )
+    head_reviewed_at = models.DateTimeField(null=True, blank=True)
+    # Who last sent it to the office, and when; unset until the office first sees it (rev 33).
+    sent_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="+",
+    )
+    sent_at = models.DateTimeField(null=True, blank=True)
     reviewed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
@@ -40,7 +61,9 @@ class Report(models.Model):
     class Meta:
         constraints = [
             models.CheckConstraint(
-                condition=Q(status__in=["submitted", "accepted", "returned"]),
+                condition=Q(
+                    status__in=["with_head", "approved", "submitted", "accepted", "returned"]
+                ),
                 name="reports_report_status_valid",
             ),
             models.CheckConstraint(

@@ -44,7 +44,8 @@ class OfficeReportListView(SuperAdminRequiredMixin, TemplateView):
         if program_id not in {program.pk for program in programs}:
             program_id = None
         counts = selectors.status_counts(
-            next((program for program in programs if program.pk == program_id), None)
+            next((program for program in programs if program.pk == program_id), None),
+            office=True,
         )
         base = reverse("office:reports")
         suffix = f"&program={program_id}" if program_id is not None else ""
@@ -93,7 +94,7 @@ class OfficeReportDecideView(SuperAdminRequiredMixin, View):
     def post(self, request: HttpRequest, pk: int) -> HttpResponse:
         report = selectors.office_report(pk)
         if report.status != Report.Status.SUBMITTED:
-            messages.error(request, f"This report was already {report.status}.")
+            messages.error(request, services.already(report))
             return redirect("office:report-detail", pk=report.pk)
         form = DecideForm(request.POST)
         if form.is_valid():

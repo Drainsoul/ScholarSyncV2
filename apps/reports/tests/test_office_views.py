@@ -178,3 +178,41 @@ def test_office_never_gets_a_send_form(client: Any) -> None:
     detail = client.get(reverse("reports:detail", kwargs={"program": slug, "pk": report.pk}))
     assert "Fix and send again" not in detail.content.decode()
     assert f"/reports/{report.pk}/resubmit/" not in detail.content.decode()
+
+
+def test_office_sees_only_sent_reports(client: Any) -> None:
+    """A staff report still with the head (or approved, not sent) never reaches the office."""
+    office = _office(client)
+    program = ProgramFactory.create(name="LANI")
+    hidden = ReportFactory.create(program=program, title="With head", status="with_head")
+    approved = ReportFactory.create(program=program, title="Approved one", status="approved")
+    ReportFileFactory.create(report=hidden)
+    _sent(1, program=program, title="Sent one")
+    html = client.get(LIST + "?tab=all").content.decode()
+    assert "Sent one" in html and "With head" not in html and "Approved one" not in html
+    for report in (hidden, approved):
+        assert client.get(reverse("office:report-detail", args=[report.pk])).status_code == 404
+        decide = client.post(
+            reverse("office:report-decide", args=[report.pk]), {"decision": "accept"}
+        )
+        assert decide.status_code == 404
+    from apps.reports.selectors import staff_can_download_report, status_counts
+
+    assert status_counts(None, office=True) == {"submitted": 1, "all": 1}
+    assert status_counts(program)["all"] == 3
+    assert not staff_can_download_report(office, hidden.files.get().file)
+    nav = client.get(reverse("office:home")).context["nav_items"]
+    assert next(item for item in nav if item["label"] == "Reports")["count"] == 1
+
+
+def test_office_detail_names_writer_and_sender(client: Any) -> None:
+    _office(client)
+    writer = UserFactory.create(role=User.Role.STAFF, full_name="Ana Cruz")
+    head = UserFactory.create(role=User.Role.STAFF, full_name="Ben Reyes")
+    report = ReportFactory.create(
+        submitted_by=writer, sent_by=head, review_note="All checked", reviewed_by=head
+    )
+    html = client.get(reverse("office:report-detail", args=[report.pk])).content.decode()
+    assert "Written by" in html and "Ana Cruz" in html and "Ben Reyes" in html
+    assert "Note from the head: All checked" in html
+    assert "Returned earlier" not in html

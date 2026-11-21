@@ -6,7 +6,7 @@ from apps.accounts.models import User
 from apps.applications.review_selectors import waiting_count
 from apps.programs.models import Program, ProgramMembership
 from apps.programs.selectors import membership_for, programs_for
-from apps.reports.selectors import returned_count, submitted_count
+from apps.reports.selectors import staff_nav_count, submitted_count
 from apps.workspace.selectors import unread_count
 from apps.workspace.support import open_count
 from apps.workspace.tasks import due_count
@@ -36,6 +36,11 @@ def shell_context(
     user = request.user
     assert isinstance(user, User)
     nav: list[dict[str, object]]
+    # Staff pages: the viewer's membership (None for the office), looked up once.
+    membership: ProgramMembership | None = None
+    if area == "staff" and program is not None and not user.is_super_admin:
+        membership = membership_for(user, program)
+    head = membership is not None and membership.level == ProgramMembership.Level.HEAD
     if area == "student":
         home, label, icon = reverse("students:home"), "Home", "house"
         profile = reverse("students:profile")
@@ -127,7 +132,7 @@ def shell_context(
                     "label": "Reports",
                     "url": report_list,
                     "current": path.startswith(report_list),
-                    "count": returned_count(program),
+                    "count": staff_nav_count(program, head=head),
                     "icon": "chart-column",
                 },
                 {
@@ -267,10 +272,7 @@ def shell_context(
             }
             for item in programs_for(user).order_by("name")
         ]
-        membership = None if user.is_super_admin else membership_for(user, program)
-        if user.is_super_admin or (
-            membership is not None and membership.level == ProgramMembership.Level.HEAD
-        ):
+        if user.is_super_admin or head:
             settings_url = reverse("settings:rules", kwargs={"program": program.slug})
             audit_url = reverse("audit:program", kwargs={"program": program.slug})
             context["nav_secondary"] = [

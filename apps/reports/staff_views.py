@@ -1,4 +1,5 @@
-"""Program staff send reports to the office and fix returned ones (spec §4.8, M11c)."""
+"""Program staff send reports and fix returned ones; a head reviews a staff member's report and
+sends it to the office (spec §4.8, M11c, rev 33)."""
 
 from typing import Any
 
@@ -15,9 +16,10 @@ from apps.accounts.models import User
 from apps.core.permissions import ProgramStaffRequiredMixin
 from apps.core.shell import shell_context
 from apps.files.preview import can_preview, render_preview
+from apps.programs.models import ProgramMembership
 
 from . import selectors, services
-from .forms import ReportForm
+from .forms import HeadReviewForm, ReportForm
 from .models import Report
 
 PAGE_SIZE = 25
@@ -27,6 +29,11 @@ def _actor(request: HttpRequest) -> User:
     user = request.user
     assert isinstance(user, User)
     return user
+
+
+def _is_head(membership: ProgramMembership | None) -> bool:
+    """The viewer heads the program (the office has no membership and never reviews here)."""
+    return membership is not None and membership.level == ProgramMembership.Level.HEAD
 
 
 class ReportListView(ProgramStaffRequiredMixin, TemplateView):
@@ -88,15 +95,32 @@ class ReportNewView(ProgramStaffRequiredMixin, View):
             except ValidationError as error:
                 form.add_error(None, error)
             else:
-                messages.success(request, "Report sent to the scholarship office.")
+                if report.status == Report.Status.WITH_HEAD:
+                    messages.success(request, "Report sent to the program head for review.")
+                else:
+                    messages.success(request, "Report sent to the scholarship office.")
                 return redirect("reports:detail", program=self.program.slug, pk=report.pk)
         return self._render(request, form)
 
 
 def _detail_context(
-    request: HttpRequest, report: Report, form: ReportForm | None = None
+    request: HttpRequest,
+    report: Report,
+    membership: ProgramMembership | None,
+    form: ReportForm | None = None,
+    review_form: HeadReviewForm | None = None,
 ) -> dict[str, Any]:
     office = _actor(request).is_super_admin  # reviews reports; never resends them
+    head = _is_head(membership)
+    waiting = report.status == Report.Status.WITH_HEAD
+    reviewer = report.reviewed_by
+    # The latest note: from the head or the office. A note the office wrote on a report that has
+    # since been sent back is history, and the form shows what's current.
+    show_note = bool(report.review_note) and not (
+        report.status in {Report.Status.WITH_HEAD, Report.Status.SUBMITTED}
+        and reviewer is not None
+        and reviewer.is_super_admin
+    )
     if form is None and report.status == Report.Status.RETURNED and not office:
         form = ReportForm(
             _actor(request),
@@ -108,10 +132,21 @@ def _detail_context(
                 "description": report.description,
             },
         )
+    if waiting and head and review_form is None:
+        review_form = HeadReviewForm()
     return {
         "report": report,
         "files": selectors.report_files(report),
         "form": form,
+        "review_form": review_form if waiting and head else None,
+        "can_send": head and report.status == Report.Status.APPROVED,
+        "no_head": services.NO_HEAD
+        if waiting and not services.program_heads(report.program)
+        else "",
+        "show_note": show_note,
+        "note_title": "Office note"
+        if reviewer is not None and reviewer.is_super_admin
+        else "Note from the head",
     }
 
 
@@ -123,7 +158,7 @@ class ReportDetailView(ProgramStaffRequiredMixin, View):
         report = selectors.staff_report(self.program, pk)
         context = {
             **shell_context(request, area="staff", program=self.program),
-            **_detail_context(request, report),
+            **_detail_context(request, report, self.membership),
         }
         return render(request, self.template_name, context)
 
@@ -149,9 +184,84 @@ class ReportResubmitView(ProgramStaffRequiredMixin, View):
                 return redirect("reports:detail", program=self.program.slug, pk=report.pk)
         context = {
             **shell_context(request, area="staff", program=self.program),
-            **_detail_context(request, report, form),
+            **_detail_context(request, report, self.membership, form=form),
         }
         return render(request, "reports/staff_detail.html", context)
+
+
+class _HeadActionView(ProgramStaffRequiredMixin, View):
+    """A head's POST on a staff member's report; program staff get 403 from the mixin, the
+    office from the service (it never reviews or sends for a program, rev 23)."""
+
+    level = ProgramMembership.Level.HEAD
+    http_method_names = ["post", "options"]
+
+    def _back(self, report: Report) -> HttpResponse:
+        return redirect("reports:detail", program=self.program.slug, pk=report.pk)
+
+    def _refused(self, report: Report, error: ValidationError) -> HttpResponse:
+        messages.error(self.request, " ".join(error.messages))
+        return self._back(report)
+
+
+class ReportApproveView(_HeadActionView):
+    def post(self, request: HttpRequest, program: str, pk: int) -> HttpResponse:
+        report = selectors.staff_report(self.program, pk)
+        form = HeadReviewForm(request.POST)
+        if form.is_valid():
+            try:
+                services.head_approve_report(
+                    actor=_actor(request),
+                    report=report,
+                    note=form.cleaned_data["note"],
+                    request=request,
+                )
+            except ValidationError as error:
+                return self._refused(report, error)
+            messages.success(request, "Report approved. Send it to the scholarship office next.")
+            return self._back(report)
+        return self._render(request, report, form)
+
+    def _render(self, request: HttpRequest, report: Report, form: HeadReviewForm) -> HttpResponse:
+        context = {
+            **shell_context(request, area="staff", program=self.program),
+            **_detail_context(request, report, self.membership, review_form=form),
+        }
+        return render(request, "reports/staff_detail.html", context)
+
+
+class ReportReturnView(ReportApproveView):
+    def post(self, request: HttpRequest, program: str, pk: int) -> HttpResponse:
+        report = selectors.staff_report(self.program, pk)
+        form = HeadReviewForm(request.POST)
+        if form.is_valid():
+            try:
+                services.head_return_report(
+                    actor=_actor(request),
+                    report=report,
+                    note=form.cleaned_data["note"],
+                    request=request,
+                )
+            except ValidationError as error:
+                if error.messages != [services.NEED_NOTE]:
+                    return self._refused(report, error)
+                form.add_error("note", error)
+            else:
+                writer = report.submitted_by.full_name or "the writer"
+                messages.success(request, f"Report returned to {writer}.")
+                return self._back(report)
+        return self._render(request, report, form)
+
+
+class ReportSendView(_HeadActionView):
+    def post(self, request: HttpRequest, program: str, pk: int) -> HttpResponse:
+        report = selectors.staff_report(self.program, pk)
+        try:
+            services.send_report_to_office(actor=_actor(request), report=report, request=request)
+        except ValidationError as error:
+            return self._refused(report, error)
+        messages.success(request, "Report sent to the scholarship office.")
+        return self._back(report)
 
 
 class ReportFilePreviewView(ProgramStaffRequiredMixin, View):

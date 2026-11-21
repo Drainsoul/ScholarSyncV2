@@ -15,6 +15,7 @@ from apps.core.text import counted
 from apps.money.selectors import payout_counts, released_in_year
 from apps.programs.models import Program
 from apps.programs.selectors import current_term, window_state
+from apps.reports.selectors import head_counts
 
 from .models import Task
 from .tasks import open_tasks
@@ -73,7 +74,37 @@ def waited_row(
     return {"title": title, "detail": detail, "tone": "danger", "url": url}
 
 
-def staff_dashboard(program: Program, user: User, *, now: datetime) -> StaffDashboard:
+def report_rows(program: Program) -> list[dict[str, str]]:
+    """A head's report rows (rev 33): reports waiting for their review, approved ones not sent."""
+    waiting, approved = head_counts(program)
+    url = reverse("reports:list", kwargs={"program": program.slug})
+    rows = []
+    if waiting:
+        rows.append(
+            {
+                "title": f"{counted(waiting, 'report', 'reports')} waiting for your review",
+                "detail": "Approve or return them in Reports",
+                "tone": "warning",
+                "url": f"{url}?tab=with_head",
+            }
+        )
+    if approved:
+        rows.append(
+            {
+                "title": f"{counted(approved, 'approved report', 'approved reports')} "
+                "not sent to the office yet",
+                "detail": "Send them in Reports",
+                "tone": "info",
+                "url": f"{url}?tab=approved",
+            }
+        )
+    return rows
+
+
+def staff_dashboard(
+    program: Program, user: User, *, now: datetime, head: bool = False
+) -> StaffDashboard:
+    """`head`: the viewer heads the program (the view knows from the membership it checked)."""
     today = timezone.localtime(now).date()
     term = current_term()
     slug = {"program": program.slug}
@@ -133,6 +164,8 @@ def staff_dashboard(program: Program, user: User, *, now: datetime) -> StaffDash
                 "url": money_url,
             }
         )
+    if head:
+        attention += report_rows(program)
     window = window_row(program, today)
     if window is not None:
         attention.append(window)

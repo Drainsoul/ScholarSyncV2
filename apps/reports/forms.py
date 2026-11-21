@@ -80,3 +80,18 @@ class DecideForm(forms.Form):
 
     def clean_note(self) -> str:
         return _fit(self.cleaned_data.get("note", ""), NOTE_MAX)
+
+
+class HeadReviewForm(forms.Form):
+    """A head's review of a staff member's report: approve (note optional) or return (note
+    required, checked by the service)."""
+
+    note = forms.CharField(
+        label="Note to the writer",
+        help_text="Required when you return it.",
+        required=False,
+        widget=forms.Textarea(attrs={"rows": 3, "maxlength": NOTE_MAX}),
+    )
+
+    def clean_note(self) -> str:
+        return _fit(self.cleaned_data.get("note", ""), NOTE_MAX)

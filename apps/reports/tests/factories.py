@@ -29,6 +29,9 @@ def ready_report_file(uploaded_by: User | None = None) -> StoredFile:
     return file
 
 
+UNSENT = {Report.Status.WITH_HEAD, Report.Status.APPROVED}
+
+
 class ReportFactory(factory.django.DjangoModelFactory[Report]):
     class Meta:
         model = Report
@@ -40,6 +43,13 @@ class ReportFactory(factory.django.DjangoModelFactory[Report]):
     status = Report.Status.SUBMITTED
     submitted_by = factory.declarations.SubFactory(UserFactory, role=User.Role.STAFF)
     submitted_at = factory.declarations.LazyFunction(timezone.now)
+    # Reports at the office were sent; one still with the head (or approved) was not.
+    sent_by = factory.declarations.LazyAttribute(
+        lambda o: None if o.status in UNSENT else o.submitted_by
+    )
+    sent_at = factory.declarations.LazyAttribute(
+        lambda o: None if o.status in UNSENT else o.submitted_at
+    )
 
 
 class ReportFileFactory(factory.django.DjangoModelFactory[ReportFile]):
