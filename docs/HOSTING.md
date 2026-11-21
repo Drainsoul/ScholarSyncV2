@@ -71,7 +71,10 @@ operator of your copy. Before going live:
    and `cookies.html`, `about.html`, `contact.html`). Adapt them to your organisation, your retention period (the
    privacy page asks you to state it) and your law. They are template text, not legal advice: have a qualified person
    read them.
-3. If you add analytics or any optional cookie, ask visitors for consent first and update the cookie notice.
+3. Decide how long you keep records. The Data Privacy Act (RA 10173) lets you keep personal data only as long as
+   its purpose needs it, so the retention period is your policy, not the app's. ScholarSync removes import files
+   from storage after 7 days and keeps everything else until you remove it.
+4. If you add analytics or any optional cookie, ask visitors for consent first and update the cookie notice.
 
 ## 3. Rebrand (optional)
 The "City of Taguig" label and the logo are fixed in the code, so a copy for another organisation is a small edit:

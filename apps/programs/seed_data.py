@@ -41,6 +41,8 @@ STARTER_PROGRAMS: list[dict[str, Any]] = [
             "min_gwa_percent": Decimal("80"),
             "renewal_min_gwa_percent": Decimal("80"),
             "renewal_min_units": 15,
+            # §18 Q4, the TCU-CEAA site: no failing, incomplete, blank or dropped subjects.
+            "renewal_no_failing_grades": True,
         },
         "school_names": ["Taguig City University"],
         "tiers": [("standard", "Standard", Decimal("5000.00"), Decimal("10000.00"))],
@@ -54,22 +56,27 @@ STARTER_PROGRAMS: list[dict[str, Any]] = [
         ),
         "rules": {
             "min_gwa_percent": Decimal("75"),
-            # Pending §18 Q3/Q4: 3.00 is the 1-5 passing mark, as 75% is on the percent scale.
+            # 3.00 is the 1-5 passing mark, as 75% is on the percent scale. Renewal: v1's 2.50 on
+            # the 1.0-5.0 scale (§18 Q4; the LANI page states no renewal threshold).
             "max_gwa_one_to_five": Decimal("3.00"),
             "renewal_max_gwa_one_to_five": Decimal("2.50"),
             "renewal_min_units": 15,
             "renewal_no_failing_grades": True,
         },
         "school_names": [],
+        # Spec §18 Q2: the TCU LANI page's amounts are per school year; payouts are per term, so
+        # halved. Merit (the top of the page's range) is for Premier, Full and Priority only.
+        # LEAD has no published amount: v1's figures stay until the maintainer confirms them.
         "tiers": [
-            ("honors", "Honors", Decimal("20000.00"), Decimal("25000.00")),
             ("premier", "Premier", Decimal("20000.00"), Decimal("25000.00")),
+            ("full", "Full", Decimal("20000.00"), Decimal("25000.00")),
             ("priority", "Priority", Decimal("20000.00"), Decimal("25000.00")),
-            ("basic-plus", "Basic Plus", Decimal("10000.00"), Decimal("15000.00")),
-            ("basic", "Basic", Decimal("7500.00"), Decimal("12500.00")),
-            ("suc-lcu", "SUC/LCU", Decimal("7500.00"), Decimal("12500.00")),
-            ("review", "Review", Decimal("15000.00"), Decimal("20000.00")),
-            ("lead", "Lead", Decimal("30000.00"), Decimal("50000.00")),
+            ("basic-plus", "Basic Plus", Decimal("7500.00"), Decimal("0.00")),
+            ("suc-lcu", "SUC/LCU", Decimal("5000.00"), Decimal("0.00")),
+            ("basic", "Basic", Decimal("5000.00"), Decimal("0.00")),
+            ("review", "Review", Decimal("10000.00"), Decimal("0.00")),
+            ("review-retake", "Review (retake)", Decimal("5000.00"), Decimal("0.00")),
+            ("lead", "LEAD", Decimal("30000.00"), Decimal("50000.00")),
         ],
     },
 ]

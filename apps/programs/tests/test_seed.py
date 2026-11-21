@@ -34,15 +34,16 @@ def test_seed_creates_terms_tiers_documents(db):
     assert term is not None
     assert str(term) == "1st semester, SY 2026–2027"
     lani = Program.objects.get(slug="lani")
-    assert [t.code for t in tiers_in_force(lani, term)] == [
-        "honors",
-        "premier",
-        "priority",
-        "basic-plus",
-        "basic",
-        "suc-lcu",
-        "review",
-        "lead",
+    assert [(t.code, t.base_amount, t.merit_amount) for t in tiers_in_force(lani, term)] == [
+        ("premier", Decimal("20000.00"), Decimal("25000.00")),
+        ("full", Decimal("20000.00"), Decimal("25000.00")),
+        ("priority", Decimal("20000.00"), Decimal("25000.00")),
+        ("basic-plus", Decimal("7500.00"), Decimal("0.00")),
+        ("suc-lcu", Decimal("5000.00"), Decimal("0.00")),
+        ("basic", Decimal("5000.00"), Decimal("0.00")),
+        ("review", Decimal("10000.00"), Decimal("0.00")),
+        ("review-retake", Decimal("5000.00"), Decimal("0.00")),
+        ("lead", Decimal("30000.00"), Decimal("50000.00")),
     ]
     assert lani.required_documents.count() == 14
     assert list(
@@ -58,6 +59,7 @@ def test_seed_sets_rules_and_documents(db):
         Decimal("80"),
         15,
     )
+    assert ceaa.renewal_no_failing_grades is True
     lani = Program.objects.get(slug="lani")
     assert lani.renewal_max_gwa_one_to_five == Decimal("2.50")
     assert lani.renewal_no_failing_grades is True
@@ -84,7 +86,7 @@ def test_seed_prints_counts(db):
     out = StringIO()
     call_command("seed_programs", stdout=out)
     assert out.getvalue().strip() == (
-        "2 program(s), 9 tier(s), 28 document(s), 3 school(s), 3 term(s) created."
+        "2 program(s), 10 tier(s), 28 document(s), 3 school(s), 3 term(s) created."
     )
     out = StringIO()
     call_command("seed_programs", stdout=out)
@@ -100,7 +102,7 @@ def test_seed_keeps_edited_rules_and_tiers(db):
     call_command("seed_programs")
     assert Program.objects.get(slug="lani").min_gwa_percent == Decimal("85.00")
     assert BenefitTier.objects.get(code="lead").base_amount == Decimal("1.00")
-    assert BenefitTier.objects.count() == 9
+    assert BenefitTier.objects.count() == 10
     assert AcademicTerm.objects.count() == 3
 
 
@@ -142,12 +144,12 @@ def test_seed_allowed_school_uses_existing_row_with_different_case(db):
 def test_seed_survives_a_tier_with_history(db):
     call_command("seed_programs")
     lani = Program.objects.get(slug="lani")
-    base = BenefitTier.objects.get(program=lani, code="honors")
+    base = BenefitTier.objects.get(program=lani, code="full")
     later = AcademicTerm.objects.exclude(pk=base.effective_from_id).order_by("sort_key").last()
     assert later is not None
     BenefitTier.objects.create(
         program=lani,
-        code="honors",
+        code="full",
         name=base.name,
         base_amount=base.base_amount,
         merit_amount=base.merit_amount,
