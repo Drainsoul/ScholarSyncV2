@@ -163,7 +163,7 @@ def test_documents_page_query_count(client: Any, django_assert_max_num_queries: 
 def test_changing_an_old_requirement_does_not_block_review(client: Any, change: str) -> None:
     """Switching an old optional document to required, restoring a stopped one,
     or widening who it applies to must not block an application already in review."""
-    from apps.applications.selectors import undecided_documents
+    from apps.applications.selectors import undecided_rows
 
     program = ProgramFactory.create()
     application = approvable(program)
@@ -178,7 +178,7 @@ def test_changing_an_old_requirement_does_not_block_review(client: Any, change: 
     assert application.first_submitted_at is not None
     earlier = application.first_submitted_at - timedelta(minutes=5)
     RequiredDocument.objects.filter(pk=old.pk).update(created_at=earlier, required_since=earlier)
-    assert undecided_documents(application) == []
+    assert undecided_rows(application) == []
     client.force_login(_head(program))
     if change == "restored":
         client.post(_url("document-active", program, pk=old.pk), {"active": "1"})
@@ -192,7 +192,7 @@ def test_changing_an_old_requirement_does_not_block_review(client: Any, change: 
             max_mb="10",
         )
         client.post(_url("document-edit", program, pk=old.pk), data)
-    assert undecided_documents(application) == []
+    assert undecided_rows(application) == []
 
 
 def test_documents_table_shows_type_labels(client: Any) -> None:

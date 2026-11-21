@@ -11,7 +11,6 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 PINNED = frozenset({"light", "dark"})
-CHOICES = PINNED | {"system"}
 ONE_YEAR = 365 * 24 * 60 * 60
 
 

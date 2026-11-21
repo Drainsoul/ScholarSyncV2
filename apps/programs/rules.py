@@ -6,12 +6,6 @@ from django.utils.dateformat import format as format_date
 
 from apps.programs.models import Program, School
 
-TYPE_WORDS = {
-    School.Type.PUBLIC: "public",
-    School.Type.PRIVATE: "private",
-    School.Type.SUC: "state university or college",
-    School.Type.LCU: "local college or university",
-}
 # The same types as things one studies at: "a public school", "a local college or university".
 TYPE_NOUNS = {
     School.Type.PUBLIC: "public school",
@@ -108,14 +102,6 @@ def rule_sentence(
             return ""
         return "To renew: no failing, incomplete or dropped subjects this term."
     raise ValueError(f"Unknown rule code: {code}")
-
-
-def renewal_rule_sentences(program: Program) -> list[str]:
-    """The renewal rules, in the order the renewal checks run."""
-    sentences = [
-        rule_sentence(program, code) for code in ("renewal_gwa", "renewal_units", "no_failing")
-    ]
-    return [sentence for sentence in sentences if sentence]
 
 
 def rule_sentences(program: Program) -> list[str]:

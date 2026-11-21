@@ -13,7 +13,7 @@ from apps.matching.eligibility import (
     evaluate_renewal,
 )
 from apps.programs.models import AcademicTerm, BenefitTier, Program, School
-from apps.programs.rules import renewal_rule_sentences, rule_sentence, rule_sentences
+from apps.programs.rules import rule_sentence, rule_sentences
 from apps.students.barangays import OUTSIDE_TAGUIG
 from apps.students.models import StudentProfile
 
@@ -558,15 +558,18 @@ def test_renewal_school_missing() -> None:
     assert check_of(result, "school").state == CheckState.MISSING
 
 
+RENEWAL_CODES = ("renewal_gwa", "renewal_units", "no_failing")
+
+
 def test_renewal_rule_sentences() -> None:
     program = renewal_program(
         renewal_max_gwa_one_to_five=Decimal("2.50"), renewal_no_failing_grades=True
     )
-    assert renewal_rule_sentences(program) == [
+    assert [rule_sentence(program, code) for code in RENEWAL_CODES] == [
         "To renew: a GWA of at least 80% (schools that grade in percent). "
         "To renew: a GWA of 2.50 or better (schools that grade 1 to 5).",
         "To renew: at least 15 units this term.",
         "To renew: no failing, incomplete or dropped subjects this term.",
     ]
     bare = renewal_program(renewal_min_gwa_percent=None, renewal_min_units=None)
-    assert renewal_rule_sentences(bare) == []
+    assert [rule_sentence(bare, code) for code in RENEWAL_CODES] == ["", "", ""]

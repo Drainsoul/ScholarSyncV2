@@ -15,7 +15,7 @@ from apps.accounts.models import User
 from apps.accounts.tests.factories import UserFactory
 from apps.applications import review, services
 from apps.applications.models import Application, Document
-from apps.applications.selectors import undecided_documents
+from apps.applications.selectors import undecided_rows
 from apps.applications.tests.factories import (
     ApplicationFactory,
     DocumentFactory,
@@ -809,7 +809,7 @@ def test_approve_names_a_never_uploaded_document_before_a_pending_one() -> None:
     )
 
 
-def test_undecided_documents_in_requirement_order() -> None:
+def test_undecided_rows_in_requirement_order() -> None:
     program = ProgramFactory.create()
     application = approvable(program)
     late = document_with_file(application, D.PENDING)
@@ -821,7 +821,7 @@ def test_undecided_documents_in_requirement_order() -> None:
     declined_optional.requirement.is_required = False
     declined_optional.requirement.sort_order = 10
     declined_optional.requirement.save()
-    rows = undecided_documents(application)
+    rows = [row.requirement for row in undecided_rows(application)]
     assert rows == [early, late.requirement, declined_optional.requirement]
     assert optional not in rows
 

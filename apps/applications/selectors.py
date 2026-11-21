@@ -162,8 +162,3 @@ def undecided_rows(application: Application) -> list[DocumentRow]:
             and row.document.status in (Document.Status.PENDING, Document.Status.DECLINED)
         )
     ]
-
-
-def undecided_documents(application: Application) -> list[RequiredDocument]:
-    """`undecided_rows`, as requirements."""
-    return [row.requirement for row in undecided_rows(application)]

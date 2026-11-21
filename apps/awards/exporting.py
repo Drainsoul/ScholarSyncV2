@@ -32,7 +32,6 @@ HEADERS: tuple[str, ...] = (
     "Terms recorded",
     "Account",
 )
-FORMATS = ("csv", "xlsx")
 CSV_TYPE = "text/csv; charset=utf-8"
 
 
