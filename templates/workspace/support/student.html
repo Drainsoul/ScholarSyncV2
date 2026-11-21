@@ -4,6 +4,7 @@
   <div class="page-header">
     <div><h1>Contact the scholarship office</h1><p class="page-header__meta">Read the answers to common questions on the <a href="{% url 'core:help' %}">help page</a> first.</p></div>
   </div>
+  {% include "components/tabs.html" with tabs_label="Help and guides" %}
   <section class="card" aria-labelledby="send-title">
     <h2 class="card__title" id="send-title">Send a message</h2>
     <form method="post" novalidate>
@@ -20,7 +21,7 @@
       <li>
         <p><strong>{{ row.get_topic_display }}</strong>{% if row.program %} · {{ row.program.name }}{% endif %} · {% if row.status == "answered" %}{% status "success" row.get_status_display %}{% else %}{% status "info" row.get_status_display %}{% endif %}</p>
         <p>{{ row.message|linebreaksbr }}</p>
-        <p class="text-sm text-muted"><time datetime="{{ row.created_at|date:'c' }}">{{ row.created_at|date:"j M Y, g:i A" }}</time></p>
+        <p class="text-sm text-muted"><time datetime="{{ row.created_at|date:'c' }}">{{ row.created_at|date:"j M Y, g:i A" }}</time>{% if row.reply_count %} · <a href="{{ replies_url }}">{{ row.reply_count }} repl{{ row.reply_count|pluralize:"y,ies" }}</a>{% endif %}</p>
       </li>{% endfor %}
     </ul>
     {% else %}

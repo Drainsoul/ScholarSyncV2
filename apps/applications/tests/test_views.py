@@ -34,7 +34,7 @@ from apps.students.tests.factories import EducationRecordFactory, FullProfileFac
 pytestmark = pytest.mark.django_db
 
 LIST_BUDGET = 6
-DETAIL_BUDGET = 14
+DETAIL_BUDGET = 15
 
 
 @pytest.fixture(autouse=True)

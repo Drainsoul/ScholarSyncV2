@@ -337,7 +337,7 @@ def test_renewal_submit_view_passes_declaration(client) -> None:
 def test_renewal_detail_query_budget(client, scholar: Scholar, django_assert_max_num_queries):
     application = start_renewal(user=scholar.user, award_id=scholar.award.pk)
     client.force_login(scholar.user)
-    with django_assert_max_num_queries(14):  # the student detail budget
+    with django_assert_max_num_queries(15):  # the student detail budget
         assert client.get(reverse("applications:detail", args=[application.pk])).status_code == 200
 
 

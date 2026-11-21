@@ -8,7 +8,7 @@ from apps.programs.models import Program, ProgramMembership
 from apps.programs.selectors import membership_for, programs_for
 from apps.reports.selectors import staff_nav_count, submitted_count
 from apps.workspace.selectors import unread_count
-from apps.workspace.support import open_count
+from apps.workspace.support import open_count, unread_replies
 from apps.workspace.tasks import due_count
 
 # The staff "Disbursements" item is current on every money section (under the dashboard URL).
@@ -257,7 +257,7 @@ def shell_context(
                 "label": "Help and guides",
                 "url": help_url,
                 "current": request.path.startswith(help_url),
-                "count": 0,
+                "count": unread_replies(user),
                 "icon": "circle-help",
             }
         ]

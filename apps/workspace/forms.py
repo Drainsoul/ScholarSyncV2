@@ -59,6 +59,9 @@ class SupportForm(forms.Form):
         queryset=Program.objects.filter(is_active=True).order_by("name"),
         required=False,
         empty_label="Not about one program",
+        help_text=(
+            "Messages about a program go to that program's staff and the scholarship office."
+        ),
     )
     message = forms.CharField(
         label="Your message",

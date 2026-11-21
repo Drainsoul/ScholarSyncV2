@@ -40,6 +40,60 @@ def _user(request: HttpRequest) -> User:
     return user
 
 
+QUESTION_PREVIEW = 200
+
+
+def _student_tabs(request: HttpRequest) -> list[dict[str, Any]]:
+    """Contact the office and Replies, with the student's unread replies on the second."""
+    contact, replies = reverse("support:student"), reverse("support:replies")
+    return [
+        {
+            "label": "Contact the office",
+            "url": contact,
+            "current": request.path == contact,
+            "count": 0,
+        },
+        {
+            "label": "Replies",
+            "url": replies,
+            "current": request.path == replies,
+            "count": support.unread_replies(_user(request)),
+        },
+    ]
+
+
+class StudentRepliesView(StudentRequiredMixin, View):
+    """Every answer the student has had, newest first; opening the page marks them read."""
+
+    http_method_names = ["get", "head", "options"]
+
+    def get(self, request: HttpRequest) -> HttpResponse:
+        user = _user(request)
+        page = Paginator(support.student_replies(user), PAGE_SIZE).get_page(request.GET.get("page"))
+        items = []
+        for reply in page.object_list:
+            question = reply.request.message
+            if len(question) > QUESTION_PREVIEW:
+                question = question[:QUESTION_PREVIEW] + "\u2026"
+            items.append(
+                {
+                    "reply": reply,
+                    "question": question,
+                    "sender": support.signer(reply.request, reply.author),
+                    "new": reply.read_at is None,
+                }
+            )
+        context = {
+            **shell_context(request, area="student"),
+            "page": page,
+            "items": items,
+            "tabs": _student_tabs(request),
+        }
+        response = render(request, "workspace/support/replies.html", context)
+        support.mark_replies_read(user, timezone.now())
+        return response
+
+
 class StudentSupportView(StudentRequiredMixin, View):
     template_name = "workspace/support/student.html"
 
@@ -48,6 +102,8 @@ class StudentSupportView(StudentRequiredMixin, View):
             **shell_context(request, area="student"),
             "form": form,
             "rows": support.own_rows(_user(request)),
+            "tabs": _student_tabs(request),
+            "replies_url": reverse("support:replies"),
         }
         return render(request, self.template_name, context)
 

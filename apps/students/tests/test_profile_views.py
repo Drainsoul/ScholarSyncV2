@@ -208,9 +208,9 @@ def test_overview_links_only_to_pages_that_exist(signed_in):
     assert reverse("students:profile-personal") in html
 
 
-def test_overview_uses_at_most_6_queries(signed_in, student, django_assert_max_num_queries):
+def test_overview_uses_at_most_7_queries(signed_in, student, django_assert_max_num_queries):
     ProfileFactory.create(user=student)
-    with django_assert_max_num_queries(6):
+    with django_assert_max_num_queries(7):  # +1: unread replies in the nav (rev 35)
         assert signed_in.get(reverse("students:profile")).status_code == 200
 
 

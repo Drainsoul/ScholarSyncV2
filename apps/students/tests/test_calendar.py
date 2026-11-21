@@ -28,7 +28,7 @@ TZ = timezone.get_default_timezone()
 NOW = datetime(2026, 11, 20, 9, 0, tzinfo=TZ)
 TODAY = NOW.date()
 NOVEMBER = date(2026, 11, 1)
-QUERIES_DAY_PAGE = 10  # the shell, the match page and the day's events
+QUERIES_DAY_PAGE = 11  # the shell (+ unread replies), the match page and the day's events
 QUERIES_DAY_DIALOG = 9  # no shell
 
 

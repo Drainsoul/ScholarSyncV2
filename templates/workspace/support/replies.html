@@ -1,0 +1,23 @@
+{% extends "layouts/student.html" %}{% load ui %}
+{% block title %}Replies{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div><h1>Replies</h1><p class="page-header__meta">Answers to the messages you sent, newest first.</p></div>
+  </div>
+  {% include "components/tabs.html" with tabs_label="Help and guides" %}
+  {% if items %}
+  <section class="card" aria-label="Replies">
+    <ul class="list">{% for item in items %}{% with reply=item.reply %}
+      <li>
+        <p class="text-sm text-muted">Your message: {{ reply.request.get_topic_display }}{% if reply.request.program %} · {{ reply.request.program.name }}{% endif %} · “{{ item.question }}”</p>
+        <p><strong>From {{ item.sender }}</strong>{% if reply.channel == "email" %} · Sent by email{% endif %} · <time datetime="{{ reply.created_at|date:'c' }}">{{ reply.created_at|date:"j M Y, g:i A" }}</time>{% if item.new %} · {% status "info" "New" %}{% endif %}</p>
+        {% if reply.subject %}<p><strong>{{ reply.subject }}</strong></p>{% endif %}
+        <p>{{ reply.body|linebreaksbr }}</p>
+      </li>{% endwith %}{% endfor %}
+    </ul>
+  </section>
+  {% pagination page %}
+  {% else %}
+  {% include "components/empty_state.html" with title="No replies yet. Answers to your messages show here." %}
+  {% endif %}
+{% endblock %}
