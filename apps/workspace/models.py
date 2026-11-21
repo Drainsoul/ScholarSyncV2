@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.db.models import Q
 from django.db.models.functions import Length
 from django.db.models.lookups import GreaterThanOrEqual, LessThanOrEqual
 
@@ -125,3 +126,85 @@ class SupportRequest(models.Model):
 
     def __str__(self) -> str:
         return f"Support request #{self.pk}"
+
+
+class ReplyTemplate(models.Model):
+    """A starting text for a support reply, kept by the office (spec §4.8 rev 35)."""
+
+    title = models.CharField(max_length=80)
+    topic = models.CharField(max_length=12, choices=SupportRequest.Topic, blank=True)  # blank: any
+    program = models.ForeignKey(
+        "programs.Program", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )
+    subject = models.CharField(max_length=150, blank=True)
+    body = models.TextField()
+    is_active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=LessThanOrEqual(Length("body"), 4000)
+                & GreaterThanOrEqual(Length("body"), 1),
+                name="workspace_template_body_len",
+            ),
+            models.CheckConstraint(
+                condition=GreaterThanOrEqual(Length("title"), 1),
+                name="workspace_template_title_len",
+            ),
+            models.UniqueConstraint(
+                fields=["title"],
+                condition=Q(is_active=True),
+                name="workspace_template_active_title",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return self.title
+
+
+class SupportReply(models.Model):
+    """An answer to a support request, in the app or by email. Final: never edited."""
+
+    class Channel(models.TextChoices):
+        APP = "app", "In the app"
+        EMAIL = "email", "By email"
+
+    request = models.ForeignKey(SupportRequest, on_delete=models.CASCADE, related_name="replies")
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    channel = models.CharField(max_length=5, choices=Channel)
+    subject = models.CharField(max_length=150, blank=True)
+    body = models.TextField()
+    template = models.ForeignKey(
+        ReplyTemplate, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    email = models.ForeignKey(
+        EmailOutbox, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["created_at", "pk"]
+        constraints = [
+            models.CheckConstraint(
+                condition=LessThanOrEqual(Length("body"), 4000)
+                & GreaterThanOrEqual(Length("body"), 1),
+                name="workspace_reply_body_len",
+            ),
+            models.CheckConstraint(
+                condition=(Q(channel="app") & Q(subject=""))
+                | (Q(channel="email") & GreaterThanOrEqual(Length("subject"), 1)),
+                name="workspace_reply_subject_by_channel",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Reply {self.pk} ({self.channel})"
