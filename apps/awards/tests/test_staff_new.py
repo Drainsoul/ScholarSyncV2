@@ -104,7 +104,7 @@ def test_picker_lists_program_profiles(client, world: World, django_assert_max_n
         profile=FullProfileFactory.create(first_name="Ana", last_name="Cruz"),
     )
     stranger = ProfileFactory.create(first_name="Zed", last_name="Outsider")
-    with django_assert_max_num_queries(12):
+    with django_assert_max_num_queries(13):
         response = client.get(world.url())
     assert response.status_code == 200
     page = html.unescape(response.content.decode())

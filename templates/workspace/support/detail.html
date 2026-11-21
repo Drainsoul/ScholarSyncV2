@@ -1,0 +1,74 @@
+{% extends layout %}{% load ui partials %}
+{% block title %}Support request{% endblock %}
+{% partialdef picker %}{% if options %}
+      <form method="get" action="{{ detail_url }}#{{ kind }}" class="template-picker">
+        <input type="hidden" name="form" value="{{ kind }}">
+        <div class="field">
+          <label class="field__label" for="template-{{ kind }}">Template</label>
+          <select id="template-{{ kind }}" name="template" data-template-picker="{{ kind }}-form">
+            <option value="">No template</option>
+            {% for option in options %}<option value="{{ option.pk }}" data-subject="{{ option.subject }}" data-body="{{ option.body }}">{{ option.title }}</option>{% endfor %}
+          </select>
+          <p class="field__help" data-template-use>Replaces what you've typed</p>
+        </div>
+        <div class="btn-row" data-template-use><button type="submit" class="btn btn--ghost">Use template</button></div>
+      </form>{% endif %}{% endpartialdef %}
+{% partialdef reply_form %}{% with kind="reply" %}{% partial picker %}{% endwith %}
+      <form id="reply-form" method="post" action="{{ reply_url }}" {% if dialog %}hx-post="{{ reply_url }}" hx-target="#app-dialog-body" hx-swap="innerHTML" hx-disabled-elt="find button[type='submit']" {% endif %}class="stack" novalidate>
+        {% csrf_token %}
+        {% include "components/form_errors.html" with form=reply_form %}
+        {{ reply_form.template }}
+        {% for bound_field in reply_form.visible_fields %}{% field bound_field %}{% endfor %}
+        <div class="btn-row">
+          <button type="submit" class="btn btn--primary">{% icon "reply" %}Send reply</button>
+          {% if dialog %}<a class="btn btn--ghost" href="{{ detail_url }}" data-dialog-close>Cancel</a>{% endif %}
+        </div>
+      </form>{% endpartialdef %}
+{% partialdef email_form %}{% with kind="email" %}{% partial picker %}{% endwith %}
+      <form id="email-form" method="post" action="{{ email_url }}" {% if dialog %}hx-post="{{ email_url }}" hx-target="#app-dialog-body" hx-swap="innerHTML" hx-disabled-elt="find button[type='submit']" {% endif %}class="stack" novalidate>
+        {% csrf_token %}
+        {% include "components/form_errors.html" with form=email_form %}
+        {{ email_form.template }}
+        <div class="field"><p class="field__label">To</p><p>{{ row.sender.email }}</p></div>
+        {% for bound_field in email_form.visible_fields %}{% field bound_field %}{% endfor %}
+        <div class="btn-row">
+          <button type="submit" class="btn btn--primary">{% icon "mail" %}Send email</button>
+          {% if dialog %}<a class="btn btn--ghost" href="{{ detail_url }}" data-dialog-close>Cancel</a>{% endif %}
+        </div>
+      </form>{% endpartialdef %}
+{% block content %}
+  <div class="page-header">
+    <div><h1>Support request</h1><p class="page-header__meta"><a href="{{ inbox_url }}">Back to support requests</a></p></div>
+  </div>
+  <section class="card" aria-labelledby="message-title">
+    <h2 class="card__title" id="message-title">{{ row.sender.full_name|default:row.sender.email }}</h2>
+    <p class="text-sm text-muted">{{ row.sender.email }} · {{ row.get_topic_display }}{% if row.program %} · {{ row.program.name }}{% endif %} · <time datetime="{{ row.created_at|date:'c' }}">{{ row.created_at|date:"j M Y, g:i A" }}</time> · {% if row.status == "answered" %}{% status "success" row.get_status_display %}{% else %}{% status "info" row.get_status_display %}{% endif %}</p>
+    <p>{{ row.message|linebreaksbr }}</p>
+    {% if row.status == "answered" %}<p class="text-sm text-muted">{% if row.answered_by %}Answered by {{ row.answered_by.full_name|default:row.answered_by.email }}{% else %}Answered{% endif %} · <time datetime="{{ row.answered_at|date:'c' }}">{{ row.answered_at|date:"j M Y, g:i A" }}</time></p>
+    {% else %}<form method="post" action="{{ answer_url }}">{% csrf_token %}<button type="submit" class="btn btn--ghost">{% icon "check" %}Mark as answered</button></form>{% endif %}
+  </section>
+  <section class="card" aria-labelledby="replies-title">
+    <h2 class="card__title" id="replies-title">Replies</h2>
+    {% if replies %}
+    <ul class="list">{% for reply in replies %}
+      <li>
+        <p class="text-sm text-muted">{{ reply.author.full_name|default:reply.author.email }} · {{ reply.get_channel_display }} · <time datetime="{{ reply.created_at|date:'c' }}">{{ reply.created_at|date:"j M Y, g:i A" }}</time>{% if reply.email %} · {% if reply.email.status == "sent" %}{% status "success" "Sent" %}{% elif reply.email.status == "failed" %}{% status "danger" "Failed" %} <a href="{{ detail_url }}?form=email&amp;from={{ reply.pk }}#email">Write it again</a>{% else %}{% status "info" "Queued" %}{% endif %}{% endif %}</p>
+        {% if reply.subject %}<p><strong>{{ reply.subject }}</strong></p>{% endif %}
+        <p>{{ reply.body|linebreaksbr }}</p>
+      </li>{% endfor %}
+    </ul>
+    {% else %}
+    {% include "components/empty_state.html" with title="No replies yet." %}
+    {% endif %}
+  </section>
+  <section class="card" id="reply" aria-labelledby="reply-title">
+    <h2 class="card__title" id="reply-title">Reply in the app</h2>
+    {% partial reply_form %}
+  </section>
+  {% if can_email %}
+  <section class="card" id="email" aria-labelledby="email-title">
+    <h2 class="card__title" id="email-title">Compose email</h2>
+    {% partial email_form %}
+  </section>
+  {% endif %}
+{% endblock %}

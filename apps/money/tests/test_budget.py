@@ -162,7 +162,7 @@ def test_budget_edit_refuses_staff_and_negative(client: Any) -> None:
 def test_budget_query_count(client: Any, django_assert_max_num_queries: Any) -> None:
     program = _program_with_rows()
     client.force_login(staff_of(program))
-    with django_assert_max_num_queries(13):  # +1: reports count (M11c)
+    with django_assert_max_num_queries(14):  # +1: reports count (M11c), +1 support (rev 35)
         assert client.get(_budget_url(program) + "?year=2026").status_code == 200
 
 

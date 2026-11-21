@@ -18,6 +18,7 @@ from apps.programs.selectors import current_term, window_state
 from apps.reports.selectors import head_counts
 
 from .models import Task
+from .support import open_count as support_open_count
 from .tasks import open_tasks
 
 WAIT_DAYS = 7
@@ -162,6 +163,17 @@ def staff_dashboard(
                 "detail": f"Release {'it' if one else 'them'} on or after the distribution day",
                 "tone": "info",
                 "url": money_url,
+            }
+        )
+    support_waiting = support_open_count(program)
+    if support_waiting:
+        title = counted(support_waiting, "support request is", "support requests are")
+        attention.append(
+            {
+                "title": f"{title} waiting",
+                "detail": "Answer them in Support",
+                "tone": "info",
+                "url": reverse("workspace:support", kwargs=slug),
             }
         )
     if head:

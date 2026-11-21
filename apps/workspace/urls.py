@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import task_views, views
+from . import support_views, task_views, views
 
 app_name = "workspace"
 
@@ -29,5 +29,26 @@ urlpatterns = [
         "<slug:program>/tasks/<int:pk>/delete/",
         task_views.TaskDeleteView.as_view(),
         name="task-delete",
+    ),
+    path("<slug:program>/support/", support_views.StaffSupportView.as_view(), name="support"),
+    path(
+        "<slug:program>/support/<int:pk>/",
+        support_views.StaffDetailView.as_view(),
+        name="support-detail",
+    ),
+    path(
+        "<slug:program>/support/<int:pk>/reply/",
+        support_views.StaffReplyView.as_view(),
+        name="support-reply",
+    ),
+    path(
+        "<slug:program>/support/<int:pk>/email/",
+        support_views.StaffEmailView.as_view(),
+        name="support-email",
+    ),
+    path(
+        "<slug:program>/support/<int:pk>/answer/",
+        support_views.StaffAnswerView.as_view(),
+        name="support-answer",
     ),
 ]

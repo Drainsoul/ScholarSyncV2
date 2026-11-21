@@ -115,7 +115,7 @@ def test_office_inbox_tabs_and_escaped_message(client: Any, office: User) -> Non
     SupportRequestFactory.create(message="Done one", status=SupportRequest.Status.ANSWERED)
     html = client.get(INBOX).content.decode()
     assert "&lt;script&gt;alert(1)&lt;/script&gt;<br>line two" in html
-    assert f'href="mailto:{sender.email}"' in html
+    assert "mailto:" not in html  # rev 35: answered in the app
     assert "Done one" not in html
     assert "Done one" in client.get(INBOX + "?tab=answered").content.decode()
 

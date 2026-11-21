@@ -40,6 +40,7 @@ SCREENS: dict[str, list[str]] = {
         "scholars:detail",
         "/staff/tcu-ceaa/disbursements/",
         "/staff/tcu-ceaa/reports/",
+        "/staff/tcu-ceaa/support/",
         "reports:detail",
         "/staff/tcu-ceaa/tasks/",
     ],

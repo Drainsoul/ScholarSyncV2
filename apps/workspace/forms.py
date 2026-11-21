@@ -3,6 +3,7 @@ from datetime import date
 from django import forms
 from django.utils import timezone
 
+from apps.core.text import normalize_newlines
 from apps.programs.models import Program
 from apps.workspace.models import SupportRequest
 
@@ -63,3 +64,30 @@ class SupportForm(forms.Form):
         max_length=2000,
         widget=forms.Textarea(attrs={"rows": 6, "maxlength": 2000}),
     )
+
+
+class ReplyForm(forms.Form):
+    """An answer in the app. `template` is the id of the picked template, if any (hidden)."""
+
+    template = forms.IntegerField(required=False, widget=forms.HiddenInput)
+    body = forms.CharField(
+        label="Message",
+        max_length=4000,
+        widget=forms.Textarea(attrs={"rows": 8, "maxlength": 4000}),
+    )
+
+    def clean_body(self) -> str:
+        return normalize_newlines(self.cleaned_data["body"])
+
+
+class EmailReplyForm(ReplyForm):
+    """An answer by email: a one-line subject, then the message."""
+
+    subject = forms.CharField(label="Subject", max_length=150)
+    field_order = ["template", "subject", "body"]
+
+    def clean_subject(self) -> str:
+        subject: str = self.cleaned_data["subject"]
+        if "\r" in subject or "\n" in subject:
+            raise forms.ValidationError("Enter the subject on one line.")
+        return subject

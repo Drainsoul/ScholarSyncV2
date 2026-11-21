@@ -185,7 +185,7 @@ def test_list_query_budget(client, world: World) -> None:
     with CaptureQueriesContext(connection) as many:
         client.get(world.url())
     assert len(many) == len(few)
-    assert len(few) <= 14
+    assert len(few) <= 15
 
 
 def test_other_program_staff_403(client, world: World) -> None:

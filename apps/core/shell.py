@@ -95,6 +95,7 @@ def shell_context(
             queue = reverse("review:queue", kwargs={"program": program.slug})
             scholar_list = reverse("scholars:list", kwargs={"program": program.slug})
             money = reverse("money:overview", kwargs={"program": program.slug})
+            staff_inbox = reverse("workspace:support", kwargs={"program": program.slug})
             task_list = reverse("workspace:tasks", kwargs={"program": program.slug})
             report_list = reverse("reports:list", kwargs={"program": program.slug})
             path = request.path
@@ -134,6 +135,13 @@ def shell_context(
                     "current": path.startswith(report_list),
                     "count": staff_nav_count(program, head=head, office=user.is_super_admin),
                     "icon": "chart-column",
+                },
+                {
+                    "label": "Support",
+                    "url": staff_inbox,
+                    "current": path.startswith(staff_inbox),
+                    "count": open_count(program),
+                    "icon": "inbox",
                 },
                 {
                     "label": "Tasks",

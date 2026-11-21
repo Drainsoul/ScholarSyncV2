@@ -93,7 +93,7 @@ def test_new_page_query_budget(client: Any, django_assert_max_num_queries: Any) 
     for profile in profiles[:5]:
         ApplicationFactory.create(profile=profile, program=program, on_behalf=True)
     client.force_login(membership.user)
-    with django_assert_max_num_queries(13):  # +1: reports count (M11c)
+    with django_assert_max_num_queries(14):  # +1: reports count (M11c)
         response = client.get(_url())
     assert response.status_code == 200
     assert len(response.context["profile_rows"]) == 25
@@ -804,7 +804,7 @@ def test_find_query_budget(client: Any, django_assert_max_num_queries: Any) -> N
         _profile(program)
     _self_registered()
     client.force_login(membership.user)
-    with django_assert_max_num_queries(20):  # the page (13) + lock, count, match, audit
+    with django_assert_max_num_queries(21):  # the page (13) + lock, count, match, audit
         response = client.post(_find_url(), {"email": LOOKUP_EMAIL})
     assert response.status_code == 200
     assert response.context["found"] is not None
