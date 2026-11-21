@@ -108,6 +108,11 @@
   dialog: release rows link "Open release day", link names include the event title, and a title that only repeats
   its kind is hidden; dates in day URLs are real dates from 2000 to 2100 (`isodate`), anything else is a 404 (§4.5,
   §4.8, §12).
+- **Revision:** 35 (2026-11-21): support replies (M16). Staff, heads and the office answer a student's message in
+  the app or by an email written and sent from the app; the office keeps reply templates; program staff and heads
+  get a support inbox for their program; students read answers under "Replies" in Help and guides; who answered and
+  when is shown to staff, heads and the office only. Lifts the rule that support text is never emailed, for staff
+  replies only (§4.8, §5, §6, §9, §10, §12, §16).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -647,7 +652,55 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - Students only, at most 5 per student in any 24 hours ("You've sent 5 messages today. The office will reply by
     email; try again tomorrow.").
   - Messages go to the office inbox `/office/support/`; the office replies by email from its own mail client.
+    (Rev 35: replies are written in the app; see `SupportReply`.)
   - Audited as `support.sent` and `support.answered` (ids, topic, program id), never the message.
+  - (Rev 35) Who sees a request: the office sees every request; the staff and heads of a program see the requests
+    whose `program` is that program, including requests sent before rev 35 (no cutoff). A request with no program
+    is the office's alone. Moving a request to another program is a non-goal. The student form says so under the
+    Program field: "Messages about a program go to that program's staff and the scholarship office." The success
+    toast becomes "Message sent. You'll find the answer under Replies." and the daily-limit message "You've sent 5
+    messages today. Try again tomorrow."
+
+  - (Rev 35) "Mark as answered" stays, for a question answered some other way (a phone call, at the counter); it
+    adds no reply.
+- **`SupportReply`** (rev 35, M16): `request` FK SupportRequest (CASCADE, `related_name="replies"`), `author` FK User
+  (PROTECT), `channel` ∈ {app, email}, `subject` (email only, 1–150 characters, one line; blank for app), `body`
+  (1–4,000 characters), `template` FK ReplyTemplate (nullable, SET_NULL; the template it started from, for the
+  record), `email` FK EmailOutbox (nullable, SET_NULL; for its delivery status), `created_at`, `read_at` (nullable;
+  when the student first saw it).
+  - A request can have many replies, oldest first. The first reply on an open request marks it answered
+    (`answered_by` and `answered_at` from that reply) through the same path as "Mark as answered", so it also
+    records `support.answered` and the dashboard feeds keep showing answers; later replies leave those as they were.
+  - A double submit can't send twice: the service locks the request row and refuses a reply whose author, channel
+    and body match one saved in the last 60 seconds ("This reply was already sent.").
+  - An emailed reply that ends `failed` shows "Failed" with "Write it again", which opens the email form filled
+    from that reply's subject and body; sending it is a new reply. There is no resend route.
+  - "Compose email" is hidden, and the email route refuses ("This student's account is closed. Reply in the app
+    instead."), when the sender's account is inactive; an in-app reply is still allowed, for the record.
+  - Replies are final: no edit or delete. A wrong reply is corrected by another reply.
+  - **In the app:** saved, and the student gets a `support_replied` notification (no email).
+  - **By email:** saved, and an `EmailOutbox` row of kind `support_reply` goes to the sender's account email (§9),
+    plus the same `support_replied` notification. The student also reads an emailed reply in the app.
+  - Anyone who can see the request can reply: the office, and the program's staff and heads (§6). Replies can be
+    added to an answered request too.
+  - The student sees the body, "Sent by email" for an email, and the date. The author's name is shown only to staff,
+    heads and the office; the student sees "The scholarship office" when the author is a super admin, otherwise the
+    program's name.
+  - Audited as `support.replied` (request id, reply id, channel, template id, program id), never the text.
+- **`ReplyTemplate`** (rev 35, M16): `title` (1–80 characters, unique among active templates), `topic` (nullable:
+  any topic; else one of `SupportRequest.Topic`), `program` (nullable: every program; else one program), `subject`
+  (optional, up to 150 characters; the email subject to start from), `body` (1–4,000 characters), `is_active`,
+  `created_by`, `updated_by`, `created_at`, `updated_at`.
+  - Managed by the office only (`/office/support/templates/`): list, add, edit, deactivate and activate. No delete,
+    so an old reply's template link stays meaningful; inactive templates are hidden from the picker. Activating a
+    template whose title an active one already uses is refused ("An active template already has this title.").
+  - One set serves both channels: the same template fills the in-app reply and the email.
+  - The picker on a request lists active templates whose topic is the request's topic or any, and whose program is
+    the request's program or every program; topic-specific first, then by title.
+  - Placeholders, filled when the template is picked: `{first_name}` (the first word of the sender's
+    `full_name`, or "there" when blank; never the email address) and `{program}` (the request's program name, or "the scholarship office"). Any other text in braces is
+    left as written. The filled text is only a start: staff edit it freely before sending.
+  - Audited as `support_template.created`, `.updated`, `.deactivated`, `.activated` (ids, changed field names).
 - **`EmailOutbox`:** `to`, `kind`, `context` (JSON, whitelisted strings only; see §9), `status` ∈ {queued, sent, failed}, `attempts`,
   `last_error`, `provider_message_id`, `sent_at`.
 - **`AuditEvent`:** `actor`, `action` (dotted, e.g. `application.approved`), `program` (nullable), `target_type`,
@@ -661,15 +714,16 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 | Accounts | `/accounts/…` (allauth: signup, login, logout POST, email confirm, password reset, Google), `/accounts/claim/<token>/`, `/accounts/theme/` (POST, rev 29: sets the theme cookie) | anyone |
 | Student | `/me/` (dashboard; rev 33: `/me/calendar/<YYYY-MM-DD>/`, the day dialog), `/me/profile/` (+ `personal/`, `family/`, `family/<id>/` + `…/delete/`, `education/`, `education/<id>/` + `…/delete/`, `photo/`) | student (own records only) |
 | Student | `/me/match/`, `/me/applications/`, `/me/applications/new/<slug>/` (GET: confirm page; POST: creates the draft), `/me/applications/<id>/`, `/me/applications/<id>/documents/<requirement>/` (POST), `…/submit/` (POST), `…/withdraw/` | student (own records only) |
-| Student | `/me/scholarships/` (awards, terms, renewals, payouts and the next distribution), `/me/scholarships/<award>/renew/` (POST), `/me/notifications/` (+ `<id>/`, which marks it read and redirects; `read/` POST), `/me/support/` (M11) | student |
+| Student | `/me/scholarships/` (awards, terms, renewals, payouts and the next distribution), `/me/scholarships/<award>/renew/` (POST), `/me/notifications/` (+ `<id>/`, which marks it read and redirects; `read/` POST), `/me/support/` (M11), `/me/support/replies/` (rev 35) | student |
 | Staff | `/staff/<slug>/` (dashboard; rev 33: `calendar/<YYYY-MM-DD>/`, the day dialog) | program staff/head |
 | Staff | `students/` (unclaimed profiles created for this program), `students/new/`, `students/<id>/invite/` | program staff/head |
 | Staff | `applications/` (queue), `applications/<id>/` (review), `applications/<id>/start/`, `applications/<id>/documents/<document>/approve/`, `applications/<id>/documents/<document>/decline/`, `applications/<id>/documents/<document>/preview/` (rev 27, PNG/JPEG/PDF), `applications/<id>/decide/` (approve, return or reject), `applications/bulk/` (start review, approve; POST) | program staff/head |
 | Staff | `applications/new/` (in progress + profile picker; POST starts; rev 33: `applications/new/find/` POST, the email lookup), `applications/behalf/<id>/` (filing page), `…/academics/`, `…/documents/<requirement>/`, `…/submit/`, `…/withdraw/` (POST) | program staff/head |
 | Staff | `scholars/`, `scholars/<award>/`, `…/edit/`, `…/status/`, `…/terms/new/`, `…/terms/<term>/`, `…/terms/<term>/merit/` (POST); `scholars/new/`, `scholars/import/`, `scholars/import/template/`, `scholars/export/` (M9b) | program staff/head |
 | Staff | `schedules/`, `schedules/new/`, `schedules/<id>/`, `schedules/<id>/publish/` (POST); `disbursements/`, `disbursements/<schedule>/`, `…/generate/` (POST), `…/bulk/` (POST), `…/<id>/reject/`, `…/<id>/revert/` (POST); `budget/`, `budget/edit/` | program staff/head (see §6) |
+| Staff | `support/` (rev 35: Open and Answered tabs for this program), `support/<id>/` (the request, its replies and the reply forms), `support/<id>/reply/` (POST, in the app), `support/<id>/email/` (POST), `support/<id>/answer/` (POST) | program staff/head |
 | Staff | `tasks/` (+ `new/` rev 27, `<id>/`, `<id>/done/` POST, `<id>/delete/` POST; owner only, M11), `reports/` (M11c: + `new/`, `<id>/`, `<id>/resubmit/` POST; rev 27: `<id>/files/<file>/preview/`; rev 33, head only: `<id>/approve/`, `<id>/return/`, `<id>/send/` POST), `notifications/` (M11c: + `<id>/`, `read/` POST), `audit/` (M11c), `settings/` (rules and window; `tiers/`, `tiers/new/`, `tiers/<code>/`; `documents/`, `documents/<id>/`, `documents/<id>/active/` POST; M11b) | staff; `settings/` and `audit/` are head (and office) only |
-| Office | `/office/` (dashboard; rev 33: `calendar/<YYYY-MM-DD>/`, the day dialog); M11b: `programs/` (+ `new/`, `<id>/`, `<id>/active/` POST), `staff/` (+ `new/`, `<id>/`, `<id>/active/`, `<id>/welcome/`, `<id>/memberships/` POST), `memberships/<id>/` POST, `schools/` (+ `new/`, `<id>/`); `terms/` (M9: list, `add/` POST, `<term>/current/`), `support/` (+ `<id>/answer/` POST; M11); M11c: `scholars/` (+ `export/`), `reports/` (+ `<id>/`, `<id>/decide/` POST), `analytics/` (+ `export/`), `audit/`, `notifications/` (+ `<id>/`, `read/` POST); rev 27: `tasks/` (+ `new/`, `<id>/`, `<id>/done/` POST, `<id>/delete/` POST; owner only), `reports/<id>/files/<file>/preview/` | super admin |
+| Office | `/office/` (dashboard; rev 33: `calendar/<YYYY-MM-DD>/`, the day dialog); M11b: `programs/` (+ `new/`, `<id>/`, `<id>/active/` POST), `staff/` (+ `new/`, `<id>/`, `<id>/active/`, `<id>/welcome/`, `<id>/memberships/` POST), `memberships/<id>/` POST, `schools/` (+ `new/`, `<id>/`); `terms/` (M9: list, `add/` POST, `<term>/current/`), `support/` (+ `<id>/answer/` POST; M11; rev 35: `<id>/`, `<id>/reply/` POST, `<id>/email/` POST, `templates/` (+ `new/`, `<id>/`, `<id>/active/` POST)); M11c: `scholars/` (+ `export/`), `reports/` (+ `<id>/`, `<id>/decide/` POST), `analytics/` (+ `export/`), `audit/`, `notifications/` (+ `<id>/`, `read/` POST); rev 27: `tasks/` (+ `new/`, `<id>/`, `<id>/done/` POST, `<id>/delete/` POST; owner only), `reports/<id>/files/<file>/preview/` | super admin |
 | Files | `POST /files/uploads/` (intent), `POST /files/uploads/<id>/confirm/`, `GET /files/<id>/` (authorize → 302) | owner or authorized staff |
 
 - **The staff queue** (`applications/`, M8):
@@ -741,6 +795,9 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   staff member's report goes to a head of the program first, who approves or returns it and sends it to the office). Analytics,
   the program summary and cross-program scholars are office-only. The audit log is office (every event) and head
   (only the program's events; events with no program are office-only); staff get 403 and see no link.
+- **Rev 35 (support):** the office answers every support request; program staff and heads answer their own
+  program's (another program's request, or one with no program, is a 404). Head and staff have the same powers
+  here. Reply templates are office-only: staff and heads get 403 and see no link, and use templates in the picker.
 - **Permission-matrix test:** `tests/test_permission_matrix.py` enumerates `get_resolver()` and checks each URL name
   against an expected-access table for anonymous, student, other-student, staff, other-program staff, head and super
   admin. A new URL fails the test until it's added to the table.
@@ -899,8 +956,10 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   | `application_decided` (not approved) | "Your {program} application was not approved" | "Open it to see the reason." | the application |
   | `allowance_approved` | "Your {program} allowance is ready to claim" | "{amount} for {term}. Claim it on {claim date} at {location}." | `/me/scholarships/` |
   | `allowance_released` | "Your {program} allowance was released" | "{amount} for {term}." | `/me/scholarships/` |
+  | `support_replied` (rev 35; never emailed itself) | "The scholarship office answered your message" or "{program} answered your message" | "" | `/me/support/replies/` |
 
-  Support messages are never emailed (free text). Notifications are a record of what was said: reverting a payout
+  A student's support message is never emailed (free text). Rev 35: a staff reply sent "by email" is, on purpose
+  (`support_reply` below); an in-app reply is only a notification. Notifications are a record of what was said: reverting a payout
   leaves its "ready to claim" notice in place, and the scholarship page shows the payout's current status (rev 23).
 - **Staff and office notifications (M11c):** in the app only, never emailed. Centres at `/staff/<slug>/notifications/`
   (all of the user's notifications; the program only picks the layout) and `/office/notifications/`; the bell shows on
@@ -937,6 +996,12 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
     `amount`, `scholarships_url`). None on generate, reject or revert.
   - M11b adds `staff_welcome` ("Your ScholarSync account is ready"; `full_name`, `role_label`, `set_password_url`),
     sent when the office creates an account and again on request until the first sign-in.
+  - Rev 35 adds `support_reply`: the subject is the staff-written subject; the body is the staff-written text
+    (autoescaped, line breaks kept) under "Hi {full_name}," with the footer "This address doesn't take replies. To
+    ask something else, sign in and open Help and guides." and a link to `/me/support/replies/`. Whitelist:
+    `full_name`, `subject`, `body`, `replies_url`. It goes to the sender's account email (verified), from
+    `DEFAULT_FROM_EMAIL`, with no Reply-To. Like every outbox row, the context (and so the text) is emptied once the
+    row is sent or gives up; the text stays in `SupportReply.body`. The staff member's name is not in the email.
   - The staff reason is never in the email (free text; the student reads it signed in). A profile with no user gets no
     email.
   - There is no separate "document declined" email: the student can't re-upload until the application is returned, so
@@ -1043,6 +1108,10 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - a private bucket;
   - a retention period (open question);
   - "download my data" and account-deletion requests, handled by the office in v2.0.
+- **Staff-written email (rev 35):** a support reply by email is the only email whose body is free text. It goes
+  only to the account email of the student who asked, never to a typed-in address; the subject is one line (the
+  form refuses newlines, and Django refuses header newlines anyway); the body is autoescaped in the HTML part and
+  its links are not made clickable. Reply text is never logged, never in audit `data` and never in a notification.
 
 ## 11. Running and hosting
 Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, which is the detail.
@@ -1257,6 +1326,29 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
     budget used ≥ 75 %, and open support requests; recent activity from audit events in `FEED_ACTIONS` with a
     sentence, where a student actor reads "A student"; "Download report" downloads the program summary for the
     current school year as XLSX (M11c).
+- **Support (rev 35, M16):**
+  - **Inboxes** (`/office/support/`, `/staff/<slug>/support/`): tabs Open (count) and Answered; 25 a page. Each card
+    shows the sender, the account email with the copy button (the `mailto:` link goes), topic, program, date and
+    message, then "Reply", "Compose email" and, while open, "Mark as answered". Answered cards add "Answered by
+    {name} · {date}" and the number of replies. The staff nav gets "Support" with the program's open count, after
+    Reports; the staff dashboard's "Needs attention" gets "{n} support request(s) waiting".
+  - **The request page** (`…/support/<id>/`): the message, then every reply oldest first ("{author} · In the app" or
+    "By email" · date; an email also shows Queued, Sent or Failed), then the two forms. "Reply" and "Compose email"
+    on a card open the request page at the matching form (`#reply`, `#email`); with JavaScript they open in the app
+    dialog instead, and the page works without it.
+  - **The forms:** a template picker, then for email "To" (read-only: the sender's account email) and "Subject"
+    (prefilled "Re: your message about {topic}", or the template's subject), then "Message". Picking a template
+    fills the fields: with JavaScript at once (text already typed is replaced only after a confirm); without it,
+    a "Use template" button reloads the form filled, always replacing the message, and says so in its hint
+    ("Replaces what you've typed"). Buttons "Send reply" and "Send email"; toasts
+    "Reply sent." and "Email queued to {email}."
+  - **Templates** (`/office/support/templates/`): a table (title, topic, program, status) with Add, Edit and
+    Activate/Deactivate; the office inbox header links to it ("Reply templates").
+  - **Student:** `/me/support/` gets tabs "Contact the office" and "Replies" (unread count); under "Your messages"
+    each message shows how many replies it has, with a link. `/me/support/replies/` lists every reply newest first,
+    each under its question (topic, program, the question's first 200 characters), with "From {The scholarship
+    office or program}", "Sent by email" when emailed, and the date. Unread replies are marked "New"; opening the
+    page marks them read. 25 a page. The student nav's "Help and guides" shows the unread count.
 - **Analytics** (`/office/analytics/`, M11c): filters school year (default the current term's) and program; new
   applications only (`kind=new`, ever submitted, term in the school year). Figures: Applications, Approved, Success
   rate = approved ÷ (approved + rejected) (whole percent), Median days to approve (`decided_at −
@@ -1516,6 +1608,13 @@ starts, and ends with every acceptance item checked.
 - [ ] On-behalf filing for a self-registered student found by account email.
 - [ ] Seeds: LANI tiers and amounts from the TCU LANI page; CEAA's renewal rule refuses failing grades.
 - [ ] Extend the demo loader and the kit for this milestone's screens.
+
+**M16: Support replies (rev 35)**
+- [ ] `SupportReply` and `ReplyTemplate`; replies in the app and by email (`support_reply`); the `support_replied`
+  notification.
+- [ ] The staff and head support inbox and request page; the office request page and reply templates.
+- [ ] The student Replies tab and unread counts.
+- [ ] Permission matrix; extend the demo loader (templates and an answered request) and the kit.
 
 **M13: Security follow-ups**
 - The ASVS gaps and WCAG 2.2.1 left by M12
