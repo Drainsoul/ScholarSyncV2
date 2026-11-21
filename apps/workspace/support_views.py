@@ -300,6 +300,8 @@ class _Detail(SupportScope, View):
             "email_url": self.support_url("email", pk=row.pk),
             "answer_url": self.support_url("answer", pk=row.pk),
             "dialog": dialog,
+            # Only the office keeps templates, so only it gets the link to add one.
+            "templates_url": reverse("support:templates") if self.scope_program is None else "",
         }
         name = self.dialog_template if dialog else self.template_name
         response = render(request, name, context, status=status)

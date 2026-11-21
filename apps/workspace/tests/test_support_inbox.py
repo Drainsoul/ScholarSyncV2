@@ -246,3 +246,20 @@ def test_email_to_a_closed_account_shows_why(client: Any, office: User) -> None:
         in response.content.decode()
     )
     assert not EmailOutbox.objects.exists()
+
+
+def test_picker_says_when_no_template_fits(client: Any, office: User) -> None:
+    row = _ask(topic="account")
+    ReplyTemplateFactory.create(topic="allowance")
+    html = client.get(reverse("support:office-detail", args=[row.pk])).content.decode()
+    assert "No reply templates fit this topic yet." in html
+    assert f'href="{reverse("support:templates")}"' in html
+
+
+def test_staff_see_the_note_without_the_office_link(
+    client: Any, staff: User, program: Program
+) -> None:
+    row = _ask(program=program, topic="account")
+    html = client.get(_staff_url("support-detail", program, pk=row.pk)).content.decode()
+    assert "No reply templates fit this topic yet." in html
+    assert reverse("support:templates") not in html

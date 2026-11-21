@@ -12,7 +12,8 @@
           <p class="field__help" data-template-use>Replaces what you've typed</p>
         </div>
         <div class="btn-row" data-template-use><button type="submit" class="btn btn--ghost">Use template</button></div>
-      </form>{% endif %}{% endpartialdef %}
+      </form>{% else %}
+      <p class="text-sm text-muted">No reply templates fit this topic yet.{% if templates_url %} <a href="{{ templates_url }}">Add one in Reply templates</a>{% endif %}</p>{% endif %}{% endpartialdef %}
 {% partialdef reply_form %}{% with kind="reply" %}{% partial picker %}{% endwith %}
       <form id="reply-form" method="post" action="{{ reply_url }}" {% if dialog %}hx-post="{{ reply_url }}" hx-target="#app-dialog-body" hx-swap="innerHTML" hx-disabled-elt="find button[type='submit']" {% endif %}class="stack" novalidate>
         {% csrf_token %}
