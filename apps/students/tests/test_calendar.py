@@ -11,10 +11,11 @@ from apps.accounts.models import User
 from apps.applications.tests.factories import ApplicationFactory
 from apps.awards.models import Award
 from apps.awards.tests.factories import AwardFactory, ScholarTermFactory
+from apps.core.calendar import events_on
 from apps.matching.selectors import match_page
 from apps.money.tests.factories import ScheduleFactory
 from apps.programs.tests.factories import AcademicTermFactory, ProgramFactory
-from apps.students.calendar import MonthCalendar, parse_month, student_calendar
+from apps.students.calendar import MonthCalendar, parse_month, student_calendar, student_events
 from apps.students.tests.factories import (
     EducationRecordFactory,
     FullProfileFactory,
@@ -27,6 +28,8 @@ TZ = timezone.get_default_timezone()
 NOW = datetime(2026, 11, 20, 9, 0, tzinfo=TZ)
 TODAY = NOW.date()
 NOVEMBER = date(2026, 11, 1)
+QUERIES_DAY_PAGE = 10  # the shell, the match page and the day's events
+QUERIES_DAY_DIALOG = 9  # no shell
 
 
 @pytest.fixture(autouse=True)
@@ -200,3 +203,84 @@ def test_month_step_returns_only_the_calendar(client: Any, vite_build: Any) -> N
     assert "December 2026" in html
     assert "sidebar" not in html and "Coming up" not in html
     assert "HX-Target" in response["Vary"]
+
+
+# The day dialog (spec §12 rev 33).
+
+
+def test_day_page_lists_the_day_in_full(client: Any, vite_build: Any) -> None:
+    award, term = _scholar("TCU CEAA")
+    user = award.profile.user
+    ScheduleFactory.create(
+        program=award.program,
+        term=term,
+        distribution_date=date(2026, 12, 2),  # outside November, still in its grid
+        claim_location="TCU Gym, Building A",
+    )
+    client.force_login(user)
+    url = reverse("students:calendar-day", kwargs={"day": date(2026, 12, 2)})
+    assert url == "/me/calendar/2026-12-02/"
+    response = client.get(url)
+    html = response.content.decode()
+    assert response.status_code == 200
+    assert "<h1>Wednesday, 2 December 2026</h1>" in html and 'class="sidebar' in html
+    assert "TCU CEAA allowance release" in html and "TCU Gym, Building A" in html
+    assert "Allowance release" in html  # the kind, from the key
+    assert "Add task for this day" not in html
+    assert 'href="/me/?month=2026-12"' in html
+    assert "HX-Request" in response["Vary"]
+
+
+def test_day_dialog_is_only_the_dialog_body(client: Any, vite_build: Any) -> None:
+    _signed_in(client)
+    response = client.get(
+        reverse("students:calendar-day", kwargs={"day": "2026-11-21"}),
+        headers={"HX-Request": "true", "HX-Target": "app-dialog-body"},
+    )
+    html = response.content.decode()
+    assert response.status_code == 200
+    assert "<html" not in html and "sidebar" not in html
+    assert 'id="app-dialog-title">Saturday, 21 November 2026</h2>' in html
+    assert "Nothing on this day." in html
+
+
+def test_day_page_agrees_with_the_grid() -> None:
+    award, term = _scholar("TCU CEAA")
+    user = award.profile.user
+    assert user is not None
+    day = date(2026, 12, 2)
+    ScheduleFactory.create(program=award.program, term=term, distribution_date=day)
+    page = match_page(user, today=TODAY)
+    [cell] = [c for week in _calendar(user).weeks for c in week if c.day == day]
+    assert cell.events and cell.events == events_on(day, student_events(user, page, day, day))
+    assert cell.url == "/me/calendar/2026-12-02/"
+
+
+def test_home_cells_open_their_day(client: Any, vite_build: Any) -> None:
+    _signed_in(client)
+    html = client.get(reverse("students:home")).content.decode()
+    assert 'href="/me/calendar/2026-11-20/"' in html
+    assert 'hx-get="/me/calendar/2026-11-20/" hx-target="#app-dialog-body"' in html
+    assert 'aria-label="20 November 2026, no items"' in html
+
+
+@pytest.mark.parametrize("value", ["2026-02-30", "1999-12-31", "2026-1-01"])
+def test_day_page_bad_date_is_404(client: Any, value: str) -> None:
+    _signed_in(client)
+    assert client.get(f"/me/calendar/{value}/").status_code == 404
+
+
+def test_day_page_query_budget(
+    client: Any, vite_build: Any, django_assert_max_num_queries: Any
+) -> None:
+    award, term = _scholar("TCU CEAA")
+    for day in range(1, 6):
+        ScheduleFactory.create(
+            program=award.program, term=term, distribution_date=date(2026, 11, 21 + day % 2)
+        )
+    client.force_login(award.profile.user)
+    url = reverse("students:calendar-day", kwargs={"day": "2026-11-21"})
+    with django_assert_max_num_queries(QUERIES_DAY_PAGE):
+        assert client.get(url).status_code == 200
+    with django_assert_max_num_queries(QUERIES_DAY_DIALOG):
+        assert client.get(url, headers={"HX-Request": "true"}).status_code == 200

@@ -9,10 +9,11 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.accounts.tests.factories import UserFactory
+from apps.core.calendar import events_on
 from apps.core.models import AuditEvent
 from apps.money.tests.factories import ScheduleFactory
 from apps.programs.tests.factories import MembershipFactory, ProgramFactory
-from apps.workspace.calendar import office_calendar
+from apps.workspace.calendar import office_calendar, office_events
 from apps.workspace.models import Task
 from apps.workspace.tests.factories import TaskFactory
 
@@ -22,6 +23,8 @@ TZ = timezone.get_default_timezone()
 NOW = datetime(2026, 11, 17, 12, 0, tzinfo=TZ)
 TODAY = NOW.date()
 NOVEMBER = date(2026, 11, 1)
+QUERIES_DAY_PAGE = 9  # session, user, the shell and the day's events
+QUERIES_DAY_DIALOG = 5  # no shell
 
 
 @pytest.fixture(autouse=True)
@@ -111,7 +114,9 @@ def test_overview_calendar_swap_and_overdue_row(client: Any) -> None:
     html = client.get(url).content.decode()
     assert "1 of your tasks is overdue" in html
     new = reverse("office:task-new")
-    assert f'href="{new}?due=2026-11-17&amp;from=dashboard"' in html
+    day = reverse("office:calendar-day", kwargs={"day": TODAY})
+    assert f'href="{day}" hx-get="{day}" hx-target="#app-dialog-body"' in html
+    assert 'aria-label="3 November 2026, 1 item"' in html and "?due=" not in html
     swap = client.get(
         url + "?month=2026-12", headers={"HX-Request": "true", "HX-Target": "office-calendar"}
     )
@@ -120,3 +125,66 @@ def test_overview_calendar_swap_and_overdue_row(client: Any) -> None:
     assert "HX-Target" in swap["Vary"]
     cancel = client.post(new + "?from=dashboard", {"title": "Call TCU"})
     assert cancel["Location"] == url
+
+
+# The day dialog (spec §12 rev 33).
+
+
+def test_office_day_page_names_each_program(client: Any, vite_build: Any) -> None:
+    office = _office()
+    day = date(2026, 11, 21)
+    lani = ProgramFactory.create(name="LANI", applications_close_on=day)
+    ceaa = ProgramFactory.create(name="TCU CEAA")
+    ScheduleFactory.create(program=ceaa, distribution_date=day, is_published=False)
+    task = TaskFactory.create(owner=office, program=None, title="Sign the memo", due_on=day)
+    TaskFactory.create(owner=office, program=lani, title="A program task", due_on=day)
+    client.force_login(office)
+    url = reverse("office:calendar-day", kwargs={"day": day})
+    assert url == "/office/calendar/2026-11-21/"
+    html = client.get(url).content.decode()
+    assert "<h1>Saturday, 21 November 2026</h1>" in html and 'class="sidebar' in html
+    for text in ("LANI applications close", "TCU CEAA allowance release (draft)", "Sign the memo"):
+        assert text in html
+    assert "A program task" not in html
+    assert f'href="{reverse("office:task-edit", kwargs={"pk": task.pk})}"' in html
+    new = reverse("office:task-new")
+    assert f'href="{new}?due=2026-11-21&amp;from=dashboard"' in html
+    assert 'href="/office/?month=2026-11"' in html
+    dialog = client.get(url, headers={"HX-Request": "true", "HX-Target": "app-dialog-body"})
+    body = dialog.content.decode()
+    assert "<html" not in body and 'id="app-dialog-title">Saturday, 21 November 2026</h2>' in body
+    assert "Add task for this day" in body and "HX-Request" in dialog["Vary"]
+
+
+def test_office_day_page_agrees_with_the_grid() -> None:
+    office = _office()
+    day = date(2026, 12, 6)  # the last cell of the November grid
+    ProgramFactory.create(name="LANI", applications_open_on=day)
+    TaskFactory.create(owner=office, program=None, title="Memo", due_on=day)
+    shown = office_calendar(office, today=TODAY, month=NOVEMBER)
+    cell = shown.weeks[-1][-1]
+    assert cell.day == day and len(cell.events) == 2
+    assert cell.events == events_on(day, office_events(office, day, day))
+    assert cell.url == "/office/calendar/2026-12-06/"
+
+
+@pytest.mark.parametrize("value", ["2026-02-29", "1999-01-01", "2026-11-1"])
+def test_office_day_page_bad_date_is_404(client: Any, value: str) -> None:
+    client.force_login(_office())
+    assert client.get(f"/office/calendar/{value}/").status_code == 404
+
+
+def test_office_day_page_query_budget(
+    client: Any, vite_build: Any, django_assert_max_num_queries: Any
+) -> None:
+    office = _office()
+    for _ in range(5):
+        program = ProgramFactory.create(applications_open_on=TODAY)
+        ScheduleFactory.create(program=program, distribution_date=TODAY)
+    TaskFactory.create_batch(5, owner=office, program=None, due_on=TODAY)
+    client.force_login(office)
+    url = reverse("office:calendar-day", kwargs={"day": TODAY})
+    with django_assert_max_num_queries(QUERIES_DAY_PAGE):
+        assert client.get(url).status_code == 200
+    with django_assert_max_num_queries(QUERIES_DAY_DIALOG):
+        assert client.get(url, headers={"HX-Request": "true"}).status_code == 200

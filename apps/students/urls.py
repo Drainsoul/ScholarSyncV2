@@ -6,6 +6,7 @@ app_name = "students"
 
 urlpatterns = [
     path("", views.HomeView.as_view(), name="home"),
+    path("calendar/<isodate:day>/", views.CalendarDayView.as_view(), name="calendar-day"),
     path("profile/", views.ProfileView.as_view(), name="profile"),
     path("profile/personal/", views.PersonalView.as_view(), name="profile-personal"),
     path("profile/photo/", views.PhotoView.as_view(), name="profile-photo"),

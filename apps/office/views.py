@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Any
 
 from django.contrib import messages
@@ -15,6 +16,7 @@ from apps.accounts.models import User
 from apps.awards.selectors import rollover_preview
 from apps.awards.services import start_term
 from apps.core.calendar import WEEKDAYS, parse_month
+from apps.core.calendar_views import day_response
 from apps.core.permissions import SuperAdminRequiredMixin
 from apps.core.shell import shell_context
 from apps.core.text import counted
@@ -23,7 +25,7 @@ from apps.office.dashboard import office_dashboard
 from apps.programs.models import AcademicTerm
 from apps.programs.selectors import current_term
 from apps.programs.services import add_school_year
-from apps.workspace.calendar import office_calendar
+from apps.workspace.calendar import office_calendar, office_events
 
 
 def _actor(request: HttpRequest) -> User:
@@ -62,7 +64,6 @@ def _calendar_context(request: HttpRequest) -> dict[str, Any]:
         "calendar_id": CALENDAR_ID,
         "weekdays": WEEKDAYS,
         "legend": CALENDAR_LEGEND,
-        "add_task_url": reverse("office:task-new"),
     }
 
 
@@ -97,6 +98,22 @@ class HomeView(SuperAdminRequiredMixin, TemplateView):
                 term.school_year_start if (term := current_term()) else None
             ),
         }
+
+
+class CalendarDayView(SuperAdminRequiredMixin, View):
+    """One day of the overview calendar: the day dialog, or its page without JavaScript (rev 33)."""
+
+    def get(self, request: HttpRequest, day: date) -> HttpResponse:
+        return day_response(
+            request,
+            day=day,
+            events=office_events(_actor(request), day, day),
+            legend=CALENDAR_LEGEND,
+            layout="layouts/office.html",
+            shell_context=lambda: shell_context(request, area="office"),
+            back_url=f"{reverse('office:home')}?month={day:%Y-%m}",
+            add_task_url=reverse("office:task-new"),
+        )
 
 
 class TermsView(SuperAdminRequiredMixin, TemplateView):

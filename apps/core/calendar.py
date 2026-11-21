@@ -1,13 +1,16 @@
 """A month calendar grid shared by the student home and the staff dashboard (spec §12 rev 26/27).
 
 Each screen picks its own events; this module lays them on a Monday-first month and handles the
-`?month=YYYY-MM` navigation."""
+`?month=YYYY-MM` navigation. A day of the grid opens the day dialog (rev 33), which takes the same
+events through `events_on`, so the two never disagree."""
 
 import calendar
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Literal
+
+from apps.core.text import counted
 
 Kind = Literal["release", "opens", "closes", "task"]
 
@@ -37,6 +40,14 @@ class CalendarDay:
     in_month: bool
     is_today: bool
     events: tuple[CalendarEvent, ...]
+    url: str = ""  # the day dialog's page, or none
+
+    @property
+    def label(self) -> str:
+        """The cell's accessible name: "21 November 2026, 2 items"."""
+        count = len(self.events)
+        items = counted(count, "item", "items") if count else "no items"
+        return f"{self.day.day} {self.day:%B %Y}, {items}"
 
 
 @dataclass(frozen=True)
@@ -79,14 +90,25 @@ def grid_range(month: date) -> tuple[date, date]:
     return weeks[0][0], weeks[-1][-1]
 
 
+def _by_title(events: Iterable[CalendarEvent]) -> tuple[CalendarEvent, ...]:
+    return tuple(sorted(events, key=lambda e: e.title))
+
+
+def events_on(day: date, events: Iterable[CalendarEvent]) -> tuple[CalendarEvent, ...]:
+    """One day's events, in the grid cell's order (the day dialog)."""
+    return _by_title(event for event in events if event.day == day)
+
+
 def month_calendar(
     month: date,
     *,
     today: date,
     events: Iterable[CalendarEvent],
     upcoming: list[CalendarEvent] | None = None,
+    day_url: Callable[[date], str] | None = None,
 ) -> MonthCalendar:
-    """Lay `events` on the month's grid; events outside it are dropped. A day's events by title."""
+    """Lay `events` on the month's grid; events outside it are dropped. A day's events by title;
+    `day_url` links each cell to its day dialog."""
     weeks_raw = calendar.Calendar(firstweekday=calendar.MONDAY).monthdatescalendar(
         month.year, month.month
     )
@@ -101,7 +123,8 @@ def month_calendar(
                 day,
                 day.month == month.month,
                 day == today,
-                tuple(sorted(by_day.get(day, []), key=lambda e: e.title)),
+                _by_title(by_day.get(day, [])),
+                day_url(day) if day_url else "",
             )
             for day in week
         ]

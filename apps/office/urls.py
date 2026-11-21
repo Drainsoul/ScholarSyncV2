@@ -10,6 +10,7 @@ app_name = "office"
 
 urlpatterns = [
     path("", views.HomeView.as_view(), name="home"),
+    path("calendar/<isodate:day>/", views.CalendarDayView.as_view(), name="calendar-day"),
     path("programs/", program_views.ProgramListView.as_view(), name="programs"),
     path("programs/new/", program_views.ProgramNewView.as_view(), name="program-new"),
     path("programs/<int:pk>/", program_views.ProgramEditView.as_view(), name="program-edit"),

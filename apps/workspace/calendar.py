@@ -34,7 +34,7 @@ def _task_events(
 def _program_events(
     programs: Iterable[Program], start: date, end: date, *, named: bool
 ) -> list[CalendarEvent]:
-    """Distribution days in the grid and the application windows. One query."""
+    """Distribution days and application window dates from `start` to `end`. One query."""
     by_id = {program.pk: program for program in programs}
 
     def prefix(program: Program) -> str:
@@ -67,33 +67,52 @@ def _program_events(
                     program.applications_close_on, "closes", prefix(program) + closes, "Last day"
                 )
             )
-    return events
+    return [event for event in events if start <= event.day <= end]
+
+
+def staff_events(program: Program, user: User, start: date, end: date) -> list[CalendarEvent]:
+    """The staff member's events from `start` to `end` (the grid, or one day). Two queries."""
+
+    def edit_url(pk: int) -> str:
+        return reverse("workspace:task-edit", kwargs={"program": program.slug, "pk": pk})
+
+    return [
+        *_task_events(user, program, start, end, edit_url),
+        *_program_events([program], start, end, named=False),
+    ]
 
 
 def staff_calendar(program: Program, user: User, *, today: date, month: date) -> MonthCalendar:
     """One month, Monday first. Two queries: tasks and distribution days in the grid."""
     start, end = grid_range(month)
 
-    def edit_url(pk: int) -> str:
-        return reverse("workspace:task-edit", kwargs={"program": program.slug, "pk": pk})
+    def day_url(day: date) -> str:
+        return reverse("workspace:calendar-day", kwargs={"program": program.slug, "day": day})
 
-    events = [
-        *_task_events(user, program, start, end, edit_url),
-        *_program_events([program], start, end, named=False),
+    events = staff_events(program, user, start, end)
+    return month_calendar(month, today=today, events=events, day_url=day_url)
+
+
+def office_events(user: User, start: date, end: date) -> list[CalendarEvent]:
+    """The office user's events from `start` to `end` (the grid, or one day). Three queries:
+    tasks, active programs, distribution days."""
+
+    def edit_url(pk: int) -> str:
+        return reverse("office:task-edit", kwargs={"pk": pk})
+
+    programs = Program.objects.filter(is_active=True).order_by("name")
+    return [
+        *_task_events(user, None, start, end, edit_url),
+        *_program_events(programs, start, end, named=True),
     ]
-    return month_calendar(month, today=today, events=events)
 
 
 def office_calendar(user: User, *, today: date, month: date) -> MonthCalendar:
     """One month, Monday first. Three queries: tasks, active programs, distribution days."""
     start, end = grid_range(month)
 
-    def edit_url(pk: int) -> str:
-        return reverse("office:task-edit", kwargs={"pk": pk})
+    def day_url(day: date) -> str:
+        return reverse("office:calendar-day", kwargs={"day": day})
 
-    programs = Program.objects.filter(is_active=True).order_by("name")
-    events = [
-        *_task_events(user, None, start, end, edit_url),
-        *_program_events(programs, start, end, named=True),
-    ]
-    return month_calendar(month, today=today, events=events)
+    events = office_events(user, start, end)
+    return month_calendar(month, today=today, events=events, day_url=day_url)

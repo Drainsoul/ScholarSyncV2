@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Any, cast
 
 from django.contrib import messages
@@ -14,12 +15,13 @@ from django.views.generic import TemplateView
 
 from apps.accounts.models import User
 from apps.core.calendar import WEEKDAYS, parse_month
+from apps.core.calendar_views import day_response
 from apps.core.permissions import ProgramStaffRequiredMixin
 from apps.core.shell import home_url_for, shell_context
 from apps.programs.models import Program
 from apps.students import services
 from apps.students.selectors import unclaimed_profiles_for
-from apps.workspace.calendar import staff_calendar
+from apps.workspace.calendar import staff_calendar, staff_events
 from apps.workspace.dashboard import staff_dashboard
 from apps.workspace.forms import StaffProfileForm
 from apps.workspace.tasks import task_status
@@ -41,7 +43,6 @@ def _calendar_context(request: HttpRequest, program: Program, user: User) -> dic
         "calendar_id": CALENDAR_ID,
         "weekdays": WEEKDAYS,
         "legend": CALENDAR_LEGEND,
-        "add_task_url": reverse("workspace:task-new", kwargs={"program": program.slug}),
     }
 
 
@@ -90,6 +91,25 @@ class DashboardView(ProgramStaffRequiredMixin, TemplateView):
             response = super().get(request, *args, **kwargs)
         patch_vary_headers(response, ("HX-Request", "HX-Target"))
         return response
+
+
+class CalendarDayView(ProgramStaffRequiredMixin, View):
+    """A day of the dashboard calendar: the day dialog, or its page without JavaScript (rev 33)."""
+
+    def get(self, request: HttpRequest, program: str, day: date) -> HttpResponse:
+        user = request.user
+        assert isinstance(user, User)
+        dashboard = reverse("workspace:dashboard", kwargs={"program": self.program.slug})
+        return day_response(
+            request,
+            day=day,
+            events=staff_events(self.program, user, day, day),
+            legend=CALENDAR_LEGEND,
+            layout="layouts/staff.html",
+            shell_context=lambda: shell_context(request, area="staff", program=self.program),
+            back_url=f"{dashboard}?month={day:%Y-%m}",
+            add_task_url=reverse("workspace:task-new", kwargs={"program": self.program.slug}),
+        )
 
 
 class NoProgramsView(TemplateView):

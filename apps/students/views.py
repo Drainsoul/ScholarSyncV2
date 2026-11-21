@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Any
 from urllib.parse import quote
 
@@ -17,12 +18,13 @@ from django.views.generic import TemplateView
 
 from apps.accounts.models import User
 from apps.core.calendar import WEEKDAYS
+from apps.core.calendar_views import day_response
 from apps.core.permissions import StudentRequiredMixin
 from apps.core.shell import shell_context
 from apps.matching.selectors import match_page
 from apps.office.dashboard import greeting
 from apps.students import services
-from apps.students.calendar import days_until, parse_month, student_calendar
+from apps.students.calendar import days_until, parse_month, student_calendar, student_events
 from apps.students.dashboard import student_dashboard
 from apps.students.forms import ClaimForm, EducationForm, FamilyMemberForm, PersonalForm, PhotoForm
 from apps.students.models import EducationRecord, FamilyMember, ProfileInvite
@@ -105,6 +107,23 @@ class HomeView(StudentRequiredMixin, TemplateView):
             response = super().get(request, *args, **kwargs)
         patch_vary_headers(response, ("HX-Request", "HX-Target"))
         return response
+
+
+class CalendarDayView(StudentRequiredMixin, View):
+    """One day of the home calendar: the day dialog, or its page without JavaScript (rev 33)."""
+
+    def get(self, request: HttpRequest, day: date) -> HttpResponse:
+        user = _student(request)
+        page = match_page(user, today=timezone.localdate())
+        return day_response(
+            request,
+            day=day,
+            events=student_events(user, page, day, day),
+            legend=LEGEND,
+            layout="layouts/student.html",
+            shell_context=lambda: shell_context(request, area="student"),
+            back_url=f"{reverse('students:home')}?month={day:%Y-%m}",
+        )
 
 
 class ProfileView(StudentRequiredMixin, TemplateView):

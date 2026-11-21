@@ -233,6 +233,7 @@
 }
 
 .cal__day {
+  position: relative; /* the day link's stretched target */
   height: 3.25rem;
   padding: 2px var(--space-1);
   border: 1px solid var(--border);
@@ -277,6 +278,7 @@
 
 .cal__event--release,
 .cal__swatch--release,
+.day-list__item--release,
 .next-dates__date--release {
   --event-edge: var(--success);
   --event-bg: var(--success-50);
@@ -284,6 +286,7 @@
 
 .cal__event--opens,
 .cal__swatch--opens,
+.day-list__item--opens,
 .next-dates__date--opens {
   --event-edge: var(--info);
   --event-bg: var(--info-50);
@@ -291,19 +294,23 @@
 
 .cal__event--closes,
 .cal__swatch--closes,
+.day-list__item--closes,
 .next-dates__date--closes {
   --event-edge: var(--warning);
   --event-bg: var(--warning-50);
 }
 
 .cal__event--task,
-.cal__swatch--task {
+.cal__swatch--task,
+.day-list__item--task {
   --event-edge: var(--primary);
   --event-bg: var(--primary-50);
 }
 
-/* Staff dashboard (rev 27): a task or a release day links to its page; a day number opens Add task. */
+/* Staff and office (rev 27): a task or a release day links to its page, above the day link. */
 .cal__event--link {
+  position: relative;
+  z-index: 1;
   text-decoration: none;
 }
 
@@ -311,20 +318,42 @@
   text-decoration: underline;
 }
 
-.cal__num--link {
-  min-width: 1.5rem; /* a 24 px target (WCAG 2.5.8) */
+/* The day dialog (rev 33): the day number is a link stretched over its whole cell. */
+.cal__open {
+  min-width: 1.5rem; /* a 24 px target (WCAG 2.5.8), before the stretch */
   height: 1.5rem;
   color: inherit;
   text-decoration: none;
 }
 
-.cal__num--link:hover {
+.cal__open::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+}
+
+.cal__open:hover {
   background: var(--surface-header);
   text-decoration: underline;
 }
 
-.cal__day--today .cal__num--link:hover {
+.cal__open:hover::after {
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.cal__day--today .cal__open:hover {
   background: var(--primary-hover);
+}
+
+/* The ring goes round the cell (the click target), not just the number. */
+.cal__open:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.cal__open:focus-visible::after {
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
 }
 
 @media (max-width: 48rem) {
@@ -384,6 +413,48 @@
   border-left: 3px solid var(--event-edge);
   border-radius: 2px;
   background: var(--event-bg);
+}
+
+/* The day dialog (rev 33): every event in full, its kind in the key's words and colour. */
+.day-list {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.day-list__item {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-1) 0 var(--space-1) var(--space-3);
+  border-left: 3px solid var(--event-edge);
+}
+
+.day-list__item p {
+  margin: 0;
+}
+
+.day-list__kind {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.day-list__title {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.day-list__detail {
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.day-actions {
+  margin-top: var(--space-4);
 }
 
 /* Coming up: the next dates as a list, a date block per row. */

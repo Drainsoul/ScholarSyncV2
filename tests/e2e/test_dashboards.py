@@ -1,5 +1,6 @@
 import re
 from datetime import timedelta
+from typing import Literal
 from urllib.parse import urljoin
 
 import pytest
@@ -11,7 +12,7 @@ from apps.accounts.tests.factories import UserFactory
 from apps.applications.models import Application
 from apps.applications.tests.factories import ApplicationFactory
 from apps.money.tests.factories import ScheduleFactory
-from apps.programs.tests.factories import MembershipFactory, ProgramFactory
+from apps.programs.tests.factories import AcademicTermFactory, MembershipFactory, ProgramFactory
 from apps.students.tests.factories import ProfileFactory
 from apps.workspace.models import SupportRequest
 from apps.workspace.services import notify
@@ -150,14 +151,106 @@ def test_staff_calendar_on_a_phone(page: Page, live_server, vite_build, axe_sour
     page.set_viewport_size({"width": 375, "height": 812})
     log_in(page, live_server.url, staff.email, "/staff/tcu-ceaa/")
     calendar = page.locator("#staff-calendar")
+    day = calendar.get_by_role("link", name=f"{today.day} {today:%B %Y}, 2 items")
     for link in (
         calendar.get_by_role("link", name="Call the registrar"),
         calendar.get_by_role("link", name="Allowance release"),
-        calendar.get_by_role("link", name=f"Add a task due {today.day} {today:%B %Y}"),
+        day,
     ):
         box = link.bounding_box()
         assert box is not None and box["width"] >= 24 and box["height"] >= 24, box
     assert axe_violations(page, axe_source) == []
+    # The task chip keeps its own target above the cell's day link.
+    calendar.get_by_role("link", name="Call the registrar").click()
+    expect(page).to_have_url(re.compile(r"/staff/tcu-ceaa/tasks/\d+/$"))
+    assert console_errors == []
+
+
+def _day_name(day) -> str:
+    return f"{day:%A}, {day.day} {day:%B %Y}"
+
+
+@pytest.mark.parametrize("scheme", ["light", "dark"])
+def test_staff_day_dialog_and_add_task_for_this_day(
+    page: Page,
+    live_server,
+    vite_build,
+    axe_source,
+    console_errors,
+    scheme: Literal["light", "dark"],
+):
+    program = ProgramFactory.create(slug="tcu-ceaa", name="TCU CEAA")
+    staff = MembershipFactory.create(program=program, user__verified=True).user
+    today = timezone.localdate()
+    program.applications_close_on = today
+    program.save(update_fields=["applications_close_on"])
+    title = "Call the TCU registrar about the missing grade reports of the second-year scholars"
+    TaskFactory.create(owner=staff, program=program, title=title, due_on=today)
+    page.emulate_media(color_scheme=scheme)
+    log_in(page, live_server.url, staff.email, "/staff/tcu-ceaa/")
+    cell = page.locator("#staff-calendar td[aria-current=date]")
+    box = cell.bounding_box()
+    assert box is not None
+    # Anywhere in the cell but the task link: here its right edge, beside the chips.
+    cell.click(position={"x": box["width"] - 2, "y": box["height"] / 2})
+    dialog = page.get_by_role("dialog", name=_day_name(today))
+    expect(dialog).to_be_visible()
+    expect(dialog.get_by_text(title, exact=True)).to_be_visible()  # in full, no ellipsis
+    expect(dialog.get_by_text("Your task due")).to_be_visible()
+    expect(dialog.get_by_role("listitem").filter(has_text="Applications close")).to_have_text(
+        "Applications close Last day"
+    )
+    expect(dialog.get_by_role("link", name=f"Open task: {title}")).to_be_visible()
+    assert axe_violations(page, axe_source) == []
+    dialog.get_by_role("link", name="Add task for this day").click()
+    form = page.get_by_role("dialog", name="Add a task")
+    expect(form.get_by_label("Due date")).to_have_value(today.isoformat())
+    expect(form.get_by_role("textbox", name="Task (required)")).to_be_focused()
+    form.get_by_role("textbox", name="Task (required)").fill("Print the claim list")
+    form.get_by_role("button", name="Add task").click()
+    expect(page.get_by_text("Task added.")).to_be_visible()
+    expect(
+        page.locator("#staff-calendar").get_by_role(
+            "link", name=f"{today.day} {today:%B %Y}, 3 items"
+        )
+    ).to_be_visible()
+    assert console_errors == []
+
+
+def test_student_day_dialog_on_a_phone(
+    page: Page, live_server, vite_build, axe_source, console_errors
+):
+    term = AcademicTermFactory.create(is_current=True)
+    profile = ProfileFactory.create()
+    assert profile.user is not None
+    today = timezone.localdate()
+    program = ProgramFactory.create(name="LANI", applications_close_on=today)
+    ApplicationFactory.create(profile=profile, program=program, term=term)
+    page.set_viewport_size({"width": 375, "height": 812})
+    log_in(page, live_server.url, profile.user.email, "/me/")
+    page.locator("#home-calendar td[aria-current=date]").click()
+    dialog = page.get_by_role("dialog", name=_day_name(today))
+    expect(dialog.get_by_text("LANI applications close")).to_be_visible()
+    expect(dialog.get_by_text("Last day to submit")).to_be_visible()
+    expect(dialog.get_by_role("link", name="Add task for this day")).to_have_count(0)
+    assert axe_violations(page, axe_source) == []
+    page.keyboard.press("Escape")
+    expect(dialog).to_have_count(0)
+    expect(page.locator("#home-calendar td[aria-current=date] a")).to_be_focused()
+    assert console_errors == []
+
+
+def test_office_empty_day_dialog(page: Page, live_server, vite_build, console_errors):
+    log_in(page, live_server.url, _office().email, "/office/")
+    today = timezone.localdate()
+    page.locator("#office-calendar").get_by_role(
+        "link", name=f"{today.day} {today:%B %Y}, no items"
+    ).click()
+    dialog = page.get_by_role("dialog", name=_day_name(today))
+    expect(dialog.get_by_text("Nothing on this day.")).to_be_visible()
+    dialog.get_by_role("link", name="Add task for this day").click()
+    form = page.get_by_role("dialog", name="Add a task")
+    expect(form.get_by_label("Due date")).to_have_value(today.isoformat())
     assert console_errors == []
 
 

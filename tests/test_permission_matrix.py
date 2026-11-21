@@ -185,6 +185,7 @@ URLS: dict[str, str] = {
     "applications:submit": "student_post_only",
     "applications:withdraw": "own_record",
     "students:home": "student",
+    "students:calendar-day": "student",
     "notifications:list": "student",
     "workspace:tasks": "staff",
     "workspace:task-new": "staff",
@@ -206,6 +207,7 @@ URLS: dict[str, str] = {
     "students:profile-education-delete": "own_record",
     "workspace:no_programs": "no_programs",
     "workspace:dashboard": "staff",
+    "workspace:calendar-day": "staff",
     "workspace:students": "staff",
     "workspace:students-new": "staff",
     "workspace:students-invite": "staff_post_only",
@@ -224,6 +226,7 @@ URLS: dict[str, str] = {
     "review:behalf-submit": "staff_post_only",
     "review:behalf-withdraw": "staff_post_only",
     "office:home": "office",
+    "office:calendar-day": "office",
     "office:terms": "office",
     "office:notifications": "office",
     "office:notifications-read": "office_post_only",
@@ -354,6 +357,9 @@ URLS: dict[str, str] = {
 }
 URL_KWARGS: dict[str, dict[str, str]] = {
     "workspace:dashboard": {"program": "tcu-ceaa"},
+    "workspace:calendar-day": {"program": "tcu-ceaa", "day": "2026-11-21"},
+    "students:calendar-day": {"day": "2026-11-21"},
+    "office:calendar-day": {"day": "2026-11-21"},
     "notifications:open": {"pk": "999999"},
     "office:notification-open": {"pk": "999999"},
     "office:report-detail": {"pk": "999999"},

@@ -1,0 +1,22 @@
+{% extends layout %}{% load ui partials %}{% comment %}A calendar day (spec §12 rev 33): this page without JavaScript;
+day_dialog.html shows the same body in the app dialog. Context: day, rows [{event, kind, link}], back_url,
+add_task_url (staff and office).{% endcomment %}
+{% block title %}{{ day|date:"j F Y" }}{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div><h1>{{ day|date:"l, j F Y" }}</h1><p class="page-header__meta"><a href="{{ back_url }}">Back to the calendar</a></p></div>
+  </div>
+  <section class="card" aria-label="On this day">
+{% partialdef body inline %}
+    {% if rows %}<ul class="day-list" role="list">{% for row in rows %}
+      <li class="day-list__item day-list__item--{{ row.event.kind }}">
+        <p class="day-list__kind"><span class="cal__swatch cal__swatch--{{ row.event.kind }}" aria-hidden="true"></span>{{ row.kind }}</p>
+        {% if row.event.title != row.kind %}<p class="day-list__title">{{ row.event.title }}</p>{% endif %}
+        {% if row.event.detail %}<p class="day-list__detail">{{ row.event.detail }}</p>{% endif %}
+        {% if row.event.url %}<p><a href="{{ row.event.url }}" aria-label="{{ row.link }}: {{ row.event.title }}">{{ row.link }}</a></p>{% endif %}
+      </li>{% endfor %}
+    </ul>{% else %}{% include "components/empty_state.html" with title="Nothing on this day." %}{% endif %}
+    {% if add_task_url %}<div class="btn-row day-actions"><a class="btn btn--secondary" href="{{ add_task_url }}" hx-get="{{ add_task_url }}" hx-target="#app-dialog-body" hx-swap="innerHTML">{% icon "plus" %}Add task for this day</a></div>{% endif %}
+{% endpartialdef %}
+  </section>
+{% endblock %}

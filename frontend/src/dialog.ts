@@ -29,6 +29,16 @@ function openDialog(dialog: HTMLDialogElement): void {
   dialog.showModal();
 }
 
+// A swap inside an open dialog (the day dialog's "Add task for this day") removes the focused link:
+// focus would fall to <body>, behind the modal. Move it to the new content's first field instead.
+function keepFocusIn(dialog: HTMLDialogElement, swapped: Element): void {
+  if (dialog.contains(document.activeElement) && document.activeElement !== dialog) return;
+  const first =
+    swapped.querySelector<HTMLElement>("[autofocus], input:not([type=hidden]), select, textarea") ??
+    swapped.querySelector<HTMLElement>("a[href], button");
+  first?.focus();
+}
+
 export function initDialogs(): void {
   document.addEventListener("click", (event) => {
     const target = event.target instanceof Element ? event.target : null;
@@ -65,7 +75,9 @@ export function initDialogs(): void {
   document.addEventListener("htmx:afterSwap", (event) => {
     const { target } = (event as CustomEvent<{ target: Element }>).detail;
     const dialog = target.closest("dialog");
-    if (dialog) openDialog(dialog);
+    if (!dialog) return;
+    if (dialog.open) keepFocusIn(dialog, target);
+    else openDialog(dialog);
   });
   document.addEventListener("closeDialog", () => {
     for (const dialog of document.querySelectorAll<HTMLDialogElement>("dialog[open]"))
