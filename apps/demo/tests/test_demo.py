@@ -669,7 +669,7 @@ def test_demo_money_samples(demo_app, settings, frozen_today):
 def test_demo_has_workspace_samples(demo_app, settings, frozen_today, stored):
     from apps.applications.review_selectors import applications_by_month
     from apps.core.charts import first_month, month_bars
-    from apps.workspace.models import Notification, SupportRequest, Task
+    from apps.workspace.models import Notification, ReplyTemplate, SupportRequest, Task
 
     settings.DEMO_ACTIVE = True
     loader.load()
@@ -684,7 +684,12 @@ def test_demo_has_workspace_samples(demo_app, settings, frozen_today, stored):
     assert tasks.filter(done_at=None, due_on=today).count() == 1
     assert tasks.exclude(done_at=None).count() == 1
     support = SupportRequest.objects.filter(sender__email="student@scholarsync.test")
-    assert sorted(support.values_list("status", flat=True)) == ["answered", "open"]
+    assert sorted(support.values_list("status", flat=True)) == ["answered", "open", "open"]
+    answered = support.get(status="answered")
+    assert answered.replies.count() == 1  # rev 35: the answer is in the app
+    staff_inbox = support.filter(program__slug="tcu-ceaa", status="open")
+    assert staff_inbox.count() == 1  # the CEAA staff and head have one to answer
+    assert ReplyTemplate.objects.filter(is_active=True).count() == 2
     program = Program.objects.get(slug="tcu-ceaa")
     counts = applications_by_month([program], since=first_month(today))
     bars = month_bars(counts, today=today)

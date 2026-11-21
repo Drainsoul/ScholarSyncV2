@@ -10,21 +10,50 @@ from django.utils import timezone
 from apps.accounts.models import User
 from apps.applications.models import Application
 from apps.programs.models import Program
-from apps.workspace import support, tasks
-from apps.workspace.models import Notification, SupportRequest, Task
+from apps.workspace import reply_templates, support, tasks
+from apps.workspace.models import Notification, ReplyTemplate, SupportRequest, Task
 
 TASKS = (
     ("Call the TCU registrar about enrolment confirmations", -2, False),
     ("Prepare the claim day checklist", 0, False),
     ("Check last semester's grade slips", -5, True),
 )
+# (topic, message, program slug or None, the office's in-app answer or None for an open one)
 SUPPORT = (
     (
         SupportRequest.Topic.APPLICATION,
         "How long does the review of a LANI application usually take?",
-        False,
+        None,
+        None,
     ),
-    (SupportRequest.Topic.ACCOUNT, "Can I change the email address on my account?", True),
+    (
+        SupportRequest.Topic.ACCOUNT,
+        "Can I change the email address on my account?",
+        None,
+        "Not from the app yet. Send us a message here with the new address and we'll "
+        "change it for you.",
+    ),
+    (
+        SupportRequest.Topic.ALLOWANCE,
+        "When is the next CEAA allowance release?",
+        "tcu-ceaa",
+        None,
+    ),
+)
+# The office's starting texts for replies (rev 35): (title, topic, body).
+REPLY_TEMPLATES = (
+    (
+        "Allowance release dates",
+        SupportRequest.Topic.ALLOWANCE,
+        "Hi {first_name}, {program} announces each release day on your Scholarships page and "
+        "in your notifications. You'll see the date, time and place there as soon as it is set.",
+    ),
+    (
+        "Application review time",
+        SupportRequest.Topic.APPLICATION,
+        "Hi {first_name}, reviews usually take two to three weeks after the window closes. "
+        "We'll email you as soon as {program} decides.",
+    ),
 )
 # Days before today for back-dated sample applications, so the chart has history.
 BACK_DATES = (40, 70, 100)
@@ -69,14 +98,29 @@ def _give_student_support() -> None:
     office = _user("office@scholarsync.test")
     if student is None or office is None:
         return
-    for topic, message, answered in SUPPORT:
-        if SupportRequest.objects.filter(sender=student, topic=topic).exists():
+    for topic, message, slug, answer in SUPPORT:
+        row = SupportRequest.objects.filter(sender=student, topic=topic).first()
+        if row is None:
+            program = Program.objects.filter(slug=slug).first() if slug else None
+            row = support.send(
+                sender=student, topic=topic, program=program, message=message, now=timezone.now()
+            )
+        if answer and not row.replies.exists():
+            support.reply(
+                actor=office, request_row=row, body=answer, template=None, now=timezone.now()
+            )
+
+
+def _give_reply_templates() -> None:
+    office = _user("office@scholarsync.test")
+    if office is None:
+        return
+    for title, topic, body in REPLY_TEMPLATES:
+        if ReplyTemplate.objects.filter(title=title).exists():
             continue
-        row = support.send(
-            sender=student, topic=topic, program=None, message=message, now=timezone.now()
+        reply_templates.create_template(
+            actor=office, title=title, topic=topic, program=None, subject="", body=body
         )
-        if answered:
-            support.answer(actor=office, request_row=row, now=timezone.now())
 
 
 def _back_date_decided_applications() -> None:
@@ -104,4 +148,5 @@ def give_workspace_samples() -> None:
     _read_older_notifications()
     _give_staff_tasks()
     _give_student_support()
+    _give_reply_templates()
     _back_date_decided_applications()
