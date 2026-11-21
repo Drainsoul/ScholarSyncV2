@@ -86,6 +86,9 @@
   "Copied" bubble's family: ink for success and info, yellow for warnings, red for errors, each with its icon (§12).
 - **Revision:** 31 (2026-11-21): the sign-in pages (auth layout) offer the same Light / Dark / System choice at the top
   right of the form column (§12).
+- **Revision:** 32 (2026-11-21): on the sign-in pages the theme choice is three icon buttons (sun, moon, monitor),
+  and the demo's test-account notice is collapsed behind a "Exploring ScholarSync? Use a test account" button that
+  expands it (§11, §12).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -1010,7 +1013,9 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
   - Explore mode is for the visitor's own machine: ports bind to `127.0.0.1`, and settings refuse explore mode with any
     host other than `localhost`/`127.0.0.1`.
   - Startup fails fast on a missing required variable in production mode.
-- **Demo:** everything demo-only (test accounts, sample data, login-page notice) lives in `apps/demo/`. Deleting that
+- **Demo:** everything demo-only (test accounts, sample data, login-page notice) lives in `apps/demo/`. (rev 32) The
+  login-page notice is a `<details>`, closed by default: its summary button reads "Exploring ScholarSync? Use a test
+  account" and opens the accounts, the shared password and the fill buttons. Deleting that
   folder removes it with no other edit; the app reaches it only through an optional hook, never by import. It is
   inactive in production mode even if present, and `check --deploy` fails while the folder exists. Programs
   (`seed_programs`) are not demo material, and the demo leaves their settings alone with one exception (rev 26):
@@ -1076,7 +1081,9 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
     `data-theme` on `<html>` and `<meta name="color-scheme">` from the cookie, so the page paints in the chosen
     theme with no script and no flash (the CSP rules out the usual inline script). Signed-out pages follow the
     cookie too; (rev 31) the auth layout (log in, sign up, password reset) offers the same control at the top
-    right of its form column (`components/theme_choice.html`, shared with the account menu). The dark ground is a deep navy-grey, cards a step lighter; red, blue and gold
+    right of its form column (`components/theme_choice.html`, shared with the account menu); (rev 32) there it
+    is three icon buttons (sun, moon, monitor) whose names stay as visually hidden text, with a matching
+    `title`; the account menu keeps the words. The dark ground is a deep navy-grey, cards a step lighter; red, blue and gold
     lighten to keep 4.5:1 as text, while solid red buttons keep white text; the auth panel stays red.
     `tests/test_tokens.py` checks every pair in both themes.
 - **Components** (`templates/components/` + CSS):
