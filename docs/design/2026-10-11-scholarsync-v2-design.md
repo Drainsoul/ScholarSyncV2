@@ -84,6 +84,8 @@
   pages cross-fade on navigation where the browser supports it (§5, §12).
 - **Revision:** 30 (2026-11-21): toasts drop the white card with a coloured left stripe for a flat, solid chip in the
   "Copied" bubble's family: ink for success and info, yellow for warnings, red for errors, each with its icon (§12).
+- **Revision:** 31 (2026-11-21): the sign-in pages (auth layout) offer the same Light / Dark / System choice at the top
+  right of the form column (§12).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -1073,7 +1075,8 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
     year, `HttpOnly`, `SameSite=Lax`; "System" deletes it) and redirects back to a safe `next`. The server writes
     `data-theme` on `<html>` and `<meta name="color-scheme">` from the cookie, so the page paints in the chosen
     theme with no script and no flash (the CSP rules out the usual inline script). Signed-out pages follow the
-    cookie too but offer no control. The dark ground is a deep navy-grey, cards a step lighter; red, blue and gold
+    cookie too; (rev 31) the auth layout (log in, sign up, password reset) offers the same control at the top
+    right of its form column (`components/theme_choice.html`, shared with the account menu). The dark ground is a deep navy-grey, cards a step lighter; red, blue and gold
     lighten to keep 4.5:1 as text, while solid red buttons keep white text; the auth panel stays red.
     `tests/test_tokens.py` checks every pair in both themes.
 - **Components** (`templates/components/` + CSS):
