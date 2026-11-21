@@ -84,7 +84,7 @@ def test_support_message_reaches_the_office(browser, live_server, vite_build):
     )
     student_page.get_by_role("button", name="Send message").click()
     expect(
-        student_page.get_by_text("Message sent. The scholarship office will reply by email.")
+        student_page.get_by_text("Message sent. You'll find the answer under Replies.")
     ).to_be_visible()
 
     office_page = browser.new_page()
