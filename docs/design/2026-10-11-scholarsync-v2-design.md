@@ -1614,7 +1614,8 @@ starts, and ends with every acceptance item checked.
   notification.
 - [ ] The staff and head support inbox and request page; the office request page and reply templates.
 - [ ] The student Replies tab and unread counts.
-- [ ] Permission matrix; extend the demo loader (templates and an answered request) and the kit.
+- [ ] Permission matrix; extend the demo loader (templates and an answered request). No kit change: the
+  screens reuse cards, lists, tabs, forms and the app dialog.
 
 **M13: Security follow-ups**
 - The ASVS gaps and WCAG 2.2.1 left by M12
