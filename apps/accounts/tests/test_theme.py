@@ -1,5 +1,7 @@
 """Light, dark or the device's theme from the account menu (spec §12 rev 29)."""
 
+import re
+
 import pytest
 from django.conf import settings
 from django.test import Client
@@ -9,6 +11,11 @@ from apps.accounts.tests.factories import UserFactory
 pytestmark = pytest.mark.django_db
 
 URL = "/accounts/theme/"
+
+
+def pressed(html: str) -> dict[str, str]:
+    """Theme value -> its aria-pressed, from the first theme form on the page."""
+    return dict(re.findall(r'name="theme" value="(\w+)" title="[^"]*" aria-pressed="(\w+)"', html))
 
 
 def test_pinning_dark_sets_a_long_lived_http_only_cookie_and_returns_to_the_page(client: Client):
@@ -81,9 +88,10 @@ def test_the_account_menu_offers_the_three_choices_with_the_current_one_pressed(
         in html
     )
     assert '<input type="hidden" name="next" value="/me/">' in html
-    assert 'value="light" aria-pressed="true">Light</button>' in html
-    assert 'value="dark" aria-pressed="false">Dark</button>' in html
-    assert 'value="system" aria-pressed="false">System</button>' in html
+    assert pressed(html) == {"light": "true", "dark": "false", "system": "false"}
+    # Each button keeps its word as text (shown in the menu, visually hidden on the sign-in page).
+    for word in ("Light", "Dark", "System"):
+        assert f'<span class="theme-choice__text">{word}</span></button>' in html
 
 
 def test_the_sign_in_page_offers_the_choice_too(client: Client):
@@ -96,4 +104,7 @@ def test_the_sign_in_page_offers_the_choice_too(client: Client):
     )
     assert '<input type="hidden" name="next" value="/accounts/login/?next=/me/">' in html
     assert 'aria-labelledby="theme-choice-auth"' in html
-    assert 'value="dark" aria-pressed="true">Dark</button>' in html
+    assert pressed(html) == {"light": "false", "dark": "true", "system": "false"}
+    # Spec §12 rev 32: icons with a title for each choice.
+    assert 'title="Light theme"' in html and 'title="Dark theme"' in html
+    assert '#sun"' in html and '#moon"' in html and '#monitor"' in html

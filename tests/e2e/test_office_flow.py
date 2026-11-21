@@ -91,7 +91,7 @@ def test_office_creates_staff_who_sets_a_password(browser, live_server, vite_bui
     staff_page.goto(re.sub(r"^https?://[^/]+", base, match.group(0)))
     staff_page.locator("input[name=password1]").fill(NEW_PASSWORD)
     staff_page.locator("input[name=password2]").fill(NEW_PASSWORD)
-    staff_page.locator("form button[type=submit]").first.click()
+    staff_page.get_by_role("button", name="Change Password").click()
 
     staff_page.goto(f"{base}/accounts/login/")
     staff_page.locator("#login-form input[name=login]").fill("ana.reyes@scholarsync.test")

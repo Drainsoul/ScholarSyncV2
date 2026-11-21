@@ -1,10 +1,10 @@
-{# Light, Dark or System (spec §12 rev 29, rev 31): a plain form, so it works without script. Pass where ("menu" or "auth") for a unique label id. #}
+{% load ui %}{# Light, Dark or System (spec §12 rev 29, 31, 32): a plain form, so it works without script. Pass where ("menu" or "auth"): the menu shows the words, the sign-in pages only the icons (the words stay for screen readers, and in a title). #}
 <form class="theme-choice theme-choice--{{ where }}" method="post" action="{% url 'theme_set' %}">{% csrf_token %}
   <input type="hidden" name="next" value="{{ request.get_full_path }}">
   <p class="theme-choice__label" id="theme-choice-{{ where }}">Theme</p>
   <div class="theme-choice__options" role="group" aria-labelledby="theme-choice-{{ where }}">
-    <button type="submit" name="theme" value="light" aria-pressed="{% if theme == 'light' %}true{% else %}false{% endif %}">Light</button>
-    <button type="submit" name="theme" value="dark" aria-pressed="{% if theme == 'dark' %}true{% else %}false{% endif %}">Dark</button>
-    <button type="submit" name="theme" value="system" aria-pressed="{% if not theme %}true{% else %}false{% endif %}">System</button>
+    <button type="submit" name="theme" value="light" title="Light theme" aria-pressed="{% if theme == 'light' %}true{% else %}false{% endif %}">{% icon "sun" %}<span class="theme-choice__text">Light</span></button>
+    <button type="submit" name="theme" value="dark" title="Dark theme" aria-pressed="{% if theme == 'dark' %}true{% else %}false{% endif %}">{% icon "moon" %}<span class="theme-choice__text">Dark</span></button>
+    <button type="submit" name="theme" value="system" title="Same as this device" aria-pressed="{% if not theme %}true{% else %}false{% endif %}">{% icon "monitor" %}<span class="theme-choice__text">System</span></button>
   </div>
 </form>
