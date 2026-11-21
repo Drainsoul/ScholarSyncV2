@@ -8,8 +8,10 @@ class CoreConfig(AppConfig):
 
     def ready(self) -> None:
         from django.urls import register_converter
+        from django.urls.converters import get_converters
 
         from . import checks  # noqa: F401
         from .converters import IsoDateConverter
 
-        register_converter(IsoDateConverter, "isodate")
+        if "isodate" not in get_converters():  # ready() can run again (the demo tests reload apps)
+            register_converter(IsoDateConverter, "isodate")
