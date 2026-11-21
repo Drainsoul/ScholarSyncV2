@@ -18,7 +18,7 @@ TZ = timezone.get_default_timezone()
 NOW = datetime(2026, 11, 17, 10, 0, tzinfo=TZ)
 FORM = "/me/support/"
 INBOX = "/office/support/"
-LIMIT = "You've sent 5 messages today. The office will reply by email; try again tomorrow."
+LIMIT = "You've sent 5 messages today. Try again tomorrow."
 
 
 @pytest.fixture(autouse=True)
@@ -48,7 +48,7 @@ def _send(client: Any, message: str = "My allowance is late.", **extra: str) -> 
 def test_student_sends_a_message(client: Any, student: User) -> None:
     program = ProgramFactory.create()
     response = _send(client, program=str(program.pk))
-    assert "Message sent. The scholarship office will reply by email." in response.content.decode()
+    assert "Message sent. You&#x27;ll find the answer under Replies." in response.content.decode()
     row = SupportRequest.objects.get()
     assert (row.sender, row.topic, row.program, row.status) == (
         student,

@@ -1,0 +1,8 @@
+{% extends "emails/base.txt" %}
+{% block body %}Hi {{ full_name }},
+
+{{ body }}
+
+This address doesn't take replies. To ask something else, sign in and open Help and guides.
+Read your replies: {{ replies_url }}
+{% endblock %}

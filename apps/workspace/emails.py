@@ -68,6 +68,9 @@ KINDS: dict[str, frozenset[str]] = {
     ),
     # To an address the office typed in for a colleague (M11b); verified when the account is made.
     "staff_welcome": frozenset({"full_name", "role_label", "set_password_url"}),
+    # A staff-written answer to the student's own support message (rev 35): the only free-text
+    # email. It goes to the sender's account email only; the text is emptied once sent.
+    "support_reply": frozenset({"full_name", "subject", "body", "replies_url"}),
 }
 
 

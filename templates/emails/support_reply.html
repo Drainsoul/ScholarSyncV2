@@ -1,0 +1,7 @@
+{% extends "emails/base.html" %}
+{% block body %}
+    <p>Hi {{ full_name }},</p>
+    <p>{{ body|linebreaksbr }}</p>
+    <p>This address doesn't take replies. To ask something else, sign in and open Help and guides.</p>
+    <p><a href="{{ replies_url }}">Read your replies</a></p>
+{% endblock %}

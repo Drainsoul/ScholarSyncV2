@@ -49,7 +49,7 @@ class StudentSupportView(StudentRequiredMixin, View):
         except ValidationError as error:
             form.add_error(None, error)
             return self._render(request, form)
-        messages.success(request, "Message sent. The scholarship office will reply by email.")
+        messages.success(request, support.SEND_SUCCESS)
         return redirect("support:student")
 
 
@@ -61,7 +61,7 @@ class OfficeSupportView(SuperAdminRequiredMixin, View):
         tab = request.GET.get("tab", "open")
         if tab not in support.OFFICE_TABS:
             tab = "open"
-        page = Paginator(support.office_rows(tab), PAGE_SIZE).get_page(request.GET.get("page"))
+        page = Paginator(support.inbox_rows(None, tab), PAGE_SIZE).get_page(request.GET.get("page"))
         base = reverse("support:office")
         context = {
             **shell_context(request, area="office"),

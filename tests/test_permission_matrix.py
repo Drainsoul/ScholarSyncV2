@@ -280,6 +280,7 @@ URLS: dict[str, str] = {
     "settings:document-edit": "head_object",
     "settings:document-active": "head_post_only",
     "support:student": "student",
+    "support:replies": "student",
     "support:office": "office",
     "support:answer": "office_post_only",
     "office:terms-add": "office_post_only",

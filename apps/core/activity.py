@@ -51,6 +51,11 @@ FEED_ACTIONS: frozenset[str] = frozenset(VERBS)
 
 VERBS.update(
     {
+        "support.replied": "replied to a support request",
+        "support_template.created": "added a reply template",
+        "support_template.updated": "edited a reply template",
+        "support_template.deactivated": "turned off a reply template",
+        "support_template.activated": "turned on a reply template",
         "report.head_approved": "approved a report",
         "report.head_returned": "returned a report to its writer",
         "application.started": "started an application",
@@ -142,7 +147,7 @@ AUDIT_GROUPS: dict[str, tuple[str, tuple[str, ...]]] = {
     "accounts": ("Accounts", ("user", "membership", "consent", "mfa")),
     "profiles": ("Student profiles", ("profile", "invite", "family", "education")),
     "reports": ("Reports and analytics", ("report", "analytics")),
-    "support": ("Support", ("support",)),
+    "support": ("Support", ("support", "support_template")),
     "files": ("Files", ("file",)),
     "tasks": ("Tasks", ("task",)),
 }
