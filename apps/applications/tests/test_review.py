@@ -21,6 +21,7 @@ from apps.applications.tests.factories import (
     DocumentFactory,
     DocumentFileFactory,
 )
+from apps.awards import selectors as award_selectors
 from apps.awards.models import Award, ScholarTerm
 from apps.awards.tests.factories import AwardFactory
 from apps.core.models import AuditEvent
@@ -935,7 +936,9 @@ def test_approve_refused_when_student_holds_award_in_this_program() -> None:
     )
 
 
-ONE_AT_A_TIME = "You already hold the {} scholarship. A student can hold one scholarship at a time."
+ONE_AT_A_TIME = (
+    "This student already holds the {} scholarship. A student can hold one scholarship at a time."
+)
 
 
 def award_elsewhere(application: Application, status: str = Award.Status.ACTIVE) -> Award:
@@ -1011,14 +1014,14 @@ def test_two_programs_approving_at_once_make_one_award(monkeypatch: pytest.Monke
     first = approvable(ceaa)
     second = approvable(lani, profile=first.profile)
     actors = {ceaa.pk: staff_of(ceaa), lani.pk: staff_of(lani)}
-    real = review.held_award_elsewhere
+    real = award_selectors.held_award_elsewhere
 
     def slow(*args: Any, **kwargs: Any) -> Award | None:
         found = real(*args, **kwargs)
         time.sleep(0.3)  # without the lock, both approvals would read "none" here
         return found
 
-    monkeypatch.setattr(review, "held_award_elsewhere", slow)
+    monkeypatch.setattr("apps.applications.review.held_award_elsewhere", slow)
     errors: list[ValidationError] = []
 
     def run(program: Program, application: Application) -> None:

@@ -260,9 +260,9 @@ def test_decide_approve_refused_while_holding_another_programs_award(client: Any
     )
     assert response.status_code == 400
     assert (
-        "You already hold the LANI scholarship. A student can hold one scholarship at a time."
-        in response.content.decode().replace("&#x27;", "'")
-    )
+        "This student already holds the LANI scholarship. "
+        "A student can hold one scholarship at a time."
+    ) in response.content.decode().replace("&#x27;", "'")
     application.refresh_from_db()
     assert application.status == S.UNDER_REVIEW
     assert not Award.objects.filter(program=membership.program).exists()

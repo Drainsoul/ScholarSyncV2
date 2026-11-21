@@ -146,7 +146,10 @@ def test_refuses_a_student_holding_another_programs_award(world: World, status: 
     with pytest.raises(ValidationError) as caught:
         world.create()
     assert caught.value.messages == [
-        "You already hold the LANI scholarship. A student can hold one scholarship at a time."
+        (
+            "This student already holds the LANI scholarship. "
+            "A student can hold one scholarship at a time."
+        )
     ]
     assert not Award.objects.filter(program=world.program).exists()
     assert not AuditEvent.objects.filter(action="award.created").exists()

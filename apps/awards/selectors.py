@@ -67,9 +67,15 @@ def held_award_elsewhere(profile: StudentProfile, program: Program) -> Award | N
     )
 
 
-def one_scholarship(award: Award) -> str:
-    """The refusal for a student who already holds `award` in another program."""
-    return ONE_SCHOLARSHIP.format(program=award.program.name)
+STAFF_ONE_SCHOLARSHIP = (
+    "This student already holds the {program} scholarship. "
+    "A student can hold one scholarship at a time."
+)
+
+
+def one_scholarship(award: Award, *, staff: bool = False) -> str:
+    """The refusal when the student holds `award` elsewhere; staff read the third-person one."""
+    return (STAFF_ONE_SCHOLARSHIP if staff else ONE_SCHOLARSHIP).format(program=award.program.name)
 
 
 class RenewalStatus(StrEnum):

@@ -353,7 +353,7 @@ def approve_application(
     # the documents, since deciding them can't help. A renewal stays in its own program.
     elsewhere = None if renewal else held_award_elsewhere(profile, locked.program)
     if elsewhere is not None:
-        raise ValidationError(one_scholarship(elsewhere))
+        raise ValidationError(one_scholarship(elsewhere, staff=True))
     undecided = undecided_rows(locked)
     # Deciding the others can't help while a required document is missing: name that one first.
     never_uploaded = [row for row in undecided if row.document is None]

@@ -136,7 +136,7 @@ def test_start_refused_when_held(world: World) -> None:
 
 
 ONE_AT_A_TIME = (
-    "You already hold the LANI scholarship. A student can hold one scholarship at a time."
+    "This student already holds the LANI scholarship. A student can hold one scholarship at a time."
 )
 
 

@@ -761,9 +761,9 @@ def test_find_then_file_refused_while_holding_another_programs_award(client: Any
     response = client.post(_url(), {"profile": profile.pk, "lookup": found.token})
     assert response.status_code == 400
     assert (
-        "You already hold the LANI scholarship. A student can hold one scholarship at a time."
-        in response.content.decode().replace("&#x27;", "'")
-    )
+        "This student already holds the LANI scholarship. "
+        "A student can hold one scholarship at a time."
+    ) in response.content.decode().replace("&#x27;", "'")
     assert not Application.objects.filter(program=membership.program).exists()
 
 

@@ -178,7 +178,7 @@ def start_on_behalf(
         raise ValidationError(STAFF_HELD)
     elsewhere = held_award_elsewhere(profile, active)  # under the profile lock, as approvals
     if elsewhere is not None:
-        raise ValidationError(one_scholarship(elsewhere))
+        raise ValidationError(one_scholarship(elsewhere, staff=True))
     if rejected_this_term(profile, active, term):
         raise ValidationError(STAFF_REJECTED.format(term=term))
     existing = open_application(profile, active, term)

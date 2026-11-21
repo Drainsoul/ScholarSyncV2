@@ -280,6 +280,21 @@ def test_reinstate_conflict_already_holds(scholars: Scholars) -> None:
     assert status_events() == []
 
 
+def test_reinstate_refused_while_holding_another_programs_award(scholars: Scholars) -> None:
+    ended = scholars.change(scholars.award(), "inactive", "Moved away.")
+    other = ProgramFactory.create(name="LANI")
+    other_tier = BenefitTierFactory.create(program=other, effective_from=scholars.previous)
+    make_scholar(other, other_tier, [scholars.previous], profile=ended.profile)
+    with pytest.raises(ValidationError) as caught:
+        scholars.change(ended, "active")
+    assert caught.value.messages == [
+        "This student already holds the LANI scholarship. "
+        "A student can hold one scholarship at a time."
+    ]
+    ended.refresh_from_db()
+    assert ended.status == Award.Status.INACTIVE
+
+
 def test_update_award_tier_must_be_in_force(scholars: Scholars) -> None:
     award = scholars.award()
     elsewhere = BenefitTierFactory.create(effective_from=scholars.previous)

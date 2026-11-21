@@ -13,6 +13,7 @@ from apps.awards.models import Award, ScholarImport, ScholarTerm
 from apps.awards.selectors import (
     RolloverResult,
     graduating_awards,
+    held_award_elsewhere,
     held_awards,
     one_scholarship,
     program_profiles,
@@ -262,8 +263,13 @@ def change_status(
     request: HttpRequest | None = None,
 ) -> Award:
     """Hold, reinstate, end or graduate. The reason is free text: it stays out of audit data."""
-    _, locked = _lock_award(actor, program, award.pk)
+    profile, locked = _lock_award(actor, program, award.pk)
     assert_transition(locked, to)
+    if to == Award.Status.ACTIVE and locked.status not in Award.HELD_STATUSES:
+        # Reinstating an ended award: one scholarship at a time (spec §4.5), under the profile lock.
+        elsewhere = held_award_elsewhere(profile, program)
+        if elsewhere is not None:
+            raise ValidationError(one_scholarship(elsewhere, staff=True))
     reason = reason.strip()
     if to in _NEED_REASON and not reason:
         raise ValidationError(_NEED_REASON[to])
@@ -571,7 +577,7 @@ def create_award(
     if any(award.program_id == active.pk for award in held):
         raise ValidationError(already_holds(active))
     if held:  # one scholarship at a time (spec §4.5), under the profile lock
-        raise ValidationError(one_scholarship(held[0]))
+        raise ValidationError(one_scholarship(held[0], staff=True))
     term = data.record.term
     current = current_term()
     if current is None:

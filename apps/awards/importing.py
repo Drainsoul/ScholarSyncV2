@@ -304,7 +304,7 @@ def _lookups(program: Program, current: AcademicTerm, rows: list[dict[str, Cell]
         if award.program_id == program.pk:
             holders.add(award.profile_id)
         else:
-            elsewhere.setdefault(award.profile_id, one_scholarship(award))
+            elsewhere.setdefault(award.profile_id, one_scholarship(award, staff=True))
     return Lookups(
         program=program,
         current=current,
