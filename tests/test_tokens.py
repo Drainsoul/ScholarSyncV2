@@ -130,9 +130,7 @@ NON_TEXT_PAIRS = [
     ("text", "track"),  # the 80% renewal marker over the progress track
 ]
 # Yellow is a fill, never text on light.
-DECORATIVE_AS_TEXT = re.compile(
-    r"(?<![-\w])color:\s*var\(--(accent|yellow-500|focus-halo|nav-count-bg)\)"
-)
+DECORATIVE_AS_TEXT = re.compile(r"(?<![-\w])color:\s*var\(--(accent|yellow-500|focus-halo)\)")
 
 
 @pytest.mark.parametrize("scheme", SCHEMES)
@@ -200,7 +198,7 @@ def test_every_role_has_a_dark_value_or_is_the_same_on_purpose():
     raw = dict(DECLARATION.findall((STYLES / "tokens.css").read_text(encoding="utf-8")))
     same_in_both = {
         "primary-fill", "on-primary", "secondary-fill", "accent", "on-accent", "brand",
-        "focus-halo", "nav-count-bg",
+        "focus-halo",
     }  # fmt: skip
     light, dark = tokens("light"), tokens("dark")
     roles = {

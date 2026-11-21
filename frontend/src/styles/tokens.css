@@ -92,7 +92,6 @@
   --link: light-dark(var(--blue-700), var(--night-blue-400));
   --link-hover: light-dark(var(--blue-800), var(--night-blue-300));
   --accent: var(--yellow-500);
-  --accent-50: light-dark(var(--yellow-50), var(--night-yellow-tint));
   --accent-100: light-dark(var(--yellow-100), var(--night-yellow-tint-strong));
   --on-accent: var(--ink-900);
   --brand: var(--red-700);
@@ -116,7 +115,6 @@
   --nav-text: light-dark(var(--slate-700), var(--night-300));
   --nav-current: var(--primary);
   --nav-current-bg: var(--primary-50);
-  --nav-count-bg: var(--accent);
   --backdrop: light-dark(rgb(17 24 39 / 0.5), rgb(0 0 0 / 0.6));
   --shadow-colour: light-dark(rgb(14 27 44 / 0.3), rgb(0 0 0 / 0.55));
 
@@ -131,7 +129,6 @@
   --text-xl: 1.1875rem;
   --text-2xl: 1.3125rem;
   --text-3xl: 1.4375rem;
-  --text-4xl: 2.25rem;
   --leading-tight: 1.2;
   --leading-body: 1.5;
   --measure: 68ch;
