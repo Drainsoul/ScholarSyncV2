@@ -18,7 +18,7 @@ from django.utils import timezone
 from apps.accounts.models import User
 from apps.applications.staff_forms import AcademicsForm
 from apps.awards.models import Award, ScholarImport
-from apps.awards.selectors import pick_tier, program_profiles
+from apps.awards.selectors import one_scholarship, pick_tier, program_profiles
 from apps.awards.services import (
     FUTURE_TERM,
     NO_CURRENT_TERM,
@@ -116,6 +116,8 @@ class Lookups:
     tier_rows: list[BenefitTier]
     profiles: dict[Key, list[StudentProfile]]
     holders: set[int]
+    # Profile id -> the refusal for an award held in another program (one at a time, §4.5).
+    elsewhere: dict[int, str]
 
     def tier(self, code: str, term: AcademicTerm) -> BenefitTier | None:
         return pick_tier([row for row in self.tier_rows if row.code == code], term)
@@ -288,13 +290,21 @@ def _lookups(program: Program, current: AcademicTerm, rows: list[dict[str, Cell]
         assert profile.birth_date is not None
         key = match_key(profile.first_name, profile.last_name, profile.birth_date)
         profiles[key].append(profile)
-    holders = set(
+    holders: set[int] = set()
+    elsewhere: dict[int, str] = {}
+    held = (
         Award.objects.filter(
-            program=program,
             status__in=Award.HELD_STATUSES,
             profile_id__in=[p.pk for found in profiles.values() for p in found],
-        ).values_list("profile_id", flat=True)
+        )
+        .select_related("program")
+        .order_by("started_term__sort_key", "pk")  # as held_award_elsewhere picks
     )
+    for award in held:
+        if award.program_id == program.pk:
+            holders.add(award.profile_id)
+        else:
+            elsewhere.setdefault(award.profile_id, one_scholarship(award))
     return Lookups(
         program=program,
         current=current,
@@ -303,6 +313,7 @@ def _lookups(program: Program, current: AcademicTerm, rows: list[dict[str, Cell]
         tier_rows=tier_rows,
         profiles=dict(profiles),
         holders=holders,
+        elsewhere=elsewhere,
     )
 
 
@@ -360,6 +371,9 @@ def _validate(program: Program, rows: list[tuple[int, dict[str, Cell]]]) -> Impo
             result.profile = matches[0]
             if result.profile.pk in lookups.holders:
                 result.errors.append(already_holds(program))
+                continue
+            if result.profile.pk in lookups.elsewhere:
+                result.errors.append(lookups.elsewhere[result.profile.pk])
                 continue
         result.data = AwardData(
             tier_code=cleaned["tier"].strip(),

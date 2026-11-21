@@ -7,8 +7,9 @@ from apps.applications.models import Application
 from apps.awards.models import Award, ScholarTerm
 from apps.awards.selectors import (
     RenewalStatus,
+    held_award_elsewhere,
     holds_award,
-    other_active_awards,
+    one_scholarship,
     renewal_due_q,
     renewal_for,
     renewal_tier,
@@ -38,18 +39,26 @@ def test_holds_award_counts_suspended_not_inactive() -> None:
         assert not holds_award(award.profile, award.program)
 
 
-def test_other_active_awards_excludes_this_program_and_inactive() -> None:
+def test_held_award_elsewhere_is_active_or_on_hold_in_another_program() -> None:
     here = AwardFactory.create()
-    other = AwardFactory.create(
-        source_application__profile=here.profile,
-        source_application__program=ProgramFactory.create(),
-    )
-    AwardFactory.create(
+    assert held_award_elsewhere(here.profile, here.program) is None
+    ended = AwardFactory.create(
         source_application__profile=here.profile,
         source_application__program=ProgramFactory.create(),
         status=Award.Status.INACTIVE,
     )
-    assert other_active_awards(here.profile, here.program) == [other]
+    assert held_award_elsewhere(here.profile, here.program) is None
+    on_hold = AwardFactory.create(
+        source_application__profile=here.profile,
+        source_application__program=ProgramFactory.create(name="LANI"),
+        status=Award.Status.SUSPENDED,
+    )
+    assert held_award_elsewhere(here.profile, here.program) == on_hold
+    assert held_award_elsewhere(here.profile, ended.program) in (here, on_hold)
+    assert held_award_elsewhere(here.profile, on_hold.program) == here
+    assert one_scholarship(on_hold) == (
+        "You already hold the LANI scholarship. A student can hold one scholarship at a time."
+    )
 
 
 # --- Renewals (M9) ---

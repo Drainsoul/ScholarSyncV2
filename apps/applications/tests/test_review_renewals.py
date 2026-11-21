@@ -12,10 +12,14 @@ from apps.accounts.models import User
 from apps.applications import review
 from apps.applications.models import Application, Document
 from apps.applications.review_selectors import QueueFilters, parse_queue_filters, queue
-from apps.applications.tests.factories import DocumentFactory, DocumentFileFactory
+from apps.applications.tests.factories import (
+    ApplicationFactory,
+    DocumentFactory,
+    DocumentFileFactory,
+)
 from apps.awards.models import Award, ScholarTerm
 from apps.awards.services import AWARD_ENDED, AWARD_ON_HOLD, TERM_EXISTS
-from apps.awards.tests.factories import RenewalFactory
+from apps.awards.tests.factories import AwardFactory, RenewalFactory
 from apps.awards.tests.scholars import add_record, make_scholar
 from apps.core.models import AuditEvent
 from apps.programs.models import AcademicTerm, BenefitTier, Program
@@ -75,6 +79,20 @@ def approve(application: Application, tier: BenefitTier | None = None) -> object
         application=application,
         tier=tier,
     )
+
+
+def test_renewal_approves_while_the_student_holds_another_programs_award() -> None:
+    """One scholarship at a time limits new awards; a renewal in the same program goes on."""
+    application, award, current, _ = renewal_under_review()
+    AwardFactory.create(
+        source_application=ApplicationFactory.create(
+            profile=application.profile,
+            program=ProgramFactory.create(),
+            status=Application.Status.APPROVED,
+        )
+    )
+    assert isinstance(approve(application), ScholarTerm)
+    assert ScholarTerm.objects.filter(award=award, term=current).exists()
 
 
 def test_approve_renewal_adds_term() -> None:

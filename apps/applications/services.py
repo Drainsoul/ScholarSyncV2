@@ -25,7 +25,7 @@ from apps.applications.selectors import (
     rejected_this_term,
 )
 from apps.awards.models import Award
-from apps.awards.selectors import renewal_tier
+from apps.awards.selectors import held_award_elsewhere, one_scholarship, renewal_tier
 from apps.core import audit
 from apps.core.transitions import InvalidTransition, assert_transition
 from apps.files.policy import MB, join_types
@@ -117,6 +117,9 @@ def start_application(
         raise ValidationError(_first_reason(eligibility_for(profile, active, today=today)))
     if holds_scholarship(profile, active, term):
         raise ValidationError(HELD)
+    elsewhere = held_award_elsewhere(profile, active)  # under the profile lock, as approvals
+    if elsewhere is not None:
+        raise ValidationError(one_scholarship(elsewhere))
     if rejected_this_term(profile, active, term):
         raise ValidationError(REJECTED_THIS_TERM.format(term=term))
     existing = open_application(profile, active, term)

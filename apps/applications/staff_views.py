@@ -37,7 +37,7 @@ from apps.applications.staff_wording import staff_items
 from apps.applications.views import DOCUMENT_TONES
 from apps.applications.wording import APPLICATION_TONES
 from apps.awards.models import ScholarTerm
-from apps.awards.selectors import other_active_awards
+from apps.awards.selectors import held_award_elsewhere
 from apps.core.htmx import HtmxHttpRequest, close_dialog, toast
 from apps.core.permissions import ProgramStaffRequiredMixin
 from apps.core.shell import shell_context
@@ -181,7 +181,7 @@ def render_review(
             "profile": application.profile,
             "tone": APPLICATION_TONES[application.status],
             "position": queue_position(program, application),
-            "other_awards": other_active_awards(application.profile, program),
+            "award_elsewhere": held_award_elsewhere(application.profile, program),
             "document_rows": rows,
             "documents_total": len(rows),
             "documents_approved": sum(

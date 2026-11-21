@@ -134,6 +134,29 @@ def test_refuses_holder(world: World) -> None:
     assert not AuditEvent.objects.filter(action="award.created").exists()
 
 
+def _elsewhere(world: World, status: str = Award.Status.ACTIVE) -> Award:
+    lani = ProgramFactory.create(name="LANI")
+    tier = BenefitTierFactory.create(program=lani, effective_from=world.previous)
+    return make_scholar(lani, tier, [world.previous], profile=world.profile, status=status)
+
+
+@pytest.mark.parametrize("status", [Award.Status.ACTIVE, Award.Status.SUSPENDED])
+def test_refuses_a_student_holding_another_programs_award(world: World, status: str) -> None:
+    _elsewhere(world, status)
+    with pytest.raises(ValidationError) as caught:
+        world.create()
+    assert caught.value.messages == [
+        "You already hold the LANI scholarship. A student can hold one scholarship at a time."
+    ]
+    assert not Award.objects.filter(program=world.program).exists()
+    assert not AuditEvent.objects.filter(action="award.created").exists()
+
+
+def test_creates_once_the_other_programs_award_ended(world: World) -> None:
+    _elsewhere(world, Award.Status.GRADUATED)
+    assert world.create().program == world.program
+
+
 def test_refuses_future_term(world: World) -> None:
     future = AcademicTermFactory.create(school_year_start=2026, term=2)
     with pytest.raises(ValidationError) as caught:

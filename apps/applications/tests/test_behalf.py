@@ -33,6 +33,7 @@ from apps.applications.tests.factories import (
     DocumentFactory,
     DocumentFileFactory,
 )
+from apps.awards.tests.factories import AwardFactory
 from apps.core.models import AuditEvent
 from apps.files.models import StoredFile
 from apps.files.policy import MB, PDF, PNG
@@ -132,6 +133,36 @@ def test_start_refused_when_held(world: World) -> None:
         profile=world.profile, program=world.program, term=world.term, status=S.APPROVED
     )
     assert_refused(world, STAFF_HELD)
+
+
+ONE_AT_A_TIME = (
+    "You already hold the LANI scholarship. A student can hold one scholarship at a time."
+)
+
+
+def award_elsewhere(profile: StudentProfile, status: str = "active") -> None:
+    """An award `profile` holds in another program, LANI."""
+    AwardFactory.create(
+        source_application=ApplicationFactory.create(
+            profile=profile,
+            program=ProgramFactory.create(name="LANI", slug="lani"),
+            term=AcademicTermFactory.create(),
+            status=S.APPROVED,
+        ),
+        status=status,
+    )
+
+
+@pytest.mark.parametrize("status", ["active", "suspended"])
+def test_start_refused_while_holding_another_programs_award(world: World, status: str) -> None:
+    award_elsewhere(world.profile, status)
+    assert_refused(world, ONE_AT_A_TIME)
+    assert not Application.objects.filter(program=world.program).exists()
+
+
+def test_start_allowed_after_another_programs_award_ended(world: World) -> None:
+    award_elsewhere(world.profile, "inactive")
+    assert start(world).status == S.DRAFT
 
 
 def test_start_refused_when_rejected_this_term(world: World) -> None:
@@ -804,6 +835,18 @@ def test_start_for_found_student(world: World) -> None:
     assert application.profile == profile
     assert application.on_behalf is True
     assert application.program == world.program
+
+
+def test_start_for_found_student_refused_while_holding_another_award(world: World) -> None:
+    profile = self_registered()
+    award_elsewhere(profile)
+    found = find(world)
+    assert found is not None
+    with pytest.raises(ValidationError) as caught:
+        start_found(world, profile, found.token)
+    assert caught.value.messages == [ONE_AT_A_TIME]
+    assert not Application.objects.filter(program=world.program).exists()
+    assert "application.started_on_behalf" not in actions()
 
 
 def test_start_self_registered_without_lookup_404(world: World) -> None:

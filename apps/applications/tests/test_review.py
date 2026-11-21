@@ -933,20 +933,86 @@ def test_approve_refused_when_student_holds_award_in_this_program() -> None:
     )
 
 
-def test_approve_allowed_with_award_in_another_program() -> None:
+ONE_AT_A_TIME = "You already hold the {} scholarship. A student can hold one scholarship at a time."
+
+
+def award_elsewhere(application: Application, status: str = Award.Status.ACTIVE) -> Award:
+    return AwardFactory.create(
+        source_application=ApplicationFactory.create(
+            profile=application.profile,
+            program=ProgramFactory.create(name="LANI"),
+            status=S.APPROVED,
+        ),
+        status=status,
+    )
+
+
+@pytest.mark.parametrize("status", [Award.Status.ACTIVE, Award.Status.SUSPENDED])
+def test_approve_refused_while_student_holds_another_programs_award(status: str) -> None:
     program = ProgramFactory.create()
     application = approvable(program)
-    elsewhere = AwardFactory.create(
-        source_application=ApplicationFactory.create(
-            profile=application.profile, program=ProgramFactory.create(), status=S.APPROVED
-        )
+    award_elsewhere(application, status)
+    assert_not_approved(
+        application,
+        ONE_AT_A_TIME.format("LANI"),
+        lambda: review.approve_application(
+            actor=staff_of(program), program=program, application=application, tier=None
+        ),
     )
+
+
+def test_approve_names_the_other_award_before_undecided_documents() -> None:
+    program = ProgramFactory.create()
+    application = under_review(program)
+    document_with_file(application, D.PENDING)
+    award_elsewhere(application)
+    assert_not_approved(
+        application,
+        ONE_AT_A_TIME.format("LANI"),
+        lambda: review.approve_application(
+            actor=staff_of(program), program=program, application=application, tier=None
+        ),
+    )
+
+
+@pytest.mark.parametrize("status", [Award.Status.INACTIVE, Award.Status.GRADUATED])
+def test_approve_allowed_once_the_other_award_ended(status: str) -> None:
+    program = ProgramFactory.create()
+    application = approvable(program)
+    award_elsewhere(application, status)
     award = review.approve_application(
         actor=staff_of(program), program=program, application=application, tier=None
     )
-    assert isinstance(award, Award)
-    assert award.program == program
-    assert set(Award.objects.filter(profile=application.profile)) == {elsewhere, award}
+    assert isinstance(award, Award) and award.program == program
+
+
+def test_second_programs_approval_is_refused_after_the_first() -> None:
+    """Two open applications: only the first one approved stands."""
+    ceaa, lani = ProgramFactory.create(name="TCU CEAA"), ProgramFactory.create(name="LANI")
+    first = approvable(ceaa)
+    second = approvable(lani, profile=first.profile)
+    review.approve_application(actor=staff_of(ceaa), program=ceaa, application=first, tier=None)
+    EmailOutbox.objects.all().delete()  # the first approval's email
+    assert_not_approved(
+        second,
+        ONE_AT_A_TIME.format("TCU CEAA"),
+        lambda: review.approve_application(
+            actor=staff_of(lani), program=lani, application=second, tier=None
+        ),
+    )
+
+
+def test_bulk_approve_skips_a_student_holding_another_award() -> None:
+    program = ProgramFactory.create()
+    actor = staff_of(program)
+    fine = approvable(program)
+    blocked = under_review(program)  # refused before its documents are looked at
+    award_elsewhere(blocked)
+    result = _bulk(actor, program, "approve", [blocked, fine])
+    assert result.done == 1
+    assert result.skipped == [(blocked.profile.full_name, ONE_AT_A_TIME.format("LANI"))]
+    blocked.refresh_from_db()
+    assert blocked.status == S.UNDER_REVIEW
 
 
 def test_approve_note_is_at_most_1000_characters() -> None:

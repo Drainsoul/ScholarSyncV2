@@ -14,6 +14,7 @@ from apps.applications.tests.factories import (
     DocumentFactory,
     DocumentFileFactory,
 )
+from apps.awards.tests.factories import AwardFactory
 from apps.core.models import AuditEvent
 from apps.files.models import StoredFile
 from apps.files.policy import PDF
@@ -741,6 +742,29 @@ def test_find_then_file_starts_the_draft(client: Any) -> None:
     page = client.get(response.url)
     assert page.status_code == 200
     assert "Mara Sy" in page.content.decode()
+
+
+def test_find_then_file_refused_while_holding_another_programs_award(client: Any) -> None:
+    membership = _staff()
+    AcademicTermFactory.create(is_current=True)
+    profile = _self_registered()
+    AwardFactory.create(
+        source_application=ApplicationFactory.create(
+            profile=profile,
+            program=ProgramFactory.create(slug="lani", name="LANI"),
+            term=AcademicTermFactory.create(),
+            status=Application.Status.APPROVED,
+        )
+    )
+    client.force_login(membership.user)
+    found = client.post(_find_url(), {"email": LOOKUP_EMAIL}).context["found"]
+    response = client.post(_url(), {"profile": profile.pk, "lookup": found.token})
+    assert response.status_code == 400
+    assert (
+        "You already hold the LANI scholarship. A student can hold one scholarship at a time."
+        in response.content.decode().replace("&#x27;", "'")
+    )
+    assert not Application.objects.filter(program=membership.program).exists()
 
 
 def test_file_for_self_registered_without_lookup_404(client: Any) -> None:

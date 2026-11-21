@@ -13,7 +13,8 @@ from apps.awards.models import Award, ScholarImport, ScholarTerm
 from apps.awards.selectors import (
     RolloverResult,
     graduating_awards,
-    holds_award,
+    held_awards,
+    one_scholarship,
     program_profiles,
     renewal_tier,
     stale_applications,
@@ -565,8 +566,12 @@ def create_award(
     if known is None:
         raise Http404("No such student.")
     profile = StudentProfile.objects.select_for_update().get(pk=known)
-    if holds_award(profile, active):
+    # One read of the awards the student holds, so a 500-row import costs no extra query a row.
+    held = held_awards(profile)
+    if any(award.program_id == active.pk for award in held):
         raise ValidationError(already_holds(active))
+    if held:  # one scholarship at a time (spec §4.5), under the profile lock
+        raise ValidationError(one_scholarship(held[0]))
     term = data.record.term
     current = current_term()
     if current is None:

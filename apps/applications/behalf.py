@@ -31,6 +31,7 @@ from apps.applications.services import (
     choose_tier,
     received_email,
 )
+from apps.awards.selectors import held_award_elsewhere, one_scholarship
 from apps.core import audit
 from apps.core.permissions import require_program_staff
 from apps.core.transitions import InvalidTransition, assert_transition
@@ -175,6 +176,9 @@ def start_on_behalf(
         raise ValidationError(NO_TERM)
     if holds_scholarship(profile, active, term):
         raise ValidationError(STAFF_HELD)
+    elsewhere = held_award_elsewhere(profile, active)  # under the profile lock, as approvals
+    if elsewhere is not None:
+        raise ValidationError(one_scholarship(elsewhere))
     if rejected_this_term(profile, active, term):
         raise ValidationError(STAFF_REJECTED.format(term=term))
     existing = open_application(profile, active, term)

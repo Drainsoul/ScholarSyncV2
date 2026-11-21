@@ -200,6 +200,57 @@ def test_match_page_shows_held_instead_of_apply(client, term, django_assert_max_
     assert Application.objects.count() == 2
 
 
+ONE_AT_A_TIME = (
+    "You already hold the Alpha scholarship. A student can hold one scholarship at a time."
+)
+
+
+@pytest.mark.parametrize("status", ["active", "suspended"])
+def test_match_page_one_scholarship_check_on_other_programs(client, term, status):
+    program, profile = _held_world(term)
+    other = ProgramFactory.create(name="Bravo")
+    BenefitTierFactory.create(program=other, effective_from=term)
+    body = text(get(client, profile.user))
+    assert ONE_AT_A_TIME not in body
+    assert reverse("applications:new", args=[other.slug]) in body
+    AwardFactory.create(
+        source_application=ApplicationFactory.create(
+            profile=profile,
+            program=program,
+            term=AcademicTermFactory.create(),
+            status=Application.Status.APPROVED,
+        ),
+        status=status,
+    )
+    response = get(client, profile.user)
+    body = text(response)
+    assert body.count(ONE_AT_A_TIME) == 1  # on Bravo's card only
+    assert reverse("applications:new", args=[other.slug]) not in body
+    cards = {card["match"].program.name: card for card in response.context["cards"]}
+    assert not cards["Bravo"]["match"].result.eligible
+    row = cards["Bravo"]["items"][-1]
+    assert (row["state"], row["detail"]) == ("unmet", ONE_AT_A_TIME)
+    assert all(item["detail"] != ONE_AT_A_TIME for item in cards["Alpha"]["items"])
+
+
+def test_match_page_no_check_once_the_award_ended(client, term):
+    program, profile = _held_world(term)
+    other = ProgramFactory.create(name="Bravo")
+    BenefitTierFactory.create(program=other, effective_from=term)
+    AwardFactory.create(
+        source_application=ApplicationFactory.create(
+            profile=profile,
+            program=program,
+            term=AcademicTermFactory.create(),
+            status=Application.Status.APPROVED,
+        ),
+        status="inactive",
+    )
+    body = text(get(client, profile.user))
+    assert ONE_AT_A_TIME not in body
+    assert reverse("applications:new", args=[other.slug]) in body
+
+
 REJECTED = "This application wasn't approved for {}. You can apply again next term."
 
 

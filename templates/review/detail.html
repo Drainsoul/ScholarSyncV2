@@ -31,9 +31,9 @@
 {% if application.on_behalf %}
 <div class="banner banner--info" role="note"><div><p>Filed by {{ filed_by }} for the student.</p></div></div>
 {% endif %}
-{% for award in other_awards %}
-<div class="banner banner--info" role="note"><div><p>Also holds an active {{ award.program.name }} award.</p></div></div>
-{% endfor %}
+{% if award_elsewhere %}
+<div class="banner banner--warning" role="note"><div><p>Holds the {{ award_elsewhere.program.name }} scholarship.{% if application.kind == "new" %} A student can hold one scholarship at a time, so this application can't be approved.{% endif %}</p></div></div>
+{% endif %}
 <div class="split">
   <div class="stack">
     <section class="card" aria-labelledby="applicant-title">

@@ -1,12 +1,20 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 
-from django.db.models import Exists, OuterRef, Q
+from django.db.models import Exists, OuterRef, Q, Subquery
 
 from apps.accounts.models import User
 from apps.applications.models import Application
 from apps.awards.models import Award
-from apps.matching.eligibility import Academic, EligibilityResult, evaluate, evaluate_renewal
+from apps.awards.selectors import ONE_SCHOLARSHIP
+from apps.matching.eligibility import (
+    Academic,
+    Check,
+    CheckState,
+    EligibilityResult,
+    evaluate,
+    evaluate_renewal,
+)
 from apps.matching.legacy_model import Hint, hint_for
 from apps.programs.models import AcademicTerm, BenefitTier, Program
 from apps.programs.selectors import application_term, tiers_in_force, tiers_in_force_for
@@ -86,6 +94,17 @@ def renewal_eligibility_with(
     )
 
 
+ONE_SCHOLARSHIP_TEXT = "Not holding another scholarship."
+
+
+def _one_at_a_time(result: EligibilityResult, elsewhere: str) -> EligibilityResult:
+    """`result` with an unmet "one scholarship at a time" check (spec §4.5): no Apply.
+    `elsewhere` names the program of the award the student holds."""
+    reason = ONE_SCHOLARSHIP.format(program=elsewhere)
+    check = Check("one_scholarship", CheckState.UNMET, ONE_SCHOLARSHIP_TEXT, reason, "")
+    return replace(result, eligible=False, checks=(*result.checks, check), tier_candidates=())
+
+
 def match_page(user: User, *, today: date) -> MatchPage:
     """Everything the match page shows. Reads only: it never creates a profile."""
     term = application_term(today)
@@ -123,9 +142,20 @@ def match_page(user: User, *, today: date) -> MatchPage:
                 )
             )
         )
+    # The program of an award held elsewhere, earliest first as held_award_elsewhere picks it:
+    # a subquery, so the one-scholarship check costs no query of its own.
+    annotations: dict[str, Q | Subquery] = {
+        **flags,
+        "elsewhere": Subquery(
+            Award.objects.filter(profile=profile, status__in=Award.HELD_STATUSES)
+            .exclude(program=OuterRef("pk"))
+            .order_by("started_term__sort_key", "pk")
+            .values("program__name")[:1]
+        ),
+    }
     programs = list(
         Program.objects.filter(is_active=True)
-        .annotate(**flags)
+        .annotate(**annotations)
         .prefetch_related("allowed_schools")
         .order_by("name")
     )
@@ -139,10 +169,16 @@ def match_page(user: User, *, today: date) -> MatchPage:
             if on_behalf:
                 behalf_ids.add(program_id)
     tiers = tiers_in_force_for(programs, term) if term is not None else {}
+
+    def result_for(program: Program) -> EligibilityResult:
+        result = _evaluate(profile, program, academic, term, today, tiers.get(program.pk, []))
+        held_elsewhere = getattr(program, "elsewhere", None)
+        return result if not held_elsewhere else _one_at_a_time(result, held_elsewhere)
+
     matches = [
         ProgramMatch(
             program=program,
-            result=_evaluate(profile, program, academic, term, today, tiers.get(program.pk, [])),
+            result=result_for(program),
             open_application_id=open_ids.get(program.pk),
             open_on_behalf=program.pk in behalf_ids,
             held=bool(getattr(program, "held", False)),

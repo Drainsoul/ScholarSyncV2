@@ -218,19 +218,54 @@ def test_review_page_income_is_monthly(client: Any) -> None:
     assert "a year" not in body
 
 
-def test_review_page_notes_other_program_award(client: Any) -> None:
+def _lani_award(profile: Any, status: str = Award.Status.ACTIVE) -> Award:
+    other = ProgramFactory.create(slug="lani", name="LANI")
+    return AwardFactory.create(
+        source_application=ApplicationFactory.create(
+            profile=profile, program=other, status=S.APPROVED
+        ),
+        status=status,
+    )
+
+
+@pytest.mark.parametrize("status", [Award.Status.ACTIVE, Award.Status.SUSPENDED])
+def test_review_page_names_the_other_programs_award(client: Any, status: str) -> None:
     membership = _staff()
     profile = ProfileFactory.create()
     application = _row(membership.program, profile=profile)
-    other = ProgramFactory.create(slug="lani", name="LANI")
-    AwardFactory.create(
-        source_application=ApplicationFactory.create(
-            profile=profile, program=other, status=S.APPROVED
-        )
-    )
+    _lani_award(profile, status)
     client.force_login(membership.user)
     body = client.get(_detail_url(application.pk)).content.decode()
-    assert "Also holds an active LANI award." in body
+    assert "Holds the LANI scholarship." in body
+    assert "so this application can't be approved" in body
+
+
+def test_review_page_no_note_once_the_other_award_ended(client: Any) -> None:
+    membership = _staff()
+    profile = ProfileFactory.create()
+    application = _row(membership.program, profile=profile)
+    _lani_award(profile, Award.Status.INACTIVE)
+    client.force_login(membership.user)
+    body = client.get(_detail_url(application.pk)).content.decode()
+    assert "Holds the LANI scholarship." not in body
+
+
+def test_decide_approve_refused_while_holding_another_programs_award(client: Any) -> None:
+    membership = _staff()
+    application = _approvable(membership.program)
+    _lani_award(application.profile)
+    client.force_login(membership.user)
+    response = _post(
+        client, "decide", application, decision="approve", tier=application.requested_tier_id
+    )
+    assert response.status_code == 400
+    assert (
+        "You already hold the LANI scholarship. A student can hold one scholarship at a time."
+        in response.content.decode().replace("&#x27;", "'")
+    )
+    application.refresh_from_db()
+    assert application.status == S.UNDER_REVIEW
+    assert not Award.objects.filter(program=membership.program).exists()
 
 
 def test_review_page_buttons_follow_status(client: Any) -> None:

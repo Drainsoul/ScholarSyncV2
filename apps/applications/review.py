@@ -22,7 +22,7 @@ from apps.applications.review_selectors import applications_for_program
 from apps.applications.selectors import undecided_rows
 from apps.applications.services import application_url
 from apps.awards.models import Award, ScholarTerm
-from apps.awards.selectors import holds_award
+from apps.awards.selectors import held_award_elsewhere, holds_award, one_scholarship
 from apps.awards.services import already_holds, award_from_application, term_from_renewal
 from apps.core import audit
 from apps.core.permissions import require_program_staff
@@ -347,6 +347,13 @@ def approve_application(
     term; a renewal adds the next term to its award."""
     profile, locked = _lock_for_staff(actor, program, application.pk)
     assert_transition(locked, Application.Status.APPROVED)
+    renewal = locked.kind == Application.Kind.RENEWAL
+    # One scholarship at a time (spec §4.5), checked under the profile lock: of two approvals in
+    # different programs, the second waits for the first and then sees its award. Named before
+    # the documents, since deciding them can't help. A renewal stays in its own program.
+    elsewhere = None if renewal else held_award_elsewhere(profile, locked.program)
+    if elsewhere is not None:
+        raise ValidationError(one_scholarship(elsewhere))
     undecided = undecided_rows(locked)
     # Deciding the others can't help while a required document is missing: name that one first.
     never_uploaded = [row for row in undecided if row.document is None]
@@ -355,7 +362,6 @@ def approve_application(
     if undecided:
         raise ValidationError(NOT_DECIDED.format(label=undecided[0].requirement.label))
     chosen = _approval_tier(locked, tier)
-    renewal = locked.kind == Application.Kind.RENEWAL
     if not renewal and holds_award(profile, locked.program):
         raise ValidationError(already_holds(locked.program))
     note = note.strip()

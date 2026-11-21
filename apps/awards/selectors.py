@@ -39,13 +39,37 @@ def holds_award(profile: StudentProfile, program: Program) -> bool:
     ).exists()
 
 
-def other_active_awards(profile: StudentProfile, program: Program) -> list[Award]:
+ONE_SCHOLARSHIP = (
+    "You already hold the {program} scholarship. A student can hold one scholarship at a time."
+)
+
+
+def held_awards(profile: StudentProfile) -> list[Award]:
+    """The student's active and on-hold awards, earliest first, with their programs."""
     return list(
-        Award.objects.filter(profile=profile, status=Award.Status.ACTIVE)
+        Award.objects.filter(profile=profile, status__in=Award.HELD_STATUSES)
+        .select_related("program")
+        .order_by("started_term__sort_key", "pk")
+    )
+
+
+def held_award_elsewhere(profile: StudentProfile, program: Program) -> Award | None:
+    """An active or on-hold award in another program (spec §4.5: one scholarship at a time).
+
+    Rows from before the rule may hold several: the earliest one stands for them. Write paths
+    call this under the StudentProfile row lock, which every award write takes first."""
+    return (
+        Award.objects.filter(profile=profile, status__in=Award.HELD_STATUSES)
         .exclude(program=program)
         .select_related("program")
-        .order_by("program__name", "pk")
+        .order_by("started_term__sort_key", "pk")
+        .first()
     )
+
+
+def one_scholarship(award: Award) -> str:
+    """The refusal for a student who already holds `award` in another program."""
+    return ONE_SCHOLARSHIP.format(program=award.program.name)
 
 
 class RenewalStatus(StrEnum):
@@ -407,7 +431,6 @@ OFFICE_SCHOLAR_TABS: dict[str, str] = {
     "suspended": "Suspended",
     "inactive": "Inactive",
     "graduated": "Graduated",
-    "multi": "In two or more programs",
     "all": "All",
 }
 
@@ -443,18 +466,11 @@ def office_scholars(filters: OfficeScholarFilters) -> QuerySet[Award]:
         .annotate(names=StringAgg("program__name", ", ", order_by="program__name"))
         .values("names")[:1]
     )
-    active_count = Subquery(
-        active.order_by().values("profile_id").annotate(n=Count("pk")).values("n")[:1]
-    )
     rows = with_latest_term(
         Award.objects.select_related("program", "profile", "profile__user", "tier", "started_term")
     ).annotate(other_programs=Coalesce(others, Value(""), output_field=TextField()))
     if filters.status in Award.Status.values:
         rows = rows.filter(status=filters.status)
-    elif filters.status == "multi":
-        rows = rows.annotate(active_awards=Coalesce(active_count, Value(0))).filter(
-            active_awards__gte=2
-        )
     if filters.program is not None:
         rows = rows.filter(program_id=filters.program)
     for word in filters.q.split():

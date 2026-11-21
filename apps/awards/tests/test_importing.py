@@ -266,6 +266,30 @@ def test_holder_row(world: World):
     assert preview.rows[0].errors == [already_holds(world.program)]
 
 
+ONE_AT_A_TIME = (
+    "You already hold the LANI scholarship. A student can hold one scholarship at a time."
+)
+
+
+def hold_elsewhere(world: World, profile: StudentProfile, status: str = "active") -> Award:
+    lani = ProgramFactory.create(name="LANI")
+    tier = BenefitTierFactory.create(program=lani, effective_from=world.previous)
+    return make_scholar(lani, tier, [world.previous], profile=profile, status=status)
+
+
+@pytest.mark.parametrize("status", ["active", "suspended"])
+def test_row_holding_another_programs_award(world: World, status: str):
+    hold_elsewhere(world, world.known("Felipe", "Santos"), status)
+    preview = world.check([row()])
+    assert preview.rows[0].errors == [ONE_AT_A_TIME]
+    assert not preview.ok
+
+
+def test_row_with_an_ended_award_elsewhere_passes(world: World):
+    hold_elsewhere(world, world.known("Felipe", "Santos"), "graduated")
+    assert world.check([row()]).ok
+
+
 def test_unknown_term(world: World):
     preview = world.check([row(school_year="2019-2020", term="1")])
     assert preview.rows[0].errors == [NO_SUCH_TERM.format(label="1st semester, SY 2019–2020")]
@@ -385,6 +409,36 @@ def test_import_revalidates(world: World, monkeypatch):
         world.run(stored)
     assert caught.value.preview.rows[0].errors == [already_holds(world.program)]
     assert Award.objects.count() == 1
+
+
+def test_import_refuses_a_row_that_gained_an_award_elsewhere(world: World):
+    profile = world.known("Felipe", "Santos")
+    stored = world.file([row(), row(first_name="Lia")])
+    assert check_import(world.program, stored).ok
+    hold_elsewhere(world, profile)
+    with pytest.raises(ImportRejected) as caught:
+        world.run(stored)
+    assert caught.value.preview.rows[0].errors == [ONE_AT_A_TIME]
+    assert not Award.objects.filter(program=world.program).exists()
+    assert not ScholarImport.objects.exists()
+
+
+def test_import_commit_refuses_under_the_lock(world: World, monkeypatch):
+    """The award lands after the commit's own preview: create_award refuses under the lock."""
+    profile = world.known("Felipe", "Santos")
+    stored = world.file([row()])
+    real = importing.check_import
+
+    def then_award(program: Any, file: Any) -> Any:
+        preview = real(program, file)
+        hold_elsewhere(world, profile)
+        return preview
+
+    monkeypatch.setattr(importing, "check_import", then_award)
+    with pytest.raises(ImportRejected) as caught:
+        world.run(stored)
+    assert caught.value.preview.rows[0].errors == [ONE_AT_A_TIME]
+    assert not Award.objects.filter(program=world.program).exists()
 
 
 def test_create_award_refusal_rolls_back(world: World, monkeypatch):

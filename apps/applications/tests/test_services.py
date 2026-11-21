@@ -1026,6 +1026,46 @@ def test_start_refused_while_award_suspended(world: World) -> None:
     assert Application.objects.count() == before
 
 
+ONE_AT_A_TIME = (
+    "You already hold the LANI scholarship. A student can hold one scholarship at a time."
+)
+
+
+def _award_elsewhere(world: World, **extra: Any) -> None:
+    lani = ProgramFactory.create(name="LANI", slug="lani")
+    AwardFactory.create(
+        source_application=ApplicationFactory.create(
+            profile=world.profile,
+            program=lani,
+            term=AcademicTermFactory.create(),
+            status=Application.Status.APPROVED,
+        ),
+        **extra,
+    )
+
+
+@pytest.mark.parametrize("status", ["active", "suspended"])
+def test_start_refused_while_holding_another_programs_award(world: World, status: str) -> None:
+    _award_elsewhere(world, status=status)
+    before = Application.objects.count()
+    assert_refused(lambda: start_application(user=world.user, program=world.program), ONE_AT_A_TIME)
+    assert Application.objects.count() == before
+    assert "application.started" not in actions()
+
+
+def test_start_refused_with_an_old_draft_while_holding_another_award(world: World) -> None:
+    draft_for(world)
+    _award_elsewhere(world)
+    assert_refused(lambda: start_application(user=world.user, program=world.program), ONE_AT_A_TIME)
+
+
+@pytest.mark.parametrize("status", ["inactive", "graduated"])
+def test_start_allowed_after_another_award_ended(world: World, status: str) -> None:
+    _award_elsewhere(world, status=status)
+    application = start_application(user=world.user, program=world.program)
+    assert application.status == Application.Status.DRAFT
+
+
 def test_upload_to_stopped_requirement_404_student(world: World) -> None:
     application = draft_for(world)
     world.requirement.is_active = False

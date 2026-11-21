@@ -55,16 +55,19 @@ def test_tabs_search_and_program_filter(client: Any, office: User) -> None:
     assert "Ana Reyes" in fallback.content.decode()
 
 
-def test_multi_tab_lists_profiles_with_two_active_awards(client: Any, office: User) -> None:
+def test_two_programs_tab_is_gone_and_falls_back(client: Any, office: User) -> None:
+    """One scholarship at a time (rev 33): the "In two or more programs" tab is removed, and its
+    old link shows the default tab."""
     tcu = ProgramFactory.create(name="TCU CEAA")
-    lani = ProgramFactory.create(name="LANI")
-    both = ProfileFactory.create(first_name="Dina", last_name="Santos")
-    _award(tcu, "", "", profile=both)
-    _award(lani, "", "", profile=both)
     _award(tcu, "Eli", "Torres")
-    html = client.get(LIST + "?status=multi").content.decode()
-    assert html.count("Dina Santos") == 2
-    assert "Eli Torres" not in html
+    _award(tcu, "Cara", "Lim", status=Award.Status.GRADUATED)
+    html = client.get(LIST).content.decode()
+    assert "In two or more programs" not in html
+    response = client.get(LIST + "?status=multi")
+    assert response.status_code == 200
+    html = response.content.decode()
+    assert "Eli Torres" in html and "Cara Lim" not in html
+    assert "In two or more programs" not in html
 
 
 def test_other_programs_column(client: Any, office: User) -> None:
