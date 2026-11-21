@@ -39,11 +39,12 @@ def _staff(name: str = "Maria Santos") -> User:
 
 def test_tabs_with_unread_count_on_both_pages(client: Any, student: User) -> None:
     SupportReplyFactory.create(request=SupportRequestFactory.create(sender=student))
-    for url in (FORM, REPLIES):
+    # The form shows the unread reply; opening Replies reads it, so its own count drops to 0.
+    for url, count in ((FORM, 1), (REPLIES, 0)):
         response = client.get(url)
         tabs = {tab["label"]: tab for tab in response.context["tabs"]}
         assert list(tabs) == ["Contact the office", "Replies"]
-        assert tabs["Replies"]["count"] == 1
+        assert tabs["Replies"]["count"] == count
 
 
 def test_messages_show_reply_count_link(client: Any, student: User) -> None:
@@ -124,3 +125,16 @@ def test_program_field_hint(client: Any, student: User) -> None:
         "Messages about a program go to that program&#x27;s staff and the scholarship office."
         in html
     )
+
+
+def test_opening_replies_marks_only_that_page_and_updates_the_count(
+    client: Any, student: User
+) -> None:
+    SupportReplyFactory.create_batch(27, request=SupportRequestFactory.create(sender=student))
+    response = client.get(REPLIES)
+    assert SupportReply.objects.filter(read_at=None).count() == 2
+    tabs = {tab["label"]: tab for tab in response.context["tabs"]}
+    assert tabs["Replies"]["count"] == 2
+    assert response.context["nav_secondary"][0]["count"] == 2
+    assert client.head(REPLIES).status_code == 200
+    assert SupportReply.objects.filter(read_at=None).count() == 2

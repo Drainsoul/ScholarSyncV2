@@ -2,6 +2,7 @@ from datetime import date
 from typing import Any
 
 from django import forms
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.core.text import normalize_newlines
@@ -129,6 +130,17 @@ class ReplyTemplateForm(forms.Form):
         help_text="{first_name} and {program} are filled in when the template is picked.",
         widget=forms.Textarea(attrs={"rows": 8, "maxlength": 4000}),
     )
+
+    def __init__(self, *args: Any, template: ReplyTemplate | None = None, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        if template is not None and template.program_id is not None:
+            # A template kept for a program that has since closed keeps that program: without
+            # it in the choices, a save would quietly widen the template to every program.
+            field = self.fields["program"]
+            assert isinstance(field, forms.ModelChoiceField)
+            field.queryset = Program.objects.filter(
+                Q(is_active=True) | Q(pk=template.program_id)
+            ).order_by("name")
 
     @classmethod
     def initial_for(cls, template: ReplyTemplate) -> dict[str, object]:

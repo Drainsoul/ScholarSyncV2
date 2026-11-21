@@ -100,3 +100,24 @@ def test_only_the_office_sees_the_link(client: Any) -> None:
     client.force_login(staff)
     assert LIST not in client.get("/staff/lani/support/").content.decode()
     assert client.get(LIST).status_code == 403
+
+
+def test_editing_keeps_a_closed_programs_template_on_that_program(
+    client: Any, office: User
+) -> None:
+    closed = ProgramFactory.create(name="Old grant", is_active=False)
+    template = ReplyTemplateFactory.create(program=closed)
+    html = client.get(reverse("support:template-edit", args=[template.pk])).content.decode()
+    assert f'<option value="{closed.pk}" selected>Old grant</option>' in html
+    client.post(
+        reverse("support:template-edit", args=[template.pk]),
+        {
+            "title": template.title,
+            "topic": "",
+            "program": str(closed.pk),
+            "subject": "",
+            "body": "Hi",
+        },
+    )
+    template.refresh_from_db()
+    assert template.program == closed

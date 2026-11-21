@@ -83,15 +83,17 @@ class StudentRepliesView(StudentRequiredMixin, View):
                     "new": reply.read_at is None,
                 }
             )
+        if request.method == "GET":
+            # Only the replies on this page have been seen; the counts below already drop them.
+            seen = [reply.pk for reply in page.object_list if reply.read_at is None]
+            support.mark_replies_read(user, timezone.now(), pks=seen)
         context = {
             **shell_context(request, area="student"),
             "page": page,
             "items": items,
             "tabs": _student_tabs(request),
         }
-        response = render(request, "workspace/support/replies.html", context)
-        support.mark_replies_read(user, timezone.now())
-        return response
+        return render(request, "workspace/support/replies.html", context)
 
 
 class StudentSupportView(StudentRequiredMixin, View):
@@ -290,7 +292,8 @@ class _Detail(SupportScope, View):
             "which": which,
             "reply_form": reply_form,
             "email_form": email_form,
-            "can_email": row.sender.is_active,
+            # A refused email (the account closed meanwhile) still shows its form, with the reason.
+            "can_email": row.sender.is_active or bool(email_form.is_bound and email_form.errors),
             "detail_url": detail,
             "inbox_url": self.support_url("inbox"),
             "reply_url": self.support_url("reply", pk=row.pk),
@@ -451,7 +454,7 @@ class _TemplateFormView(SuperAdminRequiredMixin, View):
         return render(request, "workspace/support/template_form.html", context)
 
     def _save(self, request: HttpRequest, template: ReplyTemplate | None) -> HttpResponse:
-        form = ReplyTemplateForm(request.POST)
+        form = ReplyTemplateForm(request.POST, template=template)
         if not form.is_valid():
             return self._render(request, form, template)
         try:
@@ -481,7 +484,7 @@ class TemplateNewView(_TemplateFormView):
 class TemplateEditView(_TemplateFormView):
     def get(self, request: HttpRequest, pk: int) -> HttpResponse:
         template = get_object_or_404(ReplyTemplate, pk=pk)
-        form = ReplyTemplateForm(initial=ReplyTemplateForm.initial_for(template))
+        form = ReplyTemplateForm(initial=ReplyTemplateForm.initial_for(template), template=template)
         return self._render(request, form, template)
 
     def post(self, request: HttpRequest, pk: int) -> HttpResponse:

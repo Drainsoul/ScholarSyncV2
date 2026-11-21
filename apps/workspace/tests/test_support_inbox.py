@@ -232,3 +232,17 @@ def test_inbox_query_count(
         _ask(program=program)
     with django_assert_max_num_queries(16):
         assert client.get(url).status_code == 200
+
+
+def test_email_to_a_closed_account_shows_why(client: Any, office: User) -> None:
+    row = _ask()
+    row.sender.is_active = False
+    row.sender.save()
+    response = client.post(
+        reverse("support:office-email", args=[row.pk]), {"subject": "Re: hi", "body": "Two weeks."}
+    )
+    assert (
+        "This student&#x27;s account is closed. Reply in the app instead."
+        in response.content.decode()
+    )
+    assert not EmailOutbox.objects.exists()

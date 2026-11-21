@@ -271,5 +271,9 @@ def unread_replies(user: User) -> int:
     return _own_replies(user).filter(read_at=None).count()
 
 
-def mark_replies_read(user: User, now: datetime) -> int:
-    return _own_replies(user).filter(read_at=None).update(read_at=now)
+def mark_replies_read(user: User, now: datetime, pks: list[int] | None = None) -> int:
+    """Mark the student's unread replies read: all of them, or only `pks` (the ones shown)."""
+    rows = _own_replies(user).filter(read_at=None)
+    if pks is not None:
+        rows = rows.filter(pk__in=pks)
+    return rows.update(read_at=now)
