@@ -49,8 +49,9 @@ class AcademicTermFactory(factory.django.DjangoModelFactory[AcademicTerm]):
     class Meta:
         model = AcademicTerm
 
-    # Far from the years tests pin (2025, 2026), so a long run never collides with them.
-    school_year_start = factory.declarations.Sequence(lambda n: 1000 + n)
+    # Far from the years tests pin (2025, 2026). The sequence runs on across a worker's whole run
+    # (4,000+ tests), so it wraps within 1000-1899 instead of climbing into the pinned years.
+    school_year_start = factory.declarations.Sequence(lambda n: 1000 + n % 900)
     term = AcademicTerm.Term.FIRST
     starts_on = factory.declarations.LazyAttribute(
         lambda o: school_year_terms(date(o.school_year_start, 8, 1))[o.term - 1].starts_on
