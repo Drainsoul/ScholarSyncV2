@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Any
 
 from django import forms
 from django.utils import timezone
@@ -69,12 +70,18 @@ class SupportForm(forms.Form):
 class ReplyForm(forms.Form):
     """An answer in the app. `template` is the id of the picked template, if any (hidden)."""
 
+    prefix_id = "reply"
     template = forms.IntegerField(required=False, widget=forms.HiddenInput)
     body = forms.CharField(
         label="Message",
         max_length=4000,
         widget=forms.Textarea(attrs={"rows": 8, "maxlength": 4000}),
     )
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        # Both forms sit on one page: their own ids keep each label on its own field.
+        kwargs.setdefault("auto_id", f"{self.prefix_id}-%s")
+        super().__init__(*args, **kwargs)
 
     def clean_body(self) -> str:
         return normalize_newlines(self.cleaned_data["body"])
@@ -83,6 +90,7 @@ class ReplyForm(forms.Form):
 class EmailReplyForm(ReplyForm):
     """An answer by email: a one-line subject, then the message."""
 
+    prefix_id = "email"
     subject = forms.CharField(label="Subject", max_length=150)
     field_order = ["template", "subject", "body"]
 

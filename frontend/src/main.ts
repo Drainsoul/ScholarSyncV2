@@ -18,6 +18,7 @@ import { initMenus } from "./menus";
 import { initNav } from "./nav";
 import { initPdfPreviews } from "./pdf";
 import { initSessionWarning } from "./session";
+import { initTemplatePicker } from "./support";
 import { initToasts } from "./toast";
 import { initUploads } from "./upload";
 
@@ -32,3 +33,4 @@ initUploads();
 initPdfPreviews();
 initCopyButtons();
 initSessionWarning();
+initTemplatePicker();
