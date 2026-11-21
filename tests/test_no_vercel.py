@@ -24,4 +24,3 @@ def test_no_old_host_references_in_code():
         if path.is_file() and WORD in path.read_text(encoding="utf-8").lower():
             offenders.append(name)
     assert not offenders, offenders
-
