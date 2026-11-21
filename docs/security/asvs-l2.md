@@ -57,10 +57,10 @@ Evidence is a repo-relative path with a line number, a test node id, or both. Wh
 | V2.2.2 | L1 | Validation is enforced server-side, not only in the client. | Met | All checks live in forms and services (`apps/files/services.py:73`); `apps/files/tests/test_views.py::test_intent_wrong_field_types`. |
 | V2.2.3 | L2 | Combinations of related data items are checked against rules. | Met | Cross-field `clean()` methods, e.g. report period order (`apps/reports/forms.py:59`) and bulk action with ids (`apps/money/forms.py:72`). |
 | V2.3.1 | L1 | Business flows run in the expected step order without skipping. | Met | Status changes go through `assert_transition` (`apps/core/transitions.py:20`); `apps/core/tests/test_transitions.py::test_disallowed_transition_raises_with_labels`. |
-| V2.3.2 | L2 | Business-logic limits are implemented as documented. | Met | Upload starts per hour (`apps/files/services.py:89`), support messages per day (`apps/workspace/support.py:19`), import rows (`apps/awards/tabular.py:20`); `apps/workspace/tests/test_support.py::test_sixth_message_in_24_hours_is_refused_and_keeps_the_text`. |
+| V2.3.2 | L2 | Business-logic limits are implemented as documented. | Met | Upload starts per hour (`apps/files/services.py:89`), support messages per day (`apps/workspace/support.py:25`), import rows (`apps/awards/tabular.py:20`); `apps/workspace/tests/test_support.py::test_sixth_message_in_24_hours_is_refused_and_keeps_the_text`. |
 | V2.3.3 | L2 | Business operations are transactional: all succeed or roll back. | Met | Services are `@transaction.atomic` (`apps/files/services.py:228`, `apps/accounts/services.py:198`). |
 | V2.3.4 | L2 | Locking prevents double-booking limited resources. | Met | Row locks on payouts and budgets (`apps/money/services.py:269`, `apps/money/services.py:531`); term changes take an advisory lock (`apps/programs/services.py:119`). |
-| V2.4.1 | L2 | Anti-automation limits excessive calls to functions. | Met | allauth rate limits on login, signup, reset and reauthentication (database cache, `config/settings.py:250`); upload starts per hour (`apps/files/services.py:94`); support messages per day (`apps/workspace/support.py:35`). |
+| V2.4.1 | L2 | Anti-automation limits excessive calls to functions. | Met | allauth rate limits on login, signup, reset and reauthentication (database cache, `config/settings.py:250`); upload starts per hour (`apps/files/services.py:94`); support messages per day (`apps/workspace/support.py:52`). |
 
 ## V3 Web Frontend Security
 

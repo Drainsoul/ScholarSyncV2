@@ -35,6 +35,10 @@ here are read from the code on 2026-11-18. If code and this page disagree, the c
   the proxy (`docs/HOSTING.md` step 2).
 - **Uploads:** 20 upload starts an hour for a student and 100 for staff (`apps/files/policy.py`).
 - **Support messages:** 5 a day per student.
+- **Support replies (rev 35):** a reply identical to one the same person sent on the same request in the last
+  60 seconds is refused, so a double submit never sends an email twice. An emailed reply goes only to the
+  account email of the student who asked, never to a typed-in address, and its one-line subject refuses line
+  breaks (`apps/workspace/support.py`, `apps/workspace/forms.py`).
 
 ## Sessions (V7.1.1, V7.1.2, V7.1.3, V7.3.1, V7.3.2, V7.4.5, V7.5.2, V7.6.1)
 
