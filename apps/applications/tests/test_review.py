@@ -1,3 +1,5 @@
+import threading
+import time
 from collections.abc import Callable
 from datetime import timedelta
 from decimal import Decimal
@@ -1000,6 +1002,50 @@ def test_second_programs_approval_is_refused_after_the_first() -> None:
             actor=staff_of(lani), program=lani, application=second, tier=None
         ),
     )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_two_programs_approving_at_once_make_one_award(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The check runs under the profile lock: the second approval waits, then sees the award."""
+    ceaa, lani = ProgramFactory.create(name="TCU CEAA"), ProgramFactory.create(name="LANI")
+    first = approvable(ceaa)
+    second = approvable(lani, profile=first.profile)
+    actors = {ceaa.pk: staff_of(ceaa), lani.pk: staff_of(lani)}
+    real = review.held_award_elsewhere
+
+    def slow(*args: Any, **kwargs: Any) -> Award | None:
+        found = real(*args, **kwargs)
+        time.sleep(0.3)  # without the lock, both approvals would read "none" here
+        return found
+
+    monkeypatch.setattr(review, "held_award_elsewhere", slow)
+    errors: list[ValidationError] = []
+
+    def run(program: Program, application: Application) -> None:
+        from django.db import connection
+
+        try:
+            review.approve_application(
+                actor=actors[program.pk], program=program, application=application, tier=None
+            )
+        except ValidationError as exc:
+            errors.append(exc)
+        finally:
+            connection.close()
+
+    threads = [
+        threading.Thread(target=run, args=(ceaa, first)),
+        threading.Thread(target=run, args=(lani, second)),
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    [award] = Award.objects.filter(profile=first.profile)
+    assert [error.messages for error in errors] == [[ONE_AT_A_TIME.format(award.program.name)]]
+    loser = second if award.program == ceaa else first
+    loser.refresh_from_db()
+    assert loser.status == S.UNDER_REVIEW
 
 
 def test_bulk_approve_skips_a_student_holding_another_award() -> None:
