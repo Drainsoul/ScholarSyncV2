@@ -8,6 +8,7 @@ urlpatterns = [
     path("", staff_views.QueueView.as_view(), name="queue"),
     path("bulk/", staff_views.BulkView.as_view(), name="bulk"),
     path("new/", behalf_views.NewView.as_view(), name="behalf-new"),
+    path("new/find/", behalf_views.FindView.as_view(), name="behalf-find"),
     path("behalf/<int:pk>/", behalf_views.FilingView.as_view(), name="behalf"),
     path(
         "behalf/<int:pk>/academics/",

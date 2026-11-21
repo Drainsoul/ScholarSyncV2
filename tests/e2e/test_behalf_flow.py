@@ -22,6 +22,7 @@ from apps.programs.tests.factories import (
     SchoolFactory,
 )
 from apps.students.services import create_staff_profile
+from apps.students.tests.factories import ProfileFactory
 from tests.e2e.flows import log_in, one_kb_pdf, payload, submitted_application
 
 pytestmark = pytest.mark.e2e
@@ -204,4 +205,28 @@ def test_return_and_resubmit_by_staff(
     ).to_be_visible()
     application.refresh_from_db()
     assert application.status == Application.Status.SUBMITTED
+    assert console_errors == []
+
+
+def test_staff_finds_self_registered_student_by_email(
+    page: Page, live_server, vite_build, console_errors
+):
+    _, staff = _program()
+    student = UserFactory.create(email="mara.self@scholarsync.test", verified=True)
+    ProfileFactory.create(user=student, created_for=None, first_name="Mara", last_name="Sy")
+    log_in(page, live_server.url, staff.email, f"/staff/{SLUG}/applications/new/")
+
+    expect(page.get_by_role("heading", name="Find a student by account email")).to_be_visible()
+    page.get_by_label("Student's account email").fill("nobody@scholarsync.test")
+    page.get_by_role("button", name="Find student").click()
+    expect(page.get_by_text("No student account uses that email.")).to_be_visible()
+    assert "scholarsync.test" not in page.url
+
+    page.get_by_label("Student's account email").fill("Mara.Self@ScholarSync.test")
+    page.get_by_role("button", name="Find student").click()
+    expect(page.get_by_text("Found Mara Sy.")).to_be_visible()
+    page.get_by_role("button", name="File an application for Mara Sy").click()
+    expect(page.get_by_text("Application started for Mara Sy.")).to_be_visible()
+    expect(page.get_by_role("button", name="Save school and grades")).to_be_visible()
+    assert Application.objects.get().profile.user == student
     assert console_errors == []

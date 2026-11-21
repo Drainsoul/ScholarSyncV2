@@ -1,8 +1,9 @@
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Any
 
 import pytest
+import time_machine
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import Http404
 from django.utils import timezone
@@ -670,3 +671,237 @@ def test_upload_to_stopped_requirement_404_staff(world: World) -> None:
     with pytest.raises(Http404):
         attach(world, application, req, staff_file(world.actor))
     assert not DocumentFile.objects.exists()
+
+
+# --- the email lookup (rev 33, §18 Q16) ----------------------------------------------------
+
+SELF_EMAIL = "mara.selfsigned@scholarsync.test"
+
+
+def self_registered(email: str = SELF_EMAIL, **user: Any) -> StudentProfile:
+    """A student who signed up on their own: no program created the profile."""
+    account = UserFactory.create(email=email, verified=True, **user)
+    return ProfileFactory.create(user=account, created_for=None)
+
+
+def find(world: World, email: str = SELF_EMAIL, actor: User | None = None) -> Any:
+    return behalf.find_student(actor=actor or world.actor, program=world.program, email=email)
+
+
+def lookups() -> list[object]:
+    return list(
+        AuditEvent.objects.filter(action="application.email_lookup")
+        .order_by("pk")
+        .values_list("data", flat=True)
+    )
+
+
+def test_lookup_finds_a_self_registered_student(world: World) -> None:
+    profile = self_registered()
+    found = find(world)
+    assert found is not None
+    assert found.profile == profile
+    assert found.token
+    event = AuditEvent.objects.get(action="application.email_lookup")
+    assert event.actor == world.actor
+    assert event.program == world.program
+    assert event.data == {"matched": True}
+    assert event.target_type == "" and event.target_id == ""
+
+
+def test_lookup_is_case_insensitive_and_trimmed(world: World) -> None:
+    profile = self_registered()
+    found = find(world, "  Mara.SelfSigned@ScholarSync.TEST ")
+    assert found is not None and found.profile == profile
+
+
+@pytest.mark.parametrize(
+    "make",
+    [
+        lambda: None,  # nobody uses the address
+        lambda: self_registered(is_active=False),
+        lambda: UserFactory.create(email=SELF_EMAIL, verified=True),  # no profile
+        lambda: UserFactory.create(email=SELF_EMAIL, verified=True, role=User.Role.STAFF),
+        lambda: UserFactory.create(email=SELF_EMAIL, verified=True, role=User.Role.SUPER_ADMIN),
+    ],
+    ids=["unknown", "inactive", "no-profile", "staff", "office"],
+)
+def test_lookup_no_match(world: World, make: Any) -> None:
+    make()
+    assert find(world) is None
+    assert lookups() == [{"matched": False}]
+
+
+def test_lookup_is_exact_not_partial(world: World) -> None:
+    self_registered()
+    assert find(world, "mara.selfsigned@scholarsync") is None
+    assert find(world, "selfsigned@scholarsync.test") is None
+
+
+def test_profile_on_a_non_student_account_is_not_found(world: World) -> None:
+    """A profile whose account is not a student's (a data oddity) is never a match."""
+    staff = UserFactory.create(email=SELF_EMAIL, verified=True, role=User.Role.STAFF)
+    ProfileFactory.create(user=staff, created_for=None)
+    assert find(world) is None
+
+
+def test_lookup_needs_program_staff(world: World) -> None:
+    self_registered()
+    outsider = MembershipFactory.create(program=ProgramFactory.create()).user
+    with pytest.raises(PermissionDenied):
+        find(world, actor=outsider)
+    with pytest.raises(PermissionDenied):
+        find(world, actor=UserFactory.create())
+    assert lookups() == []
+
+
+def test_lookup_limit_is_thirty_a_day_across_programs(world: World) -> None:
+    self_registered()
+    other = ProgramFactory.create()
+    MembershipFactory.create(program=other, user=world.actor)
+    for index in range(29):
+        find(world, f"nobody{index}@scholarsync.test")
+    behalf.find_student(actor=world.actor, program=other, email=SELF_EMAIL)  # the 30th
+    with pytest.raises(ValidationError) as caught:
+        find(world)
+    assert caught.value.messages == ["You've looked up 30 addresses today. Try again tomorrow."]
+    assert len(lookups()) == 30
+    colleague = MembershipFactory.create(program=world.program).user
+    assert find(world, actor=colleague) is not None  # the limit is per staff member
+
+
+def test_lookup_limit_resets_at_manila_midnight(world: World) -> None:
+    profile = self_registered()
+    today = timezone.localdate()
+    zone = timezone.get_default_timezone()
+    yesterday_late = datetime.combine(today - timedelta(days=1), time(23, 30), tzinfo=zone)
+    with time_machine.travel(yesterday_late, tick=False):
+        for index in range(30):
+            find(world, f"nobody{index}@scholarsync.test")
+    found = find(world)
+    assert found is not None and found.profile == profile
+
+
+def test_lookup_audit_never_holds_the_address(world: World) -> None:
+    self_registered()
+    find(world)
+    find(world, "Someone.Else@ScholarSync.test")
+    dump = str(list(AuditEvent.objects.values())).lower()
+    assert "scholarsync.test" not in dump
+    assert "mara" not in dump and "someone" not in dump
+
+
+def start_found(world: World, profile: StudentProfile, token: str) -> Application:
+    return start_on_behalf(
+        actor=world.actor, program=world.program, profile_id=profile.pk, lookup=token
+    )
+
+
+def test_start_for_found_student(world: World) -> None:
+    profile = self_registered()
+    found = find(world)
+    application = start_found(world, profile, found.token)
+    assert application.profile == profile
+    assert application.on_behalf is True
+    assert application.program == world.program
+
+
+def test_start_self_registered_without_lookup_404(world: World) -> None:
+    profile = self_registered()
+    with pytest.raises(Http404):
+        start_on_behalf(actor=world.actor, program=world.program, profile_id=profile.pk)
+    assert Application.objects.count() == 0
+
+
+def test_start_refuses_a_bad_or_borrowed_token(world: World) -> None:
+    profile = self_registered()
+    other_student = self_registered("someone.else@scholarsync.test")
+    colleague = MembershipFactory.create(program=world.program).user
+    other_program = ProgramFactory.create()
+    MembershipFactory.create(program=other_program, user=world.actor)
+    mine = find(world).token
+    theirs = find(world, actor=colleague).token
+    found_elsewhere = behalf.find_student(
+        actor=world.actor, program=other_program, email=SELF_EMAIL
+    )
+    assert found_elsewhere is not None
+    elsewhere = found_elsewhere.token
+    for token in ("", "garbage", mine + "x", theirs, elsewhere):
+        with pytest.raises(Http404):
+            start_found(world, profile, token)
+    with pytest.raises(Http404):  # a token for one student never opens another
+        start_found(world, other_student, mine)
+    assert Application.objects.count() == 0
+
+
+def test_start_refuses_an_old_token(world: World) -> None:
+    profile = self_registered()
+    with time_machine.travel(timezone.now() - timedelta(hours=2), tick=False):
+        token = find(world).token
+    with pytest.raises(Http404):
+        start_found(world, profile, token)
+
+
+def test_start_refuses_a_found_student_deactivated_since(world: World) -> None:
+    profile = self_registered()
+    token = find(world).token
+    assert profile.user is not None
+    User.objects.filter(pk=profile.user.pk).update(is_active=False)
+    with pytest.raises(Http404):
+        start_found(world, profile, token)
+
+
+def test_start_for_found_student_keeps_the_refusals(world: World) -> None:
+    profile = self_registered()
+    token = find(world).token
+    ApplicationFactory.create(profile=profile, program=world.program, term=world.term)
+    with pytest.raises(ValidationError) as caught:
+        start_found(world, profile, token)
+    assert caught.value.messages == [STUDENT_OPEN.format(program=world.program.name)]
+
+
+def test_file_for_self_registered_student_end_to_end(world: World) -> None:
+    profile = self_registered()
+    tier = tier_for(world)
+    req = requirement(world)
+    application = start_found(world, profile, find(world).token)
+    set_academics(actor=world.actor, program=world.program, pk=application.pk, data=TYPED)
+    attach(world, application, req, staff_file(world.actor))
+    submit(world, application, reason="Walk-in with papers")
+    application.refresh_from_db()
+    assert application.status == S.SUBMITTED
+    assert application.requested_tier == tier
+    assert application.school_name == "Taguig Tech"
+    profile.refresh_from_db()
+    assert profile.created_for is None  # staff never write the profile
+    assert EmailOutbox.objects.get().to == SELF_EMAIL
+    assert actions() == [
+        "application.email_lookup",
+        "application.started_on_behalf",
+        "application.academics_set",
+        "document.uploaded",
+        "application.submitted",
+    ]
+
+
+def test_withdraw_for_self_registered_student(world: World) -> None:
+    profile = self_registered()
+    application = start_found(world, profile, find(world).token)
+    withdraw_on_behalf(actor=world.actor, program=world.program, pk=application.pk)
+    application.refresh_from_db()
+    assert application.status == S.WITHDRAWN
+
+
+def test_other_programs_staff_cannot_touch_the_found_students_application(world: World) -> None:
+    profile = self_registered()
+    application = start_found(world, profile, find(world).token)
+    other_program = ProgramFactory.create()
+    outsider = MembershipFactory.create(program=other_program).user
+    with pytest.raises(Http404):
+        behalf_application(other_program, application.pk)
+    with pytest.raises(Http404):
+        set_academics(actor=outsider, program=other_program, pk=application.pk, data=TYPED)
+    with pytest.raises(Http404):
+        withdraw_on_behalf(actor=outsider, program=other_program, pk=application.pk)
+    with pytest.raises(PermissionDenied):
+        withdraw_on_behalf(actor=outsider, program=world.program, pk=application.pk)

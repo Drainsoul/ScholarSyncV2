@@ -6,6 +6,8 @@ from django.contrib.messages import get_messages
 from django.urls import reverse
 from django.utils import timezone
 
+from apps.accounts.models import User
+from apps.accounts.tests.factories import UserFactory
 from apps.applications.models import Application, Document
 from apps.applications.tests.factories import (
     ApplicationFactory,
@@ -635,3 +637,150 @@ def test_bookmarked_filing_url_for_never_submitted_withdrawn_goes_to_new(client:
     client.force_login(filing.actor)
     response = client.get(filing.url())
     assert response.status_code == 302 and response.url == _url()
+
+
+# --- find a student by account email (rev 33, §18 Q16) ---------------------------------------
+
+LOOKUP_EMAIL = "mara.selfsigned@scholarsync.test"
+
+
+def _find_url(slug: str = "tcu-ceaa") -> str:
+    return reverse("review:behalf-find", kwargs={"program": slug})
+
+
+def _self_registered(**user: Any) -> Any:
+    account = UserFactory.create(email=LOOKUP_EMAIL, verified=True, **user)
+    return ProfileFactory.create(user=account, created_for=None, first_name="Mara", last_name="Sy")
+
+
+def test_new_page_has_the_lookup_form(client: Any) -> None:
+    membership = _staff()
+    client.force_login(membership.user)
+    body = client.get(_url()).content.decode()
+    assert "Find a student by account email" in body
+    assert f'action="{_find_url()}"' in body
+    assert 'method="post" action="' + _find_url() in body
+
+
+def test_find_match_shows_name_and_file_button(client: Any) -> None:
+    membership = _staff()
+    profile = _self_registered()
+    client.force_login(membership.user)
+    response = client.post(_find_url(), {"email": "Mara.SelfSigned@ScholarSync.test"})
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert "Found <strong>Mara Sy</strong>." in body
+    assert 'File an application<span class="visually-hidden"> for Mara Sy' in body
+    assert f'name="profile" value="{profile.pk}"' in body
+    assert response.context["found"].profile == profile
+    assert "No student account uses that email." not in body
+
+
+@pytest.mark.parametrize("kind", ["unknown", "inactive", "staff", "no-profile"])
+def test_find_no_match_says_so(client: Any, kind: str) -> None:
+    membership = _staff()
+    if kind == "inactive":
+        _self_registered(is_active=False)
+    elif kind == "staff":
+        UserFactory.create(email=LOOKUP_EMAIL, verified=True, role=User.Role.STAFF)
+    elif kind == "no-profile":
+        UserFactory.create(email=LOOKUP_EMAIL, verified=True)
+    client.force_login(membership.user)
+    response = client.post(_find_url(), {"email": LOOKUP_EMAIL})
+    assert response.status_code == 200
+    assert "No student account uses that email." in response.content.decode()
+    assert response.context["found"] is None
+
+
+@pytest.mark.parametrize("value", ["", "not-an-email"])
+def test_find_invalid_email_is_a_form_error_and_no_lookup(client: Any, value: str) -> None:
+    membership = _staff()
+    client.force_login(membership.user)
+    response = client.post(_find_url(), {"email": value})
+    assert response.status_code == 400
+    assert response.context["lookup_form"].errors
+    assert not AuditEvent.objects.filter(action="application.email_lookup").exists()
+
+
+def test_find_limit_refuses_without_looking(client: Any) -> None:
+    membership = _staff()
+    _self_registered()
+    client.force_login(membership.user)
+    for index in range(30):
+        client.post(_find_url(), {"email": f"nobody{index}@scholarsync.test"})
+    response = client.post(_find_url(), {"email": LOOKUP_EMAIL})
+    assert response.status_code == 429
+    body = response.content.decode()
+    assert "You&#x27;ve looked up 30 addresses today. Try again tomorrow." in body
+    assert response.context["found"] is None
+    assert AuditEvent.objects.filter(action="application.email_lookup").count() == 30
+
+
+def test_find_never_puts_the_address_in_audit_or_url(client: Any) -> None:
+    membership = _staff()
+    _self_registered()
+    client.force_login(membership.user)
+    response = client.post(_find_url(), {"email": LOOKUP_EMAIL})
+    assert LOOKUP_EMAIL not in response.wsgi_request.get_full_path()
+    assert "scholarsync.test" not in str(list(AuditEvent.objects.values())).lower()
+
+
+def test_find_then_file_starts_the_draft(client: Any) -> None:
+    membership = _staff()
+    AcademicTermFactory.create(is_current=True)
+    profile = _self_registered()
+    client.force_login(membership.user)
+    found = client.post(_find_url(), {"email": LOOKUP_EMAIL}).context["found"]
+    response = client.post(_url(), {"profile": profile.pk, "lookup": found.token})
+    application = Application.objects.get(profile=profile)
+    assert application.on_behalf and application.program == membership.program
+    assert response.status_code == 302
+    assert response.url == reverse(
+        "review:behalf", kwargs={"program": "tcu-ceaa", "pk": application.pk}
+    )
+    page = client.get(response.url)
+    assert page.status_code == 200
+    assert "Mara Sy" in page.content.decode()
+
+
+def test_file_for_self_registered_without_lookup_404(client: Any) -> None:
+    membership = _staff()
+    AcademicTermFactory.create(is_current=True)
+    profile = _self_registered()
+    client.force_login(membership.user)
+    assert client.post(_url(), {"profile": profile.pk}).status_code == 404
+    assert client.post(_url(), {"profile": profile.pk, "lookup": "x" * 5000}).status_code == 404
+    assert Application.objects.count() == 0
+
+
+def test_other_programs_staff_404_on_found_students_application(client: Any) -> None:
+    membership = _staff()
+    AcademicTermFactory.create(is_current=True)
+    profile = _self_registered()
+    client.force_login(membership.user)
+    found = client.post(_find_url(), {"email": LOOKUP_EMAIL}).context["found"]
+    client.post(_url(), {"profile": profile.pk, "lookup": found.token})
+    application = Application.objects.get(profile=profile)
+    other = _staff("lani")
+    client.force_login(other.user)
+    lani = {"program": "lani", "pk": application.pk}
+    assert client.get(reverse("review:behalf", kwargs=lani)).status_code == 404
+    assert client.post(reverse("review:behalf-withdraw", kwargs=lani)).status_code == 404
+    # The other program's lookup token never starts a draft here either.
+    assert (
+        client.post(_url("lani"), {"profile": profile.pk, "lookup": found.token}).status_code == 404
+    )
+
+
+def test_find_query_budget(client: Any, django_assert_max_num_queries: Any) -> None:
+    membership = _staff()
+    program = membership.program
+    AcademicTermFactory.create(is_current=True)
+    for _ in range(30):
+        _profile(program)
+    _self_registered()
+    client.force_login(membership.user)
+    with django_assert_max_num_queries(20):  # the page (13) + lock, count, match, audit
+        response = client.post(_find_url(), {"email": LOOKUP_EMAIL})
+    assert response.status_code == 200
+    assert response.context["found"] is not None

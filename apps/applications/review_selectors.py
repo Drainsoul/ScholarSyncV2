@@ -9,6 +9,8 @@ from django.db.models.functions import TruncMonth
 from django.http import Http404, QueryDict
 from django.utils import timezone
 
+from apps.accounts.managers import normalise_email
+from apps.accounts.models import User
 from apps.applications.models import Application, Document
 from apps.core.models import AuditEvent
 from apps.programs.models import Program
@@ -221,6 +223,30 @@ def filing_profiles(program: Program, q: str) -> QuerySet[StudentProfile]:
     for word in q.split():
         rows = rows.filter(Q(first_name__icontains=word) | Q(last_name__icontains=word))
     return rows.order_by("last_name", "first_name", "pk")
+
+
+def student_by_email(email: str) -> StudentProfile | None:
+    """The profile of the active student account with exactly this address (any case), or None.
+
+    Stored addresses are already lower-cased, so the match is an exact one on the stored value."""
+    address = normalise_email(email)
+    if not address:
+        return None
+    return (
+        StudentProfile.objects.filter(
+            user__email=address, user__is_active=True, user__role=User.Role.STUDENT
+        )
+        .select_related("user")
+        .first()
+    )
+
+
+def email_lookups_today(actor: User) -> int:
+    """How many email lookups this staff member ran since midnight in Manila, in any program."""
+    start = datetime.combine(timezone.localdate(), time.min, tzinfo=timezone.get_default_timezone())
+    return AuditEvent.objects.filter(
+        actor=actor, action="application.email_lookup", at__gte=start
+    ).count()
 
 
 def behalf_in_progress(program: Program) -> QuerySet[Application]:

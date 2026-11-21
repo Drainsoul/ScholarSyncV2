@@ -5,7 +5,9 @@ Every lookup is scoped to the program: another program's profile or application 
 """
 
 from collections.abc import Mapping
+from dataclasses import dataclass
 
+from django.core import signing
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.http import Http404, HttpRequest
@@ -14,6 +16,7 @@ from django.utils import timezone
 from apps.accounts.models import User
 from apps.applications.models import Application, Document
 from apps.applications.review import DECISION_REASON_TOO_LONG, MAX_DECISION_REASON
+from apps.applications.review_selectors import email_lookups_today, student_by_email
 from apps.applications.selectors import (
     holds_scholarship,
     missing_documents,
@@ -50,6 +53,11 @@ WITH_REVIEWERS = "This application is with the reviewers now."
 ACADEMICS_FROZEN = "The school and grades are frozen once the application is submitted."
 NO_ACADEMICS = "Add the student's school and grades first."
 NEED_OVERRIDE = "This student doesn't meet every rule. Say why you're filing anyway."
+LOOKUP_LIMIT = 30
+LOOKUP_LIMITED = f"You've looked up {LOOKUP_LIMIT} addresses today. Try again tomorrow."
+NO_STUDENT_ACCOUNT = "No student account uses that email."
+LOOKUP_SALT = "applications.behalf.email-lookup"
+LOOKUP_MAX_AGE = 60 * 60  # seconds a "File an application" button from a lookup stays good
 ACADEMIC_FIELDS = (
     "school",
     "school_name",
@@ -84,21 +92,82 @@ def _lock_behalf(actor: User, program: Program, pk: int) -> tuple[StudentProfile
     return profile, locked
 
 
+@dataclass(frozen=True)
+class Found:
+    """A student found by account email, and the signed token that lets this staff member file."""
+
+    profile: StudentProfile
+    token: str
+
+
+def _lookup_token(actor: User, program: Program, profile: StudentProfile) -> str:
+    """Ids only, signed: never the address, which stays out of the page's forms and URLs."""
+    return signing.dumps({"a": actor.pk, "p": program.pk, "s": profile.pk}, salt=LOOKUP_SALT)
+
+
+def _found_by_lookup(token: str, actor: User, program: Program, profile_id: int) -> bool:
+    """True when `token` is this actor's recent lookup of this profile in this program."""
+    if not token:
+        return False
+    try:
+        data = signing.loads(token, salt=LOOKUP_SALT, max_age=LOOKUP_MAX_AGE)
+    except signing.BadSignature:  # SignatureExpired is one too
+        return False
+    return bool(data == {"a": actor.pk, "p": program.pk, "s": profile_id})
+
+
+@transaction.atomic
+def find_student(
+    *,
+    actor: User,
+    program: Program,
+    email: str,
+    request: HttpRequest | None = None,
+) -> Found | None:
+    """The active student account with exactly this address (any case) that has a profile.
+
+    At most LOOKUP_LIMIT lookups per staff member a Manila day, counted from the audit log. The
+    audit event holds the program and whether it matched, never the address or the student.
+    """
+    require_program_staff(actor, program)
+    # Serialise one person's lookups so two at once can't both pass the limit.
+    User.objects.select_for_update().filter(pk=actor.pk).values_list("pk", flat=True).first()
+    if email_lookups_today(actor) >= LOOKUP_LIMIT:
+        raise ValidationError(LOOKUP_LIMITED)
+    profile = student_by_email(email)
+    audit.record(
+        actor=actor,
+        action="application.email_lookup",
+        program=program,
+        request=request,
+        data={"matched": profile is not None},
+    )
+    if profile is None:
+        return None
+    return Found(profile=profile, token=_lookup_token(actor, program, profile))
+
+
 @transaction.atomic
 def start_on_behalf(
     *,
     actor: User,
     program: Program,
     profile_id: int,
+    lookup: str = "",
     request: HttpRequest | None = None,
 ) -> Application:
+    """Start (or reopen) the on-behalf draft for a profile created for the program, or for a
+    student this staff member found by account email within the last hour (`lookup`)."""
     active = Program.objects.filter(pk=program.pk, is_active=True).first()
     if active is None:
         raise Http404("No such program.")
     require_program_staff(actor, active)
-    profile = (
-        StudentProfile.objects.select_for_update().filter(pk=profile_id, created_for=active).first()
-    )
+    rows = StudentProfile.objects.select_for_update(of=("self",)).filter(pk=profile_id)
+    if _found_by_lookup(lookup, actor, active, profile_id):
+        rows = rows.filter(user__is_active=True, user__role=User.Role.STUDENT)
+    else:
+        rows = rows.filter(created_for=active)
+    profile = rows.first()
     if profile is None:
         raise Http404("No such student.")
     term = application_term(timezone.localdate())

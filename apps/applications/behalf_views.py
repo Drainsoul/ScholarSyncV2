@@ -21,7 +21,7 @@ from apps.applications.review_selectors import (
     filing_profiles,
 )
 from apps.applications.selectors import document_rows
-from apps.applications.staff_forms import AcademicsForm, BehalfSubmitForm
+from apps.applications.staff_forms import AcademicsForm, BehalfSubmitForm, EmailLookupForm
 from apps.applications.staff_views import PAGE_SIZE, _actor, _error_text, _evaluated_on
 from apps.applications.staff_wording import staff_items
 from apps.applications.views import DOCUMENT_TONES, DocumentCard
@@ -37,12 +37,22 @@ from apps.programs.selectors import tiers_in_force
 
 CHOOSE_STUDENT = "Choose a student."
 MAX_QUERY = 200
+MAX_LOOKUP_TOKEN = 300  # a signed token is about 100 characters; anything longer is junk
 
 
 class NewView(ProgramStaffRequiredMixin, View):
     http_method_names = ["get", "head", "post", "options"]
 
-    def _render(self, request: HttpRequest, *, error: str = "", status: int = 200) -> HttpResponse:
+    def _render(
+        self,
+        request: HttpRequest,
+        *,
+        error: str = "",
+        status: int = 200,
+        lookup_form: EmailLookupForm | None = None,
+        found: behalf.Found | None = None,
+        lookup_message: str = "",
+    ) -> HttpResponse:
         q = request.GET.get("q", "").replace("\x00", "").strip()[:MAX_QUERY]
         paginator = Paginator(filing_profiles(self.program, q), PAGE_SIZE)
         page = paginator.get_page(request.GET.get("page"))
@@ -66,6 +76,9 @@ class NewView(ProgramStaffRequiredMixin, View):
                 "total": paginator.count,
                 "clear_url": reverse("review:behalf-new", kwargs={"program": self.program.slug}),
                 "error": error,
+                "lookup_form": lookup_form or EmailLookupForm(),
+                "found": found,
+                "lookup_message": lookup_message,
             },
             status=status,
         )
@@ -82,12 +95,38 @@ class NewView(ProgramStaffRequiredMixin, View):
                 actor=_actor(request),
                 program=self.program,
                 profile_id=profile_id,
+                lookup=request.POST.get("lookup", "")[:MAX_LOOKUP_TOKEN],
                 request=request,
             )
         except ValidationError as error:  # a missing profile is an Http404, not caught
             return self._render(request, error=_error_text(error), status=400)
         messages.success(request, f"Application started for {application.profile.full_name}.")
         return redirect("review:behalf", program=self.program.slug, pk=application.pk)
+
+
+class FindView(NewView):
+    """The "Find a student by account email" form. A POST, so the address never reaches a URL;
+    the page answers in place, so nothing about the address travels in a redirect either."""
+
+    http_method_names = ["post", "options"]
+
+    def post(self, request: HttpRequest, program: str) -> HttpResponse:
+        form = EmailLookupForm(request.POST)
+        if not form.is_valid():
+            return self._render(request, lookup_form=form, status=400)
+        try:
+            found = behalf.find_student(
+                actor=_actor(request),
+                program=self.program,
+                email=form.cleaned_data["email"],
+                request=request,
+            )
+        except ValidationError as error:  # the daily limit: no lookup was made
+            return self._render(
+                request, lookup_form=form, lookup_message=_error_text(error), status=429
+            )
+        message = "" if found is not None else behalf.NO_STUDENT_ACCOUNT
+        return self._render(request, lookup_form=form, found=found, lookup_message=message)
 
 
 EDITABLE = (Application.Status.DRAFT, Application.Status.RETURNED)

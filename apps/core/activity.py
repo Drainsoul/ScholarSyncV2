@@ -54,6 +54,7 @@ VERBS.update(
         "application.renewal_started": "started a renewal",
         "application.review_started": "started reviewing an application",
         "application.academics_set": "filled in the academics on an application",
+        "application.email_lookup": "looked up a student by account email",
         "award.updated": "edited a scholar",
         "scholar_term.created": "added a term record",
         "scholar_term.updated": "edited a term record",

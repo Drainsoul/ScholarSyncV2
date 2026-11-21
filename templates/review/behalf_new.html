@@ -3,7 +3,7 @@
 {% block title %}File for a student{% endblock %}
 {% block content %}
   <div class="page-header">
-    <div><h1>File for a student</h1><p class="page-header__meta">Fill in and submit an application to {{ program.name }} for a student you created a profile for.</p></div>
+    <div><h1>File for a student</h1><p class="page-header__meta">Fill in and submit an application to {{ program.name }} for a student you created a profile for, or for a student found by their account email.</p></div>
   </div>
   {% if error %}<div class="banner banner--danger" role="alert"><div><p>{{ error }}</p></div></div>{% endif %}
   <h2>In progress</h2>
@@ -59,4 +59,24 @@
   {% url 'workspace:students-new' program=program.slug as new_student_url %}
   {% include "components/empty_state.html" with title="No students yet. Add one on the Students page first." action_url=new_student_url action_label="New profile" %}
   {% endif %}
+  <h2 id="lookup-title">Find a student by account email</h2>
+  <p class="text-muted">For a student who signed up on their own. Enter the exact email address of their account.</p>
+  <form method="post" action="{% url 'review:behalf-find' program=program.slug %}" aria-labelledby="lookup-title" novalidate>
+    {% csrf_token %}
+    {% field lookup_form.email %}
+    <div class="btn-row"><button type="submit" class="btn btn--secondary">Find student</button></div>
+  </form>
+  <div class="stack" role="status">
+    {% if found %}
+    <p>Found <strong>{{ found.profile.full_name }}</strong>.</p>
+    <form method="post" action="{% url 'review:behalf-new' program=program.slug %}">
+      {% csrf_token %}
+      <input type="hidden" name="profile" value="{{ found.profile.pk }}">
+      <input type="hidden" name="lookup" value="{{ found.token }}">
+      <div class="btn-row"><button type="submit" class="btn btn--primary">File an application<span class="visually-hidden"> for {{ found.profile.full_name }}</span></button></div>
+    </form>
+    {% elif lookup_message %}
+    <p>{{ lookup_message }}</p>
+    {% endif %}
+  </div>
 {% endblock %}

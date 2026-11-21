@@ -210,3 +210,14 @@ class BehalfSubmitForm(forms.Form):
         if len(self.candidates) <= 1:
             cleaned["tier"] = self.candidates[0] if self.candidates else None
         return cleaned
+
+
+class EmailLookupForm(forms.Form):
+    """Find a self-registered student by the exact email of their account (rev 33, Q16)."""
+
+    email = forms.EmailField(
+        label="Student's account email",
+        max_length=254,
+        error_messages={"required": "Enter the student's email address."},
+        widget=forms.EmailInput(attrs={"autocomplete": "off"}),
+    )
