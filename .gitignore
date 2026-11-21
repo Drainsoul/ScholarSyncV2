@@ -225,9 +225,6 @@ static/dist/
 staticfiles/
 frontend/node_modules/
 .env.local
-# M1 spike leftovers: remove with the spike teardown (M3.5)
-.vercel/
-.env.spike
 
 # Per-codespace secret key written by .devcontainer/explore-key.sh
 .devcontainer/explore.env

@@ -17,18 +17,11 @@ Nothing here is automated: every step needs a person, an account or a decision.
 
 ## 2. Remove the M1 spike
 
-The Vercel spike (`scholarsync-spike`) is unused since spec revision 5. Its tokens are in the local, git-ignored
-`.env.spike`.
+Done 2026-11-21: the Vercel project `scholarsync-spike` and its Neon database are deleted, the local `.env.spike`,
+`.vercel/` and the CLI's `.env.local` are deleted, and the spike's `.gitignore` lines and the test that guarded them
+are gone. The spike never
+created an R2 bucket or a Resend key.
 
-- [ ] **Vercel project.** `vercel project rm scholarsync-spike` (or Vercel → the project → Settings → Delete).
-- [ ] **Neon database** (added through the Vercel Marketplace). Vercel → Storage → the Neon database → Settings →
-  Delete; then check the Neon console shows no project left.
-- [ ] **Cloudflare R2.** Delete the spike bucket (`npx wrangler r2 bucket delete BUCKET_NAME`, or the R2 dashboard)
-  and revoke its API token (R2 → Manage API tokens).
-- [ ] **Resend.** Revoke the API key (Resend → API Keys).
-- [ ] **Local leftovers.** Delete `.env.spike` and `.vercel/`, remove their two lines from `.gitignore` (under "M1
-  spike leftovers"), and delete `test_spike_leftovers_stay_git_ignored` in `tests/test_no_vercel.py`. Commit that
-  as `chore: remove the M1 spike leftovers`.
 - [ ] **The v1 Google OAuth client** leaked in the legacy repository. If it still exists in Google Cloud, delete it.
   V2 never uses it.
 
