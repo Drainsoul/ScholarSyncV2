@@ -200,8 +200,8 @@ class SupportReply(models.Model):
                 name="workspace_reply_body_len",
             ),
             models.CheckConstraint(
-                condition=(Q(channel="app") & Q(subject=""))
-                | (Q(channel="email") & GreaterThanOrEqual(Length("subject"), 1)),
+                condition=Q(channel="app", subject="")
+                | Q(GreaterThanOrEqual(Length("subject"), 1), channel="email"),
                 name="workspace_reply_subject_by_channel",
             ),
         ]
