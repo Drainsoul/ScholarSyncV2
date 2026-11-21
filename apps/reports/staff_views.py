@@ -175,13 +175,16 @@ class ReportResubmitView(ProgramStaffRequiredMixin, View):
         form = ReportForm(_actor(request), request.POST, require_file=False)
         if form.is_valid():
             try:
-                services.resubmit_report(
+                sent = services.resubmit_report(
                     actor=_actor(request), report=report, request=request, **form.cleaned_data
                 )
             except ValidationError as error:
                 form.add_error(None, error)
             else:
-                messages.success(request, "Report sent again.")
+                to_head = sent.status == Report.Status.WITH_HEAD
+                messages.success(
+                    request, "Report sent to the head again." if to_head else "Report sent again."
+                )
                 return redirect("reports:detail", program=self.program.slug, pk=report.pk)
         context = {
             **shell_context(request, area="staff", program=self.program),

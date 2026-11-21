@@ -33,6 +33,8 @@ NO_HEAD = "This program has no head yet. Ask the scholarship office to add one."
 
 def already(report: Report) -> str:
     """The refusal of a stale transition: "This report was already accepted."."""
+    if report.status == Report.Status.APPROVED:
+        return "This report was already approved."
     return f"This report was already {Report.Status(report.status).label.lower()}."
 
 

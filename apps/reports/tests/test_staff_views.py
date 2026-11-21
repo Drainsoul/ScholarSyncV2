@@ -259,7 +259,7 @@ def test_writer_sees_head_note_and_resends_to_the_head(client: Any) -> None:
     html = client.get(_url("detail", program, report.pk)).content.decode()
     assert "Note from the head" in html and "Office note" not in html
     response = client.post(_url("resubmit", program, report.pk), _form(""), follow=True)
-    assert "Report sent again." in response.content.decode()
+    assert "Report sent to the head again." in response.content.decode()
     report.refresh_from_db()
     assert report.status == Report.Status.WITH_HEAD
 
@@ -269,9 +269,9 @@ def test_stale_head_action_flashes_already(client: Any) -> None:
     report = _waiting(program)
     client.post(_url("approve", program, report.pk), {"note": ""})
     response = client.post(_url("approve", program, report.pk), {"note": ""}, follow=True)
-    assert "This report was already approved, not sent yet." in response.content.decode()
+    assert "This report was already approved." in response.content.decode()
     response = client.post(_url("return", program, report.pk), {"note": "x"}, follow=True)
-    assert "This report was already approved, not sent yet." in response.content.decode()
+    assert "This report was already approved." in response.content.decode()
     submitted = ReportFactory.create(program=program)
     response = client.post(_url("send", program, submitted.pk), follow=True)
     assert "This report was already waiting for the office." in response.content.decode()

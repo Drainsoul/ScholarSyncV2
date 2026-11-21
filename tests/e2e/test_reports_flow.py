@@ -79,7 +79,7 @@ def test_staff_sends_report_head_sends_office_returns_staff_resends_office_accep
     expect(page.get_by_text("Add the September totals.")).to_be_visible()
     page.get_by_label("Description").fill("September totals added.")
     page.get_by_role("button", name="Send again").click()
-    expect(page.get_by_text("Report sent again.")).to_be_visible()
+    expect(page.get_by_text("Report sent to the head again.")).to_be_visible()
 
     # The office's return reached the head who sent it too; the report waits for them again.
     _head_approves_and_sends(page, base, head.email, 2)

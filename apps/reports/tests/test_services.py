@@ -575,13 +575,13 @@ def test_stale_head_transitions_are_refused() -> None:
     head_approve_report(actor=head, report=report, note="")
     with pytest.raises(ValidationError) as caught:
         head_approve_report(actor=head, report=report, note="")
-    assert caught.value.messages == ["This report was already approved, not sent yet."]
+    assert caught.value.messages == ["This report was already approved."]
     with pytest.raises(ValidationError) as caught:
         head_return_report(actor=head, report=report, note="Late")
-    assert caught.value.messages == ["This report was already approved, not sent yet."]
+    assert caught.value.messages == ["This report was already approved."]
     with pytest.raises(ValidationError) as caught:
         decide_report(actor=_office(), report=report, accept=True, note="")
-    assert caught.value.messages == ["This report was already approved, not sent yet."]
+    assert caught.value.messages == ["This report was already approved."]
     send_report_to_office(actor=head, report=report)
     with pytest.raises(ValidationError) as caught:
         head_approve_report(actor=head, report=report, note="")
@@ -624,7 +624,7 @@ def test_concurrent_head_reviews_one_wins(monkeypatch: pytest.MonkeyPatch) -> No
     assert outcomes.count("done") == 1
     loser = next(outcome for outcome in outcomes if outcome != "done")
     assert loser in {
-        "This report was already approved, not sent yet.",
+        "This report was already approved.",
         "This report was already returned.",
     }
     reviews = AuditEvent.objects.filter(action__in=["report.head_approved", "report.head_returned"])
