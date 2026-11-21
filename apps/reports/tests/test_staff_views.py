@@ -289,21 +289,44 @@ def test_staff_cannot_review_or_send(client: Any) -> None:
     assert report.status == Report.Status.WITH_HEAD
 
 
-def test_office_cannot_review_or_send(client: Any) -> None:
+def test_office_never_sees_unsent_reports_on_program_pages(client: Any) -> None:
+    program = ProgramFactory.create(slug="tcu-ceaa", name="TCU CEAA")
+    client.force_login(UserFactory.create(role=User.Role.SUPER_ADMIN))
+    waiting = _waiting(program)
+    waiting.title = "Unsent one"
+    waiting.save()
+    approved = ReportFactory.create(program=program, status=Report.Status.APPROVED)
+    ReportFactory.create(program=program, title="Sent one")
+    file_id = waiting.files.get().pk
+    for report in (waiting, approved):
+        assert client.get(_url("detail", program, report.pk)).status_code == 404
+        for name in ("approve", "return", "send", "resubmit"):
+            assert client.post(_url(name, program, report.pk), {"note": "x"}).status_code == 404
+    preview = reverse(
+        "reports:file-preview", kwargs={"program": program.slug, "pk": waiting.pk, "file": file_id}
+    )
+    assert client.get(preview).status_code == 404
+    html = client.get(_url("list", program) + "?tab=all").content.decode()
+    assert "Sent one" in html and "Unsent one" not in html
+    waiting.refresh_from_db()
+    approved.refresh_from_db()
+    assert (waiting.status, approved.status) == ("with_head", "approved")
+
+
+def test_office_cannot_review_a_report_it_was_sent_before(client: Any) -> None:
+    """Returned by the office, fixed by staff: back with the head, and the head's to review."""
     program = ProgramFactory.create(slug="tcu-ceaa", name="TCU CEAA")
     client.force_login(UserFactory.create(role=User.Role.SUPER_ADMIN))
     report = _waiting(program)
+    Report.objects.filter(pk=report.pk).update(
+        sent_by=report.submitted_by, sent_at=report.submitted_at
+    )
     html = client.get(_url("detail", program, report.pk)).content.decode()
     assert "Your review" not in html
     for name in ("approve", "return"):
         assert client.post(_url(name, program, report.pk), {"note": "x"}).status_code == 403
-    approved = ReportFactory.create(program=program, status=Report.Status.APPROVED)
-    html = client.get(_url("detail", program, approved.pk)).content.decode()
-    assert "Send to the scholarship office" not in html
-    assert client.post(_url("send", program, approved.pk)).status_code == 403
     report.refresh_from_db()
-    approved.refresh_from_db()
-    assert (report.status, approved.status) == ("with_head", "approved")
+    assert report.status == Report.Status.WITH_HEAD
 
 
 def test_other_programs_head_gets_404_on_this_programs_report(client: Any) -> None:

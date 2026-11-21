@@ -44,9 +44,11 @@ def staff_can_download_report(user: User, file: StoredFile) -> bool:
     return True
 
 
-def program_reports(program: Program, tab: str) -> QuerySet[Report]:
-    """The program's reports for a staff tab, newest first; an unknown tab is All."""
-    rows = Report.objects.filter(program=program).select_related("program")
+def program_reports(program: Program, tab: str, *, office: bool = False) -> QuerySet[Report]:
+    """The program's reports for a staff tab, newest first; an unknown tab is All. The office
+    (on the program's pages) sees only the reports sent to it."""
+    rows = (_sent() if office else Report.objects.all()).filter(program=program)
+    rows = rows.select_related("program")
     if tab in Report.Status.values:
         rows = rows.filter(status=tab)
     return rows.order_by("-submitted_at", "-pk")
@@ -70,10 +72,12 @@ def office_reports(tab: str, program_id: int | None) -> QuerySet[Report]:
     return rows.order_by("-sent_at", "-pk")
 
 
-def staff_report(program: Program, pk: int) -> Report:
-    """One of the program's reports with its files; another program's id is a 404."""
+def staff_report(program: Program, pk: int, *, office: bool = False) -> Report:
+    """One of the program's reports; another program's id is a 404, and so is, for the office,
+    a report never sent to it."""
     report = (
-        Report.objects.filter(program=program, pk=pk)
+        (_sent() if office else Report.objects.all())
+        .filter(program=program, pk=pk)
         .select_related("program", "submitted_by", "reviewed_by", "sent_by")
         .first()
     )
@@ -111,13 +115,14 @@ def submitted_count() -> int:
     return Report.objects.filter(status=Report.Status.SUBMITTED).count()
 
 
-def staff_nav_count(program: Program, *, head: bool = False) -> int:
+def staff_nav_count(program: Program, *, head: bool = False, office: bool = False) -> int:
     """The staff nav's Reports count: returned reports, and for a head also the reports waiting
-    for their review or approved and not sent yet (rev 33)."""
+    for their review or approved and not sent yet (rev 33). The office counts sent ones only."""
     statuses = [Report.Status.RETURNED]
     if head:
         statuses += [Report.Status.WITH_HEAD, Report.Status.APPROVED]
-    return Report.objects.filter(program=program, status__in=statuses).count()
+    rows = _sent() if office else Report.objects.all()
+    return rows.filter(program=program, status__in=statuses).count()
 
 
 def head_counts(program: Program) -> tuple[int, int]:

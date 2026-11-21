@@ -132,7 +132,7 @@ def shell_context(
                     "label": "Reports",
                     "url": report_list,
                     "current": path.startswith(report_list),
-                    "count": staff_nav_count(program, head=head),
+                    "count": staff_nav_count(program, head=head, office=user.is_super_admin),
                     "icon": "chart-column",
                 },
                 {

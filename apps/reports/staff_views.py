@@ -44,10 +44,11 @@ class ReportListView(ProgramStaffRequiredMixin, TemplateView):
         if tab not in selectors.REPORT_TABS_STAFF:
             tab = "all"
         base = reverse("reports:list", kwargs={"program": self.program.slug})
-        counts = selectors.status_counts(self.program)
-        page = Paginator(selectors.program_reports(self.program, tab), PAGE_SIZE).get_page(
-            self.request.GET.get("page")
-        )
+        office = self.membership is None  # sees only the reports sent to it (rev 33)
+        counts = selectors.status_counts(self.program, office=office)
+        page = Paginator(
+            selectors.program_reports(self.program, tab, office=office), PAGE_SIZE
+        ).get_page(self.request.GET.get("page"))
         return {
             **super().get_context_data(**kwargs),
             **shell_context(self.request, area="staff", program=self.program),
@@ -155,7 +156,7 @@ class ReportDetailView(ProgramStaffRequiredMixin, View):
     http_method_names = ["get", "head", "options"]
 
     def get(self, request: HttpRequest, program: str, pk: int) -> HttpResponse:
-        report = selectors.staff_report(self.program, pk)
+        report = selectors.staff_report(self.program, pk, office=self.membership is None)
         context = {
             **shell_context(request, area="staff", program=self.program),
             **_detail_context(request, report, self.membership),
@@ -167,7 +168,7 @@ class ReportResubmitView(ProgramStaffRequiredMixin, View):
     http_method_names = ["post", "options"]
 
     def post(self, request: HttpRequest, program: str, pk: int) -> HttpResponse:
-        report = selectors.staff_report(self.program, pk)
+        report = selectors.staff_report(self.program, pk, office=self.membership is None)
         if report.status != Report.Status.RETURNED:
             messages.error(request, services.NOT_RETURNED)
             return redirect("reports:detail", program=self.program.slug, pk=report.pk)
@@ -206,7 +207,7 @@ class _HeadActionView(ProgramStaffRequiredMixin, View):
 
 class ReportApproveView(_HeadActionView):
     def post(self, request: HttpRequest, program: str, pk: int) -> HttpResponse:
-        report = selectors.staff_report(self.program, pk)
+        report = selectors.staff_report(self.program, pk, office=self.membership is None)
         form = HeadReviewForm(request.POST)
         if form.is_valid():
             try:
@@ -232,7 +233,7 @@ class ReportApproveView(_HeadActionView):
 
 class ReportReturnView(ReportApproveView):
     def post(self, request: HttpRequest, program: str, pk: int) -> HttpResponse:
-        report = selectors.staff_report(self.program, pk)
+        report = selectors.staff_report(self.program, pk, office=self.membership is None)
         form = HeadReviewForm(request.POST)
         if form.is_valid():
             try:
@@ -255,7 +256,7 @@ class ReportReturnView(ReportApproveView):
 
 class ReportSendView(_HeadActionView):
     def post(self, request: HttpRequest, program: str, pk: int) -> HttpResponse:
-        report = selectors.staff_report(self.program, pk)
+        report = selectors.staff_report(self.program, pk, office=self.membership is None)
         try:
             services.send_report_to_office(actor=_actor(request), report=report, request=request)
         except ValidationError as error:
@@ -270,7 +271,7 @@ class ReportFilePreviewView(ProgramStaffRequiredMixin, View):
     http_method_names = ["get", "options"]
 
     def get(self, request: HttpRequest, program: str, pk: int, file: int) -> HttpResponse:
-        report = selectors.staff_report(self.program, pk)
+        report = selectors.staff_report(self.program, pk, office=self.membership is None)
         row = selectors.report_file(report, file)
         if not can_preview(row.file):
             raise Http404("Nothing to preview.")
