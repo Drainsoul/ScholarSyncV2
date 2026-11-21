@@ -43,6 +43,12 @@ SUPPORT = (
 # The office's starting texts for replies (rev 35): (title, topic, body).
 REPLY_TEMPLATES = (
     (
+        "We're looking into it",
+        "",  # any topic
+        "Hi {first_name}, thank you for your message. {program} is looking into it and will "
+        "reply here as soon as we can.",
+    ),
+    (
         "Allowance release dates",
         SupportRequest.Topic.ALLOWANCE,
         "Hi {first_name}, {program} announces each release day on your Scholarships page and "

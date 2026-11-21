@@ -689,7 +689,8 @@ def test_demo_has_workspace_samples(demo_app, settings, frozen_today, stored):
     assert answered.replies.count() == 1  # rev 35: the answer is in the app
     staff_inbox = support.filter(program__slug="tcu-ceaa", status="open")
     assert staff_inbox.count() == 1  # the CEAA staff and head have one to answer
-    assert ReplyTemplate.objects.filter(is_active=True).count() == 2
+    assert ReplyTemplate.objects.filter(is_active=True).count() == 3
+    assert ReplyTemplate.objects.filter(is_active=True, topic="").count() == 1  # fits any topic
     program = Program.objects.get(slug="tcu-ceaa")
     counts = applications_by_month([program], since=first_month(today))
     bars = month_bars(counts, today=today)
