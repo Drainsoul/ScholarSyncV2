@@ -56,3 +56,16 @@ def test_the_choice_works_without_javascript(browser: Browser, live_server, vite
     page.wait_for_url("**/me/")
     assert page.evaluate(GROUND) == LIGHT_GROUND
     context.close()
+
+
+def test_dark_can_be_picked_on_the_sign_in_page(
+    page: Page, live_server, vite_build, console_errors
+):
+    """Spec §12 rev 31: before signing in, the auth layout has the same choice."""
+    page.emulate_media(color_scheme="light")
+    page.goto(f"{live_server.url}/accounts/login/")
+    page.get_by_role("button", name="Dark").click()
+    page.wait_for_url("**/accounts/login/")
+    assert page.evaluate(GROUND) != LIGHT_GROUND
+    expect(page.get_by_role("button", name="Dark")).to_have_attribute("aria-pressed", "true")
+    assert console_errors == []

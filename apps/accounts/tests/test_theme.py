@@ -76,8 +76,24 @@ def test_the_account_menu_offers_the_three_choices_with_the_current_one_pressed(
     client.force_login(user)
     client.cookies[settings.THEME_COOKIE_NAME] = "light"
     html = client.get("/me/").content.decode()
-    assert '<form class="theme-choice" method="post" action="/accounts/theme/">' in html
+    assert (
+        '<form class="theme-choice theme-choice--menu" method="post" action="/accounts/theme/">'
+        in html
+    )
     assert '<input type="hidden" name="next" value="/me/">' in html
     assert 'value="light" aria-pressed="true">Light</button>' in html
     assert 'value="dark" aria-pressed="false">Dark</button>' in html
     assert 'value="system" aria-pressed="false">System</button>' in html
+
+
+def test_the_sign_in_page_offers_the_choice_too(client: Client):
+    """Spec §12 rev 31: signed-out visitors can pick a theme on the auth layout."""
+    client.cookies[settings.THEME_COOKIE_NAME] = "dark"
+    html = client.get("/accounts/login/?next=/me/").content.decode()
+    assert (
+        '<form class="theme-choice theme-choice--auth" method="post" action="/accounts/theme/">'
+        in html
+    )
+    assert '<input type="hidden" name="next" value="/accounts/login/?next=/me/">' in html
+    assert 'aria-labelledby="theme-choice-auth"' in html
+    assert 'value="dark" aria-pressed="true">Dark</button>' in html

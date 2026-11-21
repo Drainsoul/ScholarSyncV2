@@ -658,7 +658,7 @@
 
 /* Light, Dark or System (spec §12 rev 29): a plain form, so it works without script. The chosen one
    is raised on the surface with an edge, not marked by colour alone. */
-.theme-choice {
+.theme-choice--menu {
   margin: var(--space-1) 0;
   padding: var(--space-2) var(--space-2) var(--space-1);
   border-block: 1px solid var(--border);
@@ -702,6 +702,42 @@
   background: var(--surface);
   box-shadow: 0 0 0 1px var(--border-input);
   color: var(--text);
+}
+
+/* The sign-in pages (rev 31): label and options on one line at the top right of the form column. */
+.auth__main {
+  position: relative;
+}
+
+.theme-choice--auth {
+  position: absolute;
+  inset-block-start: var(--space-4);
+  inset-inline-end: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.theme-choice--auth .theme-choice__label {
+  margin: 0;
+}
+
+.theme-choice--auth .theme-choice__options button {
+  padding-inline: var(--space-3);
+}
+
+/* On a phone it sits in the flow above the form, right-aligned, so it never covers the heading. */
+@media (max-width: 55.99rem) {
+  .auth__main {
+    flex-direction: column;
+  }
+
+  .theme-choice--auth {
+    position: static;
+    align-self: flex-end;
+    margin: var(--space-4) var(--space-4) 0;
+  }
 }
 
 /* The page on the grey ground, centred in the space beside the sidebar on wide screens */
