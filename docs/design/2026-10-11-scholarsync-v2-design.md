@@ -96,6 +96,18 @@
   gives them; LANI's tiers and amounts follow the TCU LANI page and CEAA's renewal rule the TCU-CEAA site; retention
   follows RA 10173 and is the host's policy; every date on the calendars opens a dialog with that day's items
   (§3, §4.5, §4.6, §4.8, §5, §6, §9, §12, §16, §18).
+- **Revision:** 34 (2026-11-21): settled while building M15: staff read the one-scholarship refusal in the third
+  person ("This student already holds the {program} scholarship. A student can hold one scholarship at a time."),
+  and reinstating an ended award is refused the same way while another is held; a draft opened before rev 33 can
+  still be submitted (start and approve are refused); the office scholar list keeps its "Other programs" column for
+  older rows. The email lookup answers in place (400 for a blank or invalid address, 429 at the limit), its "File an
+  application" button carries a signed token valid for one hour, and the 30-a-day limit counts across all of a
+  user's programs, the office included. Reports: an approve note is kept in `review_note` and an approve without a
+  note leaves an earlier office return note in place; a stale approve reads "This report was already approved."; a
+  staff resend says "Report sent to the head again."; the office's Returned tab can show a head's return. Day
+  dialog: release rows link "Open release day", link names include the event title, and a title that only repeats
+  its kind is hidden; dates in day URLs are real dates from 2000 to 2100 (`isodate`), anything else is a 404 (§4.5,
+  §4.8, §12).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -391,8 +403,8 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
     one term, but **one scholarship at a time** (rev 33, §18 Q6): while the student holds an `active` or `suspended`
     award in a program, starting an application to another program (the student or staff on their behalf) is refused
     with "You already hold the {program} scholarship. A student can hold one scholarship at a time.", and Find
-    scholarships shows it as an unmet check. Approving an application, adding a scholar by hand and importing a
-    scholar are refused the same way when the student holds an award in another program, so of two open applications
+    scholarships shows it as an unmet check. Approving an application, adding a scholar by hand, importing a scholar
+    and reinstating an ended award are refused the same way (staff read it as "This student already holds…", rev 34) when the student holds an award in another program, so of two open applications
     only the first approved one stands. The check runs under the `StudentProfile` row lock (the services' lock order),
     so two approvals can't race. It is a service rule, not a database constraint: rows from before rev 33 stay.
   - Approved applications are kept: they're the history.
