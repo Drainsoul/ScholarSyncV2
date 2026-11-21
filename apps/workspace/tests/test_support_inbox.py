@@ -96,11 +96,11 @@ def test_detail_lists_replies_with_author_channel_and_email_status(
     row = _ask()
     staff_author = UserFactory.create(role=User.Role.STAFF, full_name="Maria Santos")
     SupportReplyFactory.create(request=row, author=staff_author, body="In-app answer")
-    sent = EmailOutbox.objects.create(to="a@b.test", kind="support_reply", status="sent")
+    sent = EmailOutbox.objects.create(to="a@example.com", kind="support_reply", status="sent")
     SupportReplyFactory.create(
         request=row, channel="email", subject="Re: hi", body="Email answer", email=sent
     )
-    failed = EmailOutbox.objects.create(to="a@b.test", kind="support_reply", status="failed")
+    failed = EmailOutbox.objects.create(to="a@example.com", kind="support_reply", status="failed")
     bad = SupportReplyFactory.create(
         request=row, channel="email", subject="Re: lost", body="Lost answer", email=failed
     )
@@ -138,7 +138,7 @@ def test_subject_with_newline_refused(client: Any, office: User) -> None:
     row = _ask()
     response = client.post(
         reverse("support:office-email", args=[row.pk]),
-        {"subject": "Hi\r\nBcc: x@y.test", "body": "Two weeks."},
+        {"subject": "Hi\r\nBcc: x@example.com", "body": "Two weeks."},
     )
     assert response.status_code == 200
     assert "Enter the subject on one line." in response.content.decode()
