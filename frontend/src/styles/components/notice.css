@@ -6,10 +6,6 @@
   margin-block-end: var(--space-6);
 }
 
-.notice__title {
-  margin-block: 0 var(--space-2);
-}
-
 .notice__list {
   display: grid;
   grid-template-columns: max-content 1fr;
@@ -26,4 +22,49 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+/* The demo's test accounts on the sign-in page (spec §11 rev 32): a <details>, closed by default, so
+   the form comes first. The summary is the button; its chevron turns when open. */
+.demo-accounts {
+  padding: 0;
+}
+
+.demo-accounts__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-lg);
+  color: var(--text);
+  font-weight: 600;
+  list-style: none;
+  cursor: pointer;
+}
+
+.demo-accounts__toggle::-webkit-details-marker {
+  display: none;
+}
+
+.demo-accounts__toggle > .icon {
+  flex: none;
+  color: var(--info);
+}
+
+.demo-accounts__toggle > .icon:last-child {
+  margin-inline-start: auto;
+  color: var(--text-muted);
+}
+
+.demo-accounts[open] > .demo-accounts__toggle > .icon:last-child {
+  transform: rotate(180deg);
+}
+
+.demo-accounts__body {
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.demo-accounts__body > p:first-child {
+  margin-block-start: 0;
 }

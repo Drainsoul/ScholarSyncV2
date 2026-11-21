@@ -1,19 +1,22 @@
-{% load demo %}{% demo_accounts as accounts %}{% demo_password as password %}
-<section class="notice" aria-labelledby="demo-notice-title">
-  <h2 id="demo-notice-title" class="notice__title">Exploring ScholarSync? Use a test account</h2>
-  <p>These accounts and their data exist only on this copy.</p>
-  <dl class="notice__list">
-    {% for account in accounts %}
-      <dt>{{ account.button }}</dt>
-      <dd>{{ account.email }}</dd>
-    {% endfor %}
-    <dt>Password (all four)</dt>
-    <dd>{{ password }}</dd>
-  </dl>
-  <div class="notice__actions">
-    {% for account in accounts %}
-      <button type="button" class="btn btn--secondary" data-fill-email="{{ account.email }}" data-fill-password="{{ password }}" hidden>{{ account.button }}</button>
-    {% endfor %}
+{% load demo ui %}{% demo_accounts as accounts %}{% demo_password as password %}
+{# Closed by default (spec §11, rev 32): the summary is the button that opens the test accounts. No heading inside it: some screen readers drop headings in a summary. #}
+<details class="notice demo-accounts">
+  <summary class="demo-accounts__toggle">{% icon "key-round" %}<span class="demo-accounts__title">Exploring ScholarSync? Use a test account</span>{% icon "chevron-down" %}</summary>
+  <div class="demo-accounts__body">
+    <p>These accounts and their data exist only on this copy.</p>
+    <dl class="notice__list">
+      {% for account in accounts %}
+        <dt>{{ account.button }}</dt>
+        <dd>{{ account.email }}</dd>
+      {% endfor %}
+      <dt>Password (all four)</dt>
+      <dd>{{ password }}</dd>
+    </dl>
+    <div class="notice__actions">
+      {% for account in accounts %}
+        <button type="button" class="btn btn--secondary" data-fill-email="{{ account.email }}" data-fill-password="{{ password }}" hidden>{{ account.button }}</button>
+      {% endfor %}
+    </div>
+    <p class="visually-hidden" data-fill-status aria-live="polite"></p>
   </div>
-  <p class="visually-hidden" data-fill-status aria-live="polite"></p>
-</section>
+</details>

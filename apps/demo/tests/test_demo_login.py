@@ -28,7 +28,11 @@ def test_one_click_fill_then_log_in(page: Page, live_server, vite_build, button,
     page.on("pageerror", lambda e: errors.append(str(e)))
     loader.load()
     page.goto(f"{live_server.url}/accounts/login/")
-    page.get_by_role("button", name=button, exact=True).click()
+    # Closed by default (spec §11 rev 32): the accounts open from their summary button.
+    fill = page.get_by_role("button", name=button, exact=True)
+    expect(fill).to_be_hidden()
+    page.get_by_text("Exploring ScholarSync? Use a test account").click()
+    fill.click()
     expect(page.locator("[data-fill-status]")).to_have_text(
         f"Filled in the {button} account. Press Log in."
     )

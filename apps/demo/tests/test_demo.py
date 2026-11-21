@@ -232,6 +232,9 @@ def test_notice_lists_accounts_without_js(demo_app, client, vite_build):
     response = client.get("/accounts/login/")
     html = response.content.decode()
     assert "Exploring ScholarSync? Use a test account" in html
+    # Spec §11 rev 32: a closed <details> whose summary opens the accounts.
+    assert '<details class="notice demo-accounts">' in html
+    assert '<summary class="demo-accounts__toggle">' in html
     assert PASSWORD in html
     for account in ACCOUNTS:
         assert account.email in html
