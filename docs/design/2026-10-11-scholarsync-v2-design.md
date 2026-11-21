@@ -89,6 +89,13 @@
 - **Revision:** 32 (2026-11-21): on the sign-in pages the theme choice is three icon buttons (sun, moon, monitor),
   and the demo's test-account notice is collapsed behind a "Exploring ScholarSync? Use a test account" button that
   expands it (§11, §12).
+- **Revision:** 33 (2026-11-21): the maintainer's answers to §18: a student holds one scholarship at a time; at-risk
+  is removed; a staff member's program report goes to the program head, who approves or returns it and then sends it
+  to the scholarship office; staff may file for a self-registered student found by the exact email of their account;
+  no term limit (a scholar continues while enrolled and meeting the renewal rules); heads set the budget the office
+  gives them; LANI's tiers and amounts follow the TCU LANI page and CEAA's renewal rule the TCU-CEAA site; retention
+  follows RA 10173 and is the host's policy; every date on the calendars opens a dialog with that day's items
+  (§3, §4.5, §4.6, §4.8, §5, §6, §9, §12, §16, §18).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -163,7 +170,7 @@ apps/
   students/        StudentProfile, FamilyMember, EducationRecord, ProfileInvite, invite/claim
   files/           StoredFile, upload intents, presign/confirm/download
   applications/    Application, Document, DocumentFile, review services
-  awards/          Award, ScholarTerm, renewals, term rollover, at-risk selector
+  awards/          Award, ScholarTerm, renewals, term rollover
   money/           DistributionSchedule, Disbursement, Budget
   matching/        eligibility engine, legacy model hint (+ data/legacy_tier_model.json)
   reports/         Report, ReportFile
@@ -381,15 +388,27 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
       (staff asked for fixes) and re-checks the documents only.
   - constraint: at most one *open* application (draft, submitted, under_review or returned) per (`profile`, `program`,
     `term`), as a partial unique index. A student may hold open applications to several programs (CEAA and LANI) in
-    one term; one student may hold awards in two programs at once (§18 Q6).
+    one term, but **one scholarship at a time** (rev 33, §18 Q6): while the student holds an `active` or `suspended`
+    award in a program, starting an application to another program (the student or staff on their behalf) is refused
+    with "You already hold the {program} scholarship. A student can hold one scholarship at a time.", and Find
+    scholarships shows it as an unmet check. Approving an application, adding a scholar by hand and importing a
+    scholar are refused the same way when the student holds an award in another program, so of two open applications
+    only the first approved one stands. The check runs under the `StudentProfile` row lock (the services' lock order),
+    so two approvals can't race. It is a service rule, not a database constraint: rows from before rev 33 stay.
   - Approved applications are kept: they're the history.
   - **On behalf (M8b, decided 2026-11-14):**
     - two more fields: `on_behalf` (bool; `created_by` is then the staff member) and `override_reason` (text, at most
       1,000 characters), with constraint `applications_override_only_on_behalf`: a reason is stored only on an
       on-behalf row;
-    - staff file only for profiles created for their program (`created_for=program`), claimed or not. Finding a
-      self-registered student by the exact email of their account is not built (§18 Q16). Until the maintainer decides, such a
-      student asks the office, and the office creates a staff profile only for someone with no account;
+    - staff file for profiles created for their program (`created_for=program`), claimed or not, and (rev 33, §18
+      Q16) for a self-registered student found by the exact email of their account. "File for a student" has a
+      "Find a student by account email" form: a POST (the address never goes into a URL or a log), an exact,
+      case-insensitive match on an active student account that has a profile, at most 30 lookups per staff member a
+      day ("You've looked up 30 addresses today. Try again tomorrow."). A match shows the student's name and "File
+      an application"; no match says "No student account uses that email." Each lookup is audited as
+      `application.email_lookup` with the program and whether it matched, never the address. The later filing steps
+      are scoped by the on-behalf application's program, not by the profile's `created_for`, and staff still never
+      write the student's profile. Imports and manual scholars keep matching within the program's own students;
     - staff drive the whole application: start (a `draft`), school and grades (draft only), documents (draft or
       returned, with the student-side rules), submit and resubmit (a resubmit keeps the snapshot and tier and
       re-checks the documents only), and withdraw (draft or returned). After submit it goes through the unchanged M8
@@ -467,8 +486,9 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
     `inactive` → `active`; `graduated` is final. Labels: "Put on hold", "Reinstate", "End award", "Mark graduated";
     hold and end need a reason (at most 1,000 characters); ending or graduating sets `ended_term` to the current
     term and reinstating clears it; reinstating catches `awards_one_active_per_program`;
-  - constraint: at most one active award per (`profile`, `program`). A student may hold awards in two programs at
-    once (§18 Q6); the review screen notes it.
+  - constraint: at most one active award per (`profile`, `program`). Since rev 33 a student holds one scholarship
+    at a time across programs, checked by the services (§4.5); the review screen names the other program's award
+    when there is one, and Approve is refused.
 - **`ScholarTerm`:**
   - fields: `award`, `term`, `year_level`, `course`, `school`, `gwa`, `gwa_scale`, `units`, `merit` (bool),
     `merit_confirmed_by`, `compliance` ∈ {incomplete, complete}, `tier` (FK `BenefitTier`, the tier the term is paid
@@ -495,8 +515,8 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - An approved renewal application creates the next `ScholarTerm`.
   - Import or manual creation makes an `Award` + `ScholarTerm` with `source=imported` or `source=manual` (M9b):
     - **who:** staff pick from, and imports match only within, the program's own students: profiles created for the
-      program, holding an award in it, or with a submitted application to it. The app never searches every student
-      (as §18 Q16);
+      program, holding an award in it, or with a submitted application to it. Imports never search every student
+      (the email lookup of rev 33 is only for on-behalf applications);
     - **one import row = one scholar:** an award starting in the row's term (blank = the current term; the term must
       exist and be no later than the current one) plus that term's record. The tier is the row with the code in
       force for the start term, else the earliest row with that code;
@@ -508,9 +528,8 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
       (program row, so imports into one program run one at a time; then the file row; then profiles in pk order);
   - **`ScholarImport`** (M9b): `program`, `file` (one-to-one `StoredFile`, so a file imports once), `imported_by`,
     `row_count`, `created_at`. `Award.import_batch` (nullable FK) links imported awards to it.
-- **At-risk** is derived, never stored (a proposal pending §18 Q5): an `active` award is at risk when its latest term
-  record's GWA misses the renewal GWA rule for its scale (no rule for that scale: not flagged), or its units are under
-  `renewal_min_units`, or its renewal is due and the program's window has closed.
+- **At-risk** is gone (rev 33, §18 Q5: the maintainer, "they don't mean anything"): no figure, scholar tab, drawer
+  reasons or "Needs attention" row. Renewal rules still decide each renewal.
 - **Term change and rollover (M9):**
   - the scholarship office moves the current term on `/office/terms/`: it adds the next school year (three terms, the
     seed's dates) and makes a later term current ("The current term can only move forward."); the old flag is cleared
@@ -519,7 +538,8 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
     and `returned` applications of earlier terms are withdrawn (`application.expired`; submitted and under-review
     rows stay for staff); `active` and `suspended` awards with at least `program.max_terms` term records of the
     first and second semesters graduate (summer records don't count, since summer never renews; rev 23; blank means
-    no limit; "final year" graduation is a manual status change, §18 Q8);
+    no limit, and the seeded programs leave it blank: rev 33, §18 Q8, a scholar continues while enrolled and meeting
+    the renewal rules; "final year" graduation is a manual status change);
   - `year_level` is not advanced automatically: a renewal freezes the student's own updated education record, and a
     staff term record prefills year level + 1 in a later school year;
   - it replaces v1's bulk `update_years`.
@@ -568,16 +588,28 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 ### 4.8 reports, workspace, core
 - **`Report`** (M11c): a program's periodic report to the scholarship office.
   - fields: `program`, `title` (1–200), `period_start`, `period_end` (≥ start: "The period must end on or after its
-    start."), `description` (≤ 2,000, optional), `status` ∈ {submitted, accepted, returned}, `submitted_by`,
-    `submitted_at`, `reviewed_by`, `reviewed_at`, `review_note` (≤ 1,000), `created_at`;
+    start."), `description` (≤ 2,000, optional), `status` ∈ {with_head, approved, submitted, accepted, returned},
+    `submitted_by`, `submitted_at`, `head_reviewed_by`, `head_reviewed_at` (rev 33), `sent_by`, `sent_at` (rev 33),
+    `reviewed_by`, `reviewed_at`, `review_note` (≤ 1,000), `created_at`;
   - reports come from programs: only program staff and heads submit or resubmit; the services refuse the office, and
     the report pages hide "Send a report" from it (rev 23);
-  - transitions: `submitted` → `accepted` or `returned` (office only); `returned` → `submitted` (program staff or
-    head, any member; `submitted_by` becomes the resubmitter). Accepted is final. Every transition locks the row; a
-    second decision is refused with "This report was already {accepted|returned}.";
-  - returning needs a note ("Say what the program should change."); an accept note is optional;
-  - audited as `report.submitted`, `report.resubmitted`, `report.accepted`, `report.returned` (report id and program;
-    never the title, description or note).
+  - **the head reviews first (rev 33, §18 Q7):** a staff member's report starts `with_head` ("Waiting for the head");
+    a head of the program approves it (`approved`, "Approved, not sent yet") or returns it with a note; an approved
+    report shows the head "Send to the scholarship office", which makes it `submitted` ("Waiting for the office") and
+    sets `sent_by`/`sent_at`. A head's own report is sent to the office at once. A program with no active head keeps
+    staff reports waiting, and the report page says "This program has no head yet. Ask the scholarship office to add
+    one.";
+  - transitions: `with_head` → `approved` or `returned` (a head of the program); `approved` → `submitted` (a head);
+    `submitted` → `accepted` or `returned` (office only); `returned` → `with_head` (a staff member resubmits) or
+    `submitted` (a head resubmits); `submitted_by` becomes the resubmitter. `reviewed_by`, `reviewed_at` and
+    `review_note` hold the latest return or acceptance, by the head or the office. Accepted is final. Every
+    transition locks the row; a second decision is refused with "This report was already {status label}.";
+  - the office sees only reports that were sent at least once (`sent_at` set); its counts and "Reports to review"
+    count `submitted` only;
+  - returning needs a note ("Say what the program should change."); an accept or approve note is optional;
+  - audited as `report.submitted`, `report.resubmitted`, `report.head_approved`, `report.head_returned`,
+    `report.sent`, `report.accepted`, `report.returned` (report id and program; never the title, description or
+    note).
 - **`ReportFile`** (M11c): `report` (CASCADE), `file` (one-to-one `StoredFile`, PROTECT), `created_at`. Each
   submission carries one PDF of the `report` purpose; a resubmission may add a new version, and every version stays
   downloadable, newest first. A file already attached to a report can't be attached again ("Upload the file again.").
@@ -590,7 +622,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - `tasks/` has Open (overdue first, then by due date, undated last) and Done (newest first) tabs, 25 a page; the
     staff nav item "Tasks" counts open tasks due on or before today.
   - (rev 27) `tasks/` lists tasks only; "Add task" opens `tasks/new/` in the app dialog (a page of its own without
-    JavaScript). `?due=YYYY-MM-DD` pre-fills the due date (the dashboard calendar's day links) and `?from=dashboard`
+    JavaScript). `?due=YYYY-MM-DD` pre-fills the due date (the calendar day dialog's "Add task for this day", rev 33) and `?from=dashboard`
     sends Cancel and a no-JavaScript save back to the dashboard.
 - **`Notification`** (M11): `recipient` (CASCADE), `kind`, `title`, `body`, `url` (site-relative), `read_at`,
   `created_at`.
@@ -615,17 +647,17 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 | Public | `/` (redirects: the sign-in page, or the user's own home when signed in), `/programs/` (M6), `/programs/<slug>/` (M6), `/about/`, `/help/`, `/privacy/`, `/terms/`, `/cookies/`, `/contact/` (the six information pages; footer disclaimer in §11) | anyone |
 | Health | `/healthz` (database ping, no details) | anyone |
 | Accounts | `/accounts/…` (allauth: signup, login, logout POST, email confirm, password reset, Google), `/accounts/claim/<token>/`, `/accounts/theme/` (POST, rev 29: sets the theme cookie) | anyone |
-| Student | `/me/` (dashboard), `/me/profile/` (+ `personal/`, `family/`, `family/<id>/` + `…/delete/`, `education/`, `education/<id>/` + `…/delete/`, `photo/`) | student (own records only) |
+| Student | `/me/` (dashboard; rev 33: `/me/calendar/<YYYY-MM-DD>/`, the day dialog), `/me/profile/` (+ `personal/`, `family/`, `family/<id>/` + `…/delete/`, `education/`, `education/<id>/` + `…/delete/`, `photo/`) | student (own records only) |
 | Student | `/me/match/`, `/me/applications/`, `/me/applications/new/<slug>/` (GET: confirm page; POST: creates the draft), `/me/applications/<id>/`, `/me/applications/<id>/documents/<requirement>/` (POST), `…/submit/` (POST), `…/withdraw/` | student (own records only) |
 | Student | `/me/scholarships/` (awards, terms, renewals, payouts and the next distribution), `/me/scholarships/<award>/renew/` (POST), `/me/notifications/` (+ `<id>/`, which marks it read and redirects; `read/` POST), `/me/support/` (M11) | student |
-| Staff | `/staff/<slug>/` (dashboard) | program staff/head |
+| Staff | `/staff/<slug>/` (dashboard; rev 33: `calendar/<YYYY-MM-DD>/`, the day dialog) | program staff/head |
 | Staff | `students/` (unclaimed profiles created for this program), `students/new/`, `students/<id>/invite/` | program staff/head |
 | Staff | `applications/` (queue), `applications/<id>/` (review), `applications/<id>/start/`, `applications/<id>/documents/<document>/approve/`, `applications/<id>/documents/<document>/decline/`, `applications/<id>/documents/<document>/preview/` (rev 27, PNG/JPEG/PDF), `applications/<id>/decide/` (approve, return or reject), `applications/bulk/` (start review, approve; POST) | program staff/head |
-| Staff | `applications/new/` (in progress + profile picker; POST starts), `applications/behalf/<id>/` (filing page), `…/academics/`, `…/documents/<requirement>/`, `…/submit/`, `…/withdraw/` (POST) | program staff/head |
+| Staff | `applications/new/` (in progress + profile picker; POST starts; rev 33: `applications/new/find/` POST, the email lookup), `applications/behalf/<id>/` (filing page), `…/academics/`, `…/documents/<requirement>/`, `…/submit/`, `…/withdraw/` (POST) | program staff/head |
 | Staff | `scholars/`, `scholars/<award>/`, `…/edit/`, `…/status/`, `…/terms/new/`, `…/terms/<term>/`, `…/terms/<term>/merit/` (POST); `scholars/new/`, `scholars/import/`, `scholars/import/template/`, `scholars/export/` (M9b) | program staff/head |
 | Staff | `schedules/`, `schedules/new/`, `schedules/<id>/`, `schedules/<id>/publish/` (POST); `disbursements/`, `disbursements/<schedule>/`, `…/generate/` (POST), `…/bulk/` (POST), `…/<id>/reject/`, `…/<id>/revert/` (POST); `budget/`, `budget/edit/` | program staff/head (see §6) |
-| Staff | `tasks/` (+ `new/` rev 27, `<id>/`, `<id>/done/` POST, `<id>/delete/` POST; owner only, M11), `reports/` (M11c: + `new/`, `<id>/`, `<id>/resubmit/` POST; rev 27: `<id>/files/<file>/preview/`), `notifications/` (M11c: + `<id>/`, `read/` POST), `audit/` (M11c), `settings/` (rules and window; `tiers/`, `tiers/new/`, `tiers/<code>/`; `documents/`, `documents/<id>/`, `documents/<id>/active/` POST; M11b) | staff; `settings/` and `audit/` are head (and office) only |
-| Office | `/office/` (dashboard); M11b: `programs/` (+ `new/`, `<id>/`, `<id>/active/` POST), `staff/` (+ `new/`, `<id>/`, `<id>/active/`, `<id>/welcome/`, `<id>/memberships/` POST), `memberships/<id>/` POST, `schools/` (+ `new/`, `<id>/`); `terms/` (M9: list, `add/` POST, `<term>/current/`), `support/` (+ `<id>/answer/` POST; M11); M11c: `scholars/` (+ `export/`), `reports/` (+ `<id>/`, `<id>/decide/` POST), `analytics/` (+ `export/`), `audit/`, `notifications/` (+ `<id>/`, `read/` POST); rev 27: `tasks/` (+ `new/`, `<id>/`, `<id>/done/` POST, `<id>/delete/` POST; owner only), `reports/<id>/files/<file>/preview/` | super admin |
+| Staff | `tasks/` (+ `new/` rev 27, `<id>/`, `<id>/done/` POST, `<id>/delete/` POST; owner only, M11), `reports/` (M11c: + `new/`, `<id>/`, `<id>/resubmit/` POST; rev 27: `<id>/files/<file>/preview/`; rev 33, head only: `<id>/approve/`, `<id>/return/`, `<id>/send/` POST), `notifications/` (M11c: + `<id>/`, `read/` POST), `audit/` (M11c), `settings/` (rules and window; `tiers/`, `tiers/new/`, `tiers/<code>/`; `documents/`, `documents/<id>/`, `documents/<id>/active/` POST; M11b) | staff; `settings/` and `audit/` are head (and office) only |
+| Office | `/office/` (dashboard; rev 33: `calendar/<YYYY-MM-DD>/`, the day dialog); M11b: `programs/` (+ `new/`, `<id>/`, `<id>/active/` POST), `staff/` (+ `new/`, `<id>/`, `<id>/active/`, `<id>/welcome/`, `<id>/memberships/` POST), `memberships/<id>/` POST, `schools/` (+ `new/`, `<id>/`); `terms/` (M9: list, `add/` POST, `<term>/current/`), `support/` (+ `<id>/answer/` POST; M11); M11c: `scholars/` (+ `export/`), `reports/` (+ `<id>/`, `<id>/decide/` POST), `analytics/` (+ `export/`), `audit/`, `notifications/` (+ `<id>/`, `read/` POST); rev 27: `tasks/` (+ `new/`, `<id>/`, `<id>/done/` POST, `<id>/delete/` POST; owner only), `reports/<id>/files/<file>/preview/` | super admin |
 | Files | `POST /files/uploads/` (intent), `POST /files/uploads/<id>/confirm/`, `GET /files/<id>/` (authorize → 302) | owner or authorized staff |
 
 - **The staff queue** (`applications/`, M8):
@@ -645,10 +677,10 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
     "Fix and resubmit", and the filing page redirects to the review screen for any other status;
   - the review screen shows "Filed by {staff name} for the student." and lists overridden checks under "Overridden by
     staff" with the reason.
-- **The scholar list** (`scholars/`, M9): tabs Active (default), Suspended, Inactive, Graduated, At risk, Not renewed
-  (due this term), All; a name search (every word matches first or last name) and a tier filter by code; 25 rows a
+- **The scholar list** (`scholars/`, M9): tabs Active (default), Suspended, Inactive, Graduated, Not renewed
+  (due this term), All (rev 33: the At risk tab is gone); a name search (every word matches first or last name) and a tier filter by code; 25 rows a
   page, unknown values fall back to the defaults; columns scholar, school, tier, GWA (latest term), terms, status;
-  `?scholar=<id>` opens a drawer with the facts, renewal status, at-risk reasons and "Open record". The staff nav has
+  `?scholar=<id>` opens a drawer with the facts, renewal status and "Open record". The staff nav has
   "Scholars" after Applications; the student nav has "Scholarships".
 
 ## 6. Authorization
@@ -665,7 +697,8 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - `StudentRequiredMixin`, `ProgramStaffRequiredMixin(level=staff|head)`, `SuperAdminRequiredMixin`;
   - object access always goes through a scoped selector (e.g. `applications_for_program(program)`), never through a
     bare `Model.objects.get(pk=…)`.
-- **Proposed head vs staff split** (open question §18):
+- **Head vs staff split** (confirmed in rev 33, §18 Q7: heads set the budget the office gives them, and staff report
+  to their head):
 
 | Capability | Student | Staff | Head | Super admin |
 |---|---|---|---|---|
@@ -677,6 +710,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 | Release and revert disbursements (reauth) | — | — | ✓ | ✓ |
 | Schedules (create/publish) | — | ✓ | ✓ | ✓ |
 | Program settings: tiers, documents, rules, window, budget | — | — | ✓ | ✓ |
+| Program reports (rev 33) | — | write and send to the head | review, approve, return, send to the office | accept or return |
 | Programs, staff accounts, memberships, schools, terms | — | — | — | ✓ |
 | Audit log | — | — | own program | all |
 
@@ -691,7 +725,8 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 - **M11b:** the office manages programs, accounts, memberships and schools; heads and the office edit program
   settings (staff get 403 and no Settings link); settings open for an inactive program to the office only. The
   audit-log viewer screens arrive in M11c.
-- **M11c:** program staff and heads send and resubmit reports; only the office accepts or returns them. Analytics,
+- **M11c:** program staff and heads send and resubmit reports; only the office accepts or returns them (rev 33: a
+  staff member's report goes to a head of the program first, who approves or returns it and sends it to the office). Analytics,
   the program summary and cross-program scholars are office-only. The audit log is office (every event) and head
   (only the program's events; events with no program are office-only); staff get 403 and see no link.
 - **Permission-matrix test:** `tests/test_permission_matrix.py` enumerates `get_resolver()` and checks each URL name
@@ -866,8 +901,12 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   | `report_accepted` | `submitted_by` | "The office accepted your {program} report" | "" | the staff report |
   | `report_returned` | `submitted_by` | "The office returned your {program} report" | "Open it to see what to change." | the staff report |
 
-  `{period}` reads "1 August 2026 to 31 October 2026". The report title and the office's note are free text and
-  never go into a notification.
+  | `report_for_head` (rev 33) | every active head of the program | "A {program} report is waiting for your review" | "{period}." | the staff report |
+  | `report_head_approved` (rev 33) | `submitted_by` | "The head approved your {program} report" | "" | the staff report |
+  | `report_head_returned` (rev 33) | `submitted_by` | "The head returned your {program} report" | "Open it to see what to change." | the staff report |
+
+  `{period}` reads "1 August 2026 to 31 October 2026". The report title and the reviewer's note are free text and
+  never go into a notification. The office's accept or return also tells `sent_by` when that head isn't the author.
 - **Templates:** `templates/emails/<kind>.{html,txt}`, autoescaped.
   - v1 messages to port: application received, application decided, allowance approved/released, password reset (from
     allauth).
@@ -1163,6 +1202,15 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
       scholarships or has an unfinished application in ("{program} applications open/close"); nothing else
       (no term dates, no deadlines staff haven't entered);
     - **next dates:** the next 5 events from today, as a list (also the calendar's text alternative on phones);
+    - **day dialog (rev 33, every calendar: student, staff, office):** each day of the grid, in the month or not, is
+      clickable (the whole cell; links inside a cell keep their own target) and opens the app dialog with that day:
+      the date as the heading ("Saturday, 21 November 2026"), then every event in full, one row each, with its kind
+      (the legend's words and colour), its whole title, its detail (the claim place, the program) and its link ("Open
+      task") when it has one; an empty day says "Nothing on this day.". Staff and office dialogs end with "Add task
+      for this day", which loads the Add task form into the same dialog. The day is a GET page of its own
+      (`…/calendar/<YYYY-MM-DD>/`, a full page without JavaScript, the dialog body with HTMX) built from the same
+      event selectors as the grid, so the two never disagree; a cell's accessible name is the date and its number
+      of items ("21 November 2026, 2 items");
   - **student profile** (`/me/profile/`, rev 26): read-only. One card per section (personal details, family,
     education, photo) shows what is on file as a description list (family members and education records as rows,
     the photo as a thumbnail), "Not given" for an empty field, and a "Missing" note naming what is still needed;
@@ -1180,17 +1228,18 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
     address, and any other as "Another browser (details not recorded)", so the count and "Sign out other sessions"
     never miss one;
   - **staff** (`/staff/<slug>/`, kit figures and attention rows): "Active scholars", "Applications waiting",
-    "Released this year", "At risk"; "Needs attention" (waiting over 7 days from `submitted_at`, own overdue tasks,
-    at risk, prepared payouts, approved payouts, the window); "Your tasks" (the 5 next open tasks and "Add task").
+    "Released this year" (rev 33: "At risk" is gone); "Needs attention" (waiting over 7 days from `submitted_at`, own
+    overdue tasks, prepared payouts, approved payouts, the window; rev 33, heads only: reports waiting for their
+    review and approved reports not sent yet); "Your tasks" (the 5 next open tasks and "Add task").
     Rev 27: "Applications by month" is gone; a month calendar (the student calendar's grid, navigation and
     accessibility rules) fills the wide column and "Needs attention" sits beside it. Its events are the user's own
     open tasks with a due date (links to the task), the program's distribution days (published or not; "Allowance
-    release", the claim place) and its `applications_open_on` / `applications_close_on`; each day number is a link
-    that opens "Add task" with that due date;
+    release", the claim place) and its `applications_open_on` / `applications_close_on`. Rev 33: a day opens the
+    day dialog (below), which has "Add task for this day";
   - **office** (`/office/`, the approved mockup; rev 27: "Applications by month" gives way to a month calendar
     with "Needs attention" beside it, as on the staff dashboard. Its events are the user's own open office tasks
     with a due date, every active program's distribution days ("{program} allowance release", drafts marked) and
-    application windows; day numbers open Add task; the 12-month chart stays on Analytics): figures Scholars, Applications, Waiting over 7 days and Reports
+    application windows; a day opens the day dialog with "Add task for this day" (rev 33); the 12-month chart stays on Analytics): figures Scholars, Applications, Waiting over 7 days and Reports
     to review (M11c; support stays in "Needs attention" and the nav count); needs attention: "{n} program report(s)
     is/are waiting for your review" ("Oldest sent {n} days ago" or "Sent today"), per program waiting over 7 days and
     budget used ≥ 75 %, and open support requests; recent activity from audit events in `FEED_ACTIONS` with a
@@ -1406,11 +1455,11 @@ starts, and ends with every acceptance item checked.
   read-only view.
 - [ ] Extend the demo loader for this milestone's screens (a walk-in profile with an overridden on-behalf application
   and a staff draft).
-- Profiles created for the program only; the email lookup waits for the maintainer (§18 Q16).
+- Profiles created for the program only; the email lookup arrives in M15 (rev 33, §18 Q16).
 
 **M9: Scholars, terms and renewals**
 - [ ] Scholar list and detail, edit, status changes, `ScholarTerm` history, staff term records, merit by rule +
-  confirmation, at-risk selector.
+  confirmation, at-risk selector (removed in M15).
 - [ ] Renewal applications; office terms page (add school year, make current) with rollover + graduation.
 - [ ] Extend the demo loader for this milestone's screens.
 
@@ -1447,6 +1496,14 @@ starts, and ends with every acceptance item checked.
   notification centers; the office overview's "Reports to review" and "Download report"; cross-program scholars and
   the audit viewer (office: all; head: own program), moved from M11b.
 - [ ] Extend the demo loader for this milestone's screens.
+
+**M15: The maintainer's answers (rev 33)**
+- [ ] The calendar day dialog on the student, staff and office calendars.
+- [ ] At-risk removed; one scholarship per student; the office's "In two or more programs" tab removed.
+- [ ] Program reports reviewed by the head before they go to the office.
+- [ ] On-behalf filing for a self-registered student found by account email.
+- [ ] Seeds: LANI tiers and amounts from the TCU LANI page; CEAA's renewal rule refuses failing grades.
+- [ ] Extend the demo loader and the kit for this milestone's screens.
 
 **M13: Security follow-ups**
 - The ASVS gaps and WCAG 2.2.1 left by M12
@@ -1485,28 +1542,57 @@ starts, and ends with every acceptance item checked.
 | Business rules are still unclear (amounts, LANI tier criteria, at-risk) | Rules are data, editable by heads; open questions tracked in §18 |
 
 ## 18. Open questions
+Answered by the maintainer on 2026-11-21 (rev 33) unless marked otherwise. Sources: the TCU LANI page
+(`https://tcu.edu.ph/lani-scholarship`, figures from SY 2015-16) and the TCU-CEAA site (`https://tcu-ceaa.taguig.gov.ph/`),
+both read on 2026-11-21.
 1. ~~Leaked v1 secrets~~ Resolved 2026-10-12: the maintainer confirmed every v1 key had already been rotated.
-2. Confirm the benefit amounts per program and tier.
-3. What qualifies a student for each LANI tier (honors, premier, priority, basic plus, basic, SUC/LCU, review, lead)?
-4. Renewal criteria: is CEAA's "GWA ≥ 80%, ≥ 15 units" right? What scale is LANI's "SWA not lower than 2.5" on?
-5. Definition of at-risk. Proposed in M9 (§4.6): the latest term misses the renewal GWA or units, or the award is
-   not renewed after the window closed.
-6. Can one student hold CEAA and LANI at the same time? Decided 2026-11-13 (M8): yes, one active award per program
-   (v1 never checked across programs). The maintainer to confirm.
-7. Head vs staff powers (§6 proposal).
-8. Maximum terms per program; graduation rules. M9: the summer term never renews; awards graduate at `max_terms`
-   on rollover, and by hand for the final year.
-9. Budget figures; confirm the City fiscal year (January–December) as the budget period. M10: a disbursement counts
-   in the year of its schedule's distribution date; over budget is shown, not blocked.
-10. RA 10173 retention period for documents and closed records. M12 default: import files leave storage after 7 days;
-    everything else is kept.
-11. Can staff create student accounts, or only profiles that students claim?
+2. **Benefit amounts.** LANI's page gives amounts per school year; the app pays per term, so the seeds halve them,
+   and a tier's merit amount is the top of the page's range (as v1 read it):
+
+   | LANI tier | Per school year (page) | Seed per term: base / with merit |
+   |---|---|---|
+   | Premier | ₱40,000–₱50,000 | ₱20,000 / ₱25,000 |
+   | Full (v1 called it Honors) | ₱40,000–₱50,000 | ₱20,000 / ₱25,000 |
+   | Priority | ₱40,000–₱50,000 | ₱20,000 / ₱25,000 |
+   | Basic Plus (Basic + SUC/LCU) | ₱15,000 | ₱7,500 / none |
+   | SUC/LCU | ₱10,000 | ₱5,000 / none |
+   | Basic | ₱10,000 | ₱5,000 / none |
+   | Review (one-time, first-time takers) | ₱10,000 | ₱10,000 / none, paid once (never renewed) |
+   | Review, retake | ₱5,000 | ₱5,000 / none, paid once |
+   | LEAD | not stated | v1's ₱30,000 / ₱50,000 kept, unconfirmed |
+
+   The merit incentive is for Premier, Full and Priority scholars with a semestral weighted average of 1.75 or better
+   (or its school's cum laude equivalent). The CEAA site states no amount: v1's ₱5,000 / ₱10,000 stays. Every amount
+   is data a head can change in the program settings.
+3. **LANI tier criteria** (the page): Premier: UP System (Luzon) or a CHED Center of Excellence in the NCR; Full and
+   Priority: a DOST priority course in a DOST-listed school, a PWD endorsed by the city PDAO, or law or medicine in a
+   listed top school; Basic Plus: a Taguig (or nearby) public high school graduate at an SUC/LCU in the NCR; SUC/LCU:
+   a private high school graduate at an SUC/LCU in the NCR; Basic: a public high school graduate not at an SUC/LCU;
+   Review: a graduate preparing for a board or bar exam; LEAD: master's or doctoral study for Taguig government
+   employees and private-school teachers with three years' service, 50 or younger. Every applicant: a Taguig resident
+   for three years, a registered voter if 18 or older with a parent who is one. Staff pick the tier on approval; the
+   app doesn't derive it.
+4. **Renewal criteria.** CEAA (the site): GWA of at least 80% with no failing, incomplete, blank or dropped subjects
+   and at least 15 units a semester; the seed adds the no-failing-grades rule. CEAA's merit incentive is for renewing
+   scholars with an SWA of 88.75% or better. LANI's page states no renewal threshold: v1's "SWA not lower than 2.5"
+   stays, on the 1.0–5.0 scale (the page's merit threshold, 1.75, is on that scale). Staff confirm merit.
+5. **At-risk:** removed (rev 33).
+6. **One scholarship per student** (rev 33, §4.5); this reverses the M8 default.
+7. **Head vs staff:** heads set the budget, and staff report to their head (§6; program reports go through the head,
+   §4.8).
+8. **Term limit:** none; a scholar continues while enrolled and meeting the renewal rules. `max_terms` stays an
+   optional program setting, blank in the seeds.
+9. **Budget:** the scholarship office gives each program its budget, and the program's head enters and manages it
+   (as built in M10). The budget year stays the distribution day's calendar year.
+10. **Retention:** what RA 10173 requires, which each host sets as its own policy (`docs/HOSTING.md`). The app keeps
+    its M12 default: import files leave storage after 7 days, everything else is kept until the host removes it.
+11. **Staff and student accounts:** as built: staff create profiles for their program and invite the student, who
+    claims the account.
 12. ~~Vercel plan~~ Obsolete (revision 5): nobody hosts an official copy.
-13. ~~Domain and sender domain~~ Obsolete (revision 5): each self-hoster chooses their own.
-14. Is v1 still used by the City, and is there a cut-over date?
-16. Can staff file for a self-registered student found by the exact email of their account? (M8b; not
-    built.) It reaches students who never touched the program and tells staff whether an address has an account.
-    M9b matches imports only within the program's own students for the same reason.
+13. ~~Domain and sender domain~~ Obsolete (revision 5): each host configures its own.
+14. **v1:** not in use by the City; there is no cut-over.
+16. **Email lookup:** yes, staff can file for a self-registered student found by the exact email of their account
+    (rev 33, §4.5).
 
 ## 19. Decisions (2026-10-11 → 2026-10-30)
 | Decision | Why |
