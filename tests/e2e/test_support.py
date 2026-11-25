@@ -49,3 +49,37 @@ def test_picking_a_template_fills_and_confirms(
     expect(email.get_by_label("Subject")).to_have_value("Re: your message about an allowance")
     expect(email.get_by_label("Message")).to_have_value("Hi Ana, please write again.")
     assert console_errors == []
+
+
+def test_a_template_filled_without_js_is_replaced_without_asking(
+    page: Page, live_server, vite_build, console_errors
+) -> None:
+    office = UserFactory.create(role=User.Role.SUPER_ADMIN, verified=True)
+    row = SupportRequestFactory.create(
+        sender=UserFactory.create(full_name="Ana Reyes"), topic="allowance"
+    )
+    late = ReplyTemplateFactory.create(
+        title="Late allowance", body="Hi {first_name}, it is coming."
+    )
+    ReplyTemplateFactory.create(title="Ask again", body="Hi {first_name}, please write again.")
+    # The no-JS "Use template" button reloads the page with ?template=: the server fills it.
+    detail = f"/office/support/{row.pk}/"
+    log_in(page, live_server.url, office.email, detail)
+    page.goto(f"{live_server.url}{detail}?form=reply&template={late.pk}")
+
+    reply = page.locator("#reply")
+    body = reply.get_by_label("Message")
+    expect(body).to_have_value("Hi Ana, it is coming.")
+    expect(reply.get_by_label("Template")).to_have_value(str(late.pk))
+
+    answers: list[str] = []
+
+    def dismiss(dialog: Dialog) -> None:
+        answers.append(dialog.message)
+        dialog.dismiss()
+
+    page.on("dialog", dismiss)
+    reply.get_by_label("Template").select_option(label="Ask again")
+    expect(body).to_have_value("Hi Ana, please write again.")
+    assert answers == []
+    assert console_errors == []
