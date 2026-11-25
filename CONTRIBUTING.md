@@ -94,8 +94,9 @@ Run from the repository root. The examples use `python -m uv`, which works even 
   npm --prefix frontend run budget
   ```
 - **Deploy check (as CI runs it):** `manage.py check --deploy --fail-level WARNING` with `DJANGO_DEBUG=false`,
-  `DJANGO_ALLOWED_HOSTS=scholarsync.example` and `DJANGO_ENV_FILE=/nonexistent`, so your local `.env` can't mask a
-  missing variable. It fails while `apps/demo/` exists, on purpose; CI's hosting-path job deletes the folder first.
+  `DJANGO_ALLOWED_HOSTS=scholarsync.example`, the operator and email settings CI sets, and
+  `DJANGO_ENV_FILE=/nonexistent`, so your local `.env` can't mask a missing variable. It fails while `apps/demo/`
+  exists, on purpose; CI's hosting-path job deletes the folder first.
   The exact PowerShell and bash lines are in [docs/SETUP.md](docs/SETUP.md#checks-the-same-commands-ci-runs).
 
 ## Conventions

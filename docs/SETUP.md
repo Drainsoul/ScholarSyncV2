@@ -234,6 +234,7 @@ PowerShell:
 ```powershell
 $env:DJANGO_DEBUG="false"; $env:DJANGO_ALLOWED_HOSTS="scholarsync.example"; $env:DJANGO_ENV_FILE="/nonexistent"
 $env:DJANGO_SECRET_KEY="check-only-" + ("x" * 60); $env:DATABASE_URL="postgres://u:p@127.0.0.1:5433/scholarsync"
+$env:SITE_OPERATOR_NAME="ScholarSync CI"; $env:PRIVACY_CONTACT_EMAIL="privacy@scholarsync.test"; $env:EMAIL_URL="smtp://localhost:25"
 python -m uv run python manage.py check --deploy --fail-level WARNING
 ```
 
@@ -242,6 +243,7 @@ bash:
 DJANGO_DEBUG=false DJANGO_ALLOWED_HOSTS=scholarsync.example DJANGO_ENV_FILE=/nonexistent \
 DJANGO_SECRET_KEY="check-only-$(printf 'x%.0s' $(seq 60))" \
 DATABASE_URL=postgres://u:p@127.0.0.1:5433/scholarsync \
+SITE_OPERATOR_NAME="ScholarSync CI" PRIVACY_CONTACT_EMAIL=privacy@scholarsync.test EMAIL_URL=smtp://localhost:25 \
 uv run python manage.py check --deploy --fail-level WARNING
 ```
 
