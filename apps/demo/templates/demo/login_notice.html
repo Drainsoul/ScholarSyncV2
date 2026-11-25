@@ -1,22 +1,30 @@
-{% load demo ui %}{% demo_accounts as accounts %}{% demo_password as password %}
-{# Closed by default (spec §11, rev 32): the summary is the button that opens the test accounts. No heading inside it: some screen readers drop headings in a summary. #}
+{% load demo ui %}{% demo_account_groups as groups %}{% demo_password as password %}
+{# Closed by default (spec §11 rev 32): the summary is the button that opens the test accounts. No heading inside it: some screen readers drop headings in a summary. #}
+{# rev 36: small buttons by group, the password once. The buttons render hidden and fill.ts shows them and hides each group's name-and-email list, which is what a page without JS keeps. #}
 <details class="notice demo-accounts">
   <summary class="demo-accounts__toggle">{% icon "key-round" %}<span class="demo-accounts__title">Exploring ScholarSync? Use a test account</span>{% icon "chevron-down" %}</summary>
   <div class="demo-accounts__body">
-    <p>These accounts and their data exist only on this copy.</p>
-    <dl class="notice__list">
-      {% for account in accounts %}
-        <dt>{{ account.button }}</dt>
-        <dd>{{ account.email }}</dd>
+    {% if groups %}
+      <p class="demo-accounts__lead">Pick one, then press Log in. These accounts exist only on this copy. Password for all: <code class="demo-accounts__password">{{ password }}</code></p>
+      {% for group in groups %}
+        <div class="demo-accounts__group" role="group" aria-labelledby="demo-group-{{ forloop.counter }}">
+          <p class="demo-accounts__label" id="demo-group-{{ forloop.counter }}">{{ group.name }}</p>
+          <div class="demo-accounts__choices">
+            {% for account in group.accounts %}
+              <button type="button" class="demo-accounts__choice" data-fill-email="{{ account.email }}" data-fill-password="{{ password }}" hidden>{{ account.button }}</button>
+            {% endfor %}
+          </div>
+          <dl class="notice__list" data-fill-fallback>
+            {% for account in group.accounts %}
+              <dt>{{ account.button }}</dt>
+              <dd>{{ account.email }}</dd>
+            {% endfor %}
+          </dl>
+        </div>
       {% endfor %}
-      <dt>Password (all four)</dt>
-      <dd>{{ password }}</dd>
-    </dl>
-    <div class="notice__actions">
-      {% for account in accounts %}
-        <button type="button" class="btn btn--secondary" data-fill-email="{{ account.email }}" data-fill-password="{{ password }}" hidden>{{ account.button }}</button>
-      {% endfor %}
-    </div>
-    <p class="visually-hidden" data-fill-status aria-live="polite"></p>
+      <p class="visually-hidden" data-fill-status aria-live="polite"></p>
+    {% else %}
+      <p class="demo-accounts__lead">No test accounts on this copy yet. Run <code>manage.py load_demo</code> to add them.</p>
+    {% endif %}
   </div>
 </details>

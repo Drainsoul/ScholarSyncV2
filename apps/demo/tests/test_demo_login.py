@@ -16,9 +16,12 @@ def _e2e_db(transactional_db):
 @pytest.mark.parametrize(
     ("button", "path", "email"),
     [
-        ("Student", "/me/", "student@scholarsync.test"),
-        ("Program staff", "/staff/tcu-ceaa/", "staff@scholarsync.test"),
-        ("Program head", "/staff/tcu-ceaa/", "head@scholarsync.test"),
+        ("New student", "/me/", "new@scholarsync.test"),
+        ("Applicant", "/me/", "student@scholarsync.test"),
+        ("Scholar due to renew", "/me/", "scholar@scholarsync.test"),
+        ("CEAA staff", "/staff/tcu-ceaa/", "staff@scholarsync.test"),
+        ("CEAA head", "/staff/tcu-ceaa/", "head@scholarsync.test"),
+        ("LANI staff", "/staff/lani/", "lani.staff@scholarsync.test"),
         ("Scholarship office", "/office/", "office@scholarsync.test"),
     ],
 )
@@ -32,6 +35,7 @@ def test_one_click_fill_then_log_in(page: Page, live_server, vite_build, button,
     fill = page.get_by_role("button", name=button, exact=True)
     expect(fill).to_be_hidden()
     page.get_by_text("Exploring ScholarSync? Use a test account").click()
+    expect(page.locator("[data-fill-fallback]").first).to_be_hidden()  # the no-JS list
     fill.click()
     expect(page.locator("[data-fill-status]")).to_have_text(
         f"Filled in the {button} account. Press Log in."

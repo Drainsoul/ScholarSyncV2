@@ -26,7 +26,7 @@ from apps.awards.models import Award
 from apps.awards.selectors import RenewalStatus, renewal_for, with_latest_term
 from apps.core.models import AuditEvent
 from apps.demo import loader
-from apps.demo.accounts import ACCOUNTS, PASSWORD
+from apps.demo.accounts import ACCOUNTS, LISTED, LISTED_EMAILS, PASSWORD
 from apps.demo.loader import SAMPLE_IMPORT
 from apps.demo.samples import HOLD_REASON, MANUAL_SCHOLAR, SAMPLE_SCHOLARS
 from apps.files import storage
@@ -78,15 +78,15 @@ def test_load_demo_refuses_in_production_mode(demo_app):
 def test_load_demo_runs_when_active(demo_app, settings, capsys):
     settings.DEMO_ACTIVE = True
     call_command("load_demo")
-    assert "Demo data: 4 new objects." in capsys.readouterr().out
+    assert "Demo data: 7 new objects." in capsys.readouterr().out
     call_command("load_demo")
     assert "Demo data: 0 new objects." in capsys.readouterr().out
 
 
 @pytest.mark.django_db
-def test_load_creates_four_verified_accounts_once(demo_app, settings):
+def test_load_creates_seven_verified_role_accounts_once(demo_app, settings):
     settings.DEMO_ACTIVE = True
-    assert loader.load() == 4
+    assert loader.load() == 7
     assert loader.load() == 0
     for account in ACCOUNTS:
         user = User.objects.get(email=account.email)
@@ -95,6 +95,10 @@ def test_load_creates_four_verified_accounts_once(demo_app, settings):
         assert EmailAddress.objects.get(user=user).verified
     head = User.objects.get(email="head@scholarsync.test")
     assert head.memberships.get().level == "head"
+    lani = User.objects.get(email="lani.head@scholarsync.test").memberships.get()
+    assert (lani.program.slug, lani.level) == ("lani", "head")
+    new = User.objects.get(email="new@scholarsync.test")
+    assert not StudentProfile.objects.filter(user=new).exists()  # starts from an empty profile
 
 
 @pytest.mark.django_db
@@ -102,7 +106,8 @@ def test_load_gives_existing_demo_accounts_the_current_password(demo_app, settin
     # A database from before the password changed keeps working: the login page shows PASSWORD.
     settings.DEMO_ACTIVE = True
     loader.load()
-    emails = [a.email for a in ACCOUNTS] + [s.email for s in SAMPLE_SCHOLARS]
+    emails = list(User.objects.filter(email__in=LISTED_EMAILS).values_list("email", flat=True))
+    assert {s.email for s in SAMPLE_SCHOLARS} - {SAMPLE_SCHOLARS[1].email} <= set(emails)
     for user in User.objects.filter(email__in=emails):
         user.set_password("explore-taguig-2026")
         user.save(update_fields=["password"])
@@ -230,18 +235,60 @@ def test_password_passes_the_validators():
 
 
 @pytest.mark.django_db
-def test_notice_lists_accounts_without_js(demo_app, client, vite_build):
+def test_notice_lists_accounts_without_js(
+    demo_app, settings, client, vite_build, frozen_today, stored
+):
+    settings.DEMO_ACTIVE = True
+    loader.load()
     response = client.get("/accounts/login/")
     html = response.content.decode()
     assert "Exploring ScholarSync? Use a test account" in html
     # Spec §11 rev 32: a closed <details> whose summary opens the accounts.
     assert '<details class="notice demo-accounts">' in html
     assert '<summary class="demo-accounts__toggle">' in html
-    assert PASSWORD in html
-    for account in ACCOUNTS:
+    # rev 36: the password once, every listed account in its group, buttons hidden until JS.
+    assert html.count(PASSWORD) == 1 + len(LISTED)  # the lead, then each button's data
+    for account in LISTED:
         assert account.email in html
-    assert html.count("data-fill-email=") == 4
-    assert html.count(" hidden>") >= 4
+        assert f">{account.button}</button>" in html
+    assert html.count("data-fill-email=") == len(LISTED) == 10
+    assert html.count('class="demo-accounts__choice"') == html.count(" hidden>")
+    for group in ("Students", "Program staff", "Scholarship office"):
+        assert f">{group}</p>" in html
+    assert html.count("data-fill-fallback") == 3
+
+
+@pytest.mark.django_db
+def test_notice_hides_accounts_that_cannot_sign_in(demo_app, settings, client, vite_build):
+    # Before load_demo: no account, so no dead button.
+    html = client.get("/accounts/login/").content.decode()
+    assert "data-fill-email=" not in html
+    assert "No test accounts on this copy yet." in html
+    # Without storage the returned applicant isn't made, so only the rest are offered.
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    html = client.get("/accounts/login/").content.decode()
+    assert "applicant4@scholarsync.test" not in html
+    assert "office@scholarsync.test" in html
+    User.objects.filter(email="office@scholarsync.test").update(is_active=False)
+    assert "office@scholarsync.test" not in client.get("/accounts/login/").content.decode()
+
+
+@pytest.mark.django_db
+def test_listed_applicant_from_an_older_demo_gets_the_password(
+    demo_app, settings, frozen_today, stored
+):
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    miguel = User.objects.get(email="applicant4@scholarsync.test")
+    assert miguel.check_password(PASSWORD)
+    miguel.set_unusable_password()  # as a demo loaded before rev 36 made him
+    miguel.save(update_fields=["password"])
+    loader.load()
+    miguel.refresh_from_db()
+    assert miguel.check_password(PASSWORD)
+    other = User.objects.get(email="applicant1@scholarsync.test")
+    assert not other.has_usable_password()  # unlisted applicants never sign in
 
 
 def test_deploy_check_fails_while_the_demo_folder_exists():

@@ -1,4 +1,7 @@
-"""Demo data loader: four verified test accounts plus sample profiles, all idempotent."""
+"""Demo data loader: the verified test accounts (accounts.py) plus sample data, all idempotent.
+
+Every step skips what already exists, so `load_demo` can run on an older demo database and only
+adds the samples it is missing."""
 
 import hashlib
 import logging
@@ -21,7 +24,7 @@ from apps.applications.models import Application
 from apps.applications.services import attach_document, start_application, submit_application
 from apps.awards.models import Award, ScholarTerm
 from apps.awards.services import AwardData, TermData, change_status, create_award
-from apps.demo.accounts import ACCOUNTS, PASSWORD, DemoAccount
+from apps.demo.accounts import ACCOUNTS, LISTED_EMAILS, PASSWORD, DemoAccount
 from apps.demo.office import give_office_samples
 from apps.demo.reports import give_report_samples
 from apps.demo.samples import (
@@ -231,7 +234,8 @@ def _sample_file(user: User, accepted_types: list[str], number: int) -> StoredFi
 def _submit_sample(applicant: SampleApplicant, program: Program) -> Application:
     user = User.objects.create_user(
         email=applicant.email,
-        password=None,
+        # Only applicants the login page lists can sign in (spec §11 rev 36).
+        password=PASSWORD if applicant.email in LISTED_EMAILS else None,
         full_name=f"{applicant.first_name} {applicant.last_name}",
         role=User.Role.STUDENT,
     )
@@ -643,19 +647,21 @@ def _give_lani_a_window() -> None:
 
 
 def _sync_passwords() -> None:
-    """Give demo accounts that sign in the password the login page shows, even after it changed.
+    """Give every account the login page lists the password it shows, even after it changed or
+    when an older demo made the account without one (a listed applicant, rev 36).
 
-    Accounts made without a password (applicants, former staff) stay that way.
+    Unlisted accounts made without a password (other applicants, former staff) stay that way.
     """
-    emails = [account.email for account in ACCOUNTS] + [s.email for s in SAMPLE_SCHOLARS]
-    for user in User.objects.filter(email__in=emails):
-        if user.has_usable_password() and not user.check_password(PASSWORD):
+    for user in User.objects.filter(email__in=LISTED_EMAILS):
+        if not user.check_password(PASSWORD):
             user.set_password(PASSWORD)
             user.save(update_fields=["password"])
 
 
 def load() -> int:
-    """Create the demo accounts that are missing and return how many were created."""
+    """Create the role accounts that are missing, add the missing samples, and return how many
+    role accounts were created. Listed sample accounts (accounts.SAMPLE_LOGINS) come from the
+    sample steps, so their passwords are synced after those run."""
     with transaction.atomic():
         call_command("seed_programs")
         created = 0
@@ -664,7 +670,6 @@ def load() -> int:
                 continue
             _create(account)
             created += 1
-        _sync_passwords()
         _give_lani_a_window()
         _give_student_a_profile("student@scholarsync.test")
         _give_student_a_draft("student@scholarsync.test", "lani")
@@ -681,4 +686,5 @@ def load() -> int:
         give_workspace_samples()
         give_office_samples()
         give_report_samples()
+        _sync_passwords()
     return created
