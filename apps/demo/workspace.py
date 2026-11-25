@@ -136,7 +136,7 @@ def _back_date_decided_applications() -> None:
     order and its "n of m waiting" pager stay as the review samples built them."""
     today = timezone.now()
     rows = Application.objects.filter(
-        program__slug="tcu-ceaa",
+        program__slug__in=("tcu-ceaa", "lani"),  # rev 36: LANI's samples too
         first_submitted_at__isnull=False,
         status__in=[
             Application.Status.APPROVED,

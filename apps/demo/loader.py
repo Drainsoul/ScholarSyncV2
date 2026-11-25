@@ -21,7 +21,12 @@ from apps.accounts.models import User
 from apps.accounts.services import create_staff_user, record_consent
 from apps.applications import behalf, review
 from apps.applications.models import Application
-from apps.applications.services import attach_document, start_application, submit_application
+from apps.applications.services import (
+    attach_document,
+    start_application,
+    submit_application,
+    withdraw_application,
+)
 from apps.awards.models import Award, ScholarTerm
 from apps.awards.services import AwardData, TermData, change_status, create_award
 from apps.demo.accounts import ACCOUNTS, LISTED_EMAILS, PASSWORD, DemoAccount
@@ -33,10 +38,14 @@ from apps.demo.samples import (
     DEMO_CLAIM_LOCATION,
     DEMO_SCHEDULE_NOTE,
     HOLD_REASON,
+    LANI_APPLICANTS,
+    LANI_SCHOLARS,
     MANUAL_SCHOLAR,
+    MORE_CEAA_APPLICANTS,
     OVERRIDE_REASON,
     PDF_TYPE,
     PNG_TYPE,
+    REJECT_REASON,
     RETURN_REASON,
     SAMPLE_APPLICANTS,
     SAMPLE_PDF,
@@ -44,6 +53,7 @@ from apps.demo.samples import (
     SAMPLE_SCHOLARS,
     WALK_IN_DRAFT,
     WALK_IN_SUBMITTED,
+    LaniScholar,
     SampleApplicant,
     SampleScholar,
     WalkIn,
@@ -54,7 +64,12 @@ from apps.files.models import StoredFile
 from apps.money import services as money
 from apps.money.models import Disbursement, DistributionSchedule
 from apps.programs.models import AcademicTerm, BenefitTier, Program, School
-from apps.programs.selectors import application_term, current_term, required_documents_for
+from apps.programs.selectors import (
+    application_term,
+    current_term,
+    required_documents_for,
+    tiers_in_force,
+)
 from apps.programs.services import add_membership, update_rules
 from apps.programs.terms import school_year_terms
 from apps.students import services as students
@@ -160,17 +175,18 @@ def _give_student_a_draft(email: str, program_slug: str) -> None:
 
 
 def _sample_profile(user: User, applicant: SampleApplicant) -> None:
-    """A TCU profile that passes every CEAA rule, as Carolyn's does."""
+    """A complete profile from the sample's school, course and GWA. With the defaults it is a TCU
+    profile that passes every CEAA rule, as Carolyn's does."""
     students.update_personal(
         user=user,
         data={
             "first_name": applicant.first_name,
             "last_name": applicant.last_name,
             "birth_date": applicant.birth_date,
-            "sex": StudentProfile.Sex.FEMALE,
+            "sex": applicant.sex,
             "phone": "+639171234567",
             "address_line": "12 Mabini Street",
-            "barangay": "ususan",
+            "barangay": applicant.barangay,
             "residing_since": 2012,
             "is_registered_voter": True,
             "monthly_household_income": Decimal("18000.00"),
@@ -200,10 +216,10 @@ def _sample_profile(user: User, applicant: SampleApplicant) -> None:
         user=user,
         data={
             "level": EducationRecord.Level.COLLEGE,
-            "school": School.objects.get(name="Taguig City University"),
-            "course": "BS Information Technology",
-            "year_level": 2,
-            "gwa": Decimal("88.50"),
+            "school": School.objects.get(name=applicant.school),
+            "course": applicant.course,
+            "year_level": applicant.year_level,
+            "gwa": applicant.gwa,
             "units": 21,
             "is_current": True,
         },
@@ -248,7 +264,11 @@ def _submit_sample(applicant: SampleApplicant, program: Program) -> Application:
         attach_document(
             user=user, application=application, requirement=requirement, file_id=file.id
         )
-    return submit_application(user=user, application=application, tier=None)
+    tier = None
+    if applicant.tier:  # a program with several tiers needs one asked for
+        in_force = tiers_in_force(program, application.term)
+        tier = next(t for t in in_force if t.code == applicant.tier)
+    return submit_application(user=user, application=application, tier=tier)
 
 
 def _first_document_id(application: Application) -> int:
@@ -319,6 +339,59 @@ def _give_staff_a_queue() -> None:
         # Explore mode boots through load_demo: a refused sample must never stop it.
         # Log only the error class: service sentences can hold profile values.
         logger.warning("Demo review samples skipped (%s).", type(error).__name__)
+
+
+def _decide(application: Application, state: str, staff: User, program: Program) -> None:
+    """Take a submitted sample to `state` as its staff (or, for a withdrawal, its student) would."""
+    if state == "submitted":
+        return
+    if state == "withdrawn":
+        student = application.profile.user
+        assert student is not None
+        withdraw_application(user=student, application=application)
+        return
+    review.start_review(actor=staff, program=program, application=application)
+    if state == "rejected":
+        review.reject_application(
+            actor=staff, program=program, application=application, reason=REJECT_REASON
+        )
+        return
+    documents = list(application.documents.order_by("requirement__sort_order", "pk"))
+    for document in documents if state == "approved" else documents[:1]:
+        review.approve_document(
+            actor=staff, program=program, application=application, document_id=document.pk
+        )
+    if state == "approved":
+        review.approve_application(actor=staff, program=program, application=application, tier=None)
+
+
+def _give_sample_set(
+    applicants: tuple[SampleApplicant, ...], program_slug: str, staff_email: str
+) -> None:
+    """Submit a set of sample applicants and take each to its state (rev 36). All or none, and
+    skipped once the set's first applicant exists; needs storage and an open term."""
+    if User.objects.filter(email__iexact=applicants[0].email).exists():
+        return
+    if not storage.is_configured() or application_term(timezone.localdate()) is None:
+        return
+    program = Program.objects.filter(slug=program_slug).first()
+    staff = User.objects.filter(email__iexact=staff_email).first()
+    if program is None or staff is None:
+        return
+    try:
+        with transaction.atomic():
+            for applicant in applicants:
+                _decide(_submit_sample(applicant, program), applicant.state, staff, program)
+    except (
+        storage.StorageUnavailable,
+        ValidationError,
+        Http404,
+        PermissionDenied,
+        ObjectDoesNotExist,
+        StopIteration,
+    ) as error:
+        # Log only the error class: service sentences can hold profile values.
+        logger.warning("Demo sample set skipped (%s).", type(error).__name__)
 
 
 def _create_unclaimed_profile(*, staff_email: str, program_slug: str, email: str) -> None:
@@ -506,6 +579,74 @@ def _give_staff_scholars() -> None:
         logger.warning("Demo scholar samples skipped (%s).", type(error).__name__)
 
 
+def _lani_scholar(scholar: LaniScholar, program: Program, previous: AcademicTerm) -> None:
+    """A LANI award from last semester, written with the ORM as the CEAA scholars are."""
+    user = User.objects.create_user(
+        email=scholar.email,
+        password=None,
+        full_name=f"{scholar.first_name} {scholar.last_name}",
+        role=User.Role.STUDENT,
+    )
+    EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)
+    record_consent(user=user, request=None)
+    applicant = SampleApplicant(
+        scholar.email,
+        scholar.first_name,
+        scholar.last_name,
+        scholar.birth_date,
+        "approved",
+        school=scholar.school,
+        course="BS Biology",
+        gwa=scholar.gwa,
+        year_level=3,
+    )
+    _sample_profile(user, applicant)
+    tier = (
+        BenefitTier.objects.filter(program=program, code=scholar.tier)
+        .order_by("-effective_from__sort_key")
+        .first()
+    )
+    assert tier is not None
+    award = Award.objects.create(
+        profile=StudentProfile.objects.get(user=user),
+        program=program,
+        tier=tier,
+        status=Award.Status.ACTIVE,
+        source=Award.Source.MANUAL,
+        started_term=previous,
+    )
+    ScholarTerm.objects.create(
+        award=award,
+        term=previous,
+        tier=tier,
+        school=School.objects.get(name=scholar.school),
+        school_type=scholar.school_type,
+        gwa_scale=School.Scale.ONE_TO_FIVE,
+        gwa=scholar.gwa,
+        units=21,
+        year_level=2,
+        course="BS Biology",
+        compliance=ScholarTerm.Compliance.COMPLETE,
+    )
+
+
+def _give_lani_scholars() -> None:
+    """Two LANI scholars from last semester, both due to renew (rev 36; idempotent)."""
+    if User.objects.filter(email__iexact=LANI_SCHOLARS[0].email).exists():
+        return
+    previous = _ensure_previous_term()
+    program = Program.objects.filter(slug="lani").first()
+    if previous is None or program is None:
+        return
+    try:
+        with transaction.atomic():  # both or neither
+            for scholar in LANI_SCHOLARS:
+                _lani_scholar(scholar, program, previous)
+    except (ValidationError, ObjectDoesNotExist) as error:
+        # Log only the error class: service sentences can hold profile values.
+        logger.warning("Demo LANI scholars skipped (%s).", type(error).__name__)
+
+
 def _give_staff_a_manual_scholar() -> None:
     """Felipe: a TCU CEAA walk-in given an award by hand, with no account (idempotent)."""
     program = Program.objects.get(slug="tcu-ceaa")
@@ -674,6 +815,8 @@ def load() -> int:
         _give_student_a_profile("student@scholarsync.test")
         _give_student_a_draft("student@scholarsync.test", "lani")
         _give_staff_a_queue()
+        _give_sample_set(MORE_CEAA_APPLICANTS, "tcu-ceaa", "staff@scholarsync.test")
+        _give_sample_set(LANI_APPLICANTS, "lani", "lani.staff@scholarsync.test")
         _create_unclaimed_profile(
             staff_email="staff@scholarsync.test",
             program_slug="tcu-ceaa",
@@ -681,6 +824,7 @@ def load() -> int:
         )
         _give_staff_on_behalf_samples()
         _give_staff_scholars()
+        _give_lani_scholars()
         _give_staff_a_manual_scholar()
         _give_staff_money()
         give_workspace_samples()

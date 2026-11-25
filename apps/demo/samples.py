@@ -80,7 +80,16 @@ class SampleApplicant:
     first_name: str
     last_name: str
     birth_date: date
-    state: str  # submitted | under_review | returned | approved
+    state: str  # submitted | under_review | returned | approved | rejected | withdrawn
+    # rev 36: the profile varies, so the lists look like real ones. The defaults are Carolyn's
+    # (a TCU student who passes both programs' rules).
+    sex: str = "female"
+    barangay: str = "ususan"
+    school: str = "Taguig City University"
+    course: str = "BS Information Technology"
+    gwa: Decimal = Decimal("88.50")  # on the school's scale (TCU: percent; UP and UST: 1-5)
+    year_level: int = 2
+    tier: str = ""  # the tier asked for: LANI has many, TCU CEAA one
 
 
 SAMPLE_APPLICANTS: tuple[SampleApplicant, ...] = (
@@ -98,6 +107,89 @@ SAMPLE_APPLICANTS: tuple[SampleApplicant, ...] = (
     ),
     SampleApplicant(
         "applicant5@scholarsync.test", "Bianca", "Mendoza", date(2005, 12, 17), "approved"
+    ),
+)
+
+# rev 36: two more TCU CEAA outcomes for the queue's tabs and the charts (they don't wait, so the
+# "n of m waiting" pager is unchanged).
+MORE_CEAA_APPLICANTS: tuple[SampleApplicant, ...] = (
+    SampleApplicant(
+        "applicant6@scholarsync.test",
+        "Carlo",
+        "Fernandez",
+        date(2005, 7, 11),
+        "rejected",
+        sex="male",
+        barangay="bagumbayan",
+        course="BS Civil Engineering",
+        gwa=Decimal("84.00"),
+    ),
+    SampleApplicant(
+        "applicant7@scholarsync.test",
+        "Jasmine",
+        "Rivera",
+        date(2006, 4, 25),
+        "withdrawn",
+        barangay="hagonoy",
+        course="BS Psychology",
+        gwa=Decimal("91.25"),
+        year_level=1,
+    ),
+)
+REJECT_REASON = "Your certificate of registration is from a school outside Taguig City University."
+
+# rev 36: LANI applicants from three schools and scales, reviewed by the LANI staff account.
+LANI_APPLICANTS: tuple[SampleApplicant, ...] = (
+    SampleApplicant(
+        "lani.applicant1@scholarsync.test",
+        "Kristine",
+        "Lim",
+        date(2005, 10, 8),
+        "submitted",
+        barangay="central-bicutan",
+        school="University of the Philippines",
+        course="BS Psychology",
+        gwa=Decimal("1.75"),
+        tier="suc-lcu",
+    ),
+    SampleApplicant(
+        "lani.applicant2@scholarsync.test",
+        "Rafael",
+        "Mercado",
+        date(2006, 2, 14),
+        "submitted",
+        sex="male",
+        barangay="calzada",
+        school="University of Santo Tomas",
+        course="BS Nursing",
+        gwa=Decimal("2.75"),
+        year_level=1,
+        tier="basic",
+    ),
+    SampleApplicant(
+        "lani.applicant3@scholarsync.test",
+        "Mark",
+        "Torres",
+        date(2005, 5, 29),
+        "under_review",
+        sex="male",
+        barangay="bambang",
+        school="University of Santo Tomas",
+        course="BS Architecture",
+        gwa=Decimal("2.25"),
+        year_level=3,
+        tier="basic",
+    ),
+    SampleApplicant(
+        "lani.applicant4@scholarsync.test",
+        "Janelle",
+        "Soriano",
+        date(2006, 7, 3),
+        "approved",
+        barangay="katuparan",
+        course="BS Accountancy",
+        gwa=Decimal("92.00"),
+        tier="priority",
     ),
 )
 
@@ -144,6 +236,44 @@ SAMPLE_SCHOLARS: tuple[SampleScholar, ...] = (
 )
 
 HOLD_REASON = "Waiting for the registrar to confirm enrolment."
+
+
+@dataclass(frozen=True)
+class LaniScholar:
+    email: str
+    first_name: str
+    last_name: str
+    birth_date: date
+    school: str
+    school_type: str  # School.Type value
+    gwa: Decimal  # last term's GWA on the 1-5 scale
+    tier: str
+
+
+# rev 36: LANI scholars from the previous semester, both due to renew. Joshua's 2.75 misses LANI's
+# 2.50 renewal mark, so the LANI staff see both renewal states. They don't sign in.
+LANI_SCHOLARS: tuple[LaniScholar, ...] = (
+    LaniScholar(
+        "lani.scholar1@scholarsync.test",
+        "Andrea",
+        "Salazar",
+        date(2004, 12, 2),
+        "University of the Philippines",
+        "suc",
+        Decimal("2.00"),
+        "suc-lcu",
+    ),
+    LaniScholar(
+        "lani.scholar2@scholarsync.test",
+        "Joshua",
+        "Valdez",
+        date(2005, 3, 16),
+        "University of Santo Tomas",
+        "private",
+        Decimal("2.75"),
+        "basic",
+    ),
+)
 
 
 @dataclass(frozen=True)

@@ -28,7 +28,15 @@ from apps.core.models import AuditEvent
 from apps.demo import loader
 from apps.demo.accounts import ACCOUNTS, LISTED, LISTED_EMAILS, PASSWORD
 from apps.demo.loader import SAMPLE_IMPORT
-from apps.demo.samples import HOLD_REASON, MANUAL_SCHOLAR, SAMPLE_SCHOLARS
+from apps.demo.samples import (
+    HOLD_REASON,
+    LANI_APPLICANTS,
+    LANI_SCHOLARS,
+    MANUAL_SCHOLAR,
+    REJECT_REASON,
+    SAMPLE_APPLICANTS,
+    SAMPLE_SCHOLARS,
+)
 from apps.files import storage
 from apps.files.models import StoredFile
 from apps.files.policy import CSV
@@ -349,8 +357,14 @@ def test_loader_builds_the_review_queue(demo_app, settings, frozen_today, stored
         "applicant3@scholarsync.test": "under_review",
         "applicant4@scholarsync.test": "returned",
         "applicant5@scholarsync.test": "approved",
+        # rev 36: two more outcomes, neither waiting.
+        "applicant6@scholarsync.test": "rejected",
+        "applicant7@scholarsync.test": "withdrawn",
     }
-    assert Award.objects.filter(source=Award.Source.APPLIED).count() == 1
+    rejected = Application.objects.get(profile__user__email="applicant6@scholarsync.test")
+    assert rejected.decision_reason == REJECT_REASON
+    # One CEAA award from an application, one LANI (rev 36).
+    assert Award.objects.filter(source=Award.Source.APPLIED).count() == 2
     returned = Application.objects.get(profile__user__email="applicant4@scholarsync.test")
     declined = returned.documents.get(status="declined")
     assert declined.decline_reason == "The scan is too dark to read."
@@ -369,7 +383,7 @@ def test_loader_builds_the_review_queue(demo_app, settings, frozen_today, stored
     # The default filter is Waiting: submitted + under review (the walk-in's filing included).
     assert waiting.context["total"] == 4
     everything = client.get("/staff/tcu-ceaa/applications/?status=all")
-    assert everything.context["total"] == 6
+    assert everything.context["total"] == 8
     returned_only = client.get("/staff/tcu-ceaa/applications/?status=returned")
     assert returned_only.context["total"] == 1
 
@@ -447,7 +461,7 @@ def test_loader_skips_samples_when_a_service_refuses_staff(
     monkeypatch.setattr(loader, "_decide_samples", refuse)
     with caplog.at_level(logging.WARNING, logger="apps.demo.loader"):
         loader.load()
-    assert not User.objects.filter(email__startswith="applicant").exists()
+    assert not User.objects.filter(email__in=[a.email for a in SAMPLE_APPLICANTS]).exists()
     logged = " ".join(record.getMessage() for record in caplog.records)
     assert f"Demo review samples skipped ({kind})." in logged
     assert "Carolyn" not in logged
@@ -853,3 +867,60 @@ def test_demo_skips_report_samples_without_storage(demo_app, settings, frozen_to
     settings.DEMO_ACTIVE = True
     loader.load()
     assert not Report.objects.exists()
+
+
+@pytest.mark.django_db
+def test_demo_has_lani_applicants_reviewed_by_lani_staff(
+    demo_app, settings, frozen_today, stored, client
+):
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    rows = {
+        a.profile.user.email: a
+        for a in Application.objects.filter(program__slug="lani").select_related("profile__user")
+        if a.profile.user and a.profile.user.email.startswith("lani.applicant")
+    }
+    assert {email: row.status for email, row in rows.items()} == {
+        a.email: a.state for a in LANI_APPLICANTS
+    }
+    approved = rows["lani.applicant4@scholarsync.test"]
+    assert Award.objects.get(profile=approved.profile).tier.code == "priority"
+    up = StudentProfile.objects.get(user__email="lani.applicant1@scholarsync.test")
+    college = up.education.get(is_current=True)
+    assert (college.school.name, college.gwa) == ("University of the Philippines", Decimal("1.75"))
+    lani_staff = User.objects.get(email="lani.staff@scholarsync.test")
+    started = AuditEvent.objects.filter(actor=lani_staff, action="application.review_started")
+    assert started.count() == 2  # the one under review and the one approved
+    client.force_login(lani_staff)
+    waiting = client.get("/staff/lani/applications/")
+    assert waiting.context["total"] == 3
+
+
+@pytest.mark.django_db
+def test_demo_has_lani_scholars_due_to_renew(demo_app, settings, frozen_today):
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    loader.load()
+    awards = Award.objects.filter(profile__user__email__in=[s.email for s in LANI_SCHOLARS])
+    assert awards.count() == 2
+    term = application_term(timezone.localdate())
+    for award in awards:
+        assert renewal_for(award, term).status == RenewalStatus.DUE
+    joshua = awards.get(profile__user__email="lani.scholar2@scholarsync.test")
+    assert joshua.terms.get().gwa == Decimal("2.75")  # over LANI's 2.50 renewal mark
+
+
+@pytest.mark.django_db
+def test_sample_set_rolls_back_as_a_whole(demo_app, settings, frozen_today, stored, monkeypatch):
+    settings.DEMO_ACTIVE = True
+    real = loader._decide
+
+    def refuse_withdrawals(application, state, staff, program):
+        if state == "withdrawn":
+            raise ValidationError("refused")
+        real(application, state, staff, program)
+
+    monkeypatch.setattr(loader, "_decide", refuse_withdrawals)
+    loader.load()
+    assert not User.objects.filter(email="applicant6@scholarsync.test").exists()
+    assert User.objects.filter(email="lani.applicant1@scholarsync.test").exists()
