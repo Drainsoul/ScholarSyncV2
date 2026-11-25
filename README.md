@@ -13,8 +13,9 @@ A scholarship platform modelled on the City of Taguig's programs.
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/Drainsoul/ScholarSyncV2)
 
 ## Quick start
-You need [Git](https://git-scm.com/downloads) and [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-running. Nothing else.
+You need [Git](https://git-scm.com/downloads) and Docker running: [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+on Windows or macOS; on Linux, Docker Desktop or [Docker Engine](https://docs.docker.com/engine/install/) with the
+Compose plugin ([Linux notes](docs/SETUP.md#on-linux)). Nothing else.
 
 ```
 git clone https://github.com/Drainsoul/ScholarSyncV2.git
