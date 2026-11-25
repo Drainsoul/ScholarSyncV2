@@ -113,6 +113,11 @@
   get a support inbox for their program; students read answers under "Replies" in Help and guides; who answered and
   when is shown to staff, heads and the office only. Lifts the rule that support text is never emailed, for staff
   replies only (§4.8, §5, §6, §9, §10, §12, §16).
+- **Revision:** 36 (2026-11-25): a fuller demo. Ten test accounts in three groups (students: new student, applicant,
+  returned applicant, scholar due to renew, scholar on hold; program staff: CEAA staff and head, LANI staff and head;
+  the scholarship office). The login notice shows them as small grouped buttons with the shared password once; a
+  listed account appears only once it exists and can sign in. More sample students (LANI applicants and scholars,
+  rejected and withdrawn CEAA applications), reply templates for every topic and more program reports (§11).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -1135,7 +1140,12 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
   - Startup fails fast on a missing required variable in production mode.
 - **Demo:** everything demo-only (test accounts, sample data, login-page notice) lives in `apps/demo/`. (rev 32) The
   login-page notice is a `<details>`, closed by default: its summary button reads "Exploring ScholarSync? Use a test
-  account" and opens the accounts, the shared password and the fill buttons. Deleting that
+  account" and opens the accounts, the shared password and the fill buttons. (rev 36) The accounts are grouped
+  (Students, Program staff, Scholarship office) as small buttons, each named so it reads alone ("LANI head"); the
+  password is shown once; without JS the groups list each name and email instead. A listed account appears only once
+  it exists with a usable password, so a load that skipped a sample (no storage, summer) shows no dead button. Every
+  listed account, including the sample ones (returned applicant, scholars), signs in with the shared password.
+  Deleting that
   folder removes it with no other edit; the app reaches it only through an optional hook, never by import. It is
   inactive in production mode even if present, and `check --deploy` fails while the folder exists. Programs
   (`seed_programs`) are not demo material, and the demo leaves their settings alone with one exception (rev 26):
