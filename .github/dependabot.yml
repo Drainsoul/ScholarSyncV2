@@ -1,4 +1,5 @@
 # Dependency updates (spec §10, ASVS V15.2.1). Weekly, grouped, so security fixes surface as PRs.
+# Platform upgrades (Django past 5.2 LTS, a new Python or Node line) are planned by hand, so they are ignored here.
 version: 2
 updates:
   - package-ecosystem: "uv"
@@ -8,6 +9,9 @@ updates:
     groups:
       python:
         patterns: ["*"]
+    ignore:
+      - dependency-name: "django"
+        versions: [">=5.3"]
   - package-ecosystem: "npm"
     directory: "/frontend"
     schedule:
@@ -23,3 +27,8 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    ignore:
+      - dependency-name: "python"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
