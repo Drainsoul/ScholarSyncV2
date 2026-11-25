@@ -1,0 +1,26 @@
+name: Epic
+description: A goal made of several issues, tracked as one list.
+title: "[EPIC] ISS#?: "
+labels: [epic]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Replace `?` in the title with the next ISS# number (see `.github/ISSUES_AND_PULL_REQUESTS.md`).
+        This issue is public: no personal data, secrets, local paths or links to private documents.
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What is true when every issue below is closed.
+    validations:
+      required: true
+  - type: textarea
+    id: issues
+    attributes:
+      label: Issues
+      description: One line per issue, with GitHub's number so it ticks itself when closed. Add more as they're opened.
+      value: |
+        - [ ] #
+    validations:
+      required: true

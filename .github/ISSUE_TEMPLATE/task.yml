@@ -1,0 +1,27 @@
+name: Task
+description: Docs, chores, refactors and other work that is not a bug or a feature.
+title: "[TASK] ISS#?: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Replace `?` in the title with the next ISS# number (see `.github/ISSUES_AND_PULL_REQUESTS.md`).
+        This issue is public: no personal data, secrets, local paths or links to private documents.
+  - type: textarea
+    id: what
+    attributes:
+      label: What and why
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      placeholder: "- [ ] …"
+    validations:
+      required: true
+  - type: input
+    id: epic
+    attributes:
+      label: Epic
+      description: The epic this belongs to, if any (e.g. `#8 (ISS#1)`).
