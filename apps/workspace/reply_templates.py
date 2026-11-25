@@ -4,8 +4,11 @@ One set serves replies in the app and emails. A template is only a start: the pi
 filled with `{first_name}` and `{program}` and then edited freely before it is sent.
 """
 
+from collections.abc import Iterator
+from contextlib import contextmanager
+
 from django.core.exceptions import ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.http import HttpRequest
 
@@ -16,6 +19,7 @@ from apps.programs.models import Program
 from .models import ReplyTemplate, SupportRequest
 
 TITLE_CLASH = "An active template already has this title."
+TITLE_CONSTRAINT = "workspace_template_active_title"
 EDITABLE = ("title", "topic", "program", "subject", "body")
 ABOUT = {
     "account": "your account",
@@ -33,6 +37,19 @@ def _title_taken(title: str, exclude: int | None = None) -> bool:
     return rows.exists()
 
 
+@contextmanager
+def _title_guard() -> Iterator[None]:
+    """A save that raced past `_title_taken` meets the unique index: refuse it like the check."""
+    try:
+        with transaction.atomic():
+            yield
+    except IntegrityError as error:
+        diag = getattr(error.__cause__, "diag", None)
+        if getattr(diag, "constraint_name", None) != TITLE_CONSTRAINT:
+            raise
+        raise ValidationError(TITLE_CLASH) from None
+
+
 @transaction.atomic
 def create_template(
     *,
@@ -46,15 +63,16 @@ def create_template(
 ) -> ReplyTemplate:
     if _title_taken(title):
         raise ValidationError(TITLE_CLASH)
-    template = ReplyTemplate.objects.create(
-        title=title,
-        topic=topic,
-        program=program,
-        subject=subject,
-        body=body,
-        created_by=actor,
-        updated_by=actor,
-    )
+    with _title_guard():
+        template = ReplyTemplate.objects.create(
+            title=title,
+            topic=topic,
+            program=program,
+            subject=subject,
+            body=body,
+            created_by=actor,
+            updated_by=actor,
+        )
     record(actor=actor, action="support_template.created", target=template, request=request)
     return template
 
@@ -79,7 +97,8 @@ def update_template(
     for name in changed:
         setattr(template, name, fields[name])
     template.updated_by = actor
-    template.save()
+    with _title_guard():
+        template.save()
     record(
         actor=actor,
         action="support_template.updated",
@@ -100,7 +119,8 @@ def set_active(
         raise ValidationError(TITLE_CLASH)
     template.is_active = active
     template.updated_by = actor
-    template.save(update_fields=["is_active", "updated_by", "updated_at"])
+    with _title_guard():
+        template.save(update_fields=["is_active", "updated_by", "updated_at"])
     action = "support_template.activated" if active else "support_template.deactivated"
     record(actor=actor, action=action, target=template, request=request)
     return template
