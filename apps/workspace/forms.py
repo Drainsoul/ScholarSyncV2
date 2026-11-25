@@ -71,6 +71,13 @@ class SupportForm(forms.Form):
     )
 
 
+def one_line_subject(subject: str) -> str:
+    """An email subject is one header line: a line break could start another header."""
+    if "\r" in subject or "\n" in subject:
+        raise forms.ValidationError("Enter the subject on one line.")
+    return subject
+
+
 class ReplyForm(forms.Form):
     """An answer in the app. `template` is the id of the picked template, if any (hidden)."""
 
@@ -99,10 +106,7 @@ class EmailReplyForm(ReplyForm):
     field_order = ["template", "subject", "body"]
 
     def clean_subject(self) -> str:
-        subject: str = self.cleaned_data["subject"]
-        if "\r" in subject or "\n" in subject:
-            raise forms.ValidationError("Enter the subject on one line.")
-        return subject
+        return one_line_subject(self.cleaned_data["subject"])
 
 
 class ReplyTemplateForm(forms.Form):
@@ -151,6 +155,9 @@ class ReplyTemplateForm(forms.Form):
             "subject": template.subject,
             "body": template.body,
         }
+
+    def clean_subject(self) -> str:
+        return one_line_subject(self.cleaned_data["subject"])
 
     def clean_body(self) -> str:
         return normalize_newlines(self.cleaned_data["body"])

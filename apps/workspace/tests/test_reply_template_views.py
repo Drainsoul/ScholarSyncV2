@@ -70,6 +70,20 @@ def test_duplicate_title_on_add_is_a_form_error(client: Any, office: User) -> No
     assert "An active template already has this title." in response.content.decode()
 
 
+@pytest.mark.parametrize("subject", ["About\nBcc: x@example.com", "About\r\nyour request"])
+def test_subject_with_a_line_break_is_a_form_error(client: Any, office: User, subject: str) -> None:
+    data = {"title": "Review time", "topic": "", "program": "", "subject": subject, "body": "Hi"}
+    response = client.post(reverse("support:template-new"), data)
+    assert response.status_code == 200
+    assert "Enter the subject on one line." in response.content.decode()
+    template = ReplyTemplateFactory.create(title="Other")
+    response = client.post(reverse("support:template-edit", args=[template.pk]), data)
+    assert "Enter the subject on one line." in response.content.decode()
+    template.refresh_from_db()
+    assert template.subject == ""
+    assert not ReplyTemplate.objects.filter(title="Review time").exists()
+
+
 def test_turn_off_and_on_with_toasts(client: Any, office: User) -> None:
     template = ReplyTemplateFactory.create()
     url = reverse("support:template-active", args=[template.pk])
