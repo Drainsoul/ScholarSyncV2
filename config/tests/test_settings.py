@@ -574,6 +574,94 @@ def test_trusted_proxy_count_treats_blank_as_the_default(tmp_path, value, expect
     assert values["ALLAUTH_TRUSTED_PROXY_COUNT"] == expected
 
 
+# environs keeps values read from the .env file out of os.environ, so the settings must treat a
+# value there exactly like the same value in the process environment.
+def _env_file(tmp_path, text):
+    path = tmp_path / "local.env"
+    path.write_text(text, encoding="utf-8")
+    return str(path)
+
+
+def test_blank_email_url_in_the_env_file_prints_to_the_console(tmp_path):
+    values = settings_values(
+        tmp_path,
+        ["EMAIL_BACKEND"],
+        DJANGO_DEBUG="true",
+        DJANGO_ENV_FILE=_env_file(tmp_path, "EMAIL_URL=\n"),
+        _unset=["EMAIL_URL"],
+    )
+    assert values["EMAIL_BACKEND"] == "django.core.mail.backends.console.EmailBackend"
+
+
+def test_blank_email_url_in_the_env_file_is_refused_in_production(tmp_path):
+    result = _run_settings(
+        tmp_path,
+        ["EMAIL_BACKEND"],
+        DJANGO_ENV_FILE=_env_file(tmp_path, "EMAIL_URL=\n"),
+        _unset=["EMAIL_URL"],
+    )
+    assert result.returncode != 0
+    assert "EMAIL_URL is blank" in result.stderr
+
+
+def test_blank_trusted_proxy_count_in_the_env_file_is_the_default(tmp_path):
+    values = settings_values(
+        tmp_path,
+        ["ALLAUTH_TRUSTED_PROXY_COUNT"],
+        DJANGO_ENV_FILE=_env_file(tmp_path, "TRUSTED_PROXY_COUNT=\n"),
+        _unset=["TRUSTED_PROXY_COUNT"],
+    )
+    assert values["ALLAUTH_TRUSTED_PROXY_COUNT"] == 0
+
+
+@pytest.mark.parametrize(
+    ("line", "message"),
+    [
+        ("DATABASE_URL=postgres://u:p@db.example.org:5432/db", "DATABASE_URL connects to"),
+        ("EMAIL_URL=smtp://mail.example.org:25", "EMAIL_URL sends mail to mail.example.org"),
+    ],
+)
+def test_production_checks_plaintext_urls_from_the_env_file(tmp_path, line, message):
+    name = line.split("=", 1)[0]
+    result = _run_settings(
+        tmp_path, ["DEBUG"], DJANGO_ENV_FILE=_env_file(tmp_path, line + "\n"), _unset=[name]
+    )
+    assert result.returncode != 0
+    assert message in result.stderr
+
+
+def test_developer_settings_load_from_a_copy_of_the_env_example(tmp_path):
+    """The documented setup: `cp .env.example .env`, then migrate and runserver."""
+    values = settings_values(
+        tmp_path,
+        ["DEBUG", "EMAIL_BACKEND", "ALLAUTH_TRUSTED_PROXY_COUNT"],
+        DJANGO_ENV_FILE=str(ROOT / ".env.example"),
+        _unset=["DJANGO_SECRET_KEY", "SITE_OPERATOR_NAME", "PRIVACY_CONTACT_EMAIL", "EMAIL_URL"],
+    )
+    assert values == {
+        "DEBUG": True,
+        "EMAIL_BACKEND": "django.core.mail.backends.console.EmailBackend",
+        "ALLAUTH_TRUSTED_PROXY_COUNT": 0,
+    }
+
+
+def test_test_settings_load_with_a_copy_of_the_env_example():
+    """pytest forces production mode; a developer's .env from .env.example must not break it."""
+    env = {key: value for key, value in os.environ.items() if key not in _MODE_VARS}
+    env.pop("DATABASE_URL", None)
+    env["DJANGO_ENV_FILE"] = str(ROOT / ".env.example")
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, "-c", "import config.test_settings as s; print(s.KIT_ENABLED)"],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "False"
+
+
 def test_production_refuses_a_wildcard_first_host_without_site_url(tmp_path):
     result = _run_settings(
         tmp_path, ["SITE_URL"], DJANGO_ALLOWED_HOSTS=".scholarsync.example", SITE_URL=""

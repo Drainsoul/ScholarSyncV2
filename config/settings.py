@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from urllib.parse import urlsplit
 
+import dj_email_url
 from django.core.exceptions import ImproperlyConfigured
 from environs import Env
 
@@ -213,14 +214,15 @@ DATABASES = {
 DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
 
 # Email: one URL (submission://user:pass@host:587, smtp://...:465?ssl=true, console://) ---------
-if not os.environ.get("EMAIL_URL"):
-    os.environ.pop("EMAIL_URL", None)  # a blank line in .env means "use the console backend"
-if PRODUCTION and not os.environ.get("EMAIL_URL", "").strip():
+# Read through `env`, never os.environ: environs keeps the .env file's values in its own store.
+_email_url = env.str("EMAIL_URL", "").strip()
+if PRODUCTION and not _email_url:
     raise ImproperlyConfigured(
         "EMAIL_URL is blank. Production needs a real SMTP server, or reset and verification "
         "links would be written to the log. See docs/HOSTING.md."
     )
-_email_config = env.dj_email_url("EMAIL_URL", "console://")
+# A blank line in .env means "use the console backend".
+_email_config = dj_email_url.parse(_email_url or "console://")
 if "EMAIL_BACKEND" not in _email_config:
     # dj-email-url ignores schemes it doesn't know (smtp+tls://, for one) and returns no backend.
     raise ImproperlyConfigured(
@@ -273,8 +275,8 @@ if PRODUCTION and not ALLOW_PLAINTEXT_SERVICES:
     from config.plaintext import plaintext_refusals  # noqa: E402
 
     _refusals = plaintext_refusals(
-        database_url=os.environ.get("DATABASE_URL", ""),
-        email_url=os.environ.get("EMAIL_URL", ""),
+        database_url=env.str("DATABASE_URL", ""),
+        email_url=_email_url,
         storage_urls={
             "S3_ENDPOINT_URL": S3_STORAGE["endpoint_url"],
             "S3_PUBLIC_ENDPOINT_URL": S3_STORAGE["public_endpoint_url"],
@@ -329,9 +331,8 @@ SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
 # How many reverse proxies sit in front of the app (0 = none). Rate limits key on the client IP.
 # Blank means the default (compose.production.yaml then supplies 1).
-if not os.environ.get("TRUSTED_PROXY_COUNT", "").strip():
-    os.environ.pop("TRUSTED_PROXY_COUNT", None)
-ALLAUTH_TRUSTED_PROXY_COUNT = env.int("TRUSTED_PROXY_COUNT", 0)
+_trusted_proxy_count = env.str("TRUSTED_PROXY_COUNT", "").strip()
+ALLAUTH_TRUSTED_PROXY_COUNT = env.int("TRUSTED_PROXY_COUNT") if _trusted_proxy_count else 0
 LOGIN_URL = "account_login"
 LOGIN_REDIRECT_URL = "core:home"  # the adapter sends each role to its own home
 ACCOUNT_LOGOUT_REDIRECT_URL = "account_login"
