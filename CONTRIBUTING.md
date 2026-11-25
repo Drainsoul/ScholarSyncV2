@@ -62,7 +62,8 @@ manage.py  pyproject.toml  uv.lock  .env.example
 
 ## Commands
 Run from the repository root. The examples use `python -m uv`, which works even when `uv` is not on `PATH`; plain
-`uv` works too. [docs/SETUP.md](docs/SETUP.md#developer-workflow) explains each step.
+`uv` works too, and on Linux and macOS (where uv is usually installed on its own) write `uv` instead.
+[docs/SETUP.md](docs/SETUP.md#developer-workflow) explains each step and has the commands for bash.
 
 - **Setup:**
   - `docker compose up -d --wait db storage storage-init mail` (the supporting services only; PostgreSQL 17 on host
@@ -94,7 +95,7 @@ Run from the repository root. The examples use `python -m uv`, which works even 
 - **Deploy check (as CI runs it):** `manage.py check --deploy --fail-level WARNING` with `DJANGO_DEBUG=false`,
   `DJANGO_ALLOWED_HOSTS=scholarsync.example` and `DJANGO_ENV_FILE=/nonexistent`, so your local `.env` can't mask a
   missing variable. It fails while `apps/demo/` exists, on purpose; CI's hosting-path job deletes the folder first.
-  The exact PowerShell lines are in [docs/SETUP.md](docs/SETUP.md#checks-the-same-commands-ci-runs).
+  The exact PowerShell and bash lines are in [docs/SETUP.md](docs/SETUP.md#checks-the-same-commands-ci-runs).
 
 ## Conventions
 - **Views are thin.** Writes go through `services.py`, reads through `selectors.py`, and every state change writes an
@@ -126,6 +127,8 @@ private. The issue forms and the pull request template walk you through it; the 
   `localhost`, in `DATABASE_URL`: compose publishes ports on IPv4 loopback only.
 - The development PostgreSQL listens on host port 5433, so it doesn't clash with a native PostgreSQL on 5432.
 - The repository uses LF line endings (`.gitattributes` sets `eol=lf`).
+- **On Linux:** see [docs/SETUP.md](docs/SETUP.md#on-linux) for Docker Engine, uv, Node and Playwright's system
+  libraries.
 - **On Windows:**
   - the commands work in PowerShell 5.1, which has no `&&` (use `;`, or `A; if ($?) { B }`); Git Bash works too;
   - with `core.autocrlf=true`, `.gitattributes` still keeps files LF;

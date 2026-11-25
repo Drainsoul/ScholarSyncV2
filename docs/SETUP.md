@@ -92,13 +92,20 @@ If you use the [developer workflow](#developer-workflow) as well, `down -v` also
 use the same volume. Plain `docker compose down` keeps it.
 
 ### Troubleshooting
-**"Cannot connect to the Docker daemon", or `docker compose` hangs.** Docker Desktop is not running. Start it, wait
-until it says it is running, and try again.
+**"Cannot connect to the Docker daemon", or `docker compose` hangs.** Docker is not running. Start Docker Desktop and
+wait until it says it is running; with Docker Engine on Linux, run `sudo systemctl start docker`. Then try again.
+
+**"permission denied while trying to connect to the Docker daemon socket" (Linux).** Your user is not in the `docker`
+group. Run `sudo usermod -aG docker $USER`, then sign out and back in (or run `newgrp docker` in that terminal).
+
+**`docker: 'compose' is not a docker command` (Linux).** Install the Compose plugin (`sudo apt install
+docker-compose-plugin` on Debian and Ubuntu from Docker's repository). The old `docker-compose` (v1) is not supported.
 
 **"port is already allocated" or "address already in use".** Another program uses 8000, 8025, 5433 or 9000. Either stop
 it, or [change the port](#changing-ports). Check what uses a port:
 - PowerShell: `Get-NetTCPConnection -LocalPort 8000 -State Listen`
-- bash: `lsof -i :8000`
+- Linux: `ss -ltnp | grep :8000`
+- macOS: `lsof -i :8000`
 
 **The first build is slow.** It downloads base images and installs packages, so allow a few minutes on a normal
 connection. Later builds reuse the cache. Behind a company proxy, set the proxy in Docker Desktop's settings.
@@ -116,10 +123,11 @@ three minutes for the database and storage. If `db` is unhealthy, try `docker co
 
 For changing the code. You run Django on your machine and only the supporting services in Docker.
 
-Prerequisites: Docker Desktop, Python through [uv](https://docs.astral.sh/uv/) (`python -m pip install --user uv`),
-and Node 22.12 or newer. Commands below are for PowerShell from the repository root; `python -m uv` works even when
-`uv` is not on `PATH`. On macOS or Linux, use `uv` and `Copy-Item` becomes `cp`.
+Prerequisites: Docker (Desktop, or Engine with the Compose plugin), Python through [uv](https://docs.astral.sh/uv/),
+and Node 22.12 or newer. On Windows, install uv with `python -m pip install --user uv`; on Linux and macOS, see
+[On Linux](#on-linux). Run the commands from the repository root.
 
+PowerShell (`python -m uv` works even when `uv` is not on `PATH`):
 ```powershell
 docker compose up -d --wait db storage storage-init mail   # services only, not the app
 Copy-Item .env.example .env                                # local settings; never put real secrets in it
@@ -129,6 +137,18 @@ python -m uv run python manage.py migrate
 python -m uv run python manage.py load_demo                # the test accounts and samples; safe to re-run
 npm --prefix frontend run build                            # or run `npm --prefix frontend run dev` with VITE_DEV_MODE=true in .env
 python -m uv run python manage.py runserver
+```
+
+bash (Linux, macOS):
+```bash
+docker compose up -d --wait db storage storage-init mail   # services only, not the app
+cp .env.example .env                                       # local settings; never put real secrets in it
+uv sync                                                    # Python 3.13 and the dependencies
+(cd frontend && npm install)                               # the first install must run inside frontend/
+uv run python manage.py migrate
+uv run python manage.py load_demo                          # the test accounts and samples; safe to re-run
+npm --prefix frontend run build                            # or run `npm --prefix frontend run dev` with VITE_DEV_MODE=true in .env
+uv run python manage.py runserver
 ```
 
 `load_demo` loads the test accounts (see above) and sample data. It only adds what is missing, so it is safe to
@@ -162,7 +182,23 @@ Notes:
   them, or `docker compose stop web worker`.
 - `docker compose down -v` deletes the development database. Use `docker compose down` to keep it.
 
+### On Linux
+Tested on Ubuntu 24.04 with Docker Engine; other distributions need the same pieces from their own package manager.
+
+- **Docker:** Docker Desktop for Linux works, or [Docker Engine](https://docs.docker.com/engine/install/) with the
+  Compose plugin (`docker compose version` must print v2). Add yourself to the `docker` group so you can run it
+  without `sudo`: `sudo usermod -aG docker $USER`, then sign out and back in.
+- **uv:** `curl -LsSf https://astral.sh/uv/install.sh | sh` (or `pipx install uv`). `pip install --user uv` is refused
+  on Debian and Ubuntu (their Python is "externally managed"). uv downloads Python 3.13 itself, so the system Python's
+  version does not matter, and you need no `python` command: write `uv` where the Windows lines say `python -m uv`.
+- **Node 22.12 or newer:** the distribution's `nodejs` package is usually older. Use
+  [nvm](https://github.com/nvm-sh/nvm) (`nvm install 22`) or the [NodeSource](https://github.com/nodesource/distributions)
+  packages.
+- **Playwright (e2e only):** install the browser with its system libraries once:
+  `uv run playwright install --with-deps chromium` (it asks for `sudo` to install them).
+
 ### Checks (the same commands CI runs)
+PowerShell:
 ```powershell
 python -m uv run ruff check .
 python -m uv run ruff format --check .
@@ -176,12 +212,35 @@ npm --prefix frontend run check
 npm --prefix frontend run build; npm --prefix frontend run budget
 ```
 
+bash:
+```bash
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy .
+uv run python manage.py makemigrations --check --dry-run
+uv run pytest -n auto
+uv run playwright install --with-deps chromium   # once
+uv run pytest -m e2e --ds=config.e2e_settings --browser chromium
+npm --prefix frontend run typecheck
+npm --prefix frontend run check
+npm --prefix frontend run build && npm --prefix frontend run budget
+```
+
 The deploy check, as CI runs it (production mode, ignoring your `.env`):
 
+PowerShell:
 ```powershell
 $env:DJANGO_DEBUG="false"; $env:DJANGO_ALLOWED_HOSTS="scholarsync.example"; $env:DJANGO_ENV_FILE="/nonexistent"
 $env:DJANGO_SECRET_KEY="check-only-" + ("x" * 60); $env:DATABASE_URL="postgres://u:p@127.0.0.1:5433/scholarsync"
 python -m uv run python manage.py check --deploy --fail-level WARNING
+```
+
+bash:
+```bash
+DJANGO_DEBUG=false DJANGO_ALLOWED_HOSTS=scholarsync.example DJANGO_ENV_FILE=/nonexistent \
+DJANGO_SECRET_KEY="check-only-$(printf 'x%.0s' $(seq 60))" \
+DATABASE_URL=postgres://u:p@127.0.0.1:5433/scholarsync \
+uv run python manage.py check --deploy --fail-level WARNING
 ```
 
 This fails while `apps/demo/` exists. That is intended: it is the reminder to delete it before deploying. CI's
