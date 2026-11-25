@@ -78,9 +78,9 @@ operator of your copy. Before going live:
 
 ## 3. Rebrand (optional)
 The "City of Taguig" label and the logo are fixed in the code, so a copy for another organisation is a small edit:
-- the name, brand block and footer text in `templates/layouts/` (`public.html`, `auth.html`, `app.html`; search for
-  `City of Taguig`);
-- the logo mark (the `logo` icon in `templates/components/`) and the favicon `static/images/favicon.svg`;
+- the name and brand block in `templates/layouts/` (`public.html`, `auth.html`, `app.html`), the page title in
+  `templates/base.html` and the footer in `templates/components/site_footer.html` (search for `City of Taguig`);
+- the logo mark (`frontend/src/icons/logo.svg`) and the favicon `static/images/favicon.svg`;
 - the colours and fonts in `frontend/src/styles/`.
 
 You are the operator of your copy: say so to your users, and do not present it as a City of Taguig service unless it

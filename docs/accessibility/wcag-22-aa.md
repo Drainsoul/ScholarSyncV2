@@ -4,7 +4,8 @@ ScholarSync aims for WCAG 2.2 level AA (spec §12). This record was made on 2026
 halves:
 
 - **Automated:** `tests/e2e/test_accessibility.py` runs axe-core 4.10.3 (tags `wcag2a`, `wcag2aa`, `wcag21a`,
-  `wcag21aa`, `wcag22aa`) on 31 key screens across the five roles, at 1280 and 375 px wide. Any violation fails CI.
+  `wcag21aa`, `wcag22aa`) on 37 key screens across the five roles, at 1280 and 375 px wide, in the light and dark
+  themes. Any violation fails CI.
   The same file checks reflow at 320 px and a keyboard-only sign-in.
 - **By hand:** the criteria axe can't judge are checked by reading the templates and using the screens with keyboard,
   zoom and a screen reader's accessibility tree (Chromium devtools). The evidence column says which.
@@ -66,7 +67,7 @@ WCAG 2.2 removed 4.1.1 Parsing, so it has no row.
 | 2.4.5 Multiple Ways | Met | Navigation plus search on staff and office pages and lists with filters; the student area is small enough to reach in two steps |
 | 2.4.6 Headings and Labels | Met | One `h1` per page (`tests/e2e/test_office_insights.py`, `test_office_flow.py`); axe `heading-order`, `empty-heading` |
 | 2.4.7 Focus Visible | Met | 3 px ink outline plus a yellow halo (spec §12 tokens); `test_keyboard_only_sign_in` asserts a visible focus style |
-| 2.4.11 Focus Not Obscured (Minimum) | Met | The only sticky parts are the desktop sidebar, in its own column (`frontend/src/styles/layouts.css:338`), and the drawer's header, inside the drawer (`frontend/src/styles/components/feedback.css:213`); neither covers the page's focused content |
+| 2.4.11 Focus Not Obscured (Minimum) | Met | The only sticky parts are the desktop sidebar, in its own column (`frontend/src/styles/layouts.css:349`), and the drawer's header, inside the drawer (`frontend/src/styles/components/feedback.css:288`); neither covers the page's focused content |
 | 2.5.7 Dragging Movements | Not applicable | No dragging |
 | 2.5.8 Target Size (Minimum) | Met | Controls at least 32 px (spec §12); axe `target-size` (wcag22aa) |
 | 3.1.2 Language of Parts | Met | All content is English |
@@ -75,7 +76,7 @@ WCAG 2.2 removed 4.1.1 Parsing, so it has no row.
 | 3.3.3 Error Suggestion | Met | Errors say how to fix ("The period must end on or after its start.", "Upload the report as a PDF.") |
 | 3.3.4 Error Prevention (Legal, Financial, Data) | Met | Money and account changes ask for the password again (spec §10) and payouts are reviewed before release; submissions can be withdrawn |
 | 3.3.8 Accessible Authentication (Minimum) | Met | Email and password with `autocomplete` so password managers fill them; paste allowed; Google sign-in for students |
-| 4.1.3 Status Messages | Met | Toasts in an `aria-live="polite"` region (`templates/base.html:21`); upload progress in a live region (`components/file_input.html`) |
+| 4.1.3 Status Messages | Met | Toasts in an `aria-live="polite"` region (`templates/base.html:27`); upload progress in a live region (`components/file_input.html`) |
 
 ## Open gaps
 

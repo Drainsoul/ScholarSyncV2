@@ -20,7 +20,7 @@ What starts:
 | Service | What it is | Address |
 |---|---|---|
 | `web` | the app | <http://localhost:8000> |
-| `worker` | deletes expired sessions every 5 minutes (email retry arrives with M4) | none |
+| `worker` | every 5 minutes: retries failed or stuck email, deletes expired sessions, old emails and stale uploads | none |
 | `db` | PostgreSQL 17 | `127.0.0.1:5433` |
 | `storage` | S3-compatible file storage (RustFS) | `127.0.0.1:9000` |
 | `storage-init` | creates the bucket, its CORS rule and the `pending/` expiry, then exits | none |
@@ -86,11 +86,11 @@ start the stack by hand in a codespace, use that same command.
 
 **Never make the ports public.** Ports 8000 and 8025 are forwarded as private (only you, signed in to GitHub, can open
 them), and the database and storage ports are not forwarded at all. Keep it that way: the explore copy has published
-demo accounts (from M4) and a known database password, so anyone who could reach a public port could sign in as them.
+demo accounts and a known database password, so anyone who could reach a public port could sign in as them.
 The per-codespace key protects sessions only.
 
-Known limitation: file storage is advertised at `localhost:9000`, which a codespace browser cannot reach. Uploads
-arrive in a later milestone, so nothing uses it yet.
+Known limitation: file storage is advertised at `localhost:9000`, which a codespace browser cannot reach, so
+uploads (documents, photos) do not work in a codespace.
 
 ### Stopping and resetting
 - Stop and keep your data: `Ctrl+C`, or `docker compose down`.
