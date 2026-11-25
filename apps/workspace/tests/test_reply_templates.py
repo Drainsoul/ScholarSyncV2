@@ -91,3 +91,39 @@ def test_template_audit_events(office: User) -> None:
     assert "Secret" not in str(events)
     template.refresh_from_db()
     assert template.updated_by == office
+
+
+@pytest.fixture
+def raced(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Another save took the title after the check passed: only the constraint can see it."""
+    monkeypatch.setattr(reply_templates, "_title_taken", lambda *args, **kwargs: False)
+
+
+def test_create_race_on_title_is_a_form_error(office: User, raced: None) -> None:
+    ReplyTemplateFactory.create(title="Late allowance")
+    with pytest.raises(ValidationError) as caught:
+        reply_templates.create_template(
+            actor=office, title="Late allowance", topic="", program=None, subject="", body="x"
+        )
+    assert caught.value.messages == [reply_templates.TITLE_CLASH]
+    assert not AuditEvent.objects.filter(action="support_template.created").exists()
+
+
+def test_update_race_on_title_is_a_form_error(office: User, raced: None) -> None:
+    ReplyTemplateFactory.create(title="Late allowance")
+    template = ReplyTemplateFactory.create(title="Other")
+    with pytest.raises(ValidationError) as caught:
+        reply_templates.update_template(actor=office, template=template, title="Late allowance")
+    assert caught.value.messages == [reply_templates.TITLE_CLASH]
+    template.refresh_from_db()
+    assert template.title == "Other"
+
+
+def test_reactivate_race_on_title_is_a_form_error(office: User, raced: None) -> None:
+    old = ReplyTemplateFactory.create(title="Late allowance", is_active=False)
+    ReplyTemplateFactory.create(title="Late allowance")
+    with pytest.raises(ValidationError) as caught:
+        reply_templates.set_active(actor=office, template=old, active=True)
+    assert caught.value.messages == [reply_templates.TITLE_CLASH]
+    old.refresh_from_db()
+    assert not old.is_active
