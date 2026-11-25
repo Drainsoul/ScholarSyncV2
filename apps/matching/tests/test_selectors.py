@@ -45,7 +45,6 @@ def test_match_page_without_profile_creates_nothing(term):
     page = match_page(user, today=TODAY)
     assert StudentProfile.objects.count() == 0
     assert page.profile is None
-    assert page.hint is None
     assert page.matches == []
 
 

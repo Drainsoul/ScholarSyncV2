@@ -1,24 +1,20 @@
-# ScholarSync V2
+# ScholarSync
 
-A ground-up rewrite of ScholarSync, a scholarship platform modelled on the City of Taguig's programs. Students build
-a profile, check which programs they qualify for, apply with their documents and track their allowances. Program staff
-review applications, manage scholars and terms and run disbursements. The scholarship office oversees every program,
-staff account and report.
+A scholarship platform modelled on the City of Taguig's programs.
 
-> Independent portfolio project. Not affiliated with or endorsed by the City of Taguig. All sample people and data
-> are fictional.
+- **Students** build a profile, see which programs they qualify for, apply with their documents and track their
+  allowances.
+- **Program staff** review applications, manage scholars and terms, and release allowances.
+- **The scholarship office** oversees every program, staff account and report.
+
+> Independent portfolio project, not affiliated with or endorsed by the City of Taguig. All sample people and data are
+> fictional.
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/Drainsoul/ScholarSyncV2)
 
-**Status:** v2.0 is feature-complete (milestones M1 to M12 in the
-[design spec](docs/design/2026-10-11-scholarsync-v2-design.md)): student profiles, matching and applications;
-review, scholars, terms and renewals; disbursements and budgets; dashboards, notifications, program reports,
-analytics and the audit log. Since then it has had a security pass (two-factor sign-in with encrypted secrets, session
-limits, the ASVS and WCAG reviews below). Run it locally and sign in with the test accounts below.
-
 ## Quick start
 You need [Git](https://git-scm.com/downloads) and [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-(or Docker Engine with the Compose plugin), running. Nothing else: no Python, Node, database or account.
+running. Nothing else.
 
 ```
 git clone https://github.com/Drainsoul/ScholarSyncV2.git
@@ -29,69 +25,50 @@ docker compose up
 The first build takes a few minutes. When the console prints `ScholarSync is running`, open:
 
 - the app: <http://localhost:8000>
-- the design kit and key-screen mockups: <http://localhost:8000/_kit/>
-- the email inbox (every email the app sends lands here, none leave your computer): <http://localhost:8025>
+- the email inbox (no email leaves your computer): <http://localhost:8025>
+- the design kit: <http://localhost:8000/_kit/>
 
-The app, its database and its file storage all run in containers on your computer, and the ports are reachable only
-from your computer. Later runs start in seconds and keep your data.
-
-**Stop:** press `Ctrl+C`, or run `docker compose down` from another terminal. Your data stays.
-**Reset everything:** `docker compose down -v` deletes the database and stored files.
-
-**No install:** the badge above opens the same stack in a GitHub Codespace (see
-[SETUP](docs/SETUP.md#github-codespaces)).
-
-Port 8000 taken? See [changing ports](docs/SETUP.md#changing-ports).
-
-Public pages: about, privacy, terms, cookies, FAQ and contact are in the running app (`/about/`, `/privacy/`,
-`/terms/`, `/cookies/`, `/help/`, `/contact/`); their text lives in [templates/core/pages/](templates/core/pages/).
-To report a security problem, see [SECURITY.md](SECURITY.md).
+Stop with `Ctrl+C` (your data stays). `docker compose down -v` deletes everything. Port 8000 taken? See
+[changing ports](docs/SETUP.md#changing-ports). No Docker? The badge above runs it in a GitHub Codespace.
 
 ## Test accounts
-Every account uses the password `explore-demo-2026`.
+Every account uses the password `explore-demo-2026`. The sign-in page offers them as one-click buttons.
 
-| Group | Button | Account | What it shows |
-|---|---|---|---|
-| Students | New student | `new@scholarsync.test` | an empty profile: setup, matching, a first application |
-| | Applicant | `student@scholarsync.test` | a nearly complete profile and a LANI draft; support replies |
-| | Returned applicant | `applicant4@scholarsync.test` | a TCU CEAA application returned with a declined document |
-| | Scholar due to renew | `scholar@scholarsync.test` | a TCU CEAA scholar with a released allowance and a renewal due |
-| | Scholar on hold | `scholar3@scholarsync.test` | a TCU CEAA award on hold, with its reason |
-| Program staff | CEAA staff | `staff@scholarsync.test` | the TCU CEAA review queue, scholars, walk-ins, tasks, support |
-| | CEAA head | `head@scholarsync.test` | staff features plus releasing money, settings and reports for the office |
-| | LANI staff | `lani.staff@scholarsync.test` | the LANI queue (UP, UST and TCU applicants) and LANI scholars |
-| | LANI head | `lani.head@scholarsync.test` | LANI with a report to approve and one the office returned |
-| Scholarship office | Scholarship office | `office@scholarsync.test` | all programs, staff, reports, analytics, reply templates, the audit log |
+| Group | Account | What it shows |
+|---|---|---|
+| Students | `new@scholarsync.test` | an empty profile: setup, matching, a first application |
+| | `student@scholarsync.test` | a nearly complete profile, a LANI draft and support replies |
+| | `applicant4@scholarsync.test` | a TCU CEAA application returned with a declined document |
+| | `scholar@scholarsync.test` | a TCU CEAA scholar with a released allowance and a renewal due |
+| | `scholar3@scholarsync.test` | a TCU CEAA award on hold |
+| Program staff | `staff@scholarsync.test` | TCU CEAA review queue, scholars, walk-ins, tasks, support |
+| | `head@scholarsync.test` | staff features plus releasing money, settings and reports |
+| | `lani.staff@scholarsync.test` | the LANI queue and scholars |
+| | `lani.head@scholarsync.test` | LANI reports to approve or fix |
+| Scholarship office | `office@scholarsync.test` | all programs, staff, reports, analytics, reply templates, audit log |
 
-They are offered on the login page as small one-click buttons, grouped as above. They appear automatically in explore copies
-(`docker compose up`) and in developer copies (`DJANGO_DEBUG=true`) after
-`python -m uv run python manage.py load_demo`. The sample accounts (returned applicant, scholars) need storage
-and a current term, so a copy without them shows only the rest. They never exist on a hosted copy.
+Test accounts exist only in local copies (`docker compose up`, or `manage.py load_demo` in development), never on a
+hosted one.
 
 ## Self-hosting
-See [docs/HOSTING.md](docs/HOSTING.md). After the first start, create the scholarship-office account:
+Follow [docs/HOSTING.md](docs/HOSTING.md), then create the scholarship-office account:
 
 ```
 docker compose -f compose.production.yaml exec web python manage.py create_office_admin --email you@example.org --full-name "Your Name"
 ```
 
 ## Stack
-Django 5.2 LTS (Python 3.13) · PostgreSQL 17 · Django templates + HTMX + a little TypeScript (Vite) · any
-S3-compatible storage for files · any SMTP server for email · runs in Docker.
+Django 5.2 (Python 3.13) · PostgreSQL 17 · Django templates + HTMX + a little TypeScript (Vite) · any S3-compatible
+storage · any SMTP server · Docker.
 
-## Guides
-- [Setup](docs/SETUP.md): running locally in depth (ports, reset, troubleshooting) and the developer workflow (tests,
-  linting, front end).
-- [Hosting](docs/HOSTING.md): running your own copy for real, with your own database, storage and email, behind HTTPS.
-  It ends with a [runbook](docs/HOSTING.md#10-runbook) (update, roll back, restore, rotate secrets); the
-  [walkthrough](docs/hosting-walkthrough.md) records the guide followed once on a clean checkout.
-- Security and accessibility reviews: [OWASP ASVS 5.0 level 2](docs/security/asvs-l2.md),
-  [WCAG 2.2 AA](docs/accessibility/wcag-22-aa.md) and the [security policy](SECURITY.md).
-- [Design spec and roadmap](docs/design/2026-10-11-scholarsync-v2-design.md) and the
-  [open-source and self-hosting design](docs/design/2026-10-30-open-source-self-hosting-design.md).
-- [Legacy audit](docs/legacy-audit.md): what v1 (a private repository) does, its business rules and its problems.
-- [Contributing](CONTRIBUTING.md): project structure, commands and conventions for contributors.
+## More
+- [Setup](docs/SETUP.md): local development, tests and troubleshooting.
+- [Hosting](docs/HOSTING.md): running your own copy behind HTTPS, with a runbook.
+- [Contributing](CONTRIBUTING.md): structure, commands and conventions.
+- [Design spec](docs/design/2026-10-11-scholarsync-design.md): how everything is meant to work.
+- Reviews: [OWASP ASVS 5.0 L2](docs/security/asvs-l2.md), [WCAG 2.2 AA](docs/accessibility/wcag-22-aa.md).
+- [Security policy](SECURITY.md): how to report a vulnerability.
 
 ## License
-Copyright © 2026 John Kenneth Planas. Released under the [MIT License](LICENSE). Bundled icons and fonts keep their
-own licenses: see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+© 2026 John Kenneth Planas, [MIT License](LICENSE). Bundled icons and fonts keep their own licenses
+([THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).

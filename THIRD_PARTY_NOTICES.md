@@ -1,6 +1,6 @@
 # Third-party notices
 
-ScholarSync V2 is licensed under the [MIT License](LICENSE). The built front end (`static/dist/`, included in the
+ScholarSync is licensed under the [MIT License](LICENSE). The built front end (`static/dist/`, included in the
 Docker image) bundles the third-party works below, each under its own license. Python and npm packages that are only
 installed as dependencies keep their licenses in their own distributions.
 

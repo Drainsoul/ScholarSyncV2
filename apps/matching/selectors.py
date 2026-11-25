@@ -15,7 +15,6 @@ from apps.matching.eligibility import (
     evaluate,
     evaluate_renewal,
 )
-from apps.matching.legacy_model import Hint, hint_for
 from apps.programs.models import AcademicTerm, BenefitTier, Program
 from apps.programs.selectors import application_term, tiers_in_force, tiers_in_force_for
 from apps.students.models import StudentProfile
@@ -40,7 +39,6 @@ class MatchPage:
     academic: Academic | None
     term: AcademicTerm | None
     matches: list[ProgramMatch]  # active programs, by name
-    hint: Hint | str | None  # None only when there is no profile
 
 
 def _academic(profile: StudentProfile) -> Academic | None:
@@ -110,7 +108,7 @@ def match_page(user: User, *, today: date) -> MatchPage:
     term = application_term(today)
     profile = profile_for(user)
     if profile is None:
-        return MatchPage(profile=None, academic=None, term=term, matches=[], hint=None)
+        return MatchPage(profile=None, academic=None, term=term, matches=[])
     academic = _academic(profile)
     held = Q(
         Exists(
@@ -191,5 +189,4 @@ def match_page(user: User, *, today: date) -> MatchPage:
         academic=academic,
         term=term,
         matches=matches,
-        hint=hint_for(profile, academic),
     )

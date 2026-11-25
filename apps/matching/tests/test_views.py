@@ -13,7 +13,6 @@ from apps.accounts.tests.factories import UserFactory
 from apps.applications.models import Application
 from apps.applications.tests.factories import ApplicationFactory
 from apps.awards.tests.factories import AwardFactory
-from apps.programs.models import School
 from apps.programs.tests.factories import (
     AcademicTermFactory,
     BenefitTierFactory,
@@ -85,29 +84,6 @@ def test_missing_school_shows_fix_link(client, term):
     assert "Fix this in your profile" in body
     assert reverse("students:profile-education") in body
     assert "Apply<" not in body
-
-
-def test_hint_shown_for_percent_student_with_income(client, term):
-    ProgramFactory.create(name="Hint Order Grant")
-    profile = FullProfileFactory.create(monthly_household_income=Decimal("15000.00"))
-    EducationRecordFactory.create(profile=profile, gwa=Decimal("90.00"), gwa_scale="percent")
-    body = text(get(client, profile.user))
-    assert "v1's model suggests" in body
-    assert "%)." in body
-    assert "Advisory only: the program rules below decide." in body
-    # The hint comes first, above the program cards.
-    assert body.index("v1's model suggests") < body.index("Hint Order Grant")
-
-
-def test_hint_reason_for_one_to_five_student(client, term):
-    school = SchoolFactory.create(grading_scale=School.Scale.ONE_TO_FIVE)
-    profile = FullProfileFactory.create()
-    EducationRecordFactory.create(
-        profile=profile, school=school, gwa=Decimal("1.50"), gwa_scale="one_to_five"
-    )
-    body = text(get(client, profile.user))
-    assert "The legacy model only reads percent grades." in body
-    assert "v1's model suggests" not in body
 
 
 def test_no_term_sentence(client):

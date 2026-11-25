@@ -1,26 +1,17 @@
-# Contributing to ScholarSync V2
+# Contributing to ScholarSync
 
-Thanks for your interest. This guide covers what you need to change the code: the stack, where things live, the
-commands, and the conventions every change follows. To just run the app, see the [README](README.md); for running it
-locally in depth, see [docs/SETUP.md](docs/SETUP.md). To report a security problem, follow [SECURITY.md](SECURITY.md)
-instead of opening an issue.
+Thanks for helping. This guide covers the stack, where things live, the commands and the conventions. To just run the
+app, see the [README](README.md); for local development in depth, see [docs/SETUP.md](docs/SETUP.md). Report security
+problems through [SECURITY.md](SECURITY.md), not an issue.
 
 ## The project
-ScholarSync V2 is a ground-up Django rewrite of ScholarSync, an independent project modelled on the City of Taguig
-scholarship platform (no official affiliation). It has three roles:
-- **Students** build a profile, get matched to programs, apply with documents, and track their allowances.
-- **Program staff** review applications, manage scholars and terms, and run disbursements.
-- **The scholarship office** (super admin) manages programs, staff, reports and analytics.
+Three roles: **students** (profile, matching, applications, allowances), **program staff** (review, scholars, terms,
+disbursements) and **the scholarship office** (programs, staff, reports, analytics). Programs such as TCU CEAA and
+LANI are **data**, not code.
 
-Programs (TCU CEAA, LANI, and future ones) are **data**, not code.
-
-- **Design spec (source of truth):** [docs/design/2026-10-11-scholarsync-v2-design.md](docs/design/2026-10-11-scholarsync-v2-design.md).
-  Changes to the design or architecture go into the spec first, then the code.
-- **Open-source and self-hosting design:**
-  [docs/design/2026-10-30-open-source-self-hosting-design.md](docs/design/2026-10-30-open-source-self-hosting-design.md).
-- **Legacy audit** (v1 features, business rules, problems): [docs/legacy-audit.md](docs/legacy-audit.md).
-- **Legacy repository:** ScholarSync v1, private and not needed to work on v2. The legacy audit above records
-  everything v2 takes from it (audited at commit `fa9974c`).
+The [design spec](docs/design/2026-10-11-scholarsync-design.md) is the source of truth: design and architecture
+changes go there first, then into the code. Hosting decisions are in the
+[open-source and self-hosting design](docs/design/2026-10-30-open-source-self-hosting-design.md).
 
 ## Stack
 - **Backend:** Python 3.13 (uv), Django 5.2 LTS, PostgreSQL 17, django-allauth, S3-compatible storage
@@ -49,7 +40,7 @@ apps/
   applications/    Application, Document, the student apply flow and staff review
   awards/          Award, ScholarTerm, renewals, term rollover
   money/           DistributionSchedule, Disbursement, Budget
-  matching/        eligibility rules + advisory legacy-model hint (JSON params)
+  matching/        eligibility rules
   reports/         program reports and files
   workspace/       tasks, notifications, email outbox
   office/          scholarship-office (super admin) screens
@@ -59,10 +50,9 @@ apps/
   <app>/           models.py services.py selectors.py views.py urls.py forms.py templates/ tests/
 templates/         base.html, layouts/ (public, auth, student, app → staff/office), components/, 4xx/500 pages
 frontend/          Vite root: src/*.ts, src/styles/*.css + src/styles/components/*.css (builds to static/dist/, git-ignored)
-scripts/           one-off tools: export_legacy_model.py (PEP 723, run with `uv run --script`), smoke_signup.sh and
-                   smoke_upload.sh (the compose smoke test's signup/email check and upload round trip)
+scripts/           smoke_signup.sh and smoke_upload.sh (the compose smoke test's signup/email check and upload round trip)
 tests/             cross-app tests (permission matrix), tests/e2e/ (Playwright)
-docs/              SETUP.md, HOSTING.md, legacy-audit.md, design/ (specs and design boards), security/, accessibility/
+docs/              SETUP.md, HOSTING.md, design/ (specs and design boards), security/, accessibility/
 docker/            entrypoint.sh (prepare, then exec), healthcheck.py
 Dockerfile         two stages: Vite bundle, then the Python app (no Node on the host)
 compose.yaml       explore mode: web, worker, db, storage, storage-init, mail

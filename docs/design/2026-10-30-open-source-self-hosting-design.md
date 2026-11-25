@@ -1,8 +1,8 @@
-# ScholarSync V2: open source, one-command run, self-hosting
+# ScholarSync: open source, one-command run, self-hosting
 
 - **Date:** 2026-10-30
 - **Status:** approved by the maintainer on 2026-10-30. It amends the main spec
-  (`2026-10-11-scholarsync-v2-design.md`, which becomes revision 5; §12 below lists the sections).
+  (`2026-10-11-scholarsync-design.md`, which becomes revision 5; §12 below lists the sections).
 - **Replaces:** Vercel as the deployment target (main spec §11 and the parts of §2, §7, §9, §14–§17 built on it).
 
 ## 1. Intent
@@ -268,8 +268,7 @@ Applied when this document is approved:
    compose smoke test). Unit tests keep using moto, as M1 decided.
    **Publication, the last part of M3.5:**
    1. Scan the full git history (every branch that will be pushed) for secrets, for example with gitleaks.
-   2. Review every tracked document for things not meant for the public: `docs/legacy-audit.md` (v1 data and
-      domains), the contributor guide, the specs. The maintainer decides on anything found.
+   2. Review every tracked document for things not meant for the public: the contributor guide, the specs. The maintainer decides on anything found.
    3. If a secret is found: show the maintainer the finding, rotate it, then rewrite history to remove it (allowed, §3) and
       force-push `main`. Branches never pushed (`spike/vercel`) stay local.
    4. Tear down the M1 spike's Vercel project, Neon database and R2 bucket, after the maintainer confirms.

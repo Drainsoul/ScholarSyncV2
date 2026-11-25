@@ -498,7 +498,6 @@ def test_submit_happy_path_snapshots_and_emails(world: World) -> None:
         "checks",
         "tier_candidates",
         "merit_likely",
-        "hint",
     }
     assert snapshot["version"] == 1
     assert snapshot["evaluated_on"] == "2026-10-15"
@@ -508,8 +507,6 @@ def test_submit_happy_path_snapshots_and_emails(world: World) -> None:
     assert {check["code"] for check in snapshot["checks"]} >= {"window", "school", "gwa"}
     assert all(set(check) == {"code", "state", "reason"} for check in snapshot["checks"])
     assert all(check["state"] == "met" for check in snapshot["checks"])
-    hint = snapshot["hint"]
-    assert set(hint) in ({"label", "program", "merit", "probability"}, {"reason"})
 
     event = AuditEvent.objects.get()
     assert event.action == "application.submitted"
@@ -539,7 +536,6 @@ def test_submit_snapshot_keeps_typed_school(world: World) -> None:
     assert application.school is None
     assert application.school_name == "Somewhere College"
     assert application.school_type == School.Type.PUBLIC
-    assert application.match_snapshot["hint"] != {}
 
 
 def test_submit_sends_the_email(
