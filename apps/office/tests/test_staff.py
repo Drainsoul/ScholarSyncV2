@@ -148,7 +148,12 @@ def test_staff_list_search_and_query_count(
     client: Any, office: User, django_assert_max_num_queries: Any
 ) -> None:
     for n in range(50):
-        MembershipFactory.create(user__full_name=f"Person {n:02d}", user__verified=True)
+        # Own emails: a sequence email like user107@ would also match the "07" in the search.
+        MembershipFactory.create(
+            user__full_name=f"Person {n:02d}",
+            user__email=f"staff-{n:02d}@scholarsync.test",
+            user__verified=True,
+        )
     with django_assert_max_num_queries(12):
         html = client.get(LIST + "?q=Person 07").content.decode()
     assert "Person 07" in html and "Person 08" not in html
