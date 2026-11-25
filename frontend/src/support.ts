@@ -12,9 +12,30 @@ function hideFallbacks(root: ParentNode): void {
   }
 }
 
-function fill(select: HTMLSelectElement): void {
+function targetForm(select: HTMLSelectElement): HTMLFormElement | null {
   const form = document.getElementById(select.dataset.templatePicker ?? "");
-  if (!(form instanceof HTMLFormElement)) return;
+  return form instanceof HTMLFormElement ? form : null;
+}
+
+// A page the server filled from ?template= (the no-JS button) starts as if the template had been
+// picked here: the picker shows it, and its untouched text is replaced without a confirm.
+function adoptServerFill(root: ParentNode): void {
+  for (const select of root.querySelectorAll<HTMLSelectElement>("select[data-template-picker]")) {
+    const form = targetForm(select);
+    const body = form?.querySelector<HTMLTextAreaElement>("[name=body]");
+    const picked = form?.querySelector<HTMLInputElement>("[name=template]")?.value ?? "";
+    if (!body || picked === "") continue;
+    const option = Array.from(select.options).find((candidate) => candidate.value === picked);
+    if (!option || body.value !== (option.dataset.body ?? "")) continue;
+    select.value = picked;
+    select.dataset.previous = picked;
+    body.dataset.filled = body.value;
+  }
+}
+
+function fill(select: HTMLSelectElement): void {
+  const form = targetForm(select);
+  if (!form) return;
   const body = form.querySelector<HTMLTextAreaElement>("[name=body]");
   const subject = form.querySelector<HTMLInputElement>("[name=subject]");
   const template = form.querySelector<HTMLInputElement>("[name=template]");
@@ -36,8 +57,12 @@ function fill(select: HTMLSelectElement): void {
 
 export function initTemplatePicker(): void {
   hideFallbacks(document);
+  adoptServerFill(document);
   document.addEventListener("htmx:afterSwap", (event) => {
-    if (event.target instanceof Element) hideFallbacks(event.target);
+    if (event.target instanceof Element) {
+      hideFallbacks(event.target);
+      adoptServerFill(event.target);
+    }
   });
   document.addEventListener("change", (event) => {
     const target = event.target;
