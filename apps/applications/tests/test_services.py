@@ -1066,6 +1066,29 @@ def test_start_allowed_after_another_award_ended(world: World, status: str) -> N
     assert application.status == Application.Status.DRAFT
 
 
+@pytest.mark.parametrize("status", ["draft", "returned"])
+def test_submit_refused_while_holding_another_programs_award(world: World, status: str) -> None:
+    # A draft opened before the other award began (or before rev 33) can't slip through submit.
+    application = with_documents(draft_for(world, status=status))
+    _award_elsewhere(world, status="suspended")
+    assert_refused(
+        lambda: submit_application(user=world.user, application=application, tier=None),
+        ONE_AT_A_TIME,
+    )
+    application.refresh_from_db()
+    assert application.status == status
+    assert "application.submitted" not in actions()
+    assert "application.resubmitted" not in actions()
+
+
+def test_submit_allowed_after_another_award_ended(world: World) -> None:
+    application = with_documents(draft_for(world))
+    _award_elsewhere(world, status="graduated")
+    submit_application(user=world.user, application=application, tier=None)
+    application.refresh_from_db()
+    assert application.status == Application.Status.SUBMITTED
+
+
 def test_upload_to_stopped_requirement_404_student(world: World) -> None:
     application = draft_for(world)
     world.requirement.is_active = False

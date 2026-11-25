@@ -337,6 +337,9 @@ def submit_on_behalf(
         academic = Academic.from_application(locked)
         if academic is None:
             raise ValidationError(NO_ACADEMICS)
+    elsewhere = held_award_elsewhere(profile, locked.program)  # under the profile lock
+    if elsewhere is not None:  # never overridable, as at start
+        raise ValidationError(one_scholarship(elsewhere, staff=True))
     missing = missing_documents(locked)
     if missing:
         raise ValidationError(f"Upload {missing[0].label} before you submit.")

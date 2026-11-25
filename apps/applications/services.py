@@ -385,10 +385,12 @@ def submit_application(
                 f"This application was for {locked.term}, which has ended. "
                 "Withdraw it and start a new one."
             )
-    if locked.kind == Application.Kind.NEW and holds_scholarship(
-        profile, locked.program, locked.term
-    ):
-        raise ValidationError(HELD)  # e.g. an award started by staff while this was returned
+    if locked.kind == Application.Kind.NEW:
+        if holds_scholarship(profile, locked.program, locked.term):
+            raise ValidationError(HELD)  # e.g. an award started by staff while this was returned
+        elsewhere = held_award_elsewhere(profile, locked.program)  # under the profile lock
+        if elsewhere is not None:  # a draft from before the other award (or before rev 33)
+            raise ValidationError(one_scholarship(elsewhere))
     missing = missing_documents(locked)
     if missing:
         raise ValidationError(f"Upload {missing[0].label} before you submit.")

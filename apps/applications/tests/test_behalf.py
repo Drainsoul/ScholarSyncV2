@@ -685,6 +685,14 @@ def test_resubmit_on_behalf_keeps_snapshot(world: World) -> None:
     assert kinds == ["application_received", "application_received"]
 
 
+def test_submit_refused_while_holding_another_programs_award(world: World) -> None:
+    tier_for(world)
+    application = ready_draft(world)
+    award_elsewhere(world.profile)
+    # Not one of the overridable rules: a reason doesn't let it through.
+    assert_submit_refused(world, application, ONE_AT_A_TIME, reason="Typed anyway")
+
+
 def test_submit_without_current_term_is_never_overridden(world: World) -> None:
     tier_for(world)
     application = ready_draft(world)
