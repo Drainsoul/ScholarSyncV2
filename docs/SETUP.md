@@ -186,8 +186,8 @@ Notes:
 Tested on Ubuntu 24.04 with Docker Engine; other distributions need the same pieces from their own package manager.
 
 - **Docker:** Docker Desktop for Linux works, or [Docker Engine](https://docs.docker.com/engine/install/) with the
-  Compose plugin (`docker compose version` must print v2). Add yourself to the `docker` group so you can run it
-  without `sudo`: `sudo usermod -aG docker $USER`, then sign out and back in.
+  Compose plugin (`docker compose version` must work; the old `docker-compose` v1 does not). Add yourself to the
+  `docker` group so you can run it without `sudo`: `sudo usermod -aG docker $USER`, then sign out and back in.
 - **uv:** `curl -LsSf https://astral.sh/uv/install.sh | sh` (or `pipx install uv`). `pip install --user uv` is refused
   on Debian and Ubuntu (their Python is "externally managed"). uv downloads Python 3.13 itself, so the system Python's
   version does not matter, and you need no `python` command: write `uv` where the Windows lines say `python -m uv`.
