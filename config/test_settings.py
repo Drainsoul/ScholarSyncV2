@@ -8,6 +8,8 @@ is already set). The test client speaks HTTPS (see conftest.py) to match.
 import os
 
 os.environ["DJANGO_DEBUG"] = "false"
+# Production refuses the design kit, which .env.example turns on for developers.
+os.environ["DJANGO_KIT"] = "false"
 # Tests run in production mode, which refuses the .env.example placeholder key a dev .env holds.
 os.environ["DJANGO_SECRET_KEY"] = "pytest-only-secret-key-" + "x" * 40
 # Production mode also refuses the public explore storage secret that .env.example holds.
