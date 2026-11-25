@@ -749,9 +749,29 @@ def test_demo_has_workspace_samples(demo_app, settings, frozen_today, stored):
     answered = support.get(status="answered")
     assert answered.replies.count() == 1  # rev 35: the answer is in the app
     staff_inbox = support.filter(program__slug="tcu-ceaa", status="open")
-    assert staff_inbox.count() == 1  # the CEAA staff and head have one to answer
-    assert ReplyTemplate.objects.filter(is_active=True).count() == 3
-    assert ReplyTemplate.objects.filter(is_active=True, topic="").count() == 1  # fits any topic
+    assert staff_inbox.count() == 1  # Carolyn's one for the CEAA staff and head to answer
+    # rev 36: the sample applicants and scholars ask too, two per program.
+    inbox = SupportRequest.objects.filter(status="open").exclude(
+        sender__email=support[0].sender.email
+    )
+    assert sorted(inbox.values_list("program__slug", flat=True)) == [
+        "lani",
+        "lani",
+        "tcu-ceaa",
+        "tcu-ceaa",
+    ]
+    templates = ReplyTemplate.objects.filter(is_active=True)
+    assert templates.count() == 14
+    assert templates.filter(topic="").count() == 2  # fit any topic
+    assert set(templates.exclude(topic="").values_list("topic", flat=True)) == {
+        "account",
+        "profile",
+        "application",
+        "allowance",
+        "other",
+    }  # every topic has one
+    assert list(templates.exclude(program=None).values_list("program__slug", flat=True)) == ["lani"]
+    assert templates.exclude(subject="").count() == 10
     program = Program.objects.get(slug="tcu-ceaa")
     counts = applications_by_month([program], since=first_month(today))
     bars = month_bars(counts, today=today)
