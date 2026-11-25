@@ -838,6 +838,8 @@ def test_demo_has_report_samples(demo_app, settings, frozen_today, stored):
         "Monthly applications report": "returned",
         "Quarterly scholar update": "submitted",
         "Scholar attendance summary": "with_head",
+        "Renewal compliance checklist": "accepted",  # rev 36
+        "Budget utilization report": "accepted",
     }
     # Everything but the report with the head was sent to the office (rev 33).
     assert {title for title, report in reports.items() if report.sent_at is None} == {
@@ -852,10 +854,10 @@ def test_demo_has_report_samples(demo_app, settings, frozen_today, stored):
         (version,) = report.files.all()
         assert version.file.purpose == "report"
         assert version.file.key == f"files/report/{version.file.pk}"
-    assert len([key for key, _body, _type in stored if key.startswith("files/report/")]) == 4
+    assert len([key for key, _body, _type in stored if key.startswith("files/report/")]) == 10
     unread = Notification.objects.filter(read_at=None)
     office = unread.filter(recipient__email="office@scholarsync.test", kind="report_submitted")
-    assert office.count() == 1
+    assert office.count() == 2  # CEAA's quarterly update and the LANI tier breakdown
     head = unread.filter(recipient__email="head@scholarsync.test")
     assert sorted(head.filter(kind__startswith="report").values_list("kind", flat=True)) == [
         "report_for_head",
@@ -876,7 +878,7 @@ def test_demo_adds_the_head_report_to_an_older_demo(demo_app, settings, frozen_t
     Report.objects.filter(title="Scholar attendance summary").delete()
     loader.load()
     titles = list(Report.objects.values_list("title", flat=True))
-    assert len(titles) == 4 and titles.count("Scholar attendance summary") == 1
+    assert len(titles) == 10 and titles.count("Scholar attendance summary") == 1
 
 
 @pytest.mark.django_db
@@ -907,6 +909,7 @@ def test_demo_has_lani_applicants_reviewed_by_lani_staff(
     assert Award.objects.get(profile=approved.profile).tier.code == "priority"
     up = StudentProfile.objects.get(user__email="lani.applicant1@scholarsync.test")
     college = up.education.get(is_current=True)
+    assert college.school is not None
     assert (college.school.name, college.gwa) == ("University of the Philippines", Decimal("1.75"))
     lani_staff = User.objects.get(email="lani.staff@scholarsync.test")
     started = AuditEvent.objects.filter(actor=lani_staff, action="application.review_started")
@@ -944,3 +947,31 @@ def test_sample_set_rolls_back_as_a_whole(demo_app, settings, frozen_today, stor
     loader.load()
     assert not User.objects.filter(email="applicant6@scholarsync.test").exists()
     assert User.objects.filter(email="lani.applicant1@scholarsync.test").exists()
+
+
+@pytest.mark.django_db
+def test_demo_has_lani_report_samples(demo_app, settings, frozen_today, stored):
+    from apps.reports.models import Report
+    from apps.workspace.models import Notification
+
+    settings.DEMO_ACTIVE = True
+    loader.load()
+    loader.load()
+    reports = {r.title: r for r in Report.objects.filter(program__slug="lani")}
+    assert {title: r.status for title, r in reports.items()} == {
+        "LANI applications summary": "accepted",
+        "LANI school list update": "returned",
+        "LANI tier breakdown": "submitted",
+        "LANI scholar grade review": "with_head",
+    }
+    staff_report = reports["LANI applications summary"]
+    assert staff_report.submitted_by.email == "lani.staff@scholarsync.test"
+    sent_by = staff_report.sent_by
+    assert sent_by is not None and sent_by.email == "lani.head@scholarsync.test"
+    unread = Notification.objects.filter(read_at=None, kind__startswith="report")
+    lani_head = unread.filter(recipient__email="lani.head@scholarsync.test")
+    assert sorted(lani_head.values_list("kind", flat=True)) == [
+        "report_for_head",
+        "report_returned",
+    ]
+    assert not unread.filter(recipient__email="lani.staff@scholarsync.test").exists()

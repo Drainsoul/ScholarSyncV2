@@ -1,7 +1,8 @@
 """Demo samples for the M11c screens: TCU CEAA reports (accepted, returned, waiting for the
 office, and a staff member's report waiting for the head, rev 33), so the office has one to
-review, and the head has one to fix and one to approve. Skipped when storage isn't configured;
-every step skips what already exists."""
+review, and the head has one to fix and one to approve. rev 36 adds older accepted CEAA reports
+and a LANI set (accepted, returned by the office, waiting for the office, waiting for the LANI
+head). Skipped when storage isn't configured; every step skips what already exists."""
 
 import hashlib
 import logging
@@ -22,10 +23,12 @@ from apps.reports.services import (
     head_approve_report,
     office_url,
     send_report_to_office,
+    staff_url,
     submit_report,
 )
 from apps.workspace.models import Notification
 
+from .accounts import ACCOUNTS
 from .samples import SAMPLE_PDF
 
 logger = logging.getLogger(__name__)
@@ -129,6 +132,116 @@ def _for_head(program: Program, staff: User, head: User) -> None:
     )
 
 
+# rev 36: (program slug, sender: "staff" or "head", title, description, period, outcome). Period
+# "previous" is the term before the current one. Outcome: accepted (through the head when staff
+# sent it), returned (by the office), office (waiting for it) or head (waiting for the head).
+MORE_REPORTS = (
+    (
+        "tcu-ceaa",
+        "staff",
+        "Renewal compliance checklist",
+        "Scholars who handed in their grades and registration for renewal, by year level.",
+        "previous",
+        "accepted",
+    ),
+    (
+        "tcu-ceaa",
+        "head",
+        "Budget utilization report",
+        "Allowances paid against this year's budget, with the balance left.",
+        "previous",
+        "accepted",
+    ),
+    (
+        "lani",
+        "staff",
+        "LANI applications summary",
+        "Applications received and decided this term, by school and tier.",
+        "previous",
+        "accepted",
+    ),
+    (
+        "lani",
+        "head",
+        "LANI school list update",
+        "Schools our scholars attend this term, with their grading scales.",
+        "current",
+        "returned",
+    ),
+    (
+        "lani",
+        "head",
+        "LANI tier breakdown",
+        "Scholars and allowance amounts by tier for this term.",
+        "current",
+        "office",
+    ),
+    (
+        "lani",
+        "staff",
+        "LANI scholar grade review",
+        "Scholars whose grades are near the renewal mark, for an early check-in.",
+        "current",
+        "head",
+    ),
+)
+LANI_RETURN_NOTE = "Please add the grading scale for the two new schools."
+
+
+def _sender(slug: str, level: str) -> User | None:
+    """The demo's staff or head account for a program (accounts.py)."""
+    wanted = "head" if level == "head" else "staff"
+    for account in ACCOUNTS:
+        if account.program == slug and account.level == wanted:
+            return _user(account.email)
+    return None
+
+
+def _more_samples(office: User) -> None:
+    """The rev 36 reports, each skipped once its program has a report with its title. Notices
+    stay new only for reports still waiting and for a head's returned one."""
+    term = current_term()
+    if term is None:
+        return
+    previous = AcademicTerm.objects.filter(sort_key__lt=term.sort_key).order_by("-sort_key").first()
+    if previous is None:
+        return
+    decided: list[Report] = []
+    for slug, level, title, description, period, outcome in MORE_REPORTS:
+        program = Program.objects.filter(slug=slug, is_active=True).first()
+        sender = _sender(slug, level)
+        head = _sender(slug, "head")
+        if program is None or sender is None or head is None:
+            continue
+        if Report.objects.filter(program=program, title=title).exists():
+            continue
+        span = previous if period == "previous" else term
+        report = submit_report(
+            actor=sender,
+            program=program,
+            title=title,
+            period_start=span.starts_on,
+            period_end=span.ends_on,
+            description=description,
+            file=_report_file(sender, f"{title.lower().replace(' ', '-')}.pdf"),
+        )
+        if outcome == "head":
+            continue
+        if level == "staff":
+            report = _through_head(report, head)
+        if outcome == "accepted":
+            report = decide_report(actor=office, report=report, accept=True, note="")
+        elif outcome == "returned":
+            report = decide_report(actor=office, report=report, accept=False, note=LANI_RETURN_NOTE)
+        if outcome in ("accepted", "returned"):
+            decided.append(report)
+    # The office has read what it decided; staff and heads have read their acceptances, while a
+    # head's notice of a returned report stays new.
+    urls = [office_url(r) for r in decided]
+    urls += [staff_url(r) for r in decided if r.status == Report.Status.ACCEPTED]
+    Notification.objects.filter(url__in=urls).update(read_at=timezone.now())
+
+
 def give_report_samples() -> None:
     if not storage.is_configured():
         return
@@ -146,6 +259,7 @@ def give_report_samples() -> None:
                 _samples(program, staff, head, office)
             if not Report.objects.filter(program=program, title=FOR_HEAD_TITLE).exists():
                 _for_head(program, staff, head)
+            _more_samples(office)
     except (ValidationError, storage.StorageUnavailable) as error:
         # Log only the error class: service sentences can hold names.
         logger.warning("Demo report samples skipped (%s).", type(error).__name__)
