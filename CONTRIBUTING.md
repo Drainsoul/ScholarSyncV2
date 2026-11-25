@@ -124,6 +124,13 @@ Run from the repository root. The examples use `python -m uv`, which works even 
 - **Never commit** secrets, `.env`, real personal data or build output. Fixtures use Faker only, and personal data is
   never logged.
 
+## Issues and pull requests
+Titles follow `[BUG] ISS#<n>: …`, `[FEATURE] ISS#<n>: …`, `[TASK] ISS#<n>: …`, `[EPIC] ISS#<n>: …` and
+`PR#<n>: <commit subject>`, using the project's own counters. Every pull request names the issue it fixes
+(`Fixes #<GitHub number> (ISS#<n>)`) or says `none`. Issues and pull requests are public, so they hold nothing
+private. The issue forms and the pull request template walk you through it; the full rules are in
+[.github/ISSUES_AND_PULL_REQUESTS.md](.github/ISSUES_AND_PULL_REQUESTS.md).
+
 ## Environment notes
 - `.env.example` (tracked) documents every setting; `.env` (git-ignored) holds your local values. Use `127.0.0.1`, not
   `localhost`, in `DATABASE_URL`: compose publishes ports on IPv4 loopback only.

@@ -1,0 +1,44 @@
+name: Bug
+description: Something does the wrong thing, fails or breaks a rule in the spec.
+title: "[BUG] ISS#?: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Replace `?` in the title with the next ISS# number (see `.github/ISSUES_AND_PULL_REQUESTS.md`).
+        This issue is public: no personal data, secrets, local paths or links to private documents.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens
+      description: The wrong behaviour, and who sees it (student, staff, head, office).
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: With the demo accounts, a test, or a description of the code path.
+      placeholder: |
+        1. Sign in as office@scholarsync.test
+        2. …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should happen
+      description: Cite the spec section when it says so.
+    validations:
+      required: true
+  - type: textarea
+    id: where
+    attributes:
+      label: Where in the code
+      description: Files and lines, if known (e.g. `apps/workspace/reply_templates.py:47`).
+  - type: input
+    id: epic
+    attributes:
+      label: Epic
+      description: The epic this belongs to, if any (e.g. `#8 (ISS#1)`).

@@ -1,0 +1,42 @@
+name: Feature
+description: Something new the app should do.
+title: "[FEATURE] ISS#?: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Replace `?` in the title with the next ISS# number (see `.github/ISSUES_AND_PULL_REQUESTS.md`).
+        This issue is public: no personal data, secrets, local paths or links to private documents.
+        Changes to the design go into the spec (`docs/design/`) before the code.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The need
+      description: Who needs this (student, staff, head, office, self-hoster) and why.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What it should do
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: Checks that show it works.
+      placeholder: "- [ ] …"
+    validations:
+      required: true
+  - type: textarea
+    id: spec
+    attributes:
+      label: Spec and code affected
+      description: Spec sections and files this touches, if known.
+  - type: input
+    id: epic
+    attributes:
+      label: Epic
+      description: The epic this belongs to, if any (e.g. `#8 (ISS#1)`).
