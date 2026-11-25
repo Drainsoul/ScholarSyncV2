@@ -9,16 +9,7 @@ from apps.accounts.models import User
 from apps.core.permissions import StudentRequiredMixin
 from apps.core.shell import shell_context
 from apps.matching.checklist import checklist_items
-from apps.matching.legacy_model import Hint
 from apps.matching.selectors import ProgramMatch, match_page
-
-HINT_PROGRAMS = {"tcu-ceaa": "TCU CEAA", "lani": "LANI"}
-
-
-def hint_sentence(hint: Hint) -> str:
-    name = HINT_PROGRAMS.get(hint.program_slug or "", "no program")
-    merit = ", with merit" if hint.merit else ""
-    return f"v1's model suggests {name}{merit} ({round(hint.probability * 100)}%)."
 
 
 def _card(match: ProgramMatch) -> dict[str, Any]:
@@ -35,12 +26,10 @@ class MatchView(StudentRequiredMixin, TemplateView):
         user = request.user
         assert isinstance(user, User)
         page = match_page(user, today=timezone.localdate())
-        hint = page.hint
         return {
             **super().get_context_data(**kwargs),
             **shell_context(request, area="student"),
             "profile_url": reverse("students:profile"),
             "page": page,
             "cards": [_card(match) for match in page.matches],
-            "hint_text": hint_sentence(hint) if isinstance(hint, Hint) else hint,
         }

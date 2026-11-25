@@ -113,13 +113,6 @@ def _evaluated_on(snapshot: dict[str, Any]) -> date | None:
         return None
 
 
-def _hint(snapshot: dict[str, Any]) -> dict[str, str]:
-    raw = snapshot.get("hint")
-    if not isinstance(raw, dict):
-        return {}
-    return {"label": str(raw.get("label", "")), "reason": str(raw.get("reason", ""))}
-
-
 def render_review(
     request: HttpRequest,
     program: Program,
@@ -194,7 +187,6 @@ def render_review(
             "checks": items,
             "rules_met": sum(1 for item in items if item["state"] == "met"),
             "rules_total": len(items),
-            "hint": _hint(snapshot),
             "history": history(application),
             "decision_form": decision_form,
             "error": error,

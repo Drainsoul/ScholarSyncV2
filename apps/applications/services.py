@@ -31,7 +31,6 @@ from apps.core.transitions import InvalidTransition, assert_transition
 from apps.files.policy import MB, join_types
 from apps.files.selectors import usable_file
 from apps.matching.eligibility import Academic, EligibilityResult
-from apps.matching.legacy_model import Hint, hint_for
 from apps.matching.selectors import (
     eligibility_for,
     eligibility_with,
@@ -240,17 +239,6 @@ def _attach_file(
     return document
 
 
-def _hint_data(hint: Hint | str) -> dict[str, Any]:
-    if isinstance(hint, str):
-        return {"reason": hint}
-    return {
-        "label": hint.label,
-        "program": hint.program_slug,
-        "merit": hint.merit,
-        "probability": hint.probability,
-    }
-
-
 def build_snapshot(
     profile: StudentProfile,
     academic: Academic,
@@ -270,7 +258,6 @@ def build_snapshot(
         ],
         "tier_candidates": [tier.code for tier in result.tier_candidates],
         "merit_likely": result.merit_likely,
-        "hint": _hint_data(hint_for(profile, academic)),
     }
     if override is not None:
         snapshot["filed_by_staff"] = True

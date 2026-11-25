@@ -11,15 +11,6 @@
   {% include "components/empty_state.html" with title="Start your profile first" body="We check the scholarship rules against your profile." action_url=profile_url action_label="Go to your profile" %}
 {% else %}
 <div class="stack">
-  {% if hint_text %}
-  <section class="hint-note" aria-labelledby="hint-title">
-    {% icon "info" %}
-    <div>
-      <p><strong id="hint-title">Hint:</strong> {{ hint_text }}</p>
-      <p class="text-sm text-muted">Advisory only: the program rules below decide. The model's income units are unknown.</p>
-    </div>
-  </section>
-  {% endif %}
   {% for card in cards %}
   <section class="card" aria-labelledby="program-{{ card.match.program.slug }}">
     <div class="card__header">

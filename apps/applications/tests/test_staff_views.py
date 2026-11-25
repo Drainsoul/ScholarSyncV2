@@ -148,12 +148,6 @@ def _snapshot() -> dict[str, Any]:
             {"code": "gwa", "state": "met", "reason": ""},
             {"code": "voter", "state": "unmet", "reason": "Not a registered voter."},
         ],
-        "hint": {
-            "label": "Priority tier",
-            "program": "tcu-ceaa",
-            "merit": False,
-            "probability": 0.8,
-        },
     }
 
 
@@ -193,8 +187,6 @@ def test_review_page_shows_snapshot_documents_and_history(client: Any) -> None:
     assert "As checked on 3 November 2026" in body
     assert "1 of 2 rules met" in body
     assert "Not a registered voter." in body
-    assert "Legacy model suggests: Priority tier" in body
-    assert "Advisory only. The rules above decided who could apply." in body
     assert "1 of 2 documents approved" in body
     assert "version 2" in body
     assert reverse("files:download", args=[document.files.get(is_current=True).file_id]) in body

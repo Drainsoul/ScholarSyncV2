@@ -71,9 +71,6 @@
       {% if application.on_behalf and overrides %}
       <div class="banner banner--warning" role="note"><div><p class="banner__title">Overridden by staff</p><ul>{% for rule in overrides %}<li>{{ rule }}</li>{% endfor %}</ul><p>{{ application.override_reason }}</p></div></div>
       {% endif %}
-      {% if hint.label or hint.reason %}
-      <div class="banner" role="note"><div><p class="banner__title">{% if hint.label %}Legacy model suggests: {{ hint.label }}{% else %}{{ hint.reason }}{% endif %}</p><p>Advisory only. The rules above decided who could apply.</p></div></div>
-      {% endif %}
     </section>
   </div>
   <div class="stack">
