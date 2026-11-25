@@ -40,7 +40,7 @@ jobs:
       EMAIL_URL: smtp://localhost:25
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.0  # no floating major tag is published; pin the full version
+      - uses: astral-sh/setup-uv@v10.4.0  # no floating major tag is published; pin the full version
         with:
           enable-cache: true
       - uses: actions/setup-node@v7
@@ -89,7 +89,7 @@ jobs:
       DATABASE_URL: postgres://scholarsync:scholarsync@localhost:5432/scholarsync
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.0  # no floating major tag is published; pin the full version
+      - uses: astral-sh/setup-uv@v10.4.0  # no floating major tag is published; pin the full version
         with:
           enable-cache: true
       - uses: actions/setup-node@v7
@@ -188,7 +188,7 @@ jobs:
       DATABASE_URL: postgres://scholarsync:scholarsync@localhost:5432/scholarsync
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.0  # no floating major tag is published; pin the full version
+      - uses: astral-sh/setup-uv@v10.4.0  # no floating major tag is published; pin the full version
         with:
           enable-cache: true
       - uses: actions/setup-node@v7
