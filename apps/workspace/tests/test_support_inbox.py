@@ -263,3 +263,41 @@ def test_staff_see_the_note_without_the_office_link(
     html = client.get(_staff_url("support-detail", program, pk=row.pk)).content.decode()
     assert "No reply templates fit this topic yet." in html
     assert reverse("support:templates") not in html
+
+
+@pytest.fixture
+def picker_calls(monkeypatch: pytest.MonkeyPatch) -> list[int]:
+    """Counts reads of the picker's templates."""
+    from apps.workspace import reply_templates
+
+    calls: list[int] = []
+    real = reply_templates.picker
+
+    def counted(row: SupportRequest) -> Any:
+        calls.append(row.pk)
+        return real(row)
+
+    monkeypatch.setattr(reply_templates, "picker", counted)
+    return calls
+
+
+def test_picker_read_once_per_page(client: Any, office: User, picker_calls: list[int]) -> None:
+    row = _ask(topic="allowance")
+    template = ReplyTemplateFactory.create(body="Hi {first_name}.")
+    detail = reverse("support:office-detail", args=[row.pk])
+    response = client.get(f"{detail}?form=email&template={template.pk}")
+    assert response.context["email_form"].initial["body"] == "Hi Ana."
+    assert picker_calls == [row.pk]
+
+
+def test_picker_read_once_when_a_post_shows_the_form_again(
+    client: Any, office: User, picker_calls: list[int]
+) -> None:
+    row = _ask(topic="allowance")
+    template = ReplyTemplateFactory.create(body="Hi {first_name}.")
+    response = client.post(
+        reverse("support:office-email", args=[row.pk]),
+        {"subject": "Hi\nthere", "body": "Two weeks.", "template": template.pk},
+    )
+    assert "Enter the subject on one line." in response.content.decode()
+    assert picker_calls == [row.pk]

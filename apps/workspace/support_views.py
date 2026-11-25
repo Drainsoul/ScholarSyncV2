@@ -233,9 +233,9 @@ class _Inbox(SupportScope, View):
         return render(request, self.template_name, context)
 
 
-def _template_options(row: SupportRequest) -> list[dict[str, Any]]:
+def _template_options(row: SupportRequest, templates: list[ReplyTemplate]) -> list[dict[str, Any]]:
     options = []
-    for template in reply_templates.picker(row):
+    for template in templates:
         subject, body = reply_templates.fill(template, row)
         options.append(
             {"pk": template.pk, "title": template.title, "subject": subject, "body": body}
@@ -248,6 +248,20 @@ class _Detail(SupportScope, View):
 
     template_name = "workspace/support/detail.html"
     dialog_template = "workspace/support/detail_dialog.html"
+    _offered: list[ReplyTemplate] | None = None
+
+    def offered(self, row: SupportRequest) -> list[ReplyTemplate]:
+        """The picker's templates, read once per request (a view instance serves one)."""
+        if self._offered is None:
+            self._offered = reply_templates.picker(row)
+        return self._offered
+
+    def picked(self, row: SupportRequest, value: object) -> ReplyTemplate | None:
+        """A template id from the form, if it is one the picker offers for this request."""
+        if not str(value or "").isdigit():
+            return None
+        wanted = int(str(value))
+        return next((t for t in self.offered(row) if t.pk == wanted), None)
 
     def _forms(
         self, request: HttpRequest, row: SupportRequest
@@ -256,7 +270,7 @@ class _Detail(SupportScope, View):
         which = request.GET.get("form", "reply")
         which = which if which in FORMS else "reply"
         filled: dict[str, Any] = {}
-        template = _picked(row, request.GET.get("template"))
+        template = self.picked(row, request.GET.get("template"))
         if template is not None:
             subject, body = reply_templates.fill(template, row)
             filled = {"subject": subject, "body": body, "template": template.pk}
@@ -288,7 +302,7 @@ class _Detail(SupportScope, View):
             "layout": self.layout,
             "row": row,
             "replies": row.replies.select_related("author", "email"),
-            "options": _template_options(row),
+            "options": _template_options(row, self.offered(row)),
             "which": which,
             "reply_form": reply_form,
             "email_form": email_form,
@@ -312,14 +326,6 @@ class _Detail(SupportScope, View):
         row = support.scoped_request(self.scope_program, pk)
         which, reply_form, email_form = self._forms(request, row)
         return self.render_page(request, row, which, reply_form, email_form)
-
-
-def _picked(row: SupportRequest, value: object) -> ReplyTemplate | None:
-    """A template id from the form, if it is one the picker offers for this request."""
-    if not str(value or "").isdigit():
-        return None
-    wanted = int(str(value))
-    return next((t for t in reply_templates.picker(row) if t.pk == wanted), None)
 
 
 class _Send(_Detail):
@@ -363,7 +369,7 @@ class _Reply(_Send):
             actor=_user(request),
             request_row=row,
             body=form.cleaned_data["body"],
-            template=_picked(row, form.cleaned_data.get("template")),
+            template=self.picked(row, form.cleaned_data.get("template")),
             now=timezone.now(),
             request=request,
         )
@@ -379,7 +385,7 @@ class _Email(_Send):
             request_row=row,
             subject=form.cleaned_data["subject"],
             body=form.cleaned_data["body"],
-            template=_picked(row, form.cleaned_data.get("template")),
+            template=self.picked(row, form.cleaned_data.get("template")),
             now=timezone.now(),
             request=request,
         )
