@@ -118,6 +118,9 @@
   the scholarship office). The login notice shows them as small grouped buttons with the shared password once; a
   listed account appears only once it exists and can sign in. More sample students (LANI applicants and scholars,
   rejected and withdrawn CEAA applications), reply templates for every topic and more program reports (§11).
+- **Revision:** 37 (2026-11-25): submitting a new application (a draft or a returned one, by the student or by staff
+  on their behalf) is refused while the student holds an award in another program, as starting and approving are.
+  This closes the rev 34 edge where a draft opened before rev 33 could still be submitted (§4.5).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - `docs/legacy-audit.md` (v1 features, rules and problems);
@@ -413,7 +416,8 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
     one term, but **one scholarship at a time** (rev 33, §18 Q6): while the student holds an `active` or `suspended`
     award in a program, starting an application to another program (the student or staff on their behalf) is refused
     with "You already hold the {program} scholarship. A student can hold one scholarship at a time.", and Find
-    scholarships shows it as an unmet check. Approving an application, adding a scholar by hand, importing a scholar
+    scholarships shows it as an unmet check. Submitting a new application (rev 37; never overridable on behalf),
+    approving an application, adding a scholar by hand, importing a scholar
     and reinstating an ended award are refused the same way (staff read it as "This student already holds…", rev 34) when the student holds an award in another program, so of two open applications
     only the first approved one stands. The check runs under the `StudentProfile` row lock (the services' lock order),
     so two approvals can't race. It is a service rule, not a database constraint: rows from before rev 33 stay.
