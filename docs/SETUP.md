@@ -134,6 +134,7 @@ Copy-Item .env.example .env                                # local settings; nev
 python -m uv sync                                          # Python 3.13 and the dependencies
 Set-Location frontend; npm install; Set-Location ..        # the first install must run inside frontend/
 python -m uv run python manage.py migrate
+python -m uv run python manage.py createcachetable         # allauth's rate limits use the database cache
 python -m uv run python manage.py load_demo                # the test accounts and samples; safe to re-run
 npm --prefix frontend run build                            # or run `npm --prefix frontend run dev` with VITE_DEV_MODE=true in .env
 python -m uv run python manage.py runserver
@@ -146,6 +147,7 @@ cp .env.example .env                                       # local settings; nev
 uv sync                                                    # Python 3.13 and the dependencies
 (cd frontend && npm install)                               # the first install must run inside frontend/
 uv run python manage.py migrate
+uv run python manage.py createcachetable                   # allauth's rate limits use the database cache
 uv run python manage.py load_demo                          # the test accounts and samples; safe to re-run
 npm --prefix frontend run build                            # or run `npm --prefix frontend run dev` with VITE_DEV_MODE=true in .env
 uv run python manage.py runserver
