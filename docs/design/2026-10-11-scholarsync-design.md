@@ -1,4 +1,4 @@
-# ScholarSync V2: design spec
+# ScholarSync: design spec
 
 - **Revision:** 2 (2026-10-28): M3 design-system details (§3, §12, §13, §14, §15, §16), proposed for M3.
 - **Revision:** 3 (2026-10-28): §12 visual redesign (UI UX Pro Max: Accessible & Ethical + Swiss; Lexend + Source Sans 3;
@@ -65,10 +65,9 @@
   signed-in users to their own home, and signing out lands on the sign-in page (§5, §10).
 - **Revision:** 26 (2026-11-20): student screens and account pages reworked: the student home shows profile
   completion as a small ring beside a month calendar of release days and application windows; the profile overview
-  is read-only with an Edit button per section; the model hint moves to the top of Find scholarships as a compact
-  note; the session list and the two-factor pages render inside the signed-in app shell, and the session list
-  counts live sessions from the session table; the demo gives LANI an application window when it has none
-  (§5, §10, §11, §12).
+  is read-only with an Edit button per section; the session list and the two-factor pages render inside the
+  signed-in app shell, and the session list counts live sessions from the session table; the demo gives LANI an
+  application window when it has none (§5, §10, §11, §12).
 - **Revision:** 27 (2026-11-20): staff screens reworked: the staff dashboard drops "Applications by month" for a month
   calendar of the user's task due dates, the program's distribution days and its application window, with "Needs
   attention" beside it; the Tasks page lists tasks only and "Add task" opens the form in the app dialog; the office
@@ -121,16 +120,18 @@
 - **Revision:** 37 (2026-11-25): submitting a new application (a draft or a returned one, by the student or by staff
   on their behalf) is refused while the student holds an award in another program, as starting and approving are.
   This closes the rev 34 edge where a draft opened before rev 33 could still be submitted (§4.5).
+- **Revision:** 38 (2026-11-26): the advisory tier-model hint is removed from the match page, the review screen and
+  the submit snapshot; rules alone decide eligibility, as before.
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
-  - `docs/legacy-audit.md` (v1 features, rules and problems);
   - The maintainer's decisions of 2026-10-11 (§19);
   - Vercel's Django and Functions documentation (checked 2026-10-11).
 
 ## 1. Goals and non-goals
 **Goals**
-1. **Feature parity:** reach parity with every *wired* v1 feature (`docs/legacy-audit.md` §2) and build the missing
-   README features that matter: notifications, financial management, analytics, program management.
+1. **Complete features:** profiles, matching, applications with documents, review, scholars and terms, and
+   disbursements, plus the README features that matter: notifications, financial management, analytics, program
+   management.
 2. **One generic system:** programs are data, so TCU CEAA, LANI and any future program share one codebase, one schema
    and one set of screens.
 3. **Secure by default:**
@@ -146,12 +147,11 @@
 7. **Runs anywhere a container runs, with a one-command local run** (§11): any PostgreSQL, any S3-compatible storage,
    any email service. Open source (MIT); nobody hosts an official copy.
 
-**Non-goals (v2.0)**
-- Migrating v1 data: this is a fresh start with seed data.
+**Non-goals (first release)**
+- Importing data from another system: this is a fresh start with seed data.
 - A public JSON API or SPA, a native mobile app, SMS, or payments integration (disbursement is recorded, not paid
   out).
 - Real-time features (WebSockets), dark theme, multi-language UI (English only; Filipino later).
-- Retraining the legacy model.
 - The maintainer hosting a public demo or production instance; a packaged desktop app; one-click deploy buttons for specific
   hosts; documenting a hosting path without Docker; branding through settings (rebranding is fork-and-edit); a
   published container image or release pipeline.
@@ -197,7 +197,7 @@ apps/
   applications/    Application, Document, DocumentFile, review services
   awards/          Award, ScholarTerm, renewals, term rollover
   money/           DistributionSchedule, Disbursement, Budget
-  matching/        eligibility engine, legacy model hint (+ data/legacy_tier_model.json)
+  matching/        eligibility engine
   reports/         Report, ReportFile
   workspace/       Task, Notification, EmailOutbox
   office/          super-admin views (no models of its own)
@@ -206,7 +206,7 @@ apps/
 templates/         base.html, layouts/{public,auth,student,staff,office}.html, partials/, components/, emails/
 frontend/          src/{main,nav,dialog,toast,upload,charts,bulk}.ts, src/styles/{fonts,tokens,base,layouts}.css,
                    src/styles/components/*.css, src/icons/ (sprite list + own icons), scripts/sprite.mjs
-scripts/           export_legacy_model.py
+scripts/           smoke_signup.sh, smoke_upload.sh (the compose smoke's signup and upload checks)
 tests/             permission matrix, e2e (Playwright)
 ```
 
@@ -302,13 +302,13 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 - TCU CEAA, with one tier `standard` (5,000 base / 10,000 merit).
 - LANI, with tiers honors / premier / priority (20,000 / 25,000), basic plus (10,000 / 15,000), basic and SUC/LCU
   (7,500 / 12,500), review (15,000 / 20,000) and lead (30,000 / 50,000).
-- The required documents from the v1 templates: both programs get the same list; rows with the same label and help
-  text are merged into `applies_to=both`; every row takes at most 10 MB.
+- The required documents: both programs get the same list; rows with the same label and help text are
+  merged into `applies_to=both`; every row takes at most 10 MB.
 - Schools: Taguig City University (LCU, percent, in Taguig), University of the Philippines (SUC, 1-5) and University
-  of Santo Tomas (private, 1-5), the three names in v1's model.
+  of Santo Tomas (private, 1-5).
 - Terms, if none exist: the school year containing today, starting 1 August. Term 1 runs 1 Aug-31 Dec, term 2 runs
   1 Jan-31 May and the summer term runs 1 Jun-31 Jul; the one containing today is current.
-- Rules, from v1's forms (all pending §18 Q3/Q4):
+- Rules (all pending §18 Q3/Q4):
   - CEAA: new GWA ≥ 80%, TCU only; renewal ≥ 80% and ≥ 15 units;
   - LANI: new GWA ≥ 75%, or ≤ 3.00 on the 1-5 scale (3.00 is the passing mark there, as 75% is on the percent
     scale; without it every UP and UST student is locked out under the §8 scale rule); renewal 1-5 GWA ≤ 2.50,
@@ -319,7 +319,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   its settings pages open to the office only while it is inactive. Opening needs a tier in force and an active
   required document; closing is refused while applications wait for review (submitted, under review or returned,
   since a returned one may be resubmitted) or payouts are prepared or approved.
-- These are the v1 admin values (`docs/legacy-audit.md` §3), pending the maintainer's confirmation.
+- These values are pending the maintainer's confirmation.
 
 ### 4.3 students
 - **`StudentProfile`:**
@@ -327,7 +327,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - name fields; `birth_date`; `sex`; `phone`;
   - the name fields are the source of truth: saving them also sets `User.full_name`;
   - address: `address_line`, `barangay` (choices: the list below, plus "I don't live in Taguig"); there is no
-    `district` (v1 had a free choice with no barangay mapping, the EMBO districting is still changing and no rule uses
+    `district` (there is no barangay-to-district mapping, the EMBO districting is still changing and no rule uses
     it; add it when a rule needs it);
   - `residing_since` (year); `is_registered_voter`; `monthly_household_income`;
   - `photo` FK `StoredFile`;
@@ -370,7 +370,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
       submitted;
     - the academic snapshot is copied from the current education record at submit, not at start, and the checks are
       re-run under the lock; the draft page shows the live profile values;
-    - `match_snapshot` (JSON: eligibility result and model hint at submit time), `status`;
+    - `match_snapshot` (JSON: eligibility result at submit time), `status`;
     - `submitted_at`, `first_submitted_at` (nullable; the first submit sets it and a resubmit leaves it, backfilled
       from `submitted_at`; the staff queue sorts by it, oldest first, so a returned application keeps its place),
       `decided_at`, `decided_by`, `decision_reason`, `created_by` (the student or staff);
@@ -567,8 +567,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
     no limit, and the seeded programs leave it blank: rev 33, §18 Q8, a scholar continues while enrolled and meeting
     the renewal rules; "final year" graduation is a manual status change);
   - `year_level` is not advanced automatically: a renewal freezes the student's own updated education record, and a
-    staff term record prefills year level + 1 in a later school year;
-  - it replaces v1's bulk `update_years`.
+    staff term record prefills year level + 1 in a later school year.
 
 ### 4.7 money
 - **`DistributionSchedule`:** `program`, `term`, `distribution_date`, `claim_location`, `notes`, `frequency_label`
@@ -914,27 +913,9 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   `unmet`; no renewal GWA rule at all means no check); `renewal_min_units`; and, when `renewal_no_failing_grades` is
   on, the student's declaration "I have no failing, incomplete or dropped subjects this term." Residency, voter and
   school allowlists are not re-checked. Every rule must be met to submit; no tier candidates.
-- **Model hint, advisory** (`matching.legacy_model.suggest(...)`):
-  - It is a pure-Python port of v1's pickle. `scripts/export_legacy_model.py`, run once in a throwaway sklearn 1.6.1
-    environment, exports the scaler means/scales, one-hot categories, coefficients, intercepts and classes to
-    `apps/matching/data/legacy_tier_model.json`. Inference is the same transform followed by a softmax.
-  - **Inputs:**
-    - `grade = round(clamp(1 + (gwa_percent − 70) × 0.1, 1, 4), 2)` (as v1); only shown when a percent GWA exists;
-    - `income`, now actually collected: the monthly household income in pesos as typed; v1's units are undocumented,
-      so the page says it is advisory and that the model's income units are unknown (rev 26: a "Hint:" note above
-      the program cards);
-    - the school name, matched exactly (v1's one-hot encoder is case-sensitive);
-    - school type public/private, with SUC and LCU mapped to public.
-  - **Missing inputs:** the hint appears only with a percent current GWA, a household income, and a known school name
-    and type. Otherwise it says why: "The legacy model only reads percent grades." / "Add your household income to
-    see it."
-  - **Output:** a suggested program plus merit (`CEAA_Merit`, …, `NotEligible`) and a probability. It never suggests a
-    LANI tier.
-  - **Parity test:** about 30 fixture vectors, including unknown schools and edge grades, generated by the export
-    script with sklearn's own `predict_proba`. The port must match within 1e-9.
-- **Match page:** `/me/match/` lists every active program with ✓/✗, the reasons, the tier candidates, and the hint
-  ("Suggested by the legacy model; advisory"). The student applies only to eligible programs and requests a tier; staff
-  confirm the tier on approval. The result is saved in `Application.match_snapshot` at submit time.
+- **Match page:** `/me/match/` lists every active program with ✓/✗, the reasons and the tier candidates. The student
+  applies only to eligible programs and requests a tier; staff confirm the tier on approval. The result is saved in
+  `Application.match_snapshot` at submit time.
   - A card's action, in order: "Continue your application" when an open application exists; else "You already hold
     this scholarship." when the profile holds it (an approved application this term or an active award); else "This
     application wasn't approved for {term}. You can apply again next term." when it was rejected this term (§4.5);
@@ -988,7 +969,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   `{period}` reads "1 August 2026 to 31 October 2026". The report title and the reviewer's note are free text and
   never go into a notification. The office's accept or return also tells `sent_by` when that head isn't the author.
 - **Templates:** `templates/emails/<kind>.{html,txt}`, autoescaped.
-  - v1 messages to port: application received, application decided, allowance approved/released, password reset (from
+  - Messages: application received, application decided, allowance approved/released, password reset (from
     allauth).
   - New: invite/claim, application returned.
   - **On-behalf applications (M8b):** emails go only to `profile.user.email`, and only when the profile
@@ -1116,7 +1097,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - program-scoped access, with an audit of every document view;
   - a private bucket;
   - a retention period (open question);
-  - "download my data" and account-deletion requests, handled by the office in v2.0.
+  - "download my data" and account-deletion requests, handled by the office in the first release.
 - **Staff-written email (rev 35):** a support reply by email is the only email whose body is free text. It goes
   only to the account email of the student who asked, never to a typed-in address; the subject is one line (the
   form refuses newlines, and Django refuses header newlines anyway); the body is autoescaped in the HTML part and
@@ -1310,8 +1291,6 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
     education, photo) shows what is on file as a description list (family members and education records as rows,
     the photo as a thumbnail), "Not given" for an empty field, and a "Missing" note naming what is still needed;
     each card's Edit button opens that section's existing form, which returns to the overview on save;
-  - **find scholarships** (`/me/match/`, rev 26): the model hint, when there is one, comes first as a compact note
-    (one line plus the advisory sentence), above the program cards;
   - **account pages** (rev 26): the session list (`/accounts/sessions/`), the two-factor pages (`/accounts/2fa/…`:
     overview, set up the authenticator app, turn it off, recovery codes) render in the user's own app shell
     (student, staff with their first program, or office) with project wording; the other allauth "manage" pages
@@ -1382,7 +1361,7 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
     - **corrected:** income is "a month", because the field is `monthly_household_income`;
     - **header:** a pager shows "{n} of {m} waiting" with previous and next links, over the Waiting set in queue
       order;
-    - **eligibility card:** the frozen snapshot, "As checked on {date}", plus the advisory hint;
+    - **eligibility card:** the frozen snapshot, "As checked on {date}";
     - **decision card**, by status: submitted shows "Start review"; under review shows the decision form; otherwise
       a decision summary. On a resubmission (submitted or under review with an earlier reason) a warning banner
       above it reads "Returned earlier: {decision_reason}", autoescaped, so the reviewer sees what was asked.
@@ -1420,7 +1399,6 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
   - services: transitions, audit events, amounts;
   - selectors: at-risk, utilization, scoping;
   - the eligibility engine;
-  - legacy-model parity;
   - constraints, e.g. one open application.
 - **View tests:** Django test client for every page and HTMX partial (full vs partial render), the permission matrix
   (§6), and `django_assert_max_num_queries` on every list view.
@@ -1459,8 +1437,8 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
 - **Rules:**
   - `.env.example` documents every variable (what it is, whether production needs it, format, where to get it), with
     safe placeholders and no secrets.
-  - Startup fails fast on a missing required variable in production mode. No insecure fallbacks, ever: v1's
-    `SECRET_KEY` default is the lesson.
+  - Startup fails fast on a missing required variable in production mode. No insecure fallbacks, ever (for
+    example, no default `SECRET_KEY`).
 
 ## 15. CI/CD
 GitHub Actions on push and pull request, with read-only permissions, concurrency cancel and timeouts:
@@ -1483,7 +1461,7 @@ Each milestone is broken into small steps (TDD, one commit per step) before work
 starts, and ends with every acceptance item checked.
 
 **M0: Planning docs**
-- [ ] The contributor guide (now `CONTRIBUTING.md`), `docs/legacy-audit.md`, this spec and `README.md` committed.
+- [ ] The contributor guide (now `CONTRIBUTING.md`), this spec and `README.md` committed.
 - [ ] Spec approved by the maintainer.
 
 **M1: Vercel go/no-go spike** (historical, superseded by revision 5; throwaway branch `spike/vercel`, kept local)
@@ -1556,8 +1534,7 @@ starts, and ends with every acceptance item checked.
 - [ ] Extend the demo loader for this milestone's screens.
 
 **M7: Matching + student applications**
-- [ ] Eligibility engine; legacy model exported to JSON parameters (`apps/matching/data/`, advisory hint only) + parity
-  test; `/me/match/`.
+- [ ] Eligibility engine; `/me/match/`.
 - [ ] Apply flow at `/me/applications/` (documents, submit with `match_snapshot`, withdraw, returned → resubmit); status
   page; `application_received` email on submit and resubmit.
 - [ ] Submitting needs the personal details section complete ("Finish your personal details before you submit.").
@@ -1664,31 +1641,29 @@ starts, and ends with every acceptance item checked.
 | Presigned URLs signed for an internal hostname fail in the browser | A public storage endpoint setting; round trip covered by the compose smoke from M5 |
 | Rate limits key on the proxy IP | Trusted forwarded-header configuration with a proxy count (§11) |
 | The S3-compatible container's image or licence changes | Code speaks only the S3 API; swapping the image is a compose change |
-| The legacy model is a toy trained on unknown data | Advisory only, clearly labelled; rules decide; retire or retrain when real data exists |
 | Business rules are still unclear (amounts, LANI tier criteria, at-risk) | Rules are data, editable by heads; open questions tracked in §18 |
 
 ## 18. Open questions
 Answered by the maintainer on 2026-11-21 (rev 33) unless marked otherwise. Sources: the TCU LANI page
 (`https://tcu.edu.ph/lani-scholarship`, figures from SY 2015-16) and the TCU-CEAA site (`https://tcu-ceaa.taguig.gov.ph/`),
 both read on 2026-11-21.
-1. ~~Leaked v1 secrets~~ Resolved 2026-10-12: the maintainer confirmed every v1 key had already been rotated.
 2. **Benefit amounts.** LANI's page gives amounts per school year; the app pays per term, so the seeds halve them,
-   and a tier's merit amount is the top of the page's range (as v1 read it):
+   and a tier's merit amount is the top of the page's range:
 
    | LANI tier | Per school year (page) | Seed per term: base / with merit |
    |---|---|---|
    | Premier | ₱40,000–₱50,000 | ₱20,000 / ₱25,000 |
-   | Full (v1 called it Honors) | ₱40,000–₱50,000 | ₱20,000 / ₱25,000 |
+   | Full (also called Honors) | ₱40,000–₱50,000 | ₱20,000 / ₱25,000 |
    | Priority | ₱40,000–₱50,000 | ₱20,000 / ₱25,000 |
    | Basic Plus (Basic + SUC/LCU) | ₱15,000 | ₱7,500 / none |
    | SUC/LCU | ₱10,000 | ₱5,000 / none |
    | Basic | ₱10,000 | ₱5,000 / none |
    | Review (one-time, first-time takers) | ₱10,000 | ₱10,000 / none, paid once (never renewed) |
    | Review, retake | ₱5,000 | ₱5,000 / none, paid once |
-   | LEAD | not stated | v1's ₱30,000 / ₱50,000 kept, confirmed by the maintainer (2026-11-26) |
+   | LEAD | not stated | ₱30,000 / ₱50,000, confirmed by the maintainer (2026-11-26) |
 
    The merit incentive is for Premier, Full and Priority scholars with a semestral weighted average of 1.75 or better
-   (or its school's cum laude equivalent). The CEAA site states no amount: v1's ₱5,000 / ₱10,000 stays. Every amount
+   (or its school's cum laude equivalent). The CEAA site states no amount: ₱5,000 / ₱10,000 is used. Every amount
    is data a head can change in the program settings.
 3. **LANI tier criteria** (the page): Premier: UP System (Luzon) or a CHED Center of Excellence in the NCR; Full and
    Priority: a DOST priority course in a DOST-listed school, a PWD endorsed by the city PDAO, or law or medicine in a
@@ -1700,8 +1675,8 @@ both read on 2026-11-21.
    app doesn't derive it.
 4. **Renewal criteria.** CEAA (the site): GWA of at least 80% with no failing, incomplete, blank or dropped subjects
    and at least 15 units a semester; the seed adds the no-failing-grades rule. CEAA's merit incentive is for renewing
-   scholars with an SWA of 88.75% or better. LANI's page states no renewal threshold: v1's "SWA not lower than 2.5"
-   stays, on the 1.0–5.0 scale (the page's merit threshold, 1.75, is on that scale). Staff confirm merit.
+   scholars with an SWA of 88.75% or better. LANI's page states no renewal threshold: "SWA not lower than 2.5"
+   is used, on the 1.0–5.0 scale (the page's merit threshold, 1.75, is on that scale). Staff confirm merit.
 5. **At-risk:** removed (rev 33).
 6. **One scholarship per student** (rev 33, §4.5); this reverses the M8 default.
 7. **Head vs staff:** heads set the budget, and staff report to their head (§6; program reports go through the head,
@@ -1716,21 +1691,19 @@ both read on 2026-11-21.
     claims the account.
 12. ~~Vercel plan~~ Obsolete (revision 5): nobody hosts an official copy.
 13. ~~Domain and sender domain~~ Obsolete (revision 5): each host configures its own.
-14. **v1:** not in use by the City; there is no cut-over.
 16. **Email lookup:** yes, staff can file for a self-registered student found by the exact email of their account
     (rev 33, §4.5).
 
 ## 19. Decisions (2026-10-11 → 2026-10-30)
 | Decision | Why |
 |---|---|
-| Rewrite in a new private repo (`ScholarSyncV2`); legacy stays a read-only reference | v1's structure can't be fixed incrementally |
 | Django 5.2 LTS | The maintainer's choice; auth, ORM, migrations, CSRF and forms built in; LTS until April 2028 |
-| Fresh start with seed data | The maintainer's choice; no v1 data migration |
+| Fresh start with seed data | The maintainer's choice |
 | Django templates + HTMX + a little TypeScript | The maintainer's choice; replaces 30 global-JS files with server-rendered partials |
 | Host on Vercel (superseded 2026-10-30 by the open-source decision below) | The maintainer's choice; designed around its limits, with an M1 spike and a fallback |
-| Rules decide eligibility; the legacy model only advises | The maintainer's choice; auditable decisions for a public benefit |
+| Rules decide eligibility | The maintainer's choice; auditable decisions for a public benefit |
 | Programs are data | Removes the 67–99% CEAA/LANI duplication; new programs need no code |
-| `ScholarTerm` per award per term; applications kept after approval | v1 overwrote term data and deleted applications, losing history |
+| `ScholarTerm` per award per term; applications kept after approval | Keeps every term's history and every application |
 | S3-compatible storage for files (R2 was the first choice) | Private, presigned, swappable; any provider works since revision 5 |
 | Outbox + a small worker loop instead of Celery (was daily cron on Vercel) | Retries without a broker or new infrastructure |
 | Region `sin1` + Neon Singapore (historical, M1 spike only) | Users are in Taguig; no longer a target |

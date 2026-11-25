@@ -26,31 +26,20 @@ What starts:
 | `storage-init` | creates the bucket, its CORS rule and the `pending/` expiry, then exits | none |
 | `mail` | Mailpit, the inbox that catches every email | <http://localhost:8025> |
 
-On the first run the app image is built (the front-end bundle is built inside it, so you need no Node), the database
-is migrated and the demo accounts are loaded. Every start runs the loader again; it only adds what is missing (a
-deleted demo account comes back) and never touches your other data. Later runs start in seconds. No `.env` file is
-needed; if you have one, explore mode ignores it.
+The first run builds the image (no Node needed on your machine), migrates the database and loads the demo accounts.
+Every start reloads the demo, adding only what is missing, so your other data is never touched. No `.env` is needed;
+explore mode ignores one.
 
-Explore mode is for your own computer only. Every port is published on `127.0.0.1`, and the app answers only
-`localhost` and `127.0.0.1`. To let other people use it, follow [HOSTING.md](HOSTING.md).
-
-Pages to try: the home page `/`, the design kit and mockups `/_kit/`, and the health check `/healthz`.
+Explore mode is for your own computer only: every port is on `127.0.0.1`, and the app answers only `localhost` and
+`127.0.0.1`. To let other people use it, follow [HOSTING.md](HOSTING.md).
 
 ### Test accounts
-The login page offers these as small one-click buttons in three groups. All of them use the password
-`explore-demo-2026`; they exist only on this copy. They exist in explore and developer copies (`docker compose up`,
-or `DJANGO_DEBUG=true`), never on a hosted copy. A button appears only once its account exists, so a copy without
-storage shows no returned applicant.
-
-- Students: new student `new@scholarsync.test`, applicant `student@scholarsync.test`, returned applicant
-  `applicant4@scholarsync.test`, scholar due to renew `scholar@scholarsync.test`, scholar on hold
-  `scholar3@scholarsync.test`
-- Program staff: CEAA staff `staff@scholarsync.test`, CEAA head `head@scholarsync.test`, LANI staff
-  `lani.staff@scholarsync.test`, LANI head `lani.head@scholarsync.test`
-- Scholarship office: `office@scholarsync.test`
+The sign-in page offers one-click buttons for the test accounts listed in the [README](../README.md#test-accounts)
+(password `explore-demo-2026`). They exist only in explore and developer copies. A button appears only once its
+account exists, so a copy without storage shows no returned applicant.
 
 ### Email
-The app sends all email to Mailpit. Open <http://localhost:8025> to read it. Nothing is delivered to real addresses.
+All email goes to Mailpit at <http://localhost:8025>. Nothing reaches real addresses.
 
 ### Changing ports
 Each host port has a variable. Set it in the same terminal before `docker compose up`.
@@ -172,13 +161,6 @@ Notes:
 - Do not run the one-command `web` container and `runserver` at the same time on port 8000. Set `APP_PORT` for one of
   them, or `docker compose stop web worker`.
 - `docker compose down -v` deletes the development database. Use `docker compose down` to keep it.
-- A database created before M4 has Django's default user table and must be reset before `migrate`: `docker compose down -v`, or drop and recreate the development database.
-
-### Re-exporting the legacy model (never needed for normal use)
-`apps/matching/data/legacy_tier_model.json` is committed. Only if you must rebuild it from the legacy `.pkl`, run
-`python -m uv run --script scripts/export_legacy_model.py <pkl> <model-json> <parity-json>`. The script's docstring has
-the `gh api` command that fetches the pickle. It is one-off, PEP 723 (it brings its own dependencies) and is never
-imported by the app.
 
 ### Checks (the same commands CI runs)
 ```powershell

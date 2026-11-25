@@ -1,4 +1,4 @@
-"""Starter reference data for ``seed_programs`` (v1's rules, tiers and document list)."""
+"""Starter reference data for ``seed_programs`` (rules, tiers and document list)."""
 
 from decimal import Decimal
 from typing import Any
@@ -56,7 +56,7 @@ STARTER_PROGRAMS: list[dict[str, Any]] = [
         ),
         "rules": {
             "min_gwa_percent": Decimal("75"),
-            # 3.00 is the 1-5 passing mark, as 75% is on the percent scale. Renewal: v1's 2.50 on
+            # 3.00 is the 1-5 passing mark, as 75% is on the percent scale. Renewal: 2.50 on
             # the 1.0-5.0 scale (§18 Q4; the LANI page states no renewal threshold).
             "max_gwa_one_to_five": Decimal("3.00"),
             "renewal_max_gwa_one_to_five": Decimal("2.50"),
@@ -66,7 +66,7 @@ STARTER_PROGRAMS: list[dict[str, Any]] = [
         "school_names": [],
         # Spec §18 Q2: the TCU LANI page's amounts are per school year; payouts are per term, so
         # halved. Merit (the top of the page's range) is for Premier, Full and Priority only.
-        # LEAD has no published amount: v1's figures stay until the maintainer confirms them.
+        # LEAD has no published amount; the maintainer confirmed these figures (2026-11-26).
         "tiers": [
             ("premier", "Premier", Decimal("20000.00"), Decimal("25000.00")),
             ("full", "Full", Decimal("20000.00"), Decimal("25000.00")),

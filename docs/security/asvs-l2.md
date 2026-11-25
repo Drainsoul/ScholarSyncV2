@@ -42,7 +42,7 @@ Evidence is a repo-relative path with a line number, a test node id, or both. Wh
 | V1.4.2 | L2 | Prevent integer overflows with sign, range and input checks. | Met | Python integers do not overflow; values stored in bounded columns are range-checked first (upload size `apps/files/services.py:85`, money in `DecimalField(12, 2)` forms). |
 | V1.4.3 | L2 | Release memory and clear dangling pointers. | Not applicable | Python is garbage-collected; no manual memory management. |
 | V1.5.1 | L1 | XML parsers are restrictive; external entities disabled (XXE). | Met | `defusedxml` is a dependency (`pyproject.toml:26`), which openpyxl uses automatically for XLSX imports (`apps/awards/tabular.py:142`). |
-| V1.5.2 | L2 | Deserialisation of untrusted data uses allowlisted types. | Met | Only JSON is parsed from clients (`apps/files/views.py:50`); sessions use Django's default JSON serializer; `pickle` appears only in the offline script `scripts/export_legacy_model.py:66`. |
+| V1.5.2 | L2 | Deserialisation of untrusted data uses allowlisted types. | Met | Only JSON is parsed from clients (`apps/files/views.py:50`); sessions use Django's default JSON serializer; nothing uses `pickle`. |
 
 ## V2 Validation and Business Logic
 
@@ -50,9 +50,9 @@ Evidence is a repo-relative path with a line number, a test node id, or both. Wh
 
 | ID | Level | Requirement | Status | Evidence |
 |---|---|---|---|---|
-| V2.1.1 | L1 | Documentation defines input validation rules for data items. | Met | `docs/design/2026-10-11-scholarsync-v2-design.md` §4 (domain model, line 151) and §7 upload purposes (line 665). |
-| V2.1.2 | L2 | Documentation defines checks for consistency of combined data items. | Met | `docs/design/2026-10-11-scholarsync-v2-design.md` §8 eligibility rules (scale-aware GWA, window, schools; line 716). |
-| V2.1.3 | L2 | Business-logic limits documented per user and globally. | Met | `docs/design/2026-10-11-scholarsync-v2-design.md` uploads per hour (§7, line 678), support messages per day (line 548), import rows and size (line 459). |
+| V2.1.1 | L1 | Documentation defines input validation rules for data items. | Met | `docs/design/2026-10-11-scholarsync-design.md` §4 (domain model, line 151) and §7 upload purposes (line 665). |
+| V2.1.2 | L2 | Documentation defines checks for consistency of combined data items. | Met | `docs/design/2026-10-11-scholarsync-design.md` §8 eligibility rules (scale-aware GWA, window, schools; line 716). |
+| V2.1.3 | L2 | Business-logic limits documented per user and globally. | Met | `docs/design/2026-10-11-scholarsync-design.md` uploads per hour (§7, line 678), support messages per day (line 548), import rows and size (line 459). |
 | V2.2.1 | L1 | Validate input against allowlists, patterns and ranges. | Met | Django forms with `ChoiceField`s and bounds; upload intents type-checked and allowlisted (`apps/files/views.py:49`, `apps/files/services.py:75`). |
 | V2.2.2 | L1 | Validation is enforced server-side, not only in the client. | Met | All checks live in forms and services (`apps/files/services.py:75`); `apps/files/tests/test_views.py::test_intent_wrong_field_types`. |
 | V2.2.3 | L2 | Combinations of related data items are checked against rules. | Met | Cross-field `clean()` methods, e.g. report period order (`apps/reports/forms.py:59`) and bulk action with ids (`apps/money/forms.py:72`). |
@@ -129,7 +129,7 @@ Evidence is a repo-relative path with a line number, a test node id, or both. Wh
 |---|---|---|---|---|
 | V6.1.1 | L1 | Docs define rate limiting and anti-automation against credential attacks. | Met | `docs/security/controls.md` (Authentication and rate limits): every limit, the 5-minute per-account lockout and the proxy count. |
 | V6.1.2 | L2 | A list of context-specific words banned from passwords is documented. | Met | `docs/security/controls.md` lists the site words; `apps/accounts/validators.py`. |
-| V6.1.3 | L2 | All authentication pathways and their strengths are documented. | Met | `docs/design/2026-10-11-scholarsync-v2-design.md` §10 (line 836): password, Google (students only), reset and reauthentication; claim links in §4.3; staff set-password links in §9. |
+| V6.1.3 | L2 | All authentication pathways and their strengths are documented. | Met | `docs/design/2026-10-11-scholarsync-design.md` §10 (line 836): password, Google (students only), reset and reauthentication; claim links in §4.3; staff set-password links in §9. |
 | V6.2.1 | L1 | Passwords are at least 8 characters (15 recommended). | Met | Minimum 10 (`config/settings.py:365`). |
 | V6.2.2 | L1 | Users can change their password. | Met | allauth's password change view (`config/urls.py:53`); `apps/accounts/tests/test_login.py::test_password_reset_and_change_are_audited`. |
 | V6.2.3 | L1 | Password change requires the current and new password. | Met | allauth `ChangePasswordForm.oldpassword`, checked with `check_password` (allauth 65.20.1, `uv.lock`). |
@@ -194,7 +194,7 @@ Evidence is a repo-relative path with a line number, a test node id, or both. Wh
 
 | ID | Level | Requirement | Status | Evidence |
 |---|---|---|---|---|
-| V8.1.1 | L1 | Docs define function-level and data-specific access rules. | Met | `docs/design/2026-10-11-scholarsync-v2-design.md` §6 (line 602) with the capability table. |
+| V8.1.1 | L1 | Docs define function-level and data-specific access rules. | Met | `docs/design/2026-10-11-scholarsync-design.md` §6 (line 602) with the capability table. |
 | V8.1.2 | L2 | Docs define field-level read and write access rules. | Met | `docs/security/controls.md` (Who reads and writes what). |
 | V8.2.1 | L1 | Function-level access requires explicit permission. | Met | Role and program mixins (`apps/core/permissions.py:57`, `apps/core/permissions.py:78`); `tests/test_permission_matrix.py::test_access`. |
 | V8.2.2 | L1 | Data access is restricted per item (IDOR/BOLA). | Met | Scoped selectors answer 404 (`apps/files/views.py:124`); `apps/files/tests/test_selectors.py::test_student_cannot_download_another_students_document`, `apps/files/tests/test_views.py::test_other_student_gets_404`. |
@@ -295,7 +295,7 @@ Evidence is a repo-relative path with a line number, a test node id, or both. Wh
 
 | ID | Level | Requirement | Status | Evidence |
 |---|---|---|---|---|
-| V13.1.1 | L2 | All communication needs and external services are documented. | Met | `docs/design/2026-10-11-scholarsync-v2-design.md` §11 Providers (line 921) and `docs/HOSTING.md:89`. |
+| V13.1.1 | L2 | All communication needs and external services are documented. | Met | `docs/design/2026-10-11-scholarsync-design.md` §11 Providers (line 921) and `docs/HOSTING.md:89`. |
 | V13.2.1 | L2 | Backend component communications are authenticated. | Met | Database, storage and SMTP credentials in `DATABASE_URL`, `S3_*` and `EMAIL_URL` (`config/settings.py:211`, `config/settings.py:249`, `config/settings.py:223`). |
 | V13.2.2 | L2 | Backend communications use least-privilege accounts. | Met | Migrations run as the owner through `DATABASE_URL_MIGRATIONS` (`docker/entrypoint.sh:12`), which is unset before the app starts; `docs/HOSTING.md` gives the row-only runtime role, with `UPDATE`, `DELETE` and `TRUNCATE` revoked on `core_auditevent`; the image's code is root-owned (`Dockerfile:27`). `tests/test_docker_files.py::test_entrypoint_prefers_the_migrations_url`, `tests/test_docker_files.py::test_app_code_is_not_owned_by_the_runtime_user`. |
 | V13.2.3 | L2 | Service credentials are never defaults. | Met | Production refuses the public explore storage key and placeholder secret keys (`config/settings.py:259`, `config/settings.py:62`, `config/settings.py:68`). |
@@ -333,7 +333,7 @@ Evidence is a repo-relative path with a line number, a test node id, or both. Wh
 |---|---|---|---|---|
 | V15.1.1 | L1 | Docs define remediation time frames for vulnerable components. | Met | `SECURITY.md` (Fix targets): critical 7 days, high 30 days, others with the next release. |
 | V15.1.2 | L2 | An inventory (SBOM) of third-party components from trusted sources. | Met | `uv.lock` and `frontend/package-lock.json` pin every component from PyPI and npm; CI installs only from them (`.github/workflows/ci.yml:51`). |
-| V15.1.3 | L2 | Docs identify resource-heavy functions and how to protect them. | Met | `docs/design/2026-10-11-scholarsync-v2-design.md` §7: exports built in the request at a few thousand rows (line 694), import limits (line 459), photo pixel cap. |
+| V15.1.3 | L2 | Docs identify resource-heavy functions and how to protect them. | Met | `docs/design/2026-10-11-scholarsync-design.md` §7: exports built in the request at a few thousand rows (line 694), import limits (line 459), photo pixel cap. |
 | V15.2.1 | L1 | Components stay within the documented remediation time frames. | Met | Dependabot (`.github/dependabot.yml`) and a weekly CI audit (`.github/workflows/ci.yml` schedule); `tests/test_asvs_gaps.py::test_dependencies_are_watched`. Open at review time: a high advisory in picomatch (build tooling only, no patched version yet), fixed when upstream publishes, per `SECURITY.md`. |
 | V15.2.2 | L2 | Defences protect resource-heavy functions from availability loss. | Met | Import caps (`apps/awards/tabular.py:21`), photo pixel cap and decompression-bomb guard (`apps/files/services.py:196`), upload limits (`apps/files/policy.py:55`). |
 | V15.2.3 | L2 | Production has no test code, samples or dev features exposed. | Met | The demo is inactive in production and `check --deploy` fails while it exists (`config/settings.py:166`; `apps/core/tests/test_checks.py::test_deploy_check_follows_the_demo_folder`); the kit is refused; `tests/e2e` is not in the image (`.dockerignore:25`). |
@@ -384,6 +384,6 @@ Evidence is a repo-relative path with a line number, a test node id, or both. Wh
 
 ## Open gaps
 
-M13 (2026-11-19) closed 13 of the 14 gaps M12 left; the maintainer's decisions are recorded in the design spec (`docs/design/2026-10-11-scholarsync-v2-design.md`, revisions 21 to 24). M13's two-factor sign-in brought the V6.5 rows into scope, and V6.5.2 was fixed after M14 (revision 24). One gap stays, accepted:
+M13 (2026-11-19) closed 13 of the 14 gaps M12 left; the maintainer's decisions are recorded in the design spec (`docs/design/2026-10-11-scholarsync-design.md`, revisions 21 to 24). M13's two-factor sign-in brought the V6.5 rows into scope, and V6.5.2 was fixed after M14 (revision 24). One gap stays, accepted:
 
 - **V14.2.1** (accepted): student names travel in the query string of staff name searches (`?q=`). They stay in the staff member's browser history, but the screens are signed-in staff screens sent `no-store`, and the access log drops the parameter (V16.2.5). Sentry drops query strings too. Searches stay GET for bookmarkable filters and HTMX history.

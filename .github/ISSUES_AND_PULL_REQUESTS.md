@@ -36,7 +36,7 @@ template follow this guide.
 ## Keep it public and self-contained
 Issues and pull requests are public. Everything they say must be checkable from the repository itself:
 - point at tracked files (`apps/workspace/reply_templates.py:47`), spec sections
-  (`docs/design/2026-10-11-scholarsync-v2-design.md` §4.8) and tests;
+  (`docs/design/2026-10-11-scholarsync-design.md` §4.8) and tests;
 - describe what happens with the demo accounts or factory data, never real people;
 - never include personal data (names, email addresses, phone numbers, student records), secrets, tokens, `.env`
   values, local file paths, screenshots of real data, or links to private documents and chats.
