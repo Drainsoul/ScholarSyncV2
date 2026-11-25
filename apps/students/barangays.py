@@ -1,6 +1,6 @@
 """City of Taguig barangays, including the 10 EMBO barangays.
 
-Source: PSA PSGC; not yet verified against it (2026-11-08).
+Source: PSA PSGC; checked against it by the maintainer (2026-11-26).
 """
 
 from django.utils.text import slugify
