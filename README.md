@@ -50,16 +50,23 @@ To report a security problem, see [SECURITY.md](SECURITY.md).
 ## Test accounts
 Every account uses the password `explore-demo-2026`.
 
-| Role | Account | What it shows |
-|---|---|---|
-| Student | `student@scholarsync.test` | the student area |
-| Program staff | `staff@scholarsync.test` | reviewing applications, scholars, disbursements |
-| Program head | `head@scholarsync.test` | staff features plus releasing money and program settings |
-| Scholarship office | `office@scholarsync.test` | all programs, staff, reports, analytics, the audit log |
+| Group | Button | Account | What it shows |
+|---|---|---|---|
+| Students | New student | `new@scholarsync.test` | an empty profile: setup, matching, a first application |
+| | Applicant | `student@scholarsync.test` | a nearly complete profile and a LANI draft; support replies |
+| | Returned applicant | `applicant4@scholarsync.test` | a TCU CEAA application returned with a declined document |
+| | Scholar due to renew | `scholar@scholarsync.test` | a TCU CEAA scholar with a released allowance and a renewal due |
+| | Scholar on hold | `scholar3@scholarsync.test` | a TCU CEAA award on hold, with its reason |
+| Program staff | CEAA staff | `staff@scholarsync.test` | the TCU CEAA review queue, scholars, walk-ins, tasks, support |
+| | CEAA head | `head@scholarsync.test` | staff features plus releasing money, settings and reports for the office |
+| | LANI staff | `lani.staff@scholarsync.test` | the LANI queue (UP, UST and TCU applicants) and LANI scholars |
+| | LANI head | `lani.head@scholarsync.test` | LANI with a report to approve and one the office returned |
+| Scholarship office | Scholarship office | `office@scholarsync.test` | all programs, staff, reports, analytics, reply templates, the audit log |
 
-They are offered on the login page as one-click buttons. They appear automatically in explore copies
+They are offered on the login page as small one-click buttons, grouped as above. They appear automatically in explore copies
 (`docker compose up`) and in developer copies (`DJANGO_DEBUG=true`) after
-`python -m uv run python manage.py load_demo`. They never exist on a hosted copy.
+`python -m uv run python manage.py load_demo`. The sample accounts (returned applicant, scholars) need storage
+and a current term, so a copy without them shows only the rest. They never exist on a hosted copy.
 
 ## Self-hosting
 See [docs/HOSTING.md](docs/HOSTING.md). After the first start, create the scholarship-office account:

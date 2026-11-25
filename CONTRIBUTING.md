@@ -82,7 +82,7 @@ Run from the repository root. The examples use `python -m uv`, which works even 
   - the first front-end install runs **inside** `frontend/` (`npm install` there; `npm --prefix frontend install`
     breaks on npm 10);
   - `python -m uv run python manage.py migrate`;
-  - `python -m uv run python manage.py load_demo` (the test accounts; safe to re-run).
+  - `python -m uv run python manage.py load_demo` (the test accounts and sample data; safe to re-run).
 - **Run:** `python -m uv run python manage.py runserver` with `npm --prefix frontend run dev`
   (`VITE_DEV_MODE=true`), or build once with `npm --prefix frontend run build`.
 - **Explore run:** `docker compose up` (app on 8000, Mailpit on 8025; ports via `APP_PORT`, `MAIL_PORT`, `DB_PORT`,

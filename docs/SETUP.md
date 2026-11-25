@@ -37,13 +37,16 @@ Explore mode is for your own computer only. Every port is published on `127.0.0.
 Pages to try: the home page `/`, the design kit and mockups `/_kit/`, and the health check `/healthz`.
 
 ### Test accounts
-The login page offers these as one-click buttons. All four use the password `explore-demo-2026`; they exist only
-on this copy. They exist in explore and developer copies (`docker compose up`, or `DJANGO_DEBUG=true`), never on
-a hosted copy.
+The login page offers these as small one-click buttons in three groups. All of them use the password
+`explore-demo-2026`; they exist only on this copy. They exist in explore and developer copies (`docker compose up`,
+or `DJANGO_DEBUG=true`), never on a hosted copy. A button appears only once its account exists, so a copy without
+storage shows no returned applicant.
 
-- Student: `student@scholarsync.test`
-- Program staff: `staff@scholarsync.test`
-- Program head: `head@scholarsync.test`
+- Students: new student `new@scholarsync.test`, applicant `student@scholarsync.test`, returned applicant
+  `applicant4@scholarsync.test`, scholar due to renew `scholar@scholarsync.test`, scholar on hold
+  `scholar3@scholarsync.test`
+- Program staff: CEAA staff `staff@scholarsync.test`, CEAA head `head@scholarsync.test`, LANI staff
+  `lani.staff@scholarsync.test`, LANI head `lani.head@scholarsync.test`
 - Scholarship office: `office@scholarsync.test`
 
 ### Email
@@ -134,14 +137,25 @@ Copy-Item .env.example .env                                # local settings; nev
 python -m uv sync                                          # Python 3.13 and the dependencies
 Set-Location frontend; npm install; Set-Location ..        # the first install must run inside frontend/
 python -m uv run python manage.py migrate
-python -m uv run python manage.py load_demo                # the test accounts; safe to re-run
+python -m uv run python manage.py load_demo                # the test accounts and samples; safe to re-run
 npm --prefix frontend run build                            # or run `npm --prefix frontend run dev` with VITE_DEV_MODE=true in .env
 python -m uv run python manage.py runserver
 ```
 
-`load_demo` loads the four test accounts (see above). It only adds what is missing, so it is safe to re-run. It also gives the student a sample profile and creates an
-unclaimed one for Paolo Villanueva (his invite email goes to Mailpit in explore mode). Felipe Manalo is a TCU CEAA
-scholar added by hand, with no account. Try Scholars > Import with `apps/demo/data/scholars-import.csv`.
+`load_demo` loads the test accounts (see above) and sample data. It only adds what is missing, so it is safe to
+re-run, and an older demo database gains only the newer samples. With storage configured it adds:
+- TCU CEAA applicants in every state (submitted, under review, returned, approved, rejected, withdrawn), walk-ins
+  filed on a student's behalf, last semester's scholars (one due, one under the renewal mark, one on hold), payouts
+  and a budget;
+- LANI applicants from TCU, UP and UST (1-5 and percent scales) reviewed by the LANI staff, and two LANI scholars due
+  to renew;
+- support questions for the office and both programs' inboxes, 14 reply templates (every topic, one for LANI only);
+- program reports in every state for both programs (accepted, returned, waiting for the office, waiting for the
+  head).
+
+It also creates an unclaimed profile for Paolo Villanueva (his invite email goes to Mailpit in explore mode).
+Felipe Manalo is a TCU CEAA scholar added by hand, with no account. Try Scholars > Import with
+`apps/demo/data/scholars-import.csv`.
 
 `load_demo` runs `seed_programs`, which seeds the programs, their benefit tiers and required
 documents, the starter schools and the academic terms. It never overwrites your edits.
