@@ -8,10 +8,10 @@ Nothing here is automated: every step needs a person, an account or a decision.
 - [ ] **Legal pages.** Have someone qualified read `/privacy/` and `/terms/` (`templates/core/pages/`) and the
   not-affiliated disclaimer in the footer (`templates/components/site_footer.html`). The privacy notice is version `2026-11-19` (`PRIVACY_NOTICE_VERSION` in
   `config/settings.py`); bump it if they change anything, because signups record the version they agreed to.
-- [ ] **Open questions.** Answer or close the questions in spec §18
-  (`docs/design/2026-10-11-scholarsync-v2-design.md`), and renumber them if any are removed.
-- [ ] **Barangays.** Check the 38 names in `apps/students/barangays.py` against the PSGC list for Taguig, and fix any
-  spelling.
+- [x] **Open questions.** Done 2026-11-26 (LANI's LEAD amounts were the last). Answer or close the questions in
+  spec §18 (`docs/design/2026-10-11-scholarsync-v2-design.md`), and renumber them if any are removed.
+- [x] **Barangays.** Done 2026-11-26. Check the 38 names in `apps/students/barangays.py` against the PSGC list for
+  Taguig, and fix any spelling.
 - [x] **Security decisions.** Done 2026-11-19: V6.5.2 fixed (2FA secrets encrypted at rest) and V14.2.1 (names in
   search URLs) accepted; `docs/security/asvs-l2.md` has no open gap.
 
@@ -22,8 +22,8 @@ Done 2026-11-21: the Vercel project `scholarsync-spike` and its Neon database ar
 are gone. The spike never
 created an R2 bucket or a Resend key.
 
-- [ ] **The v1 Google OAuth client** leaked in the legacy repository. If it still exists in Google Cloud, delete it.
-  V2 never uses it.
+- [x] **The v1 Google OAuth client** leaked in the legacy repository. If it still exists in Google Cloud, delete it.
+  V2 never uses it. Done 2026-11-26.
 
 ## 3. The repository on GitHub
 
@@ -31,7 +31,8 @@ The old GitHub repository is replaced by an empty one with the same name, and th
 history keeps every commit, rewritten on 2026-11-19 so none contains private working notes (the
 original is in a backup bundle outside the repository). Nothing is pushed until the maintainer decides to.
 
-- [ ] **History scan.** Run gitleaks on the local repository right before publishing:
+- [x] **History scan.** Last run 2026-11-26: no leaks found in 547 commits. Run gitleaks on the local repository again
+  right before publishing:
 
   ```
   docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.24.3 git /repo --redact --gitleaks-ignore-path /repo/.gitleaksignore
@@ -40,7 +41,7 @@ original is in a backup bundle outside the repository). Nothing is pushed until 
   It must end with "no leaks found". Every accepted match (placeholders, test passwords, the public demo password,
   false positives) is listed with its reason in `.gitleaksignore`. If it finds a real secret, rotate the secret and
   remove it before the commit is pushed.
-- [ ] **npm audit.** CI's `npm audit` reports picomatch ≤ 4.0.7, which comes in through Vite's build tooling and is
+- [x] **npm audit.** Done: CI's audit step passes (`--audit-level=high`). CI's `npm audit` reports picomatch ≤ 4.0.7, which comes in through Vite's build tooling and is
   never shipped to browsers. Either wait for a patched release, or audit runtime dependencies only
   (`npm audit --omit=dev` in `.github/workflows/`).
 - [ ] **Replace the GitHub repository.** Delete `Drainsoul/ScholarSyncV2` (GitHub → the repository → Settings →

@@ -341,7 +341,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   `is_current`.
   - Fallback for schools not in the list (every elementary, JHS and SHS school, and colleges the office has not
     added): `school_name`, `school_type` and `gwa_scale`. Exactly one of `school` or `school_name` is set.
-- **Barangays** (38, source "PSA PSGC, not yet verified; EMBO included per the maintainer, 2026-11-08"): Bagumbayan, Bambang,
+- **Barangays** (38, source "PSA PSGC, checked by the maintainer 2026-11-26; EMBO included per the maintainer, 2026-11-08"): Bagumbayan, Bambang,
   Calzada, Cembo, Central Bicutan, Central Signal Village, Comembo, East Rembo, Fort Bonifacio, Hagonoy, Ibayo-Tipas,
   Katuparan, Ligid-Tipas, Lower Bicutan, Maharlika Village, Napindan, New Lower Bicutan, North Daang Hari, North Signal
   Village, Palingon, Pembo, Pinagsama, Pitogo, Post Proper Northside, Post Proper Southside, Rizal, San Miguel,
@@ -1552,7 +1552,7 @@ starts, and ends with every acceptance item checked.
 - [ ] Full `Program` config, `BenefitTier` (effective-from), `RequiredDocument`, `School`, `AcademicTerm`.
 - [ ] Profile sections, photo, completion tracker; staff-created profiles + invite/claim.
 - [ ] Profile forms are plain POST/redirect; reference data is seeded, editable from M11.
-- [ ] The barangay list (38, EMBO included) is not yet verified against PSA PSGC; check it in a browser.
+- [x] The barangay list (38, EMBO included) is checked against PSA PSGC (the maintainer, 2026-11-26).
 - [ ] Extend the demo loader for this milestone's screens.
 
 **M7: Matching + student applications**
@@ -1685,7 +1685,7 @@ both read on 2026-11-21.
    | Basic | ₱10,000 | ₱5,000 / none |
    | Review (one-time, first-time takers) | ₱10,000 | ₱10,000 / none, paid once (never renewed) |
    | Review, retake | ₱5,000 | ₱5,000 / none, paid once |
-   | LEAD | not stated | v1's ₱30,000 / ₱50,000 kept, unconfirmed |
+   | LEAD | not stated | v1's ₱30,000 / ₱50,000 kept, confirmed by the maintainer (2026-11-26) |
 
    The merit incentive is for Premier, Full and Priority scholars with a semestral weighted average of 1.75 or better
    (or its school's cum laude equivalent). The CEAA site states no amount: v1's ₱5,000 / ₱10,000 stays. Every amount
