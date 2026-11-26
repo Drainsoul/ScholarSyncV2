@@ -126,6 +126,8 @@
   verified email address, so an account with no password (Google only) can confirm itself; setting a first password
   now asks for reauthentication like any other change. The code email goes through the outbox, and confirming the
   code rotates the session key like the other two methods (§10).
+- **Revision:** 40 (2026-11-26): sentry-sdk 3. `include_local_variables` is gone (`stack_frame_variables` already
+  covers it), and the new MCP and queue categories, on by default in 3.0, are turned off with the rest (§2).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - The maintainer's decisions of 2026-10-11 (§19);
@@ -177,7 +179,7 @@ Versions are pinned to the latest stable release when M2 scaffolds the project, 
 | Import/export | stdlib `csv`, **openpyxl** + **defusedxml** | Row-by-row Django Forms with a preview; all-or-nothing |
 | Email | Any SMTP server (one URL-style setting) + an `EmailOutbox` table | Provider APIs via django-anymail only if they cost nothing extra |
 | Security headers | **django-csp** | Report-only from M2, enforced at launch |
-| Observability | **sentry-sdk** with explicit `data_collection` opt-outs (user info, cookies, bodies, query params, DB data, frame variables off; header allowlist) + `before_send` scrubbing, JSON logs to stdout | |
+| Observability | **sentry-sdk** 3 with explicit `data_collection` opt-outs (user info, cookies, bodies, query params, DB data, frame variables, GenAI, GraphQL, MCP and queue data off; header allowlist) + `before_send` scrubbing, JSON logs to stdout | |
 | Lint/type | **ruff** (lint + format), **mypy** + **django-stubs** | |
 | Tests | **pytest**, pytest-django, pytest-xdist, factory_boy, Faker (`en_PH`), time-machine, coverage, **pytest-playwright** | Real Postgres in tests |
 | Local services | `compose.yaml`: web, Postgres 17, an S3-compatible store, Mailpit, a worker | `docker compose up` runs the explore copy (§11) |
