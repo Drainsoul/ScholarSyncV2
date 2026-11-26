@@ -72,7 +72,9 @@ def init_sentry(*, dsn: str, environment: str, release: str | None) -> None:
         environment=environment,
         release=release,
         integrations=[DjangoIntegration()],
-        # Explicit per-category opt-outs (replaces the deprecated send_default_pii=False).
+        # Every personal-data category is named and off; 3.0's defaults collect more than
+        # send_default_pii=False did. frame_context_lines (source code, not user data) keeps
+        # its default.
         data_collection={
             "user_info": False,
             "cookies": {"mode": "off"},
@@ -88,8 +90,9 @@ def init_sentry(*, dsn: str, environment: str, release: str | None) -> None:
             "stack_frame_variables": False,
             "gen_ai": {"inputs": False, "outputs": False},
             "graphql": {"document": False, "variables": False},
+            "mcp": {"inputs": False, "outputs": False},
+            "queues": False,
         },
-        include_local_variables=False,
         max_request_body_size="never",
         before_send=scrub_event,  # type: ignore[arg-type]
         traces_sample_rate=0.0,

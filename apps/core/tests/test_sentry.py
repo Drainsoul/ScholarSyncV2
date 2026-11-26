@@ -77,7 +77,11 @@ def test_init_sentry_never_collects_locals_bodies_or_pii():
         assert collection["database_query_data"] is False
         assert collection["stack_frame_variables"] is False
         assert collection["http_headers"]["request"]["mode"] == "allowlist"
-        assert options["include_local_variables"] is False
+        assert collection["gen_ai"] == {"inputs": False, "outputs": False}
+        assert collection["graphql"] == {"document": False, "variables": False}
+        # sentry-sdk 3.0 collects these unless told not to.
+        assert collection["mcp"] == {"inputs": False, "outputs": False}
+        assert collection["queues"] is False
         assert options["max_request_body_size"] == "never"
         assert options["before_send"] is scrub_event
     finally:
