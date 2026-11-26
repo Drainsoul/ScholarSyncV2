@@ -36,7 +36,8 @@ Explore mode is for your own computer only: every port is on `127.0.0.1`, and th
 ### Test accounts
 The sign-in page offers one-click buttons for the test accounts listed in the [README](../README.md#test-accounts)
 (password `explore-demo-2026`). They exist only in explore and developer copies. A button appears only once its
-account exists, so a copy without storage shows no returned applicant.
+account exists, so a copy without storage shows no returned applicant. To see what each account shows without
+running anything, read the [screenshot walkthroughs](screenshots/README.md).
 
 ### Email
 All email goes to Mailpit at <http://localhost:8025>. Nothing reaches real addresses.
@@ -227,6 +228,9 @@ npm --prefix frontend run typecheck
 npm --prefix frontend run check
 npm --prefix frontend run build && npm --prefix frontend run budget
 ```
+
+CI also audits dependencies: `pip-audit --strict` on the exported production requirements, and
+`npm audit --audit-level=high` for the front end.
 
 The deploy check, as CI runs it (production mode, ignoring your `.env`):
 

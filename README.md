@@ -67,9 +67,10 @@ storage · any SMTP server · Docker.
 - [Hosting](docs/HOSTING.md): running your own copy behind HTTPS, with a runbook.
 - [Contributing](CONTRIBUTING.md): structure, commands and conventions.
 - [Design spec](docs/design/2026-10-11-scholarsync-design.md): how everything is meant to work.
+- [Screenshots](docs/screenshots/README.md): a walkthrough of every role, from the demo data.
 - Reviews: [OWASP ASVS 5.0 L2](docs/security/asvs-l2.md), [WCAG 2.2 AA](docs/accessibility/wcag-22-aa.md).
 - [Security policy](SECURITY.md): how to report a vulnerability.
 
 ## License
-© 2026 John Kenneth Planas, [MIT License](LICENSE). Bundled icons and fonts keep their own licenses
+© 2026 John Kenneth Planas, [MIT License](LICENSE). Bundled icons, fonts and libraries keep their own licenses
 ([THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).
