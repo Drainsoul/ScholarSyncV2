@@ -1,6 +1,6 @@
 [project]
 name = "scholarsync"
-version = "0.1.0"
+version = "1.0.0"
 description = "Scholarship management platform modelled on the City of Taguig's programs (unofficial)"
 license = "MIT"
 license-files = ["LICENSE"]
