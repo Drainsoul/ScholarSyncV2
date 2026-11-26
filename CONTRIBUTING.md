@@ -52,7 +52,7 @@ templates/         base.html, layouts/ (public, auth, student, app → staff/off
 frontend/          Vite root: src/*.ts, src/styles/*.css + src/styles/components/*.css (builds to static/dist/, git-ignored)
 scripts/           smoke_signup.sh and smoke_upload.sh (the compose smoke test's signup/email check and upload round trip)
 tests/             cross-app tests (permission matrix), tests/e2e/ (Playwright)
-docs/              SETUP.md, HOSTING.md, PUBLISHING.md, hosting-walkthrough.md, design/ (specs and design boards),
+docs/              SETUP.md, HOSTING.md, hosting-walkthrough.md, design/ (specs and design boards),
                    security/, accessibility/, examples/ (Caddyfile), screenshots/ (per-role walkthroughs)
 docker/            entrypoint.sh (prepare, then exec), healthcheck.py
 Dockerfile         two stages: Vite bundle, then the Python app (no Node on the host)
