@@ -28,6 +28,7 @@ here are read from the code on 2026-11-18. If code and this page disagree, the c
   | Reset by link | 20 a minute per IP |
   | Change password | 5 a minute per user |
   | Reauthenticate | 10 a minute per user |
+  | Reauthentication code by email | 20 a minute per IP, and 3 a minute per address |
   | Email confirmation resend | 1 per 3 minutes per address |
 
   The per-account limit on failed sign-ins lasts 5 minutes and then lifts by itself. An attacker can slow an account
@@ -50,7 +51,8 @@ here are read from the code on 2026-11-18. If code and this page disagree, the c
   - a dialog warns 2 minutes before the idle limit ("Stay signed in" extends it) and 5 minutes before the absolute
     one (WCAG 2.2.1);
   - sign-out ends the session; deactivating an account ends all of its sessions.
-- **Key rotation:** sign-in and reauthentication both issue a new session key (`apps/accounts/reauth.py`).
+- **Key rotation:** sign-in and reauthentication (by password, authenticator code or emailed code) all issue a new
+  session key (`apps/accounts/reauth.py`).
 - **Seeing and ending sessions:**
   - everyone sees their sessions at `/accounts/sessions/` (account menu) and can sign the others out, behind the
     password; each row keeps the session's start time, IP address and browser string (`allauth.usersessions`), shown
@@ -61,8 +63,10 @@ here are read from the code on 2026-11-18. If code and this page disagree, the c
     the address is never printed or stored).
 - **Concurrent sessions:** unlimited. Staff and students often use a phone and a shared office computer. A password
   change keeps only the session that made it, because Django rotates the session hash.
-- **Sensitive actions** (money release and revert, accounts, memberships, tier changes): the password is asked again
-  if the last confirmation is older than 5 minutes (`ACCOUNT_REAUTHENTICATION_TIMEOUT = 300`).
+- **Sensitive actions** (money release and revert, accounts, memberships, tier changes, setting a first password):
+  the password is asked again if the last confirmation is older than 5 minutes (`ACCOUNT_REAUTHENTICATION_TIMEOUT =
+  300`). An authenticator code or a code emailed to a verified address also counts; an account with no password
+  (Google only) uses the emailed code.
 - **Google sign-in** (students only): Google is used once, to prove the email. It starts a local session, which then
   follows the rules above. Signing out of Google does not end it; signing out here does not sign anyone out of Google.
 

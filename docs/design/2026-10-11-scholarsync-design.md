@@ -122,6 +122,10 @@
   This closes the rev 34 edge where a draft opened before rev 33 could still be submitted (§4.5).
 - **Revision:** 38 (2026-11-26): the advisory tier-model hint is removed from the match page, the review screen and
   the submit snapshot; rules alone decide eligibility, as before.
+- **Revision:** 39 (2026-11-26): django-allauth 65.22. Reauthentication can also use a one-time code sent to a
+  verified email address, so an account with no password (Google only) can confirm itself; setting a first password
+  now asks for reauthentication like any other change. The code email goes through the outbox, and confirming the
+  code rotates the session key like the other two methods (§10).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - The maintainer's decisions of 2026-10-11 (§19);
@@ -1013,7 +1017,10 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - `ACCOUNT_SIGNUP_REDIRECT_URL` sends a new student to `/me/` after email confirmation;
   - allauth rate limits (Django database cache, via `createcachetable`);
   - reauthentication before revert/release, membership and role changes, and program money settings (M11b: tier
-    changes, account creation and (de)activation, membership add, change and removal);
+    changes, account creation and (de)activation, membership add, change and removal), and before setting a first
+    password; by password, by authenticator code, or by a code emailed to a verified address
+    (`ACCOUNT_REAUTHENTICATION_METHODS`, rev 39); the emailed code is the only method for an account with no
+    password and no authenticator;
   - Argon2 first in `PASSWORD_HASHERS`; validators: minimum length 10, common, numeric, similarity;
   - Google signup shows the signup form (no auto signup), so the consent box is always ticked by a person;
   - unknown-account emails are off;
@@ -1066,7 +1073,8 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
   - **Session limits:** idle 30 minutes for staff and the office, 60 for students (`SESSION_IDLE_MINUTES_STAFF`,
     `SESSION_IDLE_MINUTES_STUDENT`); 12 hours from sign-in whatever the activity; a warning dialog 2 minutes before an
     idle sign-out with "Stay signed in" (`POST /accounts/session/keep-alive/`), and 5 minutes before the absolute
-    limit; the session key rotates after reauthentication, by password or by authenticator code (rev 22).
+    limit; the session key rotates after reauthentication, by password, by authenticator code (rev 22) or by
+    emailed code (rev 39).
   - **Sessions:** `/accounts/sessions/` lists one's sessions with "Sign out other sessions" (`allauth.usersessions`;
     behind the password; audited `user.other_sessions_ended`); the office's "Sign out everywhere" on a staff account
     (`user.sessions_ended`); `manage.py end_sessions --email`. Each row keeps the start time, IP address and browser
