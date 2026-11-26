@@ -1,7 +1,7 @@
 # Hosting guide walkthrough
 
-`docs/HOSTING.md` was followed step by step on 2026-11-18 from a fresh clone of `main` (commit `d237cdf`), on
-Windows 11 with Docker Engine 26.1.4 and Compose 2.27.1 (Docker Desktop). Every command in the guide was run as written. Stand-ins played the
+`docs/HOSTING.md` was followed step by step on 2026-11-18 from a fresh clone of `main` (the tree of `a6dc195`; the
+history was rewritten after the walkthrough), on Windows 11 with Docker Engine 26.1.4 and Compose 2.27.1 (Docker Desktop). Every command in the guide was run as written. Stand-ins played the
 host's own services, each in its own container on its own ports, next to (and separate from) the explore stack:
 
 | The guide asks for | The walk used |

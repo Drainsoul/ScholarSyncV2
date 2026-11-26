@@ -15,7 +15,7 @@ changes go there first, then into the code. Hosting decisions are in the
 
 ## Stack
 - **Backend:** Python 3.13 (uv), Django 5.2 LTS, PostgreSQL 17, django-allauth, S3-compatible storage
-  (django-storages), SMTP email.
+  (boto3), SMTP email.
 - **Front end:** Django templates + HTMX (django-htmx, django-template-partials); a little strict TypeScript and plain
   CSS tokens built with Vite (django-vite); Biome.
 - **Quality:** ruff, mypy + django-stubs, pytest + pytest-django + factory_boy, Playwright.
@@ -52,7 +52,8 @@ templates/         base.html, layouts/ (public, auth, student, app → staff/off
 frontend/          Vite root: src/*.ts, src/styles/*.css + src/styles/components/*.css (builds to static/dist/, git-ignored)
 scripts/           smoke_signup.sh and smoke_upload.sh (the compose smoke test's signup/email check and upload round trip)
 tests/             cross-app tests (permission matrix), tests/e2e/ (Playwright)
-docs/              SETUP.md, HOSTING.md, design/ (specs and design boards), security/, accessibility/
+docs/              SETUP.md, HOSTING.md, PUBLISHING.md, hosting-walkthrough.md, design/ (specs and design boards),
+                   security/, accessibility/, examples/ (Caddyfile), screenshots/ (per-role walkthroughs)
 docker/            entrypoint.sh (prepare, then exec), healthcheck.py
 Dockerfile         two stages: Vite bundle, then the Python app (no Node on the host)
 compose.yaml       explore mode: web, worker, db, storage, storage-init, mail
@@ -93,6 +94,8 @@ Run from the repository root. The examples use `python -m uv`, which works even 
   npm --prefix frontend run build
   npm --prefix frontend run budget
   ```
+  CI also audits dependencies: `pip-audit --strict` on the exported production requirements, and
+  `npm audit --audit-level=high` for the front end.
 - **Deploy check (as CI runs it):** `manage.py check --deploy --fail-level WARNING` with `DJANGO_DEBUG=false`,
   `DJANGO_ALLOWED_HOSTS=scholarsync.example`, the operator and email settings CI sets, and
   `DJANGO_ENV_FILE=/nonexistent`, so your local `.env` can't mask a missing variable. It fails while `apps/demo/`
