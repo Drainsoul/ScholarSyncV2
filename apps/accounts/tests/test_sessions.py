@@ -50,6 +50,33 @@ def test_reauthentication_cycles_the_session_key(client: Client) -> None:
     assert not UserSession.objects.filter(session_key=before).exists()
 
 
+def test_code_reauthentication_cycles_the_session_key(client: Client) -> None:
+    user = UserFactory.create(password=None, verified=True)
+    client.force_login(user)
+    response = client.post(
+        reverse("account_request_reauthentication_code"), {"recipient": user.email}
+    )
+    assert response.status_code == 302
+    before = client.session.session_key
+    code = client.session["account_email_reauthentication_code"]["code"]
+    response = client.post(reverse("account_confirm_reauthentication_code"), {"code": code})
+    assert response.status_code == 302
+    after = client.session.session_key
+    assert after != before
+    assert not Session.objects.filter(session_key=before).exists()
+    assert client.session["_auth_user_id"] == str(user.pk)
+
+
+def test_a_wrong_code_keeps_the_session_key(client: Client) -> None:
+    user = UserFactory.create(password=None, verified=True)
+    client.force_login(user)
+    client.post(reverse("account_request_reauthentication_code"), {"recipient": user.email})
+    before = client.session.session_key
+    response = client.post(reverse("account_confirm_reauthentication_code"), {"code": "WRONG1"})
+    assert response.status_code == 200
+    assert client.session.session_key == before
+
+
 def test_user_lists_and_ends_other_sessions(client: Client) -> None:
     user = UserFactory.create(verified=True)
     other = _sign_in(HttpsClient(), user)

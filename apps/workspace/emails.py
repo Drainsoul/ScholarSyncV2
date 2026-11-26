@@ -40,6 +40,8 @@ KINDS: dict[str, frozenset[str]] = {
     "email_changed": _NAME,
     "email_deleted": frozenset({"deleted_email", "full_name"}),
     "password_set": _NAME,
+    # A reauthentication code (rev 39), only ever sent to a verified address. Emptied once sent.
+    "login_code": frozenset({"code", "full_name"}),
     # allauth's two-factor security notices (M13).
     "totp_activated": _NAME,
     "totp_deactivated": _NAME,

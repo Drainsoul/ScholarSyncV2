@@ -137,6 +137,12 @@ RULES: dict[str, dict[str, Any]] = {
     "kit": {p: 404 for p in PERSONAS},
     # allauth pages that ask for the password first (a new 2FA secret, recovery codes).
     "reauth": {"anonymous": LOGIN, **{p: (302, "/accounts/reauthenticate/") for p in SIGNED_IN}},
+    # The emailed-code confirmation with no code asked for goes back to the page that asks for one
+    # (rev 39).
+    "reauth_code_confirm": {
+        "anonymous": LOGIN,
+        **{p: (302, "/accounts/reauthenticate/code/") for p in SIGNED_IN},
+    },
     # A POST-only action for anyone signed in (the session keep-alive).
     "signed_in_post_only": {"anonymous": LOGIN, **{p: 405 for p in SIGNED_IN}},
     # An unknown claim link is a 404 for everyone.
@@ -337,6 +343,8 @@ URLS: dict[str, str] = {
     "account_change_password": "signed_in",
     "account_set_password": "set_password",
     "account_reauthenticate": "signed_in",
+    "account_request_reauthentication_code": "signed_in",
+    "account_confirm_reauthentication_code": "reauth_code_confirm",
     "mfa_index": "signed_in",
     "usersessions_list": "signed_in",
     "session_keep_alive": "signed_in_post_only",
