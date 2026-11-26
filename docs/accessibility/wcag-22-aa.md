@@ -3,7 +3,7 @@
 ScholarSync aims for WCAG 2.2 level AA (spec §12). This record was made on 2026-11-18 against `main`. It has two
 halves:
 
-- **Automated:** `tests/e2e/test_accessibility.py` runs axe-core 4.10.3 (tags `wcag2a`, `wcag2aa`, `wcag21a`,
+- **Automated:** `tests/e2e/test_accessibility.py` runs axe-core 4.14.1 (tags `wcag2a`, `wcag2aa`, `wcag21a`,
   `wcag21aa`, `wcag22aa`) on 37 key screens across the five roles, at 1280 and 375 px wide, in the light and dark
   themes. Any violation fails CI.
   The same file checks reflow at 320 px and a keyboard-only sign-in.
@@ -74,7 +74,7 @@ WCAG 2.2 removed 4.1.1 Parsing, so it has no row.
 | 3.2.3 Consistent Navigation | Met | One sidebar per area from `shell_context` (`apps/core/shell.py`), same order on every page |
 | 3.2.4 Consistent Identification | Met | Shared components (`templates/components/`) give the same names to the same functions |
 | 3.3.3 Error Suggestion | Met | Errors say how to fix ("The period must end on or after its start.", "Upload the report as a PDF.") |
-| 3.3.4 Error Prevention (Legal, Financial, Data) | Met | Money and account changes ask for the password again (spec §10) and payouts are reviewed before release; submissions can be withdrawn |
+| 3.3.4 Error Prevention (Legal, Financial, Data) | Met | Money and account changes ask to confirm again, by password, authenticator code or emailed code (spec §10) and payouts are reviewed before release; submissions can be withdrawn |
 | 3.3.8 Accessible Authentication (Minimum) | Met | Email and password with `autocomplete` so password managers fill them; paste allowed; Google sign-in for students |
 | 4.1.3 Status Messages | Met | Toasts in an `aria-live="polite"` region (`templates/base.html:27`); upload progress in a live region (`components/file_input.html`) |
 

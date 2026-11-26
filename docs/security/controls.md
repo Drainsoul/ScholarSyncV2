@@ -8,14 +8,14 @@ here are read from the code on 2026-11-18. If code and this page disagree, the c
 - **Passwords:**
   - Argon2id first (`PASSWORD_HASHERS`);
   - at least 10 characters;
-  - checked against the common-password list, the account's own name and email, and the site's own words (`apps/accounts/validators.py`: "scholarsync", "scholarship", "taguig", "tcu-ceaa"). Short
+  - checked against the common-password list, the account's own name and email, and the site's own words (`apps/accounts/validators.py`: "scholarsync", "scholarship", "taguig", "tcu-ceaa", "tcuceaa"). Short
     program codes are only refused as that slug, so ordinary words containing them pass. No composition rules;
   - in production, refused when Have I Been Pwned's range API lists them as breached (`apps/accounts/breach.py`;
     only five hex characters of the SHA-1 leave the server; if the API is down the check is skipped and logged).
 - **Two-factor sign-in:** TOTP with recovery codes (`allauth.mfa`). In production, staff and office accounts must set
   it up before any other page (`apps/accounts/mfa_policy.py`, `MFA_REQUIRED_FOR_STAFF`); students may. The office can
-  remove a staff member's authenticators (a lost phone) behind its own password, which also ends that account's
-  sessions. TOTP secrets and recovery-code seeds are encrypted at rest (Fernet keys derived from `DJANGO_SECRET_KEY`
+  remove a staff member's authenticators (a lost phone) behind its own fresh confirmation, which also ends that
+  account's sessions. TOTP secrets and recovery-code seeds are encrypted at rest (Fernet keys derived from `DJANGO_SECRET_KEY`
   and `DJANGO_SECRET_KEY_FALLBACKS`; `apps/accounts/mfa_secrets.py`); rotating the key is in `docs/HOSTING.md`.
 - **Rate limits** (allauth's defaults, `ACCOUNT_RATE_LIMITS` unset; counted per client IP and per key):
 
@@ -54,11 +54,12 @@ here are read from the code on 2026-11-18. If code and this page disagree, the c
 - **Key rotation:** sign-in and reauthentication (by password, authenticator code or emailed code) all issue a new
   session key (`apps/accounts/reauth.py`).
 - **Seeing and ending sessions:**
-  - everyone sees their sessions at `/accounts/sessions/` (account menu) and can sign the others out, behind the
-    password; each row keeps the session's start time, IP address and browser string (`allauth.usersessions`), shown
-    only to that account and removed with the session, and the privacy notice says so;
-  - the office signs a staff or office account out everywhere from its account page, behind the password (audit
-    `user.sessions_ended`);
+  - everyone sees their sessions at `/accounts/sessions/` (account menu) and can sign the others out, behind a fresh
+    confirmation (password, authenticator code or emailed code); each row keeps the session's start time, IP address
+    and browser string (`allauth.usersessions`), shown only to that account and removed with the session, and the
+    privacy notice says so;
+  - the office signs a staff or office account out everywhere from its account page, behind a fresh confirmation
+    (audit `user.sessions_ended`);
   - the operator ends any account's sessions with `manage.py end_sessions --email ADDRESS` (audited by account id;
     the address is never printed or stored).
 - **Concurrent sessions:** unlimited. Staff and students often use a phone and a shared office computer. A password
