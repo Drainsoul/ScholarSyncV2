@@ -1,7 +1,8 @@
 # `docker compose up` runs ScholarSync in explore mode: the app, its own PostgreSQL,
 # S3-compatible storage and a Mailpit inbox. No .env file is needed.
 # Explore mode serves only localhost, and every port below is published on 127.0.0.1 only.
-# The developer workflow (CONTRIBUTING.md) uses just the database: `docker compose up -d db`.
+# The developer workflow (CONTRIBUTING.md) uses the services only:
+# `docker compose up -d --wait db storage storage-init mail`.
 # To host ScholarSync for real, use compose.production.yaml (docs/HOSTING.md).
 
 x-web-environment: &web-environment
