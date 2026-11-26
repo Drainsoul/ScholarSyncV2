@@ -98,6 +98,11 @@ the design.
 
 ## 5. The demo
 
+> **Later changes:** the main spec's rev 32 collapsed the test-account notice behind an "Exploring ScholarSync? Use a
+> test account" button, and rev 36 replaced the one-per-role accounts with ten accounts in three groups (students,
+> program staff, scholarship office). This section is kept as approved; the main spec and the README list the
+> accounts as they are now.
+
 **Location:** everything demo-only lives in one Django app folder, `apps/demo/`:
 - the test-account definitions and the shared password;
 - the sample-data loader (Faker `en_PH`, seeded, never real people; reuses the names already used in

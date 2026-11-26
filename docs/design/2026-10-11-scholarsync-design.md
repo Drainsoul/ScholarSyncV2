@@ -128,6 +128,12 @@
   code rotates the session key like the other two methods (§10).
 - **Revision:** 40 (2026-11-26): sentry-sdk 3. `include_local_variables` is gone (`stack_frame_variables` already
   covers it), and the new MCP and queue categories, on by default in 3.0, are turned off with the rest (§2).
+- **Revision:** 41 (2026-11-26): corrections so the spec matches the code, with no behaviour change. Files use boto3
+  directly (no django-storages) and the tests run without coverage (§2, §15); CSP is enforced by default (§2) and its
+  `connect-src` has no Sentry origin, `form-action` adds Google when sign-in with Google is on (§10); the password
+  validators (§10); confirmations accept any reauthentication method (§6, §10); the demo loads on every start,
+  adding only what is missing (§11); `DJANGO_KIT`'s default and the settings §14 left out; dark theme is no longer
+  a non-goal (rev 29 added it).
 - **Status:** rev 1 approved by the maintainer on 2026-10-12.
 - **Inputs:**
   - The maintainer's decisions of 2026-10-11 (§19);
@@ -157,7 +163,7 @@
 - Importing data from another system: this is a fresh start with seed data.
 - A public JSON API or SPA, a native mobile app, SMS, or payments integration (disbursement is recorded, not paid
   out).
-- Real-time features (WebSockets), dark theme, multi-language UI (English only; Filipino later).
+- Real-time features (WebSockets), multi-language UI (English only; Filipino later).
 - The maintainer hosting a public demo or production instance; a packaged desktop app; one-click deploy buttons for specific
   hosts; documenting a hosting path without Docker; branding through settings (rebranding is fork-and-edit); a
   published container image or release pipeline.
@@ -175,13 +181,13 @@ Versions are pinned to the latest stable release when M2 scaffolds the project, 
 | Templates | Django templates + **django-htmx** + **django-template-partials** | `{% partialdef %}` for HTMX fragments |
 | Front-end build | **Vite** + strict **TypeScript** + **Biome**, **django-vite** | Same tooling as PersonalWebsite |
 | Charts / icons / fonts | CSS bar charts with a "View as table" (no chart library; M11c), **Lucide** SVG sprite, **Fontsource** Lexend + Source Sans 3 (self-hosted) | No runtime CDNs |
-| Files | Any S3-compatible store via **django-storages** (S3 backend, boto3), **Pillow**, **filetype** | Private bucket, presigned URLs |
+| Files | Any S3-compatible store via **boto3** directly (`apps/files/storage.py`), **Pillow**, **filetype** | Private bucket, presigned URLs |
 | Import/export | stdlib `csv`, **openpyxl** + **defusedxml** | Row-by-row Django Forms with a preview; all-or-nothing |
 | Email | Any SMTP server (one URL-style setting) + an `EmailOutbox` table | Provider APIs via django-anymail only if they cost nothing extra |
-| Security headers | **django-csp** | Report-only from M2, enforced at launch |
+| Security headers | **django-csp** | Enforced by default (M12); report-only only with the Vite dev server or `CSP_REPORT_ONLY` |
 | Observability | **sentry-sdk** 3 with explicit `data_collection` opt-outs (user info, cookies, bodies, query params, DB data, frame variables, GenAI, GraphQL, MCP and queue data off; header allowlist) + `before_send` scrubbing, JSON logs to stdout | |
 | Lint/type | **ruff** (lint + format), **mypy** + **django-stubs** | |
-| Tests | **pytest**, pytest-django, pytest-xdist, factory_boy, Faker (`en_PH`), time-machine, coverage, **pytest-playwright** | Real Postgres in tests |
+| Tests | **pytest**, pytest-django, pytest-xdist, factory_boy, Faker (`en_PH`), time-machine, **pytest-playwright** | Real Postgres in tests |
 | Local services | `compose.yaml`: web, Postgres 17, an S3-compatible store, Mailpit, a worker | `docker compose up` runs the explore copy (§11) |
 | Host | Any host that runs a container (`Dockerfile`, gunicorn) | Self-hosters build the image from source; none is published (§11) |
 | CI | GitHub Actions | §15 |
@@ -801,7 +807,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
 - **M9b:** head and staff may both add, import and export scholars. Like every staff screen, all of them answer 404
   for an inactive program (`ProgramStaffRequiredMixin`); `create_award` and `import_scholars` re-check it.
 - **M10:** staff manage schedules and generate; heads (and the office) approve, reject, release, revert and set the
-  budget; release, revert and the budget ask for the password again.
+  budget; release, revert and the budget ask to confirm again (reauthentication, §10).
 - **M11b:** the office manages programs, accounts, memberships and schools; heads and the office edit program
   settings (staff get 403 and no Settings link); settings open for an inactive program to the office only. The
   audit-log viewer screens arrive in M11c.
@@ -1023,7 +1029,8 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
     password; by password, by authenticator code, or by a code emailed to a verified address
     (`ACCOUNT_REAUTHENTICATION_METHODS`, rev 39); the emailed code is the only method for an account with no
     password and no authenticator;
-  - Argon2 first in `PASSWORD_HASHERS`; validators: minimum length 10, common, numeric, similarity;
+  - Argon2 first in `PASSWORD_HASHERS`; validators: minimum length 10, common, similarity, site words (plus the
+    breach check in production);
   - Google signup shows the signup form (no auto signup), so the consent box is always ticked by a person;
   - unknown-account emails are off;
   - tests use the local-memory cache; deployments use the database cache.
@@ -1041,8 +1048,9 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
     email confirmation, password reset), unless the view set its own (M12).
 - **CSP:**
   - `default-src 'self'`; `script-src 'self'`; `style-src 'self'`;
-  - `img-src 'self' data: <storage-origin>`; `connect-src 'self' <storage-origin> <sentry-ingest>`;
-  - `frame-ancestors 'none'`; `form-action 'self'`;
+  - `img-src 'self' data: <storage-origin>`; `connect-src 'self' <storage-origin>` (Sentry is sent by the server);
+  - `frame-ancestors 'none'`; `form-action 'self'` (plus `https://accounts.google.com` when Google sign-in is on);
+    `base-uri 'self'`; `object-src 'none'`;
   - enforced by default; report-only only with `VITE_DEV_MODE` (the Vite dev server serves scripts from another
     origin) or `CSP_REPORT_ONLY=true` while debugging; no `report-uri`, because browsers would post full page URLs
     and Referers straight to Sentry, past `scrub_event` (M12);
@@ -1078,7 +1086,7 @@ aware (`USE_TZ=True`, `TIME_ZONE="Asia/Manila"`).
     limit; the session key rotates after reauthentication, by password, by authenticator code (rev 22) or by
     emailed code (rev 39).
   - **Sessions:** `/accounts/sessions/` lists one's sessions with "Sign out other sessions" (`allauth.usersessions`;
-    behind the password; audited `user.other_sessions_ended`); the office's "Sign out everywhere" on a staff account
+    behind reauthentication; audited `user.other_sessions_ended`); the office's "Sign out everywhere" on a staff account
     (`user.sessions_ended`); `manage.py end_sessions --email`. Each row keeps the start time, IP address and browser
     string, and goes once its session has ended (`cleanup`, and at once when sessions are ended); the privacy notice
     (version 2026-11-19) says so.
@@ -1120,8 +1128,9 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
 - **One command:** `docker compose up` from the repository root. Services: `web` (gunicorn, built from the
   `Dockerfile`, Vite bundle built inside the image) on `http://localhost:8000`, `db` (Postgres 17), `storage`
   (S3-compatible), `mail` (Mailpit inbox on `http://localhost:8025`) and `worker` (§9). No `.env` is needed. First run
-  migrates, creates the cache table and bucket, and loads the demo only if the database has no users. Host ports are
-  overridable (`APP_PORT`, `MAIL_PORT`, `DB_PORT`, `STORAGE_PORT`). `docker compose down -v` resets.
+  migrates and creates the cache table and bucket; the demo loads on every start, adding only what is missing (a
+  deleted demo account comes back). Host ports are overridable (`APP_PORT`, `MAIL_PORT`, `DB_PORT`, `STORAGE_PORT`).
+  `docker compose down -v` resets.
 - **Modes:**
 
 | Mode | Selected by | Debug | HTTPS-only | Demo | Kit `/_kit/` |
@@ -1442,8 +1451,11 @@ Summary of `docs/design/2026-10-30-open-source-self-hosting-design.md` §4-§8, 
 - **Operator (required in production):** `SITE_OPERATOR_NAME`, `PRIVACY_CONTACT_EMAIL`. In explore and developer modes
   they default to "This local copy" and no email.
 - **Ops:** `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE`, `CSP_REPORT_ONLY`, `DJANGO_KIT` (design kit; defaults
-  to `DJANGO_DEBUG`).
-- **Compose only:** `APP_PORT`, `MAIL_PORT`, `DB_PORT`, `STORAGE_PORT`.
+  to on in developer and explore modes, refused in production), `LOG_LEVEL`, `VITE_DEV_MODE` (developer mode with
+  the Vite dev server). Core also reads `DJANGO_SECRET_KEY_FALLBACKS` (old keys during a rotation). Codespaces sets
+  `CODESPACE_NAME` and `GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN`. `DJANGO_ENV_FILE` (process environment only) points
+  settings at a file other than `./.env`.
+- **Compose:** `APP_PORT` (also the local `SITE_URL` default); compose only: `MAIL_PORT`, `DB_PORT`, `STORAGE_PORT`.
 - **Rules:**
   - `.env.example` documents every variable (what it is, whether production needs it, format, where to get it), with
     safe placeholders and no secrets.
@@ -1456,7 +1468,7 @@ GitHub Actions on push and pull request, with read-only permissions, concurrency
   - `ruff check`, `ruff format --check`, `mypy`;
   - `manage.py check --deploy` (production-like environment);
   - `makemigrations --check --dry-run`;
-  - `pytest -n auto --cov` on a Postgres 17 service;
+  - `pytest -n auto` on a Postgres 17 service;
   - `pip-audit`.
 - **frontend:** `npm ci`, `tsc --noEmit`, `biome check`, `vite build`, budget.
 - **e2e** (from M3): build, install Chromium, `pytest -m e2e --ds=config.e2e_settings --browser chromium`.
