@@ -4,6 +4,7 @@ ASVS V7.2.4, V7.4.5, V7.5.2)."""
 from typing import Any
 
 from allauth.account.decorators import reauthentication_required
+from allauth.account.views import ConfirmReauthenticationCodeView as AllauthConfirmCodeView
 from allauth.account.views import ReauthenticateView as AllauthReauthenticateView
 from allauth.mfa.base.views import ReauthenticateView as AllauthMfaReauthenticateView
 from allauth.usersessions.models import UserSession
@@ -40,6 +41,16 @@ class MfaReauthenticateView(AllauthMfaReauthenticateView):  # type: ignore[misc]
 
     def form_valid(self, form: Any) -> HttpResponse:
         response: HttpResponse = super().form_valid(form)
+        rotate_session_key(self.request)
+        return response
+
+
+class ConfirmReauthenticationCodeView(AllauthConfirmCodeView):  # type: ignore[misc]
+    """allauth's emailed-code confirmation (rev 39), mounted at the same path, plus a new key.
+    A wrong code or a resend keeps the key: only a verified code rotates it."""
+
+    def _verify_form_valid(self, form: Any) -> HttpResponse:
+        response: HttpResponse = super()._verify_form_valid(form)
         rotate_session_key(self.request)
         return response
 

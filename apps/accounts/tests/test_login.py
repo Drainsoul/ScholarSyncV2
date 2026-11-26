@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 from allauth.account.models import EmailAddress
 from allauth.core.context import request_context
+from django.core import mail
 from django.core.cache import cache
 from django.test import RequestFactory
 from django.urls import reverse
@@ -135,15 +136,28 @@ def test_setting_a_first_password_is_notified_and_audited(
     user = UserFactory.create(email="gina@scholarsync.test", password=None, verified=True)
     assert not user.has_usable_password()
     client.force_login(user)
+    passwords = {"password1": "first-pass-2026-x", "password2": "first-pass-2026-x"}
+    # With no password to confirm, a code sent to the verified address stands in for it (rev 39).
+    response = client.post("/accounts/password/set/", passwords)
+    assert response.status_code == 302
+    assert response.url.startswith(reverse("account_request_reauthentication_code"))
     with django_capture_on_commit_callbacks(execute=True):
-        response = client.post(
-            "/accounts/password/set/",
-            {"password1": "first-pass-2026-x", "password2": "first-pass-2026-x"},
-        )
+        response = client.post(response.url, {"recipient": "gina@scholarsync.test"})
+    assert response.status_code == 302
+    assert response.url.startswith(reverse("account_confirm_reauthentication_code"))
+    sent = EmailOutbox.objects.get()
+    assert sent.kind == "login_code" and sent.status == "sent" and sent.context == {}
+    code = client.session["account_email_reauthentication_code"]["code"]
+    assert mail.outbox[-1].to == ["gina@scholarsync.test"] and code in mail.outbox[-1].body
+    user.refresh_from_db()
+    assert not user.has_usable_password()
+    # Confirming the code replays the set-password post.
+    with django_capture_on_commit_callbacks(execute=True):
+        response = client.post(response.url, {"code": code})
     assert response.status_code == 302 and "login" not in response.url
     user.refresh_from_db()
     assert user.has_usable_password()
-    assert EmailOutbox.objects.get().kind == "password_set"
+    assert EmailOutbox.objects.latest("pk").kind == "password_set"
     assert AuditEvent.objects.filter(action="user.password_set", actor=user).exists()
 
 

@@ -1,0 +1,7 @@
+{% extends "emails/base.html" %}
+{% block body %}
+    <p>{% if full_name %}Hello {{ full_name }},{% else %}Hello,{% endif %}</p>
+    <p>Someone signed in to your ScholarSync account asked to confirm it is you. If that was you, enter this code on the page that asked for it:</p>
+    <p><strong>{{ code }}</strong></p>
+    <p>The code works once and only for a few minutes. If you did not ask for it, do not share it with anyone, and contact the scholarship office straight away.</p>
+{% endblock %}

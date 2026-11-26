@@ -312,6 +312,9 @@ ACCOUNT_EMAIL_UNKNOWN_ACCOUNTS = False
 ACCOUNT_EMAIL_NOTIFICATIONS = True
 ACCOUNT_REAUTHENTICATION_REQUIRED = True
 ACCOUNT_REAUTHENTICATION_TIMEOUT = 300
+# Password, authenticator code, or a code emailed to a verified address (rev 39). Named here so a
+# change to allauth's default can't quietly add or drop one.
+ACCOUNT_REAUTHENTICATION_METHODS = ["password", "code", "mfa"]
 ACCOUNT_LOGOUT_ON_GET = False
 ACCOUNT_ADAPTER = "apps.accounts.adapters.AccountAdapter"
 # Two-factor sign-in (spec §10, M13): TOTP and recovery codes; required for staff and the office

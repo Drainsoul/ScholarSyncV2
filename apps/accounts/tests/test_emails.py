@@ -13,9 +13,9 @@ from apps.workspace.emails import KINDS
 from apps.workspace.models import EmailOutbox
 
 # allauth kinds our settings never send. Anything else allauth ships must be in KINDS, so an
-# allauth upgrade that adds a kind fails this test instead of a send_mail at runtime.
+# allauth upgrade that adds a kind fails this test instead of a send_mail at runtime. (login_code is
+# sent although sign-in by code is off: reauthentication by code uses it, rev 39.)
 DISABLED_ALLAUTH_KINDS = {
-    "login_code",  # ACCOUNT_LOGIN_BY_CODE_ENABLED is off
     "password_reset_code",  # password reset is by link, not by code
     "unknown_account",  # ACCOUNT_EMAIL_UNKNOWN_ACCOUNTS = False
     "email_confirm",  # a legacy template; no allauth code path sends it
