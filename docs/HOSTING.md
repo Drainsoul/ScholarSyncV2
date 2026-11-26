@@ -51,7 +51,7 @@ At least:
 | `CSP_REPORT_ONLY` | leave `false` (enforced); `true` only to debug a blocked resource |
 | `MFA_REQUIRED_FOR_STAFF` | leave `true`: staff and office accounts set up an authenticator app at their first sign-in. The office can remove a lost one from the account page; confirm who is asking first (in person or by a call to a number you already have), since the new one is set up with the password alone |
 | `PASSWORD_BREACH_CHECK` | leave `true`: new passwords are checked against Have I Been Pwned's anonymous range API (outbound HTTPS to `api.pwnedpasswords.com`; if unreachable, passwords are accepted) |
-| `ALLOW_PLAINTEXT_SERVICES` | leave `false`. Production refuses `smtp://`, `http://` storage and a database URL without `sslmode=require` or `verify-full` when they point at another machine (loopback, compose service names and `host.docker.internal` are fine). Set `true` only on a private network you trust |
+| `ALLOW_PLAINTEXT_SERVICES` | leave `false`. Production refuses `smtp://`, `http://` storage, a database URL without `sslmode=require`, `verify-ca` or `verify-full`, and a `CLAMAV_HOST` (clamd has no encryption) when they point at another machine (loopback, compose service names and `host.docker.internal` are fine). Set `true` only on a private network you trust |
 
 Also delete or replace the development-only values at the top of the file. The app refuses to start in production if
 the secret key still starts with `local-dev-only-` or `explore-only-`, or if `DJANGO_KIT` is on. Production always redirects HTTP to HTTPS, so your proxy must send
@@ -164,8 +164,9 @@ be accepted. Upload a different one." While the variable is set and clamd is dow
     restart: unless-stopped
 ```
 and set `CLAMAV_HOST=clamav`. clamd needs about 1.5 GB of memory for its signatures and a few minutes to load them
-after it starts. Left unset (the default, and the explore stack), files are not scanned; whether to scan is your
-choice.
+after it starts. In production clamd must run on the same machine or Docker network (a host name without dots such
+as `clamav`, or loopback); a remote `CLAMAV_HOST` is refused unless `ALLOW_PLAINTEXT_SERVICES=true`. Left unset (the
+default, and the explore stack), files are not scanned; whether to scan is your choice.
 
 **Google sign-in (optional, students only).** Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` to offer it. If you
 remove the keys later, students who signed in only with Google have no password: they must use "Forgot password" to
@@ -217,9 +218,10 @@ the header `X-Forwarded-Proto: https` and an allowed `Host`, as the container's 
 does. The app has no switch to turn the redirect off; set the header at the proxy instead.
 
 ## 6. Background jobs
-The `worker` service runs `manage.py send_outbox` (retries failed email and sends any left queued) and
-`manage.py cleanup` (expired sessions, outbox rows older than 90 days, and scholar import files 7 days after upload:
-they hold names and birth dates). Nothing else is needed.
+The `worker` service runs `manage.py run_worker`, which every 5 minutes runs `manage.py send_outbox` (retries failed
+email and sends any left queued) and `manage.py cleanup` (expired sessions and their session-list rows, sent or
+given-up outbox rows older than 90 days, abandoned and rejected upload records, and scholar import files 7 days after
+upload: they hold names and birth dates). Nothing else is needed.
 
 If you do not run the worker, schedule the same commands yourself, for example every 5 minutes from cron or your
 host's scheduler:
