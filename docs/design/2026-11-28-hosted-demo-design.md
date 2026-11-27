@@ -76,6 +76,10 @@ only**.
   - `PRIVACY_CONTACT_EMAIL` is still required (the privacy and terms pages name the operator). The maintainer
     picks the address and sets it in Vercel.
   - `demo.E001` (the "delete `apps/demo`" deploy check) is skipped in this mode.
+  - `MFA_REQUIRED_FOR_STAFF` is false (designer's call). Production sends every staff and office account
+    without TOTP to `mfa_activate_totp`. The demo accounts have no authenticators, and §5.2 freezes 2FA, so the
+    staff and office demo accounts would otherwise be stuck on a blocked page. Publishing a shared TOTP secret was
+    rejected because it adds loader and notice work and protects nothing.
   - The kit at `/_kit/` stays off (the production default).
 - It can't be combined with `DJANGO_DEBUG` or `SCHOLARSYNC_EXPLORE`. Settings raise `ImproperlyConfigured` if
   it is.
