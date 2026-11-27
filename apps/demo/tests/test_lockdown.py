@@ -46,6 +46,13 @@ def guards() -> Iterator[None]:
     pre_save.disconnect(dispatch_uid=lockdown.AUTHENTICATOR_GUARD, sender=Authenticator)
 
 
+def _demo_account(account: Any) -> User:
+    with lockdown.bypass():
+        return UserFactory.create(
+            email=account.email, password=PASSWORD, verified=True, role=account.role
+        )
+
+
 def _demo_user(**extra: Any) -> User:
     account = ACCOUNTS[0]
     with lockdown.bypass():
@@ -189,3 +196,52 @@ def test_office_can_still_sign_out_other_staff(client: Any, public_demo: None) -
     reauthenticated(client, office)
     response = client.post(reverse("office:staff-sessions", args=[staff.pk]))
     assert response.status_code == 302
+
+
+@pytest.mark.parametrize("index", range(len(ACCOUNTS)))
+def test_demo_accounts_can_really_sign_in_with_guards_on(
+    client: Any, guards: None, public_demo: None, index: int
+) -> None:
+    """A real sign-in writes the user (last login, maybe a rehash): the guards must allow it."""
+    account = ACCOUNTS[index]
+    _demo_account(account)
+    response = client.post(reverse("account_login"), {"login": account.email, "password": PASSWORD})
+    assert response.status_code == 302
+    assert client.session.get("_auth_user_id")
+
+
+def test_guards_are_registered_when_the_app_boots_in_public_demo(tmp_path: Any) -> None:
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[3]
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("DJANGO_", "SCHOLARSYNC_"))}
+    env.update(
+        {
+            "DJANGO_SETTINGS_MODULE": "config.settings",
+            "DJANGO_ENV_FILE": str(tmp_path / "absent.env"),
+            "DJANGO_SECRET_KEY": "x" * 50,
+            "DJANGO_ALLOWED_HOSTS": "scholarsync.example",
+            "SITE_OPERATOR_NAME": "ScholarSync Test",
+            "PRIVACY_CONTACT_EMAIL": "privacy@scholarsync.test",
+            "DATABASE_URL": "postgres://u:p@localhost:5433/db",
+            "EMAIL_URL": "",
+            "SCHOLARSYNC_PUBLIC_DEMO": "true",
+            "CRON_SECRET": "c" * 32,
+        }
+    )
+    code = (
+        "import django; django.setup()\n"
+        "from django.db.models.signals import pre_save, pre_delete\n"
+        "from apps.demo import lockdown as l\n"
+        "uids = {r[0][0] for r in pre_save.receivers} | {r[0][0] for r in pre_delete.receivers}\n"
+        "need = {l.USER_GUARD, l.EMAIL_GUARD, l.EMAIL_DELETE_GUARD, l.AUTHENTICATOR_GUARD}\n"
+        "print(sorted(need - uids))\n"
+    )
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, "-c", code], cwd=root, env=env, capture_output=True, text=True, check=False
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "[]"

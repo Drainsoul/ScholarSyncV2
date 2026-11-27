@@ -70,3 +70,13 @@ def test_reset_view_rejects_post(client: Any, calls: list[int]) -> None:
 @pytest.mark.urls("config.urls")
 def test_route_absent_outside_public_demo(client: Any) -> None:
     assert client.get(URL).status_code == 404
+
+
+@pytest.mark.parametrize("method", ["post", "put", "delete"])
+def test_reset_view_404_for_other_methods_without_secret(calls: list[int], method: str) -> None:
+    """A 405, or CSRF's 403, would show the route exists (design 5.4: it can't be probed)."""
+    from conftest import HttpsClient
+
+    client = HttpsClient(enforce_csrf_checks=True)
+    assert getattr(client, method)(URL).status_code == 404
+    assert calls == []
