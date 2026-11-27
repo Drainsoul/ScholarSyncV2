@@ -166,3 +166,26 @@ def test_office_deactivating_a_demo_staff_account_is_403(
     assert response.status_code == 403
     staff.refresh_from_db()
     assert staff.is_active
+
+
+@pytest.mark.parametrize("view", ["office:staff-sessions", "office:staff-mfa"])
+def test_office_cant_sign_out_or_strip_a_demo_account(
+    client: Any, public_demo: None, view: str
+) -> None:
+    """Ending a shared account's sessions would sign out every visitor using it."""
+    office = UserFactory.create(role=User.Role.SUPER_ADMIN, verified=True)
+    staff_account = next(a for a in ACCOUNTS if a.role == User.Role.STAFF)
+    with lockdown.bypass():
+        staff = UserFactory.create(email=staff_account.email, role=User.Role.STAFF, verified=True)
+    reauthenticated(client, office)
+    response = client.post(reverse(view, args=[staff.pk]))
+    assert response.status_code == 403
+    assert FROZEN_HEADING in response.content.decode()
+
+
+def test_office_can_still_sign_out_other_staff(client: Any, public_demo: None) -> None:
+    office = UserFactory.create(role=User.Role.SUPER_ADMIN, verified=True)
+    staff = UserFactory.create(role=User.Role.STAFF, verified=True)
+    reauthenticated(client, office)
+    response = client.post(reverse("office:staff-sessions", args=[staff.pk]))
+    assert response.status_code == 302

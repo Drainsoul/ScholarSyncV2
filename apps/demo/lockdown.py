@@ -66,6 +66,10 @@ ALLOWED_URL_NAMES = frozenset(
     }
 )
 
+# Office actions that end every session of the account in the URL (`pk`): on a shared test account
+# they would sign out every visitor using it. Refused only when that account is a test account.
+FROZEN_FOR_DEMO_TARGETS = frozenset({"office:staff-sessions", "office:staff-mfa"})
+
 # Fields that decide who can sign in as a user, and as what.
 GUARDED_FIELDS = ("email", "password", "is_active", "role", "is_staff", "is_superuser")
 
@@ -92,6 +96,14 @@ def _is_demo_email(email: str) -> bool:
     return email.strip().lower() in LISTED_EMAILS
 
 
+def _targets_demo_account(kwargs: dict[str, Any]) -> bool:
+    pk = kwargs.get("pk")
+    if not isinstance(pk, int):
+        return False
+    email = User.objects.filter(pk=pk).values_list("email", flat=True).first()
+    return email is not None and _is_demo_email(email)
+
+
 class PublicDemoLockdownMiddleware:
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
         self.get_response = get_response
@@ -103,7 +115,11 @@ class PublicDemoLockdownMiddleware:
         self, request: HttpRequest, view_func: object, view_args: object, view_kwargs: object
     ) -> HttpResponse | None:
         match = request.resolver_match
-        if settings.PUBLIC_DEMO and match and match.url_name in FROZEN_URL_NAMES:
+        if not settings.PUBLIC_DEMO or match is None:
+            return None
+        if match.url_name in FROZEN_URL_NAMES or (
+            match.view_name in FROZEN_FOR_DEMO_TARGETS and _targets_demo_account(match.kwargs)
+        ):
             return render(request, "demo/frozen.html", status=403)
         return None
 
