@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from django import template
+from django.conf import settings
 
 from apps.accounts.models import User
 from apps.demo.accounts import GROUPS, LISTED, LISTED_EMAILS, PASSWORD, DemoAccount
@@ -36,3 +37,9 @@ def demo_account_groups() -> list[AccountGroup]:
 @register.simple_tag
 def demo_password() -> str:
     return PASSWORD
+
+
+@register.simple_tag
+def demo_public_mode() -> bool:
+    """True on the hosted demo (branch `demo`, design section 5.2): every page shows the banner."""
+    return bool(getattr(settings, "PUBLIC_DEMO", False))

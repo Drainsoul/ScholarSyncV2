@@ -1,4 +1,4 @@
-{% load static django_vite %}<!doctype html>
+{% load static django_vite slots %}<!doctype html>
 <html lang="en"{% if theme %} data-theme="{{ theme }}"{% endif %}>
 <head>
   <meta charset="utf-8">
@@ -19,6 +19,7 @@
 </head>
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
   <a class="skip-link" href="#main">Skip to content</a>
+  {% include_if_present "demo/public_banner.html" %}
   {% block body %}
   <main id="main" tabindex="-1">
     {% block content %}{% endblock %}

@@ -82,6 +82,7 @@ TEXT_PAIRS = [
     ("success", "success-50"),
     ("warning", "surface"),
     ("warning", "warning-50"),
+    ("text", "warning-50"),  # the public demo banner (branch `demo`)
     ("info", "surface"),
     ("info", "info-50"),
     ("secondary", "secondary-50"),

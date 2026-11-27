@@ -1,0 +1,4 @@
+{% load demo ui %}{% demo_public_mode as public_demo %}{% if public_demo %}
+{# The hosted demo (branch `demo`, design section 5.2): shared test accounts, reset nightly. #}
+<div class="demo-banner" role="note">{% icon "info" %}<p class="demo-banner__text">Public demo. Data resets every night (around 03:00 Manila time). Don't enter real personal information or upload real documents.</p></div>
+{% endif %}
