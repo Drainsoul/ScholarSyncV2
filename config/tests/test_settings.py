@@ -82,6 +82,8 @@ _MODE_VARS = {
     "SITE_OPERATOR_NAME",
     "PRIVACY_CONTACT_EMAIL",
     "EMAIL_URL",
+    "SCHOLARSYNC_PUBLIC_DEMO",
+    "CRON_SECRET",
 }
 
 
@@ -825,3 +827,70 @@ def test_numeric_validator_removed(tmp_path):
     values = settings_values(tmp_path, ["AUTH_PASSWORD_VALIDATORS"])
     names = [item["NAME"] for item in values["AUTH_PASSWORD_VALIDATORS"]]
     assert "django.contrib.auth.password_validation.NumericPasswordValidator" not in names
+
+
+# Public demo (branch `demo` only; docs/design/2026-11-28-hosted-demo-design.md section 5.1).
+_PUBLIC_DEMO = {"SCHOLARSYNC_PUBLIC_DEMO": "true", "CRON_SECRET": "c" * 32, "EMAIL_URL": ""}
+
+
+def test_public_demo_loads_with_blank_email_and_turns_demo_on(tmp_path):
+    names = [
+        "PUBLIC_DEMO",
+        "DEMO_ACTIVE",
+        "MFA_REQUIRED_FOR_STAFF",
+        "SECURE_SSL_REDIRECT",
+        "EMAIL_BACKEND",
+        "INSTALLED_APPS",
+        "MIDDLEWARE",
+        "CRON_SECRET",
+    ]
+    values = settings_values(tmp_path, names, **_PUBLIC_DEMO)
+    assert values["PUBLIC_DEMO"] is True
+    assert values["DEMO_ACTIVE"] is True
+    assert values["MFA_REQUIRED_FOR_STAFF"] is False
+    assert values["SECURE_SSL_REDIRECT"] is True
+    assert values["EMAIL_BACKEND"] == "django.core.mail.backends.console.EmailBackend"
+    assert "apps.demo" in values["INSTALLED_APPS"]
+    assert values["CRON_SECRET"] == "c" * 32
+    middleware = values["MIDDLEWARE"]
+    mfa = middleware.index("apps.accounts.mfa_policy.RequireStaffMfaMiddleware")
+    assert middleware[mfa + 1] == "apps.demo.lockdown.PublicDemoLockdownMiddleware"
+
+
+@pytest.mark.parametrize("mode", [{"DJANGO_DEBUG": "true"}, {"SCHOLARSYNC_EXPLORE": "true"}])
+def test_public_demo_refuses_debug_or_explore(tmp_path, mode):
+    result = _run_settings(tmp_path, ["PUBLIC_DEMO"], **{**_PUBLIC_DEMO, **mode})
+    assert result.returncode != 0
+    assert "SCHOLARSYNC_PUBLIC_DEMO" in result.stderr
+
+
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"DJANGO_SECRET_KEY": "explore-only-" + "x" * 50},
+        {"DJANGO_ALLOWED_HOSTS": ""},
+        {"S3_SECRET_ACCESS_KEY": "scholarsync-explore-secret"},
+    ],
+)
+def test_public_demo_keeps_production_refusals(tmp_path, override):
+    result = _run_settings(tmp_path, ["PUBLIC_DEMO"], **{**_PUBLIC_DEMO, **override})
+    assert result.returncode != 0
+
+
+@pytest.mark.parametrize("secret", [None, "", "c" * 31])
+def test_public_demo_requires_a_long_cron_secret(tmp_path, secret):
+    env = {**_PUBLIC_DEMO}
+    unset: tuple[str, ...] = ()
+    if secret is None:
+        del env["CRON_SECRET"]
+        unset = ("CRON_SECRET",)
+    else:
+        env["CRON_SECRET"] = secret
+    result = _run_settings(tmp_path, ["PUBLIC_DEMO"], _unset=unset, **env)
+    assert result.returncode != 0
+    assert "CRON_SECRET" in result.stderr
+
+
+def test_public_demo_off_by_default(tmp_path):
+    values = settings_values(tmp_path, ["PUBLIC_DEMO", "DEMO_ACTIVE", "CRON_SECRET"])
+    assert values == {"PUBLIC_DEMO": False, "DEMO_ACTIVE": False, "CRON_SECRET": ""}

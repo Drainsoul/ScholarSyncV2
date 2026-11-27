@@ -27,6 +27,21 @@ EXPLORE = env.bool("SCHOLARSYNC_EXPLORE", False)
 PRODUCTION = not DEBUG and not EXPLORE
 EXPLORE_HOSTS = ["localhost", "127.0.0.1"]
 
+# Public demo (branch `demo` only, docs/design/2026-11-28-hosted-demo-design.md section 5.1):
+# production's security with the demo switched on, email printed instead of sent, and staff 2FA off.
+# PRODUCTION stays true, so every production check below still applies unless it names this flag.
+PUBLIC_DEMO = env.bool("SCHOLARSYNC_PUBLIC_DEMO", False)
+if PUBLIC_DEMO and not PRODUCTION:
+    raise ImproperlyConfigured(
+        "SCHOLARSYNC_PUBLIC_DEMO can't be combined with DJANGO_DEBUG or SCHOLARSYNC_EXPLORE."
+    )
+# Vercel Cron signs its calls with this; the reset endpoint compares it (design section 5.4).
+CRON_SECRET = env.str("CRON_SECRET", "") if PUBLIC_DEMO else ""
+if PUBLIC_DEMO and len(CRON_SECRET) < 32:
+    raise ImproperlyConfigured(
+        "CRON_SECRET must be at least 32 characters in the public demo (docs/hosted-demo.md)."
+    )
+
 if EXPLORE:
     if set(env.list("DJANGO_ALLOWED_HOSTS", [])) - set(EXPLORE_HOSTS):
         raise ImproperlyConfigured(
@@ -164,7 +179,7 @@ INSTALLED_APPS = [
 # Production never installs it, so its templates and commands can't load even if the folder was
 # left behind; core's deploy check (demo.E001) still fails while the folder exists.
 DEMO_INSTALLED = demo_installed(BASE_DIR)
-DEMO_ACTIVE = DEMO_INSTALLED and not PRODUCTION
+DEMO_ACTIVE = DEMO_INSTALLED and (not PRODUCTION or PUBLIC_DEMO)
 if DEMO_ACTIVE:
     INSTALLED_APPS.append("apps.demo")
 
@@ -186,6 +201,12 @@ MIDDLEWARE = [
     "apps.accounts.session_policy.SessionPolicyMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+if PUBLIC_DEMO:
+    # Shared test accounts: their credentials, emails and 2FA can't be changed (design 5.2).
+    MIDDLEWARE.insert(
+        MIDDLEWARE.index("apps.accounts.mfa_policy.RequireStaffMfaMiddleware") + 1,
+        "apps.demo.lockdown.PublicDemoLockdownMiddleware",
+    )
 
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
@@ -216,7 +237,7 @@ DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
 # Email: one URL (submission://user:pass@host:587, smtp://...:465?ssl=true, console://) ---------
 # Read through `env`, never os.environ: environs keeps the .env file's values in its own store.
 _email_url = env.str("EMAIL_URL", "").strip()
-if PRODUCTION and not _email_url:
+if PRODUCTION and not PUBLIC_DEMO and not _email_url:
     raise ImproperlyConfigured(
         "EMAIL_URL is blank. Production needs a real SMTP server, or reset and verification "
         "links would be written to the log. See docs/HOSTING.md."
@@ -238,7 +259,7 @@ _UNDELIVERED_EMAIL_BACKENDS = {
     "django.core.mail.backends.dummy.EmailBackend",
     "django.core.mail.backends.filebased.EmailBackend",
 }
-if PRODUCTION and _email_config["EMAIL_BACKEND"] in _UNDELIVERED_EMAIL_BACKENDS:
+if PRODUCTION and not PUBLIC_DEMO and _email_config["EMAIL_BACKEND"] in _UNDELIVERED_EMAIL_BACKENDS:
     raise ImproperlyConfigured(
         "EMAIL_URL must point at a real SMTP server in production, not a console, memory or "
         "dummy backend. See docs/HOSTING.md."
@@ -325,7 +346,8 @@ MFA_ADAPTER = "apps.accounts.adapters.MFAAdapter"
 USERSESSIONS_TRACK_ACTIVITY = False
 MFA_TOTP_ISSUER = "ScholarSync"
 # Production only, so a .env copied from .env.example never forces it on a developer copy.
-MFA_REQUIRED_FOR_STAFF = PRODUCTION and env.bool("MFA_REQUIRED_FOR_STAFF", True)
+# The public demo turns it off: its shared staff accounts have no authenticator and may not add one.
+MFA_REQUIRED_FOR_STAFF = PRODUCTION and not PUBLIC_DEMO and env.bool("MFA_REQUIRED_FOR_STAFF", True)
 ACCOUNT_FORMS = {"signup": "apps.accounts.forms.SignupForm"}
 SOCIALACCOUNT_ADAPTER = "apps.accounts.adapters.SocialAccountAdapter"
 SOCIALACCOUNT_FORMS = {"signup": "apps.accounts.forms.SocialSignupForm"}

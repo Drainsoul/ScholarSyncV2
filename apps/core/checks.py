@@ -9,7 +9,8 @@ from config.demo import demo_installed
 @register(Tags.security, deploy=True)
 def demo_folder_removed(app_configs: object, **kwargs: object) -> list[CheckMessage]:
     """Fail `check --deploy` while the demo folder exists (production doesn't install it)."""
-    if not demo_installed(settings.BASE_DIR):
+    # The hosted demo keeps the folder on purpose (branch `demo` only, design section 5.1).
+    if not demo_installed(settings.BASE_DIR) or getattr(settings, "PUBLIC_DEMO", False):
         return []
     return [
         Error(

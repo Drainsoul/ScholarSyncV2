@@ -9,6 +9,13 @@ def test_deploy_check_follows_the_demo_folder(monkeypatch, present):
     assert any(e.id == "demo.E001" for e in errors) is present
 
 
+def test_demo_check_silent_in_public_demo(monkeypatch, settings):
+    """The hosted demo keeps the folder on purpose (branch `demo`, design section 5.1)."""
+    monkeypatch.setattr("apps.core.checks.demo_installed", lambda base_dir: True)
+    settings.PUBLIC_DEMO = True
+    assert not [e for e in run_checks(include_deployment_checks=True) if e.id == "demo.E001"]
+
+
 def test_demo_check_is_deploy_only(monkeypatch):
     monkeypatch.setattr("apps.core.checks.demo_installed", lambda base_dir: True)
     assert not [e for e in run_checks() if e.id == "demo.E001"]
