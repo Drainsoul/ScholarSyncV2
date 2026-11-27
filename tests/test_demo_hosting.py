@@ -10,7 +10,7 @@ from typing import Any
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-HOST = "ver" + "cel"  # spelled in two parts, as tests/test_no_vercel.py does
+HOST = "ver" + "cel"  # spelled in two parts, as the old-host test does
 
 
 def _config() -> dict[str, Any]:
