@@ -1,0 +1,7 @@
+{% extends "layouts/auth.html" %}
+{% block title %}Not available in the demo{% endblock %}
+{% block content %}
+<h1>Not available in the demo</h1>
+<p>The test accounts are shared, so their sign-in details, email addresses and two-factor settings can't be changed here. New accounts can't be created either: use a test account from the sign-in page.</p>
+<a class="btn btn--primary" href="{% url 'account_login' %}">Go to the sign-in page</a>
+{% endblock %}

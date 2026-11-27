@@ -315,7 +315,12 @@ def test_nothing_outside_the_demo_imports_it():
     ).stdout.split()
     offenders = []
     for rel in tracked:
-        if rel.startswith("apps/demo/") or rel in {"config/settings.py", "config/demo.py"}:
+        # config/tests/test_settings.py names the demo in the public demo's assertions only.
+        if rel.startswith("apps/demo/") or rel in {
+            "config/settings.py",
+            "config/demo.py",
+            "config/tests/test_settings.py",
+        }:
             continue
         path = root / rel
         if not path.exists():
