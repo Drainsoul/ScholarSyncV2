@@ -75,6 +75,11 @@ Everything is free: Vercel Hobby, Neon's free tier, Cloudflare R2's free tier, a
 
    Leave `EMAIL_URL` unset. In the public demo, mail is printed to the function log and never sent.
 
+   **Don't mark these variables "Sensitive".** The deploy workflow fetches them with `vercel pull` to migrate and
+   build, and a Sensitive variable comes back empty. The migrate step reads only `DATABASE_URL_UNPOOLED` from the
+   pulled file (`scripts/demo_env_value.py`) and masks it in the log. It fails with a message if that value is
+   empty.
+
 ### 4. GitHub
 
 1. **Settings → Environments:** create an environment named `demo`. Allow deployments from the `demo` branch only.

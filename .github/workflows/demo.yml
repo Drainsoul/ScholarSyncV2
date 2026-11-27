@@ -18,8 +18,6 @@ concurrency:
 
 env:
   VERCEL_CLI: vercel@65.15.0
-  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
 jobs:
   check:
@@ -44,11 +42,11 @@ jobs:
       PRIVACY_CONTACT_EMAIL: privacy@scholarsync.test
       EMAIL_URL: smtp://localhost:25
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d  # v10.4.0
         with:
           enable-cache: true
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
           node-version: 22
           cache: npm
@@ -67,27 +65,34 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: demo
+    env:
+      # The CLI reads these from the environment, so the token is never on a command line.
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d  # v10.4.0
         with:
           enable-cache: true
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: uv sync --locked --no-dev
       - name: Fetch the production settings from the project
-        run: npx --yes "$VERCEL_CLI" pull --yes --environment=production --token="${{ secrets.VERCEL_TOKEN }}"
+        run: npx --yes "$VERCEL_CLI" pull --yes --environment=production
+      # Only the direct database URL leaves the pulled file, masked before anything can print it;
+      # the rest of the production settings are never exported into this shell (public logs).
       - name: Migrate (direct connection) before the new code goes live
         run: |
-          set -a
-          . ./.vercel/.env.production.local
-          set +a
-          DATABASE_URL="$DATABASE_URL_UNPOOLED" uv run --no-dev python manage.py migrate --noinput
-          DATABASE_URL="$DATABASE_URL_UNPOOLED" uv run --no-dev python manage.py createcachetable
+          url="$(uv run --no-dev python scripts/demo_env_value.py DATABASE_URL_UNPOOLED .vercel/.env.production.local)"
+          echo "::add-mask::$url"
+          export DJANGO_ENV_FILE=.vercel/.env.production.local
+          DATABASE_URL="$url" uv run --no-dev python manage.py migrate --noinput
+          DATABASE_URL="$url" uv run --no-dev python manage.py createcachetable
       - name: Build
-        run: npx --yes "$VERCEL_CLI" build --prod --token="${{ secrets.VERCEL_TOKEN }}"
+        run: npx --yes "$VERCEL_CLI" build --prod
       - name: Deploy
-        run: npx --yes "$VERCEL_CLI" deploy --prebuilt --prod --token="${{ secrets.VERCEL_TOKEN }}"
+        run: npx --yes "$VERCEL_CLI" deploy --prebuilt --prod
