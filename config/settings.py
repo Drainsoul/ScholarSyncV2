@@ -35,7 +35,7 @@ if PUBLIC_DEMO and not PRODUCTION:
     raise ImproperlyConfigured(
         "SCHOLARSYNC_PUBLIC_DEMO can't be combined with DJANGO_DEBUG or SCHOLARSYNC_EXPLORE."
     )
-# Vercel Cron signs its calls with this; the reset endpoint compares it (design section 5.4).
+# The nightly cron signs its calls with this; the reset endpoint compares it (design section 5.4).
 CRON_SECRET = env.str("CRON_SECRET", "") if PUBLIC_DEMO else ""
 if PUBLIC_DEMO and len(CRON_SECRET) < 32:
     raise ImproperlyConfigured(

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.http import Http404, HttpRequest, HttpResponse
 from django.urls import include, path
 
@@ -63,3 +64,8 @@ urlpatterns = [
     path("accounts/", include("allauth.urls")),
     path("_kit/", include("apps.kit.urls")),
 ]
+
+# The public demo's nightly reset (branch `demo` only, docs/design/2026-11-28-hosted-demo-design.md
+# 5.4). DEMO_ACTIVE is false once apps/demo is deleted, so the folder stays deletable.
+if settings.PUBLIC_DEMO and settings.DEMO_ACTIVE:
+    urlpatterns.append(path("_demo/", include("apps.demo.urls")))
