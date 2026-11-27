@@ -59,6 +59,14 @@ no email.
 | Small VPS running `docker compose` + Caddy | Reuses everything, including RustFS, Postgres and the worker. No platform limits. About $5 a month. | Rejected: costs money. |
 | Render / Koyeb free tier | Free, but the app sleeps, Render's free Postgres expires after 30 days, and storage still needs R2. | Rejected: breaks more often for the same setup work. |
 
+The nightly reset's trigger was a separate choice:
+
+| Trigger | Trade-offs | Verdict |
+|---|---|---|
+| **Vercel Cron calls a protected reset URL** | Nothing on `main`. The reset has to fit the function time limit. | **Chosen** by the maintainer. |
+| A small scheduler workflow on `main` | No time limit, but it adds demo code to `main`, and GitHub pauses it after 60 days without commits. | Rejected. |
+| Manual resets only | Simplest, but drops the nightly promise. | Rejected. |
+
 ## 5. Design
 
 ### 5.1 A fourth mode: public demo
@@ -104,8 +112,8 @@ In public-demo mode only:
   `apps/demo/accounts.py`.
 - **Lockout.** Login rate limits stay as they are. Someone hammering a demo account then locks it only briefly,
   and the reset clears it anyway.
-- **Visible banner.** Every page shows a slim, non-dismissible banner: "Public demo. Data resets every night at
-  03:00 Manila time. Don't enter real personal information or upload real documents." It's a component in
+- **Visible banner.** Every page shows a slim, non-dismissible banner: "Public demo. Data resets every night
+  (around 03:00 Manila time). Don't enter real personal information or upload real documents." It's a component in
   `templates/components/`, styled with tokens, WCAG AA, with no inline CSS or JS.
 - **Uploads.** The existing type and size checks stay. The R2 bucket has a lifecycle rule that expires
   `pending/` after 1 day, as `compose.yaml` does. The nightly reset empties the bucket (§5.4).
@@ -134,28 +142,47 @@ In public-demo mode only:
 - **Preview deployments:** off, or protected by Vercel authentication. Only the `demo` branch deploys, and only to
   production.
 
-### 5.4 Deploy and nightly reset: one GitHub Actions workflow
+### 5.4 Deploy (GitHub Actions) and nightly reset (Vercel Cron)
 
-One workflow on the `demo` branch (`.github/workflows/demo.yml`) does all of the database and deploy work.
-GitHub Actions is free on a public repo and has no Vercel function time limit, so `load_demo`'s run time
-doesn't matter.
+**Deploy.** One workflow on the `demo` branch (`.github/workflows/demo.yml`), triggered by a push to `demo`. Push
+triggers work from any branch, unlike scheduled ones.
 
-- **On push to `demo`:** run the checks that matter for this branch (ruff, mypy, pytest), then
-  `migrate` + `createcachetable` against Neon's direct URL, then `vercel deploy --prod` with the Vercel CLI.
-  Migrations run before the new code goes live. Vercel's own Git auto-deploy is turned off, so the workflow is
-  the only way to deploy.
-- **Nightly at 03:00 Asia/Manila (19:00 UTC):** run a new management command `reset_demo` against Neon's direct
-  URL. It:
+- It runs the checks that matter for this branch (ruff, mypy, pytest), then `migrate` + `createcachetable`
+  against Neon's direct URL, then `vercel deploy --prod` with the Vercel CLI. Migrations run before the new code
+  goes live.
+- Vercel's own Git auto-deploy is turned off, so this workflow is the only way to deploy. To redeploy without a
+  change, use the Vercel dashboard's Redeploy button.
+- **Secrets** (GitHub repo secrets): `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`,
+  `DEMO_DATABASE_URL_UNPOOLED`, and whatever settings `migrate` needs to import (the secret key and storage
+  values). It uses the same pinned action versions as `ci.yml`.
+
+**Nightly reset.** The maintainer chose Vercel Cron over a scheduler on `main`. GitHub runs scheduled workflows
+only from the default branch, so a cron in `demo.yml` would never fire.
+
+- `vercel.json` declares one daily cron job at 19:00 UTC (03:00 Asia/Manila) that calls `GET /_demo/reset/`.
+  Hobby allows daily cron jobs, but only fires them somewhere within the scheduled hour. That's why the banner
+  says "around 03:00".
+- The view exists only in public-demo mode (the URL isn't routed otherwise). It requires
+  `Authorization: Bearer <CRON_SECRET>`, which is how Vercel signs cron calls, compares it with
+  `hmac.compare_digest`, and returns 404 on any mismatch so the route can't be probed. `CRON_SECRET` is a Vercel
+  environment variable. The route goes in the permission-matrix test as "anonymous: 404 without the secret".
+- It calls a new management command `reset_demo`, which:
   1. refuses to run unless `DEMO_ACTIVE` is true and `SCHOLARSYNC_PUBLIC_DEMO` is set (it never runs on a real
      copy);
-  2. empties the R2 bucket (every key, including `pending/`);
-  3. empties every app table (`flush`, or a truncate in one transaction), keeping the schema and migrations;
+  2. empties the R2 bucket (every key, including `pending/`, using batch deletes);
+  3. empties every app table in one transaction (`TRUNCATE ... CASCADE`, or `flush`), keeping the schema and the
+     migrations table;
   4. runs `load_demo`, which recreates the accounts, the samples and their sample files in R2;
-  5. clears the database cache table and Django sessions, so every visitor is signed out.
-- **Manual trigger** (`workflow_dispatch`) for both jobs, so the maintainer can reset or redeploy on demand.
-- **Secrets** (GitHub repo secrets, available only to this workflow): `VERCEL_TOKEN`, `VERCEL_ORG_ID`,
-  `VERCEL_PROJECT_ID`, `DEMO_DATABASE_URL_UNPOOLED`, the R2 keys, `DEMO_SECRET_KEY`.
-- The workflow uses the same pinned action versions as `ci.yml`.
+  5. clears the database cache table and the sessions, so every visitor is signed out.
+- The command can also run from a laptop against Neon's direct URL. That's the fallback, and a way to reset on
+  demand. On-demand resets otherwise use the Vercel dashboard's "Run" button for the cron job.
+- **The time limit is the main risk.** The whole reset has to finish within the function's maximum duration on
+  Hobby. The builder sets `maxDuration` for this route to Hobby's ceiling (check the current figure; it was
+  300 s with Fluid compute when this was written). **The first task in the plan** times `reset_demo` against a
+  real Neon database from a Singapore-adjacent runner, before anything else gets built on top of it. If it
+  doesn't fit comfortably (under half the limit), stop and come back to the maintainer. The likely fix is to keep
+  a seeded Neon branch and have the reset restore from it through Neon's API (seconds, whatever the data size),
+  with the R2 purge leaving the seed's sample files alone.
 
 ### 5.5 Keeping the branch current
 
@@ -176,9 +203,12 @@ normal issue and PR flow on `main`, as its own decision.
   outside it. Sign-up is closed. Every page shows the banner.
 - `reset_demo` tests (moto for S3): it refuses outside the mode, empties the bucket and tables, and leaves a
   database where every demo account can sign in.
+- Reset endpoint tests: 404 outside the mode, 404 without the bearer token or with a wrong one, and it resets with
+  the right one.
 - The existing suite still passes on `demo`.
 - After the first deploy, a manual smoke test on the live URL: sign in as one account from each group, upload
   and download a document, run the reset workflow, and confirm the upload is gone.
+- Record how long the reset takes on Vercel, and how close that is to the limit.
 
 ## 7. Left to the builder
 
