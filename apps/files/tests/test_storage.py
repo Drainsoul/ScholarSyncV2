@@ -138,3 +138,15 @@ def test_iter_chunks_closes_the_body_when_stopped_early(s3, monkeypatch):
     assert next(chunks) == b"012"
     chunks.close()
     assert closed == [True]
+
+
+def test_delete_all_empties_bucket_in_batches(s3):
+    """The public demo's nightly reset (branch `demo`) empties the bucket, 1000 keys a request."""
+    for n in range(1001):
+        s3.put_object(Bucket=s3.bucket, Key=f"files/x/{n}", Body=b"")
+    assert storage.delete_all() == 1001
+    assert s3.list_objects_v2(Bucket=s3.bucket)["KeyCount"] == 0
+
+
+def test_delete_all_on_an_empty_bucket(s3):
+    assert storage.delete_all() == 0

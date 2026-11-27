@@ -230,3 +230,24 @@ def delete(key: str) -> None:
         client.delete_object(Bucket=_bucket(), Key=key)
     except (BotoCoreError, ClientError) as exc:
         raise _unavailable(exc) from exc
+
+
+def delete_all() -> int:
+    """Delete every object in the bucket and return how many: the public demo's nightly reset
+    (branch `demo`, docs/design/2026-11-28-hosted-demo-design.md 5.4). 1000 keys per request."""
+    from botocore.exceptions import BotoCoreError, ClientError
+
+    client = _client()
+    bucket = _bucket()
+    deleted = 0
+    try:
+        for page in client.get_paginator("list_objects_v2").paginate(Bucket=bucket):
+            keys = [{"Key": item["Key"]} for item in page.get("Contents", [])]
+            if keys:
+                client.delete_objects(Bucket=bucket, Delete={"Objects": keys, "Quiet": True})
+                deleted += len(keys)
+    except (BotoCoreError, ClientError) as exc:
+        if _is_missing(exc):
+            return deleted
+        raise _unavailable(exc) from exc
+    return deleted
