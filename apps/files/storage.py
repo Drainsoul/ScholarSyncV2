@@ -232,22 +232,37 @@ def delete(key: str) -> None:
         raise _unavailable(exc) from exc
 
 
-def delete_all() -> int:
-    """Delete every object in the bucket and return how many: the public demo's nightly reset
-    (branch `demo`, docs/design/2026-11-28-hosted-demo-design.md 5.4). 1000 keys per request."""
+def list_keys() -> list[str]:
+    """Every key in the bucket (the public demo's nightly reset, branch `demo`)."""
+    from botocore.exceptions import BotoCoreError, ClientError
+
+    client = _client()
+    keys: list[str] = []
+    try:
+        for page in client.get_paginator("list_objects_v2").paginate(Bucket=_bucket()):
+            keys.extend(item["Key"] for item in page.get("Contents", []))
+    except (BotoCoreError, ClientError) as exc:
+        if _is_missing(exc):
+            return keys
+        raise _unavailable(exc) from exc
+    return keys
+
+
+def delete_keys(keys: list[str]) -> int:
+    """Delete these keys, 1000 per request, and return how many were asked for."""
     from botocore.exceptions import BotoCoreError, ClientError
 
     client = _client()
     bucket = _bucket()
-    deleted = 0
     try:
-        for page in client.get_paginator("list_objects_v2").paginate(Bucket=bucket):
-            keys = [{"Key": item["Key"]} for item in page.get("Contents", [])]
-            if keys:
-                client.delete_objects(Bucket=bucket, Delete={"Objects": keys, "Quiet": True})
-                deleted += len(keys)
+        for start in range(0, len(keys), 1000):
+            batch = [{"Key": key} for key in keys[start : start + 1000]]
+            client.delete_objects(Bucket=bucket, Delete={"Objects": batch, "Quiet": True})
     except (BotoCoreError, ClientError) as exc:
-        if _is_missing(exc):
-            return deleted
         raise _unavailable(exc) from exc
-    return deleted
+    return len(keys)
+
+
+def delete_all() -> int:
+    """Delete every object in the bucket and return how many."""
+    return delete_keys(list_keys())

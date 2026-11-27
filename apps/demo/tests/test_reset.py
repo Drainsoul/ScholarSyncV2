@@ -59,7 +59,9 @@ def test_reset_restores_clean_demo(public_demo: None, s3: Any) -> None:  # noqa:
 
 
 def test_reset_is_atomic(public_demo: None, s3: Any, monkeypatch: Any) -> None:  # noqa: F811
+    """A failed load keeps yesterday's rows and the files they point at."""
     survivor = UserFactory.create()
+    s3.put_object(Bucket=s3.bucket, Key="files/yesterday", Body=b"x")
 
     def broken_load() -> int:
         raise ValueError("load failed")
@@ -68,3 +70,4 @@ def test_reset_is_atomic(public_demo: None, s3: Any, monkeypatch: Any) -> None: 
     with pytest.raises(ValueError, match="load failed"):
         reset.reset()
     assert User.objects.filter(pk=survivor.pk).exists()
+    assert "files/yesterday" in _keys(s3)
