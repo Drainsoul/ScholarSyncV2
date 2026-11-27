@@ -1,0 +1,93 @@
+# Branch `demo` only: check, migrate, build and deploy the public demo
+# (docs/design/2026-11-28-hosted-demo-design.md 5.4; setup in docs/hosted-demo.md).
+# The project's own Git deploys are off, so this workflow is the only way a version goes live.
+# The nightly reset is a cron job in vercel.json, not here: GitHub runs scheduled workflows only
+# from the default branch.
+name: Demo
+
+on:
+  push:
+    branches: [demo]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: demo-deploy
+  cancel-in-progress: false  # never stop a deploy halfway through its migrations
+
+env:
+  VERCEL_CLI: vercel@65.15.0
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: scholarsync
+          POSTGRES_PASSWORD: scholarsync
+          POSTGRES_DB: scholarsync
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U scholarsync -d scholarsync"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DJANGO_SECRET_KEY: ci-only-not-a-secret-0123456789abcdefghijklmnopqrstuvwxyz
+      DATABASE_URL: postgres://scholarsync:scholarsync@localhost:5432/scholarsync
+      DJANGO_DEBUG: "true"
+      SITE_OPERATOR_NAME: ScholarSync CI
+      PRIVACY_CONTACT_EMAIL: privacy@scholarsync.test
+      EMAIL_URL: smtp://localhost:25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.4.0  # no floating major tag is published; pin the full version
+        with:
+          enable-cache: true
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: uv sync --locked
+      - run: npm --prefix frontend ci
+      - run: npm --prefix frontend run build
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy .
+      - run: uv run python manage.py makemigrations --check --dry-run
+      - run: uv run pytest -n auto
+
+  deploy:
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: demo
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.4.0
+        with:
+          enable-cache: true
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: uv sync --locked --no-dev
+      - name: Fetch the production settings from the project
+        run: npx --yes "$VERCEL_CLI" pull --yes --environment=production --token="${{ secrets.VERCEL_TOKEN }}"
+      - name: Migrate (direct connection) before the new code goes live
+        run: |
+          set -a
+          . ./.vercel/.env.production.local
+          set +a
+          DATABASE_URL="$DATABASE_URL_UNPOOLED" uv run --no-dev python manage.py migrate --noinput
+          DATABASE_URL="$DATABASE_URL_UNPOOLED" uv run --no-dev python manage.py createcachetable
+      - name: Build
+        run: npx --yes "$VERCEL_CLI" build --prod --token="${{ secrets.VERCEL_TOKEN }}"
+      - name: Deploy
+        run: npx --yes "$VERCEL_CLI" deploy --prebuilt --prod --token="${{ secrets.VERCEL_TOKEN }}"

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["sin1"],
+  "git": { "deploymentEnabled": false },
+  "buildCommand": "sh scripts/vercel_build.sh",
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 300,
+      "includeFiles": "{staticfiles/**,static/dist/**,templates/**,apps/**/templates/**}",
+      "excludeFiles": "{frontend/node_modules/**,tests/**,docs/**,**/tests/**,**/__pycache__/**}"
+    }
+  },
+  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }],
+  "crons": [{ "path": "/_demo/reset/", "schedule": "0 19 * * *" }]
+}

@@ -1,0 +1,120 @@
+argon2-cffi==25.1.0
+    # via scholarsync
+argon2-cffi-bindings==26.1.0
+    # via argon2-cffi
+asgiref==3.12.1
+    # via
+    #   django
+    #   django-allauth
+    #   django-htmx
+boto3==1.44.9
+    # via scholarsync
+botocore==1.44.12
+    # via
+    #   boto3
+    #   s3transfer
+certifi==2026.10.23
+    # via
+    #   requests
+    #   sentry-sdk
+cffi==2.1.1
+    # via
+    #   argon2-cffi-bindings
+    #   cryptography
+charset-normalizer==3.5.2
+    # via requests
+colorama==0.4.6 ; sys_platform == 'win32'
+    # via qrcode
+cryptography==50.0.2
+    # via
+    #   fido2
+    #   pyjwt
+    #   scholarsync
+defusedxml==0.7.1
+    # via scholarsync
+dj-database-url==3.1.2
+    # via environs
+dj-email-url==1.0.6
+    # via environs
+django==5.2.19
+    # via
+    #   dj-database-url
+    #   django-allauth
+    #   django-csp
+    #   django-htmx
+    #   django-template-partials
+    #   django-vite
+    #   scholarsync
+django-allauth==65.22.1
+    # via scholarsync
+django-cache-url==3.4.6
+    # via environs
+django-csp==4.0
+    # via scholarsync
+django-htmx==1.29.0
+    # via scholarsync
+django-template-partials==25.3
+    # via scholarsync
+django-vite==3.2.0
+    # via scholarsync
+environs==15.2.0
+    # via scholarsync
+et-xmlfile==2.0.0
+    # via openpyxl
+fido2==2.2.1
+    # via django-allauth
+filetype==1.2.0
+    # via scholarsync
+gunicorn==27.0.1
+    # via scholarsync
+idna==3.20
+    # via requests
+jmespath==1.1.0
+    # via
+    #   boto3
+    #   botocore
+marshmallow==4.3.1
+    # via environs
+oauthlib==4.0.1
+    # via django-allauth
+openpyxl==3.1.5
+    # via scholarsync
+packaging==26.3
+    # via django-csp
+pillow==13.0.0
+    # via scholarsync
+psycopg==3.3.9
+    # via scholarsync
+psycopg-binary==3.3.9 ; implementation_name != 'pypy'
+    # via psycopg
+pycparser==3.12 ; implementation_name != 'PyPy'
+    # via cffi
+pyjwt==2.15.1
+    # via django-allauth
+python-dateutil==2.9.0.post0
+    # via botocore
+python-dotenv==1.2.4
+    # via environs
+qrcode==8.2
+    # via django-allauth
+requests==2.34.2
+    # via django-allauth
+s3transfer==0.19.3
+    # via boto3
+sentry-sdk==3.0.1
+    # via scholarsync
+six==1.17.0
+    # via python-dateutil
+sqlparse==0.6.0
+    # via django
+tzdata==2026.5 ; sys_platform == 'win32'
+    # via
+    #   django
+    #   psycopg
+urllib3==2.8.0
+    # via
+    #   botocore
+    #   requests
+    #   sentry-sdk
+whitenoise==6.12.0
+    # via scholarsync

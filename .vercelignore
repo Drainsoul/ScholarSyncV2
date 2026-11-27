@@ -1,0 +1,10 @@
+.env
+.venv/
+docs/
+tests/
+frontend/node_modules/
+**/__pycache__/
+.superpowers/
+STATE.md
+CLAUDE.md
+CLAUDE.local.md
