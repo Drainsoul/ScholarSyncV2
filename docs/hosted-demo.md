@@ -1,5 +1,7 @@
 # Hosted demo (branch `demo`)
 
+**Live at https://scholarsyncv2.vercel.app** (first deployed 2026-11-28).
+
 The `demo` branch runs a public copy of ScholarSync. Visitors sign in with the test accounts and explore. Email isn't
 sent, and the data resets every night. The design is in `docs/design/2026-11-28-hosted-demo-design.md`.
 
@@ -107,6 +109,9 @@ Everything is free: Vercel Hobby, Neon's free tier, Cloudflare R2's free tier, a
 
 ## Limits to keep in mind
 
+- Run `reset_demo` from a laptop only as a fallback: every query crosses the internet to Singapore, so it takes
+  about four minutes there against under a minute on Vercel.
+
 - The reset has to finish within the function's `maxDuration` (300 s in `vercel.json`). Measured times are below.
 - The first request after an idle spell is slow while the function and Neon wake up.
 - Hobby is for personal, non-commercial use. The demo sells nothing.
@@ -116,3 +121,5 @@ Everything is free: Vercel Hobby, Neon's free tier, Cloudflare R2's free tier, a
 | Date | Where | Reset time |
 |---|---|---|
 | 2026-11-28 | Local Postgres + RustFS (laptop) | 11.5–15.0 s |
+| 2026-11-28 | Laptop (Philippines) → Neon Singapore, pooled | 224–243 s (≈34 ms per round trip; not representative) |
+| 2026-11-28 | Vercel `sin1` → Neon Singapore, via `/_demo/reset/` | 51.8 s (131 files deleted, 7 accounts) |
