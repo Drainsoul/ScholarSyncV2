@@ -119,7 +119,8 @@ def test_env_value_fails_on_a_missing_or_empty_name(tmp_path: Path) -> None:
 
 
 def test_upload_ignore_keeps_files_the_function_traces() -> None:
-    """The Python packager traces every package, tests included; ignoring them at upload broke the
-    first deploy (ENOENT on apps/accounts/tests/__init__.py)."""
+    """The Python packager bundles every tracked file; ignoring any at upload broke early deploys
+    (ENOENT on apps/accounts/tests/__init__.py, then docs/accessibility/wcag-22-aa.md)."""
     lines = (ROOT / f".{HOST}ignore").read_text(encoding="utf-8").split()
     assert "tests/" not in lines
+    assert "docs/" not in lines
