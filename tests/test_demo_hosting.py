@@ -52,12 +52,45 @@ def test_git_deploys_off() -> None:
     assert _config()["git"]["deploymentEnabled"] is False
 
 
-def test_api_entry_wraps_the_wsgi_app() -> None:
-    import api.index as entry
+def test_api_entry_exposes_wsgi_app() -> None:
+    from api.index import app
     from config.wsgi import application
 
-    assert entry.application is application
-    assert callable(entry.app)
+    assert app is application
+
+
+def _wsgi_restores_paths(public_demo: str | None, tmp_path: Path) -> bool:
+    """Import config.wsgi in a fresh process and say whether it restores rewritten paths."""
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("DJANGO_", "SCHOLARSYNC_"))}
+    env.update(
+        {
+            "DJANGO_ENV_FILE": str(tmp_path / "absent.env"),
+            "DJANGO_SECRET_KEY": "x" * 50,
+            "DJANGO_ALLOWED_HOSTS": "scholarsync.example",
+            "SITE_OPERATOR_NAME": "ScholarSync Test",
+            "PRIVACY_CONTACT_EMAIL": "privacy@scholarsync.test",
+            "DATABASE_URL": "postgres://u:p@localhost:5433/db",
+            "EMAIL_URL": "" if public_demo else "smtp://localhost:25",
+            "CRON_SECRET": "c" * 32,
+        }
+    )
+    if public_demo is not None:
+        env["SCHOLARSYNC_PUBLIC_DEMO"] = public_demo
+    code = "import config.wsgi as w; print(getattr(w.application, 'restores_path', False))"
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, "-c", code], cwd=ROOT, env=env, capture_output=True, text=True, check=False
+    )
+    assert result.returncode == 0, result.stderr
+    return result.stdout.strip() == "True"
+
+
+def test_wsgi_restores_paths_in_the_public_demo(tmp_path: Path) -> None:
+    """Whatever entry the runtime loads (api/index.py or WSGI_APPLICATION), it is this one."""
+    assert _wsgi_restores_paths("true", tmp_path)
+
+
+def test_wsgi_untouched_outside_the_public_demo(tmp_path: Path) -> None:
+    assert not _wsgi_restores_paths(None, tmp_path)
 
 
 WORKFLOW = ROOT / ".github" / "workflows" / "demo.yml"
@@ -128,22 +161,17 @@ def test_upload_ignore_keeps_files_the_function_traces() -> None:
 
 
 def _seen_by_django(query: str, path: str = "/api/index") -> tuple[str, str]:
-    """Run the entry wrapper and report the path and query string Django would see."""
-    import api.index as entry
+    """Run the path restore and report the path and query string Django would see."""
+    from config.rewrite_path import restore_path
 
     seen: dict[str, str] = {}
 
-    def fake_django(environ: dict[str, str], start_response: Any) -> list[bytes]:
+    def fake_django(environ: dict[str, Any], start_response: Any) -> list[bytes]:
         seen["path"] = environ["PATH_INFO"]
         seen["query"] = environ["QUERY_STRING"]
         return [b""]
 
-    original = entry.application
-    entry.application = fake_django  # type: ignore[assignment]
-    try:
-        entry.app({"PATH_INFO": path, "QUERY_STRING": query}, lambda *a: None)
-    finally:
-        entry.application = original
+    restore_path(fake_django)({"PATH_INFO": path, "QUERY_STRING": query}, lambda *a: None)
     return seen["path"], seen["query"]
 
 
