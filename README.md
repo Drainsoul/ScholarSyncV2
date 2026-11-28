@@ -10,6 +10,10 @@ A scholarship platform modelled on the City of Taguig's programs.
 > Independent portfolio project, not affiliated with or endorsed by the City of Taguig. All sample people and data are
 > fictional.
 
+**Try it now: [live demo](https://scholarsyncv2.vercel.app).** Sign in with any of the [test accounts](#test-accounts)
+(one-click buttons on the sign-in page). It sends no email, and its data resets every night around 03:00 Manila time,
+so don't enter real personal information.
+
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/Drainsoul/ScholarSyncV2)
 
 ## Quick start
@@ -48,8 +52,8 @@ Every account uses the password `explore-demo-2026`. The sign-in page offers the
 | | `lani.head@scholarsync.test` | LANI reports to approve or fix |
 | Scholarship office | `office@scholarsync.test` | all programs, staff, reports, analytics, reply templates, audit log |
 
-Test accounts exist only in local copies (`docker compose up`, or `manage.py load_demo` in development), never on a
-hosted one.
+Test accounts exist only in local copies (`docker compose up`, or `manage.py load_demo` in development) and in the
+[live demo](https://scholarsyncv2.vercel.app), which runs from the `demo` branch. A self-hosted copy never has them.
 
 ## Self-hosting
 Follow [docs/HOSTING.md](docs/HOSTING.md), then create the scholarship-office account:
