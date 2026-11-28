@@ -10,6 +10,6 @@
       "excludeFiles": "{frontend/node_modules/**,tests/**,docs/**,**/tests/**,**/__pycache__/**}"
     }
   },
-  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }],
+  "rewrites": [{ "source": "/(.*)", "destination": "/api/index?__path=$1" }],
   "crons": [{ "path": "/_demo/reset/", "schedule": "0 19 * * *" }]
 }

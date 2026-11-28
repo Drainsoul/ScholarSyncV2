@@ -52,11 +52,12 @@ def test_git_deploys_off() -> None:
     assert _config()["git"]["deploymentEnabled"] is False
 
 
-def test_api_entry_exposes_wsgi_app() -> None:
-    from api.index import app
+def test_api_entry_wraps_the_wsgi_app() -> None:
+    import api.index as entry
     from config.wsgi import application
 
-    assert app is application
+    assert entry.application is application
+    assert callable(entry.app)
 
 
 WORKFLOW = ROOT / ".github" / "workflows" / "demo.yml"
@@ -124,3 +125,51 @@ def test_upload_ignore_keeps_files_the_function_traces() -> None:
     lines = (ROOT / f".{HOST}ignore").read_text(encoding="utf-8").split()
     assert "tests/" not in lines
     assert "docs/" not in lines
+
+
+def _seen_by_django(query: str, path: str = "/api/index") -> tuple[str, str]:
+    """Run the entry wrapper and report the path and query string Django would see."""
+    import api.index as entry
+
+    seen: dict[str, str] = {}
+
+    def fake_django(environ: dict[str, str], start_response: Any) -> list[bytes]:
+        seen["path"] = environ["PATH_INFO"]
+        seen["query"] = environ["QUERY_STRING"]
+        return [b""]
+
+    original = entry.application
+    entry.application = fake_django  # type: ignore[assignment]
+    try:
+        entry.app({"PATH_INFO": path, "QUERY_STRING": query}, lambda *a: None)
+    finally:
+        entry.application = original
+    return seen["path"], seen["query"]
+
+
+def test_entry_restores_the_visitors_path() -> None:
+    """The runtime hands Django the rewrite's destination (/api/index); the first deploy 404'd
+    on every page until the original path came back."""
+    assert _seen_by_django("__path=accounts/login/") == ("/accounts/login/", "")
+
+
+def test_entry_keeps_the_visitors_query_string() -> None:
+    path, query = _seen_by_django("next=%2Fme%2F&__path=accounts/login/&page=2")
+    assert path == "/accounts/login/"
+    assert query == "next=%2Fme%2F&page=2"
+
+
+def test_entry_maps_the_bare_domain_to_root() -> None:
+    assert _seen_by_django("__path=") == ("/", "")
+
+
+def test_entry_keeps_plus_signs_and_escapes_in_the_path() -> None:
+    assert _seen_by_django("__path=files/a+b%20c/") == ("/files/a+b c/", "")
+
+
+def test_entry_leaves_requests_without_the_marker_alone() -> None:
+    assert _seen_by_django("x=1", path="/healthz") == ("/healthz", "x=1")
+
+
+def test_rewrite_passes_the_original_path() -> None:
+    assert _config()["rewrites"] == [{"source": "/(.*)", "destination": "/api/index?__path=$1"}]
