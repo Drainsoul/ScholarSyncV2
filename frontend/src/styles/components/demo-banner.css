@@ -18,3 +18,18 @@
   margin: 0;
   max-width: none;
 }
+
+/* The full sentence needs about 750px; below that, one short line instead of two or three. */
+.demo-banner__text--short {
+  display: none;
+}
+
+@media (max-width: 50rem) {
+  .demo-banner__text--full {
+    display: none;
+  }
+
+  .demo-banner__text--short {
+    display: block;
+  }
+}

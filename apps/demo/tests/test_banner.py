@@ -45,3 +45,14 @@ def test_no_banner_outside_public_demo(
 ) -> None:
     settings.PUBLIC_DEMO = False
     assert COPY not in client.get("/accounts/login/").content.decode()
+
+
+def test_banner_has_a_short_version_for_small_screens(
+    client: Any, settings: Any, demo_installed: None, vite_build: Any
+) -> None:
+    """Phones get one short line; CSS shows exactly one of the two versions."""
+    settings.PUBLIC_DEMO = True
+    body = client.get("/accounts/login/").content.decode()
+    assert body.count('class="demo-banner__text demo-banner__text--short"') == 1
+    assert "Public demo · Resets nightly · No real data" in body
+    assert body.count('class="demo-banner__text demo-banner__text--full"') == 1

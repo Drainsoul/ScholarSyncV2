@@ -1,4 +1,4 @@
 {% load demo ui %}{% demo_public_mode as public_demo %}{% if public_demo %}
-{# The hosted demo (branch `demo`, design section 5.2): shared test accounts, reset nightly. #}
-<div class="demo-banner" role="note">{% icon "info" %}<p class="demo-banner__text">Public demo. Data resets every night (around 03:00 Manila time). Don't enter real personal information or upload real documents.</p></div>
+{# The hosted demo (branch `demo`, design section 5.2): shared test accounts, reset nightly. CSS shows one version: the full sentence where it fits on one line, the short one on small screens. #}
+<div class="demo-banner" role="note">{% icon "info" %}<p class="demo-banner__text demo-banner__text--full">Public demo. Data resets every night (around 03:00 Manila time). Don't enter real personal information or upload real documents.</p><p class="demo-banner__text demo-banner__text--short">Public demo · Resets nightly · No real data</p></div>
 {% endif %}
