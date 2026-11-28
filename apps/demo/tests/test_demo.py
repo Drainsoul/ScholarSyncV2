@@ -320,6 +320,7 @@ def test_nothing_outside_the_demo_imports_it():
             "config/settings.py",
             "config/demo.py",
             "config/tests/test_settings.py",
+            "apps/core/tests/test_pages_public_demo.py",  # installs the demo in a fixture
             "config/urls.py",  # the public demo's reset route, only when DEMO_ACTIVE
         }:
             continue

@@ -1,4 +1,4 @@
-{% extends "layouts/public.html" %}
+{% extends "layouts/public.html" %}{% load slots %}
 {% block title %}Privacy policy{% endblock %}
 {% block content %}
 <article class="info">
@@ -7,6 +7,7 @@
   {% if explore %}
   <div class="banner" role="note"><div><p>This is a local or personal copy, on your computer or in your own codespace. Anything you enter stays in its database, and emails go to the local inbox, not to real people.</p></div></div>
   {% endif %}
+  {% if public_demo %}{% include_if_present "demo/pages/privacy_note.html" %}{% endif %}
   <p>This policy explains how personal data is handled in this copy of ScholarSync. It follows Republic Act No. 10173, the Data Privacy Act of 2012 (RA 10173), of the Philippines. It is template text: whoever runs a copy should review it and adapt it to their organisation and their law.</p>
 
   <h2>Who is responsible</h2>
@@ -41,14 +42,14 @@
     <li>Staff of a program can see the applications made to that program, and nothing from other programs.</li>
     <li>The scholarship office can see all programs, the reports program staff send it, and the audit log.</li>
     <li>A program's head can see that program's audit log.</li>
-    <li>The operator's hosting, storage and email providers handle data on the operator's behalf.</li>
+    <li>{% if public_demo %}The operator's hosting, database and storage providers, named above, handle data on the operator's behalf.{% else %}The operator's hosting, storage and email providers handle data on the operator's behalf.{% endif %}</li>
   </ul>
 
   <h2>Storage and security</h2>
-  <p>Data is kept in a PostgreSQL database and uploaded documents in private file storage. {% if not local_copy %}Connections use HTTPS. {% endif %}Documents are never served openly: they are downloaded through short-lived links. Staff only reach the programs they are assigned to.{% if breach_check %} When you choose a password, the first five characters of a scrambled form of it are sent to the Have I Been Pwned service to check it hasn't leaked elsewhere; the password itself never leaves this site.{% endif %} No system is perfectly secure, and the operator should tell you promptly if a breach affects you.</p>
+  <p>Data is kept in a PostgreSQL database and uploaded documents in private file storage. {% if not local_copy %}Connections use HTTPS. {% endif %}Documents are never served openly: they are downloaded through short-lived links. Staff only reach the programs they are assigned to.{% if breach_check and not public_demo %} When you choose a password, the first five characters of a scrambled form of it are sent to the Have I Been Pwned service to check it hasn't leaked elsewhere; the password itself never leaves this site.{% endif %} No system is perfectly secure, and the operator should tell you promptly if a breach affects you.</p>
 
   <h2>How long it is kept</h2>
-  <p>Records are kept as set by the operator of this copy. Self-hosters: state your retention period here before going live. When a record is no longer needed, it should be deleted or made anonymous.</p>
+  <p>{% if public_demo %}Nothing you enter here is kept: every record and upload is deleted every night around 03:00 Manila time, when the demo goes back to its fictional sample data.{% else %}Records are kept as set by the operator of this copy. Self-hosters: state your retention period here before going live. When a record is no longer needed, it should be deleted or made anonymous.{% endif %}</p>
   <p>One period is fixed by the software: the spreadsheets staff upload to add scholars in bulk hold names and birth dates, so they are deleted after 7 days.</p>
 
   <h2>Your rights</h2>

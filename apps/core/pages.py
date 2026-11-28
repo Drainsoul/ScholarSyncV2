@@ -34,6 +34,8 @@ def _context() -> dict[str, object]:
         # codespace); a hosted copy always runs in production mode.
         "local_copy": not settings.PRODUCTION,
         "breach_check": settings.PASSWORD_BREACH_CHECK,
+        # The hosted demo (branch `demo`): its pages include notes from apps/demo/templates.
+        "public_demo": getattr(settings, "PUBLIC_DEMO", False),
         "repo_url": REPO_URL,
     }
 

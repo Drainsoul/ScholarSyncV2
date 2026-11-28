@@ -1,4 +1,4 @@
-{% extends "layouts/public.html" %}
+{% extends "layouts/public.html" %}{% load slots %}
 {% block title %}Help and FAQ{% endblock %}
 {% block content %}
 <article class="info">
@@ -8,12 +8,14 @@
   <h2>About this site</h2>
   <h3>Is this an official City of Taguig service?</h3>
   <p>No. ScholarSync is an independent portfolio project. It is not affiliated with or endorsed by the City of Taguig, and all sample people and data are fictional.</p>
-  <h3>How do I try each role?</h3>
-  <p>Run a copy on your computer with <code>docker compose up</code>, then sign in with one of the four fictional test accounts offered on the sign-in page and listed in the README: a student, program staff, a program head and the scholarship office.</p>
+  {% if not public_demo %}<h3>How do I try each role?</h3>
+  <p>Run a copy on your computer with <code>docker compose up</code>, then sign in with one of the four fictional test accounts offered on the sign-in page and listed in the README: a student, program staff, a program head and the scholarship office.</p>{% endif %}
   <h3>Where does my data go on a local or personal copy?</h3>
   <p>Nowhere else. It stays in that copy's database, on your computer or in your own codespace, and emails go to a local inbox, not to real people.</p>
   <h3>Who looks after the data on a hosted copy?</h3>
   <p>The operator of that copy. See the <a href="{% url 'core:privacy' %}">privacy policy</a>.</p>
+
+  {% if public_demo %}{% include_if_present "demo/pages/help_demo.html" %}{% endif %}
 
   <h2>For students</h2>
   <h3>Who can apply?</h3>
@@ -27,9 +29,9 @@
   <h3>Does applying guarantee an award?</h3>
   <p>No. The program decides, under its own rules.</p>
   <h3>Where do I see notices?</h3>
-  <p>Signed in, the bell at the top of every page shows how many notices you haven't read, and opens the list. You also get an email when your application is received, returned or decided, and when an allowance is ready or released.</p>
+  <p>Signed in, the bell at the top of every page shows how many notices you haven't read, and opens the list.{% if not public_demo %} You also get an email when your application is received, returned or decided, and when an allowance is ready or released.{% endif %}</p>
   <h3>How do I ask the scholarship office something?</h3>
-  <p>Signed in as a student, open "Help and guides" and send a message. The office answers by email.</p>
+  <p>Signed in as a student, open "Help and guides" and send a message. {% if public_demo %}The office's replies appear in the app.{% else %}The office answers by email.{% endif %}</p>
   <h2>For program staff</h2>
   <h3>How do program reports work?</h3>
   <p>Open "Reports" in your program, upload the report as a PDF with its period, and send it. The scholarship office accepts it or returns it with a note; the bell tells you which. A returned report can be fixed and sent again.</p>

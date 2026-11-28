@@ -1,14 +1,15 @@
-{% extends "layouts/public.html" %}
+{% extends "layouts/public.html" %}{% load slots %}
 {% block title %}Terms of use{% endblock %}
 {% block content %}
 <article class="info">
   <h1>Terms of use</h1>
   <p class="text-muted">Last updated {{ notice_version }}.</p>
+  {% if public_demo %}{% include_if_present "demo/pages/terms_note.html" %}{% endif %}
   <p>These terms apply to your use of this copy of ScholarSync, run by <strong>{{ operator_name }}</strong>. ScholarSync is an independent portfolio project and is not an official service of the City of Taguig. The text is a template: whoever runs a copy should review it and adapt it.</p>
 
   <h2>Using the service</h2>
   <ul>
-    <li>Use ScholarSync only for its purpose: applying for and managing scholarships.</li>
+    <li>{% if public_demo %}Use this demo only to explore ScholarSync, with fictional information.{% else %}Use ScholarSync only for its purpose: applying for and managing scholarships.{% endif %}</li>
     <li>Do not try to break into the service, overload it, or reach data that is not yours.</li>
     <li>Do not upload files that are unlawful, harmful or not yours to share.</li>
   </ul>
@@ -20,7 +21,7 @@
   <p>Submitting an application, or being shown as eligible, does not guarantee a scholarship. Awards are decided by the program, under its own rules.</p>
 
   <h2>Your account</h2>
-  <p>Keep your password private and tell the operator if you think someone else has used your account. You are responsible for what happens under your account.</p>
+  <p>{% if public_demo %}The test accounts are shared by every visitor, so anything you do under one can be seen and changed by others until the nightly reset. Their sign-in details can't be changed.{% else %}Keep your password private and tell the operator if you think someone else has used your account. You are responsible for what happens under your account.{% endif %}</p>
 
   <h2>No warranty</h2>
   <p>The service is provided as is, without warranty of any kind. The operator does not promise that it will always be available or free of errors, and is not responsible for losses that come from using it, to the extent the law allows.</p>
