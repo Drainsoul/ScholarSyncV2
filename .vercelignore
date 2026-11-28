@@ -1,7 +1,6 @@
 .env
 .venv/
 docs/
-tests/
 frontend/node_modules/
 **/__pycache__/
 .superpowers/
