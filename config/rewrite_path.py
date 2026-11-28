@@ -1,9 +1,9 @@
 """Give Django the visitor's path behind the hosted demo's rewrite (branch `demo` only).
 
-vercel.json rewrites every path to `/api/index?__path=<path>`, and the host's Python runtime hands
-the app that destination rather than the address the visitor asked for. `restore_path` puts the
-visitor's path back and drops the marker from the query string. config/wsgi.py applies it only in
-the public demo (docs/design/2026-11-28-hosted-demo-design.md section 5.3).
+The hosting config rewrites every path to `/api/index?__path=<path>`, and the host's Python
+runtime hands the app that destination rather than the address the visitor asked for.
+`restore_path` puts the visitor's path back and drops the marker from the query string.
+config/wsgi.py applies it only in the public demo (hosted demo design, section 5.3).
 """
 
 from collections.abc import Callable, Iterable
