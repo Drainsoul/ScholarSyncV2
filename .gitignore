@@ -228,3 +228,6 @@ frontend/node_modules/
 
 # Per-codespace secret key written by .devcontainer/explore-key.sh
 .devcontainer/explore.env
+
+# The host CLI's link and pulled settings (branch `demo`, docs/hosted-demo.md): secrets.
+.vercel/
